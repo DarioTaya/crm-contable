@@ -385,10 +385,6 @@ class ClienteController extends Controller
      */
     public function show(Cliente $cliente): View
     {
-        if (auth()->user()?->isAsistente() && ! $cliente->asistentes()->where('users.id', auth()->id())->exists()) {
-            abort(403, 'Acceso restringido: Este cliente no forma parte de su cartera asignada.');
-        }
-
         $cliente->load(['credencial', 'notificaciones', 'operaciones', 'alertas']);
 
         $anioActual = now()->year;

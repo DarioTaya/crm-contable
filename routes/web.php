@@ -79,18 +79,22 @@ Route::middleware('auth')->group(function () {
         Route::delete('/clientes/{cliente}', [ClienteController::class, 'destroy'])->name('clientes.destroy');
     });
 
-    Route::get('/clientes/{cliente}', [ClienteController::class, 'show'])->name('clientes.show');
-    Route::put('/clientes/{cliente}/datos-fiscales', [ClienteController::class, 'updateDatosFiscales'])->name('clientes.datos-fiscales.update');
-    Route::put('/clientes/{cliente}/estado-estudio', [ClienteController::class, 'updateEstadoEstudio'])->name('clientes.estado-estudio.update');
-    Route::post('/clientes/{cliente}/actualizar-estado-sunat', [ClienteController::class, 'actualizarEstadoSunat'])->name('clientes.actualizar-estado-sunat');
-    Route::put('/clientes/{cliente}/credenciales', [ClienteController::class, 'updateCredenciales'])->name('clientes.credenciales.update');
-    Route::put('/clientes/{cliente}/api-credentials', [ClienteController::class, 'updateApiCredentials'])->name('clientes.api-credentials.update');
-    Route::get('/clientes/{cliente}/sunat', [ClienteController::class, 'loginSunat'])->name('clientes.sunat');
-    Route::get('/clientes/{cliente}/sunafil', [ClienteController::class, 'loginSunafil'])->name('clientes.sunafil');
-    Route::post('/clientes/{cliente}/buzon/sync', [ClienteController::class, 'syncBuzon'])->name('clientes.buzon.sync');
-    Route::post('/clientes/{cliente}/sunafil/sync', [ClienteController::class, 'syncSunafilBuzon'])->name('clientes.sunafil.sync');
+    // Expediente del cliente. Cada ruta declara la habilidad de ClientePolicy
+    // que la protege: el asistente solo alcanza su cartera asignada y el
+    // administrador gobierna todo el estudio. El aislamiento entre estudios lo
+    // resuelve antes EstudioScope, en el enlace del modelo.
+    Route::get('/clientes/{cliente}', [ClienteController::class, 'show'])->name('clientes.show')->can('view', 'cliente');
+    Route::put('/clientes/{cliente}/datos-fiscales', [ClienteController::class, 'updateDatosFiscales'])->name('clientes.datos-fiscales.update')->can('update', 'cliente');
+    Route::put('/clientes/{cliente}/estado-estudio', [ClienteController::class, 'updateEstadoEstudio'])->name('clientes.estado-estudio.update')->can('update', 'cliente');
+    Route::post('/clientes/{cliente}/actualizar-estado-sunat', [ClienteController::class, 'actualizarEstadoSunat'])->name('clientes.actualizar-estado-sunat')->can('update', 'cliente');
+    Route::put('/clientes/{cliente}/credenciales', [ClienteController::class, 'updateCredenciales'])->name('clientes.credenciales.update')->can('gestionarCredenciales', 'cliente');
+    Route::put('/clientes/{cliente}/api-credentials', [ClienteController::class, 'updateApiCredentials'])->name('clientes.api-credentials.update')->can('gestionarCredenciales', 'cliente');
+    Route::get('/clientes/{cliente}/sunat', [ClienteController::class, 'loginSunat'])->name('clientes.sunat')->can('sincronizar', 'cliente');
+    Route::get('/clientes/{cliente}/sunafil', [ClienteController::class, 'loginSunafil'])->name('clientes.sunafil')->can('sincronizar', 'cliente');
+    Route::post('/clientes/{cliente}/buzon/sync', [ClienteController::class, 'syncBuzon'])->name('clientes.buzon.sync')->can('sincronizar', 'cliente');
+    Route::post('/clientes/{cliente}/sunafil/sync', [ClienteController::class, 'syncSunafilBuzon'])->name('clientes.sunafil.sync')->can('sincronizar', 'cliente');
     Route::patch('/notificaciones/{notificacion}/toggle', [NotificacionController::class, 'toggleLeido'])->name('notificaciones.toggle');
-    Route::post('/clientes/{cliente}/operaciones', [OperacionController::class, 'storeOrUpdate'])->name('clientes.operaciones.store');
+    Route::post('/clientes/{cliente}/operaciones', [OperacionController::class, 'storeOrUpdate'])->name('clientes.operaciones.store')->can('registrarOperaciones', 'cliente');
 
     // Cronograma Tributario SUNAT
     Route::get('/cronogramas', [CronogramaSunatController::class, 'index'])->name('cronogramas.index');

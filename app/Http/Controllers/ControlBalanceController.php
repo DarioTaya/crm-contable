@@ -136,7 +136,7 @@ class ControlBalanceController extends Controller
     public function update(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'cliente_id' => ['required', 'integer', 'exists:clientes,id'],
+            'cliente_id' => ['required', 'integer', Cliente::reglaPerteneceACartera()],
             'anio' => ['required', 'integer', 'between:2000,2100'],
             'mes' => ['nullable', 'integer', 'between:1,12'],
             'estado' => ['nullable', 'string', 'in:Pendiente,Proceso,Procesando,Declarado'],

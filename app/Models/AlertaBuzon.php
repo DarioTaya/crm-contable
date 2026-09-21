@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToEstudioViaCliente;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AlertaBuzon extends Model
 {
-    use HasFactory;
+    use BelongsToEstudioViaCliente, HasFactory;
 
     /**
      * Nombre de la tabla asociada.
@@ -24,6 +25,7 @@ class AlertaBuzon extends Model
      * @var array<int, string>
      */
     protected $fillable = [
+        'estudio_id',
         'cliente_id',
         'plataforma',
         'asunto',

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToEstudioViaCliente;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 
 class Comprobante extends Model
 {
-    use HasFactory;
+    use BelongsToEstudioViaCliente, HasFactory;
 
     /**
      * Tabla asociada al modelo.
@@ -24,6 +25,7 @@ class Comprobante extends Model
      * @var array<int, string>
      */
     protected $fillable = [
+        'estudio_id',
         'cliente_id',
         'periodo',
         'tipo_registro',

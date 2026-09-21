@@ -12,6 +12,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 
 class Cliente extends Model
 {
@@ -158,6 +162,33 @@ class Cliente extends Model
         static::creating(function (Cliente $cliente) {
             if (empty($cliente->numero)) {
                 $cliente->numero = self::proximoNumeroDisponible($cliente->estudio_id);
+            }
+        });
+    }
+
+    /**
+     * Regla de validación para los identificadores de cliente que llegan en el
+     * cuerpo de una petición, donde no hay enlace de modelo que aplique los
+     * scopes automáticamente.
+     *
+     * Exige que el cliente pertenezca al estudio en curso y, cuando quien opera
+     * es un asistente, que además figure en su cartera asignada. Sin esta
+     * restricción un `exists:clientes,id` corriente acepta el identificador de
+     * cualquier cliente de la instalación.
+     */
+    public static function reglaPerteneceACartera(): Exists
+    {
+        $user = Auth::user();
+
+        return Rule::exists('clientes', 'id')->where(function (QueryBuilder $query) use ($user) {
+            $query->where('estudio_id', self::estudioActualId())->whereNull('deleted_at');
+
+            if ($user?->isAsistente()) {
+                $query->whereIn('id', function (QueryBuilder $asignados) use ($user) {
+                    $asignados->select('cliente_id')
+                        ->from('cliente_user')
+                        ->where('user_id', $user->getKey());
+                });
             }
         });
     }

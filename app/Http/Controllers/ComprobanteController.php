@@ -328,7 +328,7 @@ class ComprobanteController extends Controller
     public function importar(Request $request, SunatSireService $sireService): JsonResponse
     {
         $validated = $request->validate([
-            'cliente_id' => ['required', 'integer', 'exists:clientes,id'],
+            'cliente_id' => ['required', 'integer', Cliente::reglaPerteneceACartera()],
             'registro' => ['required', 'string'],
             'periodo' => ['required', 'string', 'max:10'],
             'ticket' => ['nullable', 'string', 'max:60'],

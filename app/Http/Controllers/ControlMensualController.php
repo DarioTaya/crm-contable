@@ -254,7 +254,7 @@ class ControlMensualController extends Controller
         // 1. Guardado por lote anual de la fila completa del cliente
         if ($request->has('meses') && is_array($request->input('meses'))) {
             $validated = $request->validate([
-                'cliente_id' => ['required', 'integer', 'exists:clientes,id'],
+                'cliente_id' => ['required', 'integer', Cliente::reglaPerteneceACartera()],
                 'meses' => ['required', 'array'],
                 'meses.*.periodo' => ['required', 'string', 'regex:/^\d{2}-\d{4}$/'],
                 'meses.*.sire' => ['required', 'string', 'in:Pendiente,Procesando,Declarado'],
@@ -302,7 +302,7 @@ class ControlMensualController extends Controller
         // 2. Guardado del interruptor maestro mensual, honorarios o nota mensual (Fase 11.5 + Honorarios)
         if ($request->has('estado') || $request->has('honorarios') || $request->has('estado_pago_honorarios') || (! $request->has('estado_compras_ventas') && $request->has('notas'))) {
             $validated = $request->validate([
-                'cliente_id' => ['required', 'integer', 'exists:clientes,id'],
+                'cliente_id' => ['required', 'integer', Cliente::reglaPerteneceACartera()],
                 'periodo' => ['required', 'string', 'regex:/^\d{2}-\d{4}$/'],
                 'estado' => ['nullable', 'string', 'in:Pendiente,Procesando,Declarado'],
                 'honorarios' => ['nullable', 'string', 'in:Pendiente,Pagado'],
@@ -356,7 +356,7 @@ class ControlMensualController extends Controller
 
         // 3. Guardado individual de mes con detalle de obligaciones (compatibilidad previa)
         $validated = $request->validate([
-            'cliente_id' => ['required', 'integer', 'exists:clientes,id'],
+            'cliente_id' => ['required', 'integer', Cliente::reglaPerteneceACartera()],
             'periodo' => ['required', 'string', 'regex:/^\d{2}-\d{4}$/'],
             'estado_compras_ventas' => ['required', 'string', 'in:Pendiente,Procesando,Declarado'],
             'estado_pdt621' => ['required', 'string', 'in:Pendiente,Procesando,Declarado'],
