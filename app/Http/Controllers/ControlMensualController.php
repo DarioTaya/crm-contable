@@ -67,7 +67,7 @@ class ControlMensualController extends Controller
 
             // Determinar mes de baja efectivo si el cliente está retirado
             $mesBaja = null;
-            if ($cliente->estado === 'retirado') {
+            if ($cliente->isRetirado()) {
                 $mesBaja = $cliente->mes_baja ?: ($cliente->fecha_baja ? $cliente->fecha_baja->format('Y-m') : null);
             }
 
@@ -175,7 +175,7 @@ class ControlMensualController extends Controller
             $opsMap = $cliente->operaciones->keyBy('periodo');
 
             $mesBaja = null;
-            if ($cliente->estado === 'retirado') {
+            if ($cliente->isRetirado()) {
                 $mesBaja = $cliente->mes_baja ?: ($cliente->fecha_baja ? $cliente->fecha_baja->format('Y-m') : null);
             }
 

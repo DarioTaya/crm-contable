@@ -187,7 +187,7 @@
                             'RUS'     => 'bg-emerald-100 text-emerald-800 border-emerald-200',
                             'General' => 'bg-purple-100 text-purple-800 border-purple-200',
                         ];
-                        $badgeColor = $colores[$item['cliente']->regimen_tributario] ?? 'bg-gray-100 text-gray-800 border-gray-200';
+                        $badgeColor = $colores[$item['cliente']->regimen_tributario?->value] ?? 'bg-gray-100 text-gray-800 border-gray-200';
                     @endphp
 
                     {{-- Fila del Cliente (Reactividad Alpine.js) --}}
@@ -217,7 +217,7 @@
                                         <div class="flex items-center gap-1.5 text-[10px] font-mono text-gray-500">
                                             <span>{{ $item['cliente']->ruc }}</span>
                                             <span class="rounded border px-1 py-0.1 text-[9px] font-bold {{ $badgeColor }}">
-                                                {{ $item['cliente']->regimen_tributario }}
+                                                {{ $item['cliente']->regimen_tributario?->value }}
                                             </span>
                                         </div>
                                     </div>

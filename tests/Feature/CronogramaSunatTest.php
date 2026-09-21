@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RegimenTributario;
 use App\Models\Cliente;
 use App\Models\CronogramaSunat;
 use App\Services\CronogramaSunatService;
@@ -226,7 +227,7 @@ class CronogramaSunatTest extends TestCase
 
         $response->assertRedirect();
         $this->assertTrue($cliente->fresh()->es_buen_contribuyente);
-        $this->assertEquals('General', $cliente->fresh()->regimen_tributario);
+        $this->assertSame(RegimenTributario::General, $cliente->fresh()->regimen_tributario);
     }
 
     public function test_dashboard_uses_cronograma_period_and_shows_alertas(): void

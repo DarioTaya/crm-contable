@@ -201,7 +201,7 @@
                             </div>
                         </div>
                         <span class="rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                            {{ $cliente->regimen_tributario ?? 'General' }}
+                            {{ $cliente->regimen_tributario?->value ?? 'General' }}
                         </span>
                     </label>
                 @empty

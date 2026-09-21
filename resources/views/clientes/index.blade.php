@@ -138,17 +138,7 @@
                         <td class="whitespace-nowrap px-6 py-4 text-sm font-mono text-gray-700">{{ $cliente->ruc }}</td>
                         <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ $cliente->razon_social }}</td>
                         <td class="whitespace-nowrap px-6 py-4">
-                            @php
-                                $colores = [
-                                    'MYPE'    => 'bg-blue-100 text-blue-700',
-                                    'RER'     => 'bg-amber-100 text-amber-700',
-                                    'RUS'     => 'bg-emerald-100 text-emerald-700',
-                                    'General' => 'bg-purple-100 text-purple-700',
-                                ];
-                            @endphp
-                            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $colores[$cliente->regimen_tributario] ?? 'bg-gray-100 text-gray-700' }}">
-                                {{ $cliente->regimen_tributario }}
-                            </span>
+                            <x-ui.badge-regimen :regimen="$cliente->regimen_tributario" />
                         </td>
                         <td class="whitespace-nowrap px-6 py-4">
                             @if ($cliente->isActivo())

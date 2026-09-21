@@ -19,9 +19,23 @@ trait BelongsToEstudio
 
         static::creating(function (Model $model) {
             if (empty($model->estudio_id)) {
-                $model->estudio_id = Auth::user()?->estudio_id ?? 1;
+                $model->estudio_id = static::estudioActualId();
             }
         });
+    }
+
+    /**
+     * Identificador del estudio bajo el que opera la peticion actual.
+     *
+     * Ante la ausencia de sesion (comandos de consola, colas, seeders) recae en
+     * el estudio principal de la instalacion, que en la distribucion de
+     * escritorio es siempre el unico existente.
+     */
+    public static function estudioActualId(): int
+    {
+        return Auth::user()?->estudio_id
+            ?? Estudio::query()->oldest('id')->value('id')
+            ?? 1;
     }
 
     /**

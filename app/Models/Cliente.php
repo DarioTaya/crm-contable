@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\EstadoCliente;
+use App\Enums\RegimenTributario;
 use App\Traits\BelongsToEstudio;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -63,6 +65,8 @@ class Cliente extends Model
     {
         return [
             'numero' => 'integer',
+            'estado' => EstadoCliente::class,
+            'regimen_tributario' => RegimenTributario::class,
             'fecha_baja' => 'date',
             'es_buen_contribuyente' => 'boolean',
             'sunat_client_secret' => 'encrypted',
@@ -73,41 +77,36 @@ class Cliente extends Model
 
     /**
      * Mutador de compatibilidad para el atributo estado.
-     * Soporta valores booleanos legacy (true/false) convirtiéndolos a ('activo'/'retirado').
+     * Normaliza los booleanos heredados (true/false) y las cadenas con distinta
+     * capitalizacion antes de que el cast del enum los reciba.
      */
     public function setEstadoAttribute(mixed $value): void
     {
-        if ($value === true || $value === 1 || $value === '1') {
-            $this->attributes['estado'] = 'activo';
-        } elseif ($value === false || $value === 0 || $value === '0') {
-            $this->attributes['estado'] = 'retirado';
-        } else {
-            $this->attributes['estado'] = strtolower((string) $value);
-        }
+        $this->attributes['estado'] = EstadoCliente::desde($value)->value;
     }
 
     /**
      * Scope para filtrar clientes activos en el estudio contable.
      */
-    public function scopeActivos($query)
+    public function scopeActivos(Builder $query): Builder
     {
-        return $query->where('estado', 'activo');
+        return $query->where('estado', EstadoCliente::Activo);
     }
 
     /**
      * Scope para filtrar clientes suspendidos en el estudio contable.
      */
-    public function scopeSuspendidos($query)
+    public function scopeSuspendidos(Builder $query): Builder
     {
-        return $query->where('estado', 'suspendido');
+        return $query->where('estado', EstadoCliente::Suspendido);
     }
 
     /**
      * Scope para filtrar clientes retirados o dados de baja en el estudio contable.
      */
-    public function scopeRetirados($query)
+    public function scopeRetirados(Builder $query): Builder
     {
-        return $query->where('estado', 'retirado');
+        return $query->where('estado', EstadoCliente::Retirado);
     }
 
     /**
@@ -115,7 +114,7 @@ class Cliente extends Model
      */
     public function isActivo(): bool
     {
-        return $this->estado === 'activo';
+        return $this->estado === EstadoCliente::Activo;
     }
 
     /**
@@ -123,7 +122,7 @@ class Cliente extends Model
      */
     public function isSuspendido(): bool
     {
-        return $this->estado === 'suspendido';
+        return $this->estado === EstadoCliente::Suspendido;
     }
 
     /**
@@ -131,7 +130,16 @@ class Cliente extends Model
      */
     public function isRetirado(): bool
     {
-        return $this->estado === 'retirado';
+        return $this->estado === EstadoCliente::Retirado;
+    }
+
+    /**
+     * Determina si el cliente debe rendir balances mensuales, lo que depende
+     * exclusivamente de su régimen tributario.
+     */
+    public function llevaBalances(): bool
+    {
+        return $this->regimen_tributario?->exigeLibrosElectronicos() ?? false;
     }
 
     /**
@@ -139,12 +147,7 @@ class Cliente extends Model
      */
     public function getEstadoEstudioLabelAttribute(): string
     {
-        return match ($this->estado) {
-            'activo' => 'Activo',
-            'suspendido' => 'Suspendido',
-            'retirado' => 'Retirado / Baja',
-            default => ucfirst($this->estado),
-        };
+        return $this->estado->etiqueta();
     }
 
     /**
@@ -154,17 +157,28 @@ class Cliente extends Model
     {
         static::creating(function (Cliente $cliente) {
             if (empty($cliente->numero)) {
-                $cliente->numero = self::proximoNumeroDisponible();
+                $cliente->numero = self::proximoNumeroDisponible($cliente->estudio_id);
             }
         });
     }
 
     /**
-     * Calcula el menor número correlativo positivo disponible (reutiliza huecos de eliminados o asigna el siguiente).
+     * Calcula el menor número correlativo positivo disponible dentro de un
+     * estudio, reutilizando los huecos que dejaron los clientes eliminados.
+     *
+     * La consulta prescinde de los scopes globales y filtra el estudio de forma
+     * explícita: cuando no hay sesión (comandos programados, colas, importación
+     * masiva) el scope de inquilino no se aplica y la numeración se contaminaría
+     * con los clientes de los demás estudios.
      */
-    public static function proximoNumeroDisponible(): int
+    public static function proximoNumeroDisponible(?int $estudioId = null): int
     {
-        $ocupados = self::withTrashed()->pluck('numero')->filter()->flip();
+        $ocupados = self::withoutGlobalScopes()
+            ->where('estudio_id', $estudioId ?? self::estudioActualId())
+            ->pluck('numero')
+            ->filter()
+            ->flip();
+
         $candidato = 1;
         while ($ocupados->has($candidato)) {
             $candidato++;

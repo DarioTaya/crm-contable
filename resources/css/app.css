@@ -1,9 +1,157 @@
 @import 'tailwindcss';
 
+@source '../../app/**/*.php';
+@source '../../resources/views/**/*.blade.php';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/* ============================================================================
+   SISTEMA DE DISEÑO — CRM Contable
+   ----------------------------------------------------------------------------
+   Fuente unica de verdad para color, tipografia, espaciado, radios y sombras.
+   Ninguna vista debe declarar colores arbitrarios (bg-[#1a2b3c]) ni inventar
+   variantes: todo se consume desde estos tokens o desde los componentes
+   Blade en resources/views/components/ui/.
+   ========================================================================== */
+
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    /* ---------------------------------------------------------------- Tipografia
+       Inter cubre densidad de datos y cifras contables. Se auto-hospeda en el
+       build (ver vite.config.js), por lo que no requiere internet en runtime. */
+    --font-sans:
+        'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+    /* Escala tipografica. `data` es el tamano canonico de celdas de tabla. */
+    --text-data: 0.8125rem;
+    --text-data--line-height: 1.15rem;
+    --text-metric: 1.75rem;
+    --text-metric--line-height: 2rem;
+    --text-metric--letter-spacing: -0.02em;
+
+    /* -------------------------------------------------------------------- Marca
+       Azul corporativo. Escala completa 50-950: la configuracion anterior solo
+       definia 6 pasos, por lo que brand-300/400/800/900 fallaban en silencio. */
+    --color-brand-50: #eff6ff;
+    --color-brand-100: #dbeafe;
+    --color-brand-200: #bfdbfe;
+    --color-brand-300: #93c5fd;
+    --color-brand-400: #60a5fa;
+    --color-brand-500: #3b82f6;
+    --color-brand-600: #2563eb;
+    --color-brand-700: #1d4ed8;
+    --color-brand-800: #1e40af;
+    --color-brand-900: #1e3a8a;
+    --color-brand-950: #172554;
+
+    /* ------------------------------------------------------------------ Chrome
+       Superficies estructurales de la aplicacion (sidebar, topbar, lienzo). */
+    --color-sidebar: #0f172a;
+    --color-sidebar-hover: #1e293b;
+    --color-sidebar-active: #1d4ed8;
+    --color-sidebar-border: #1e293b;
+    --color-canvas: #f9fafb;
+    --color-surface: #ffffff;
+    --color-hairline: #e5e7eb;
+
+    /* --------------------------------------------------------------- Semantica
+       Intencion, no color. Una vista pide "peligro", no "rose". */
+    --color-success-50: #ecfdf5;
+    --color-success-100: #d1fae5;
+    --color-success-200: #a7f3d0;
+    --color-success-500: #10b981;
+    --color-success-600: #059669;
+    --color-success-700: #047857;
+
+    --color-warning-50: #fffbeb;
+    --color-warning-100: #fef3c7;
+    --color-warning-200: #fde68a;
+    --color-warning-500: #f59e0b;
+    --color-warning-600: #d97706;
+    --color-warning-700: #b45309;
+
+    --color-danger-50: #fff1f2;
+    --color-danger-100: #ffe4e6;
+    --color-danger-200: #fecdd3;
+    --color-danger-500: #f43f5e;
+    --color-danger-600: #e11d48;
+    --color-danger-700: #be123c;
+
+    --color-info-50: #eff6ff;
+    --color-info-100: #dbeafe;
+    --color-info-200: #bfdbfe;
+    --color-info-500: #3b82f6;
+    --color-info-600: #2563eb;
+    --color-info-700: #1d4ed8;
+
+    --color-neutral-50: #f8fafc;
+    --color-neutral-100: #f1f5f9;
+    --color-neutral-200: #e2e8f0;
+    --color-neutral-500: #64748b;
+    --color-neutral-600: #475569;
+    --color-neutral-700: #334155;
+
+    /* ------------------------------------------------------------------ Radios
+       Tres niveles. `control` para inputs y botones, `panel` para tarjetas,
+       `overlay` para modales. Elimina la mezcla actual lg/xl/2xl por pantalla. */
+    --radius-control: 0.5rem;
+    --radius-panel: 0.75rem;
+    --radius-overlay: 1rem;
+
+    /* ----------------------------------------------------------------- Sombras
+       Elevacion como escala, no como decoracion suelta. */
+    --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+    --shadow-elevated: 0 4px 6px -1px rgb(15 23 42 / 0.07), 0 2px 4px -2px rgb(15 23 42 / 0.05);
+    --shadow-overlay: 0 20px 25px -5px rgb(15 23 42 / 0.12), 0 8px 10px -6px rgb(15 23 42 / 0.08);
+}
+
+@layer base {
+    /* Tailwind v4 cambia el color de borde por defecto de gray-200 a
+       currentColor. Sin esto, cada `border` sin color explicito en las vistas
+       heredadas pasaria de gris claro a casi negro. */
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
+
+    html {
+        -webkit-text-size-adjust: 100%;
+    }
+
+    /* Evita el parpadeo de los bloques de Alpine antes de la hidratacion. */
+    [x-cloak] {
+        display: none !important;
+    }
+
+    /* Las cifras contables se alinean por columna en toda la aplicacion. */
+    table,
+    input[type='number'] {
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Foco visible homogeneo: muchas vistas heredadas usan `outline-none`
+       confiando en un ring que no siempre esta presente. */
+    :focus-visible {
+        outline: 2px solid var(--color-brand-500);
+        outline-offset: 2px;
+    }
+}
+
+@utility tabular {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Conservada desde el layout heredado: la usa el sidebar colapsable. */
+@utility transition-sidebar {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
 }

@@ -5,40 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'CRM Contable') — Estudio Contable</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50:  '#eff6ff',
-                            100: '#dbeafe',
-                            200: '#bfdbfe',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8',
-                        },
-                        sidebar: {
-                            DEFAULT: '#0f172a',
-                            hover:   '#1e293b',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .transition-sidebar {
-                @apply transition-all duration-200 ease-in-out;
-            }
-        }
-    </style>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @stack('head')
 </head>
 <body class="bg-gray-50 text-gray-800 antialiased">
     <div class="flex min-h-screen"
@@ -293,68 +261,12 @@
 
             {{-- Contenido dinámico --}}
             <div class="p-8">
-                {{-- Mensaje flash de éxito con auto-cierre --}}
                 @if (session('success'))
-                    <div x-data="{ show: true }"
-                         x-show="show"
-                         x-init="setTimeout(() => show = false, 4500)"
-                         x-transition:enter="transition ease-out duration-300"
-                         x-transition:enter-start="opacity-0 -translate-y-2"
-                         x-transition:enter-end="opacity-100 translate-y-0"
-                         x-transition:leave="transition ease-in duration-300"
-                         x-transition:leave-start="opacity-100 translate-y-0"
-                         x-transition:leave-end="opacity-0 -translate-y-2"
-                         class="mb-6 flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/90 backdrop-blur px-4 py-3.5 text-sm text-emerald-800 shadow-xs"
-                         role="alert">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                </svg>
-                            </div>
-                            <span class="font-medium leading-relaxed">{{ session('success') }}</span>
-                        </div>
-                        <button type="button"
-                                @click="show = false"
-                                class="flex h-7 w-7 items-center justify-center rounded-lg text-emerald-600 transition hover:bg-emerald-100 hover:text-emerald-900"
-                                title="Cerrar notificación">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
+                    <x-ui.alert variant="success" timeout="4500" class="mb-6">{{ session('success') }}</x-ui.alert>
                 @endif
 
-                {{-- Mensaje flash de error con auto-cierre --}}
                 @if (session('error'))
-                    <div x-data="{ show: true }"
-                         x-show="show"
-                         x-init="setTimeout(() => show = false, 6000)"
-                         x-transition:enter="transition ease-out duration-300"
-                         x-transition:enter-start="opacity-0 -translate-y-2"
-                         x-transition:enter-end="opacity-100 translate-y-0"
-                         x-transition:leave="transition ease-in duration-300"
-                         x-transition:leave-start="opacity-100 translate-y-0"
-                         x-transition:leave-end="opacity-0 -translate-y-2"
-                         class="mb-6 flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50/90 backdrop-blur px-4 py-3.5 text-sm text-rose-800 shadow-xs"
-                         role="alert">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
-                                </svg>
-                            </div>
-                            <span class="font-medium leading-relaxed">{{ session('error') }}</span>
-                        </div>
-                        <button type="button"
-                                @click="show = false"
-                                class="flex h-7 w-7 items-center justify-center rounded-lg text-rose-600 transition hover:bg-rose-100 hover:text-rose-900"
-                                title="Cerrar notificación">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
+                    <x-ui.alert variant="danger" timeout="6000" class="mb-6">{{ session('error') }}</x-ui.alert>
                 @endif
 
                 @yield('content')

@@ -185,7 +185,7 @@
             <tbody class="divide-y divide-gray-200 bg-white">
                 @forelse ($matrizClientes as $item)
                     @php
-                        $badgeColor = $item['cliente']->regimen_tributario === 'General'
+                        $badgeColor = $item['cliente']->regimen_tributario === \App\Enums\RegimenTributario::General
                             ? 'bg-purple-100 text-purple-800 border-purple-200'
                             : 'bg-blue-100 text-blue-800 border-blue-200';
                     @endphp
@@ -218,7 +218,7 @@
                                         <div class="flex items-center gap-1.5 text-[10px] font-mono text-gray-500">
                                             <span>{{ $item['cliente']->ruc }}</span>
                                             <span class="rounded border px-1 py-0.1 text-[9px] font-bold {{ $badgeColor }}">
-                                                {{ $item['cliente']->regimen_tributario }}
+                                                {{ $item['cliente']->regimen_tributario?->value }}
                                             </span>
                                         </div>
                                     </div>

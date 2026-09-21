@@ -8,9 +8,12 @@ export default defineConfig({
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.js'],
             refresh: true,
+            // Las fuentes se descargan y emiten como .woff2 dentro de public/build
+            // durante la compilacion, de modo que la aplicacion no consulta ningun
+            // CDN en tiempo de ejecucion.
             fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
+                bunny('Inter', {
+                    weights: [400, 500, 600, 700],
                 }),
             ],
         }),

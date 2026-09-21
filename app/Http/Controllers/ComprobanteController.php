@@ -350,7 +350,7 @@ class ComprobanteController extends Controller
         if (! $cliente->isActivo()) {
             return response()->json([
                 'success' => false,
-                'message' => "El cliente {$cliente->razon_social} se encuentra {$cliente->estado}. No es posible importar comprobantes para clientes inactivos o retirados.",
+                'message' => "El cliente {$cliente->razon_social} se encuentra {$cliente->estado->value}. No es posible importar comprobantes para clientes inactivos o retirados.",
             ], 422);
         }
 

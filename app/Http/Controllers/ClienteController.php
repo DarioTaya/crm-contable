@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\EstadoCliente;
+use App\Enums\RegimenTributario;
 use App\Models\Cliente;
 use App\Services\SunafilBuzonSyncService;
 use App\Services\SunatBuzonSyncService;
@@ -14,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\Process\Process;
 use Throwable;
@@ -79,8 +82,13 @@ class ClienteController extends Controller
         $validated = $request->validate([
             // Datos Fiscales
             'razon_social' => ['required', 'string', 'max:255'],
-            'ruc' => ['required', 'string', 'size:11', 'unique:clientes,ruc'],
-            'regimen_tributario' => ['required', 'in:MYPE,RER,RUS,General'],
+            // El RUC es unico dentro del estudio, no a nivel de instalacion:
+            // dos estudios distintos pueden atender al mismo contribuyente.
+            'ruc' => [
+                'required', 'string', 'size:11',
+                Rule::unique('clientes', 'ruc')->where('estudio_id', Cliente::estudioActualId()),
+            ],
+            'regimen_tributario' => ['required', Rule::enum(RegimenTributario::class)],
             'estado_contribuyente' => ['nullable', 'string', 'max:50'],
             'condicion_domicilio' => ['nullable', 'string', 'max:50'],
             'tipo_contribuyente' => ['nullable', 'string', 'max:100'],
@@ -429,7 +437,7 @@ class ClienteController extends Controller
 
         $mesesBalances = [];
         $djAnualBalance = 'Pendiente';
-        $tieneBalances = in_array($cliente->regimen_tributario, ['MYPE', 'General']);
+        $tieneBalances = $cliente->llevaBalances();
 
         if ($tieneBalances) {
             $cliente->load(['controlBalances' => fn ($q) => $q->where('anio', $anioActual)]);
@@ -562,7 +570,7 @@ class ClienteController extends Controller
     public function updateDatosFiscales(Request $request, Cliente $cliente): RedirectResponse
     {
         $validated = $request->validate([
-            'regimen_tributario' => ['required', 'in:MYPE,RER,RUS,General'],
+            'regimen_tributario' => ['required', Rule::enum(RegimenTributario::class)],
             'correo' => ['nullable', 'email', 'max:255'],
             'telefono' => ['nullable', 'string', 'max:20'],
             'direccion_fiscal' => ['nullable', 'string', 'max:500'],
@@ -740,30 +748,30 @@ class ClienteController extends Controller
     public function updateEstadoEstudio(Request $request, Cliente $cliente): RedirectResponse
     {
         $validated = $request->validate([
-            'estado' => ['required', 'string', 'in:activo,suspendido,retirado'],
+            'estado' => ['required', Rule::enum(EstadoCliente::class)],
             'fecha_baja' => ['nullable', 'date'],
             'mes_baja' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}$/'],
             'motivo_baja' => ['nullable', 'string', 'max:255'],
             'notas_estado' => ['nullable', 'string', 'max:1000'],
         ], [
             'estado.required' => 'El estado en el estudio es obligatorio.',
-            'estado.in' => 'El estado debe ser Activo, Suspendido o Retirado.',
+            'estado.enum' => 'El estado debe ser Activo, Suspendido o Retirado.',
             'mes_baja.regex' => 'El mes de baja debe tener el formato AAAA-MM (ej. 2026-05).',
         ]);
 
         $clean = fn (?string $v) => ($v !== null && trim($v) !== '') ? trim($v) : null;
 
-        $nuevoEstado = $validated['estado'];
+        $nuevoEstado = EstadoCliente::from($validated['estado']);
         $fechaBaja = $clean($validated['fecha_baja'] ?? null);
         $mesBaja = $clean($validated['mes_baja'] ?? null);
         $motivoBaja = $clean($validated['motivo_baja'] ?? null);
         $notasEstado = $clean($validated['notas_estado'] ?? null);
 
-        if ($nuevoEstado === 'activo') {
+        if ($nuevoEstado === EstadoCliente::Activo) {
             $fechaBaja = null;
             $mesBaja = null;
             $motivoBaja = null;
-        } elseif ($nuevoEstado === 'retirado') {
+        } elseif ($nuevoEstado === EstadoCliente::Retirado) {
             $fechaBaja = $fechaBaja ?: now()->toDateString();
             $mesBaja = $mesBaja ?: now()->format('Y-m');
             $motivoBaja = $motivoBaja ?: 'Cambio de contador';
@@ -777,14 +785,7 @@ class ClienteController extends Controller
             'notas_estado' => $notasEstado,
         ]);
 
-        $label = match ($nuevoEstado) {
-            'activo' => 'Activo',
-            'suspendido' => 'Suspendido',
-            'retirado' => 'Retirado / Baja del Estudio',
-            default => ucfirst($nuevoEstado),
-        };
-
-        return back()->with('success', "Estado del cliente en el estudio contable actualizado a: {$label}.");
+        return back()->with('success', "Estado del cliente en el estudio contable actualizado a: {$nuevoEstado->etiqueta()}.");
     }
 
     /**

@@ -254,18 +254,7 @@
                                             {{ $item['cliente']->razon_social }}
                                         </a>
 
-                                        @php
-                                            $colores = [
-                                                'MYPE'    => 'bg-blue-100 text-blue-700',
-                                                'RER'     => 'bg-amber-100 text-amber-700',
-                                                'RUS'     => 'bg-emerald-100 text-emerald-700',
-                                                'General' => 'bg-purple-100 text-purple-700',
-                                            ];
-                                            $colorBadge = $colores[$item['cliente']->regimen] ?? 'bg-gray-100 text-gray-700';
-                                        @endphp
-                                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $colorBadge }}">
-                                            {{ $item['cliente']->regimen }}
-                                        </span>
+                                        <x-ui.badge-regimen :regimen="$item['cliente']->regimen_tributario" />
 
                                         @if ($item['cliente']->es_buen_contribuyente)
                                             <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
@@ -338,7 +327,7 @@
     </div>
 
     {{-- ═══════════════════════════════ SCRIPTS: CHART.JS ═══════════════════════════════ --}}
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {{-- Chart.js llega desde el bundle (resources/js/app.js), no desde un CDN. --}}
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const ctx = document.getElementById('obligacionesChart');

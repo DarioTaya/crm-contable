@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\RegimenTributario;
 use App\Models\Cliente;
 use App\Models\Credencial;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -33,7 +34,7 @@ class ClienteEdicionTest extends TestCase
         $response->assertSessionHas('success', 'Datos fiscales actualizados correctamente.');
 
         $cliente->refresh();
-        $this->assertEquals('General', $cliente->regimen_tributario);
+        $this->assertSame(RegimenTributario::General, $cliente->regimen_tributario);
         $this->assertEquals('nuevo@empresa.pe', $cliente->correo);
         $this->assertEquals('911222333', $cliente->telefono);
     }
@@ -62,7 +63,7 @@ class ClienteEdicionTest extends TestCase
         // RUC y Razón Social no deben haber cambiado bajo ninguna circunstancia
         $this->assertEquals('20123456789', $cliente->ruc);
         $this->assertEquals('EMPRESA INMUTABLE S.A.C.', $cliente->razon_social);
-        $this->assertEquals('RER', $cliente->regimen_tributario);
+        $this->assertSame(RegimenTributario::Rer, $cliente->regimen_tributario);
     }
 
     public function test_update_datos_fiscales_validates_regimen(): void

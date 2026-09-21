@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RegimenTributario;
 use App\Models\Cliente;
 use App\Models\ControlBalance;
 use Illuminate\Http\JsonResponse;
@@ -53,7 +54,7 @@ class ControlBalanceController extends Controller
                         ->where('mes_baja', '>=', "{$anio}-01");
                 });
         })
-            ->whereIn('regimen_tributario', ['MYPE', 'General'])
+            ->whereIn('regimen_tributario', RegimenTributario::valoresConLibrosElectronicos())
             ->with(['controlBalances' => fn ($query) => $query->where('anio', $anio)])
             ->orderBy('numero')
             ->get();
@@ -68,7 +69,7 @@ class ControlBalanceController extends Controller
 
             // Determinar mes de baja efectivo si el cliente está retirado
             $mesBaja = null;
-            if ($cliente->estado === 'retirado') {
+            if ($cliente->isRetirado()) {
                 $mesBaja = $cliente->mes_baja ?: ($cliente->fecha_baja ? $cliente->fecha_baja->format('Y-m') : null);
             }
 
@@ -210,7 +211,7 @@ class ControlBalanceController extends Controller
                         ->where('mes_baja', '>=', "{$anio}-01");
                 });
         })
-            ->whereIn('regimen_tributario', ['MYPE', 'General'])
+            ->whereIn('regimen_tributario', RegimenTributario::valoresConLibrosElectronicos())
             ->with(['controlBalances' => fn ($query) => $query->where('anio', $anio)])
             ->get();
 
@@ -226,7 +227,7 @@ class ControlBalanceController extends Controller
             $balance = $cliente->controlBalances->first();
 
             $mesBaja = null;
-            if ($cliente->estado === 'retirado') {
+            if ($cliente->isRetirado()) {
                 $mesBaja = $cliente->mes_baja ?: ($cliente->fecha_baja ? $cliente->fecha_baja->format('Y-m') : null);
             }
 

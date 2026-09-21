@@ -157,8 +157,8 @@
                             class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('regimen_tributario') border-red-400 ring-2 ring-red-400/20 @enderror"
                         >
                             <option value="" disabled {{ old('regimen_tributario') ? '' : 'selected' }}>Seleccionar régimen…</option>
-                            @foreach (['MYPE' => 'MYPE Tributario', 'RER' => 'Régimen Especial (RER)', 'RUS' => 'Nuevo RUS', 'General' => 'Régimen General'] as $value => $label)
-                                <option value="{{ $value }}" {{ old('regimen_tributario') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @foreach (\App\Enums\RegimenTributario::opciones() as $value => $label)
+                                <option value="{{ $value }}" @selected(old('regimen_tributario') === $value)>{{ $label }}</option>
                             @endforeach
                         </select>
                         @error('regimen_tributario')

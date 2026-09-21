@@ -28,17 +28,7 @@
                 <div class="mt-1 flex flex-wrap items-center gap-3 text-sm text-gray-500">
                     <span class="font-mono">RUC: {{ $cliente->ruc }}</span>
                     <span class="text-gray-300">|</span>
-                    @php
-                        $colores = [
-                            'MYPE'    => 'bg-blue-100 text-blue-700',
-                            'RER'     => 'bg-amber-100 text-amber-700',
-                            'RUS'     => 'bg-emerald-100 text-emerald-700',
-                            'General' => 'bg-purple-100 text-purple-700',
-                        ];
-                    @endphp
-                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $colores[$cliente->regimen_tributario] ?? 'bg-gray-100 text-gray-700' }}">
-                        {{ $cliente->regimen_tributario }}
-                    </span>
+                    <x-ui.badge-regimen :regimen="$cliente->regimen_tributario" />
                     <span class="text-gray-300">|</span>
                     <div class="inline-flex items-center gap-2">
                         @if ($cliente->isActivo())
@@ -389,7 +379,7 @@
                         </div>
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wider text-gray-400">Régimen Tributario</dt>
-                            <dd class="mt-1 text-sm text-gray-900">{{ $cliente->regimen_tributario }}</dd>
+                            <dd class="mt-1 text-sm text-gray-900" title="{{ $cliente->regimen_tributario?->nombreOficial() }}">{{ $cliente->regimen_tributario?->value }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wider text-gray-400">Correo</dt>
@@ -643,9 +633,9 @@
                                         name="regimen_tributario"
                                         required
                                         class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
-                                    @foreach (['MYPE', 'RER', 'RUS', 'General'] as $reg)
-                                        <option value="{{ $reg }}" {{ old('regimen_tributario', $cliente->regimen_tributario) === $reg ? 'selected' : '' }}>
-                                            {{ $reg }}
+                                    @foreach (\App\Enums\RegimenTributario::cases() as $reg)
+                                        <option value="{{ $reg->value }}" @selected(old('regimen_tributario', $cliente->regimen_tributario?->value) === $reg->value)>
+                                            {{ $reg->value }} — {{ $reg->nombreOficial() }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -822,7 +812,7 @@
                         </div>
 
                         {{-- Formulario --}}
-                        <form method="POST" action="{{ route('clientes.estado-estudio.update', $cliente) }}" class="p-6 space-y-4" x-data="{ estadoSeleccionado: '{{ old('estado', $cliente->estado) }}' }">
+                        <form method="POST" action="{{ route('clientes.estado-estudio.update', $cliente) }}" class="p-6 space-y-4" x-data="{ estadoSeleccionado: '{{ old('estado', $cliente->estado->value) }}' }">
                             @csrf
                             @method('PUT')
 
@@ -2180,7 +2170,7 @@
             </div>
 
             {{-- ════════════════════ NUEVO: CONTROL DE BALANCES Y ESTADOS FINANCIEROS (SOLO MYPE Y GENERAL) ════════════════════ --}}
-            @if ($tieneBalances ?? in_array($cliente->regimen_tributario, ['MYPE', 'General']))
+            @if ($tieneBalances ?? $cliente->llevaBalances())
                 <div class="mt-6 rounded-xl border border-gray-200 bg-white shadow-xs">
                     <div class="flex flex-col gap-1 border-b border-gray-100 px-6 py-4">
                         <div class="flex items-center justify-between">
@@ -2192,7 +2182,7 @@
                             </h3>
                             <div class="flex items-center gap-2">
                                 <span class="rounded bg-indigo-50 border border-indigo-200 px-2 py-0.5 text-xs font-bold text-indigo-700">
-                                    {{ $cliente->regimen_tributario }}
+                                    {{ $cliente->regimen_tributario?->value }}
                                 </span>
                                 <span class="rounded-full bg-brand-50 px-3 py-0.5 text-xs font-semibold text-brand-700">
                                     12 Meses + DJ Anual {{ $anioActual - 1 }}
