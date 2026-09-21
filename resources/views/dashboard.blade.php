@@ -14,7 +14,7 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <span class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-sm">
+            <span class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-xs">
                 <svg class="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
                 </svg>
@@ -26,7 +26,7 @@
             </span>
 
             <a href="{{ route('cronogramas.index') }}"
-               class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+               class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-xs transition hover:bg-gray-50">
                 <svg class="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
                 </svg>
@@ -34,7 +34,7 @@
             </a>
 
             <a href="{{ route('clientes.index') }}"
-               class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+               class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-xs transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
                 </svg>
@@ -47,7 +47,7 @@
     <div class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
 
         {{-- KPI 1: Clientes Activos --}}
-        <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-xs transition hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Clientes Activos</p>
@@ -66,7 +66,7 @@
         </div>
 
         {{-- KPI 2: Buzón SOL Pendiente --}}
-        <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-xs transition hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Buzón SOL Pendiente</p>
@@ -91,7 +91,7 @@
         </div>
 
         {{-- KPI 3: Declaraciones Realizadas --}}
-        <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-xs transition hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Avance Declarado</p>
@@ -119,7 +119,7 @@
         </div>
 
         {{-- KPI 4: Tareas Pendientes / En Proceso --}}
-        <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition hover:shadow-md">
+        <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-xs transition hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Obligaciones Pendientes</p>
@@ -143,7 +143,7 @@
     <div class="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
 
         {{-- COLUMNA IZQUIERDA: GRÁFICO DINÁMICO (CHART.JS) --}}
-        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm lg:col-span-5">
+        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-xs lg:col-span-5">
             <div class="flex items-center justify-between border-b border-gray-100 pb-4">
                 <div>
                     <h3 class="text-base font-semibold text-gray-900">Estado Tributario Mensual</h3>
@@ -196,7 +196,7 @@
         </div>
 
         {{-- COLUMNA DERECHA: PANEL DE ALERTAS DE VENCIMIENTO (ORDENADO 0-9 SUNAT) --}}
-        <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm lg:col-span-7">
+        <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs lg:col-span-7">
             <div class="flex flex-col gap-2 border-b border-gray-100 p-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <div class="flex items-center gap-2">
@@ -242,7 +242,7 @@
                             {{-- Información del Cliente y Dígito --}}
                             <div class="flex items-start gap-3.5">
                                 {{-- Badge destacado de Último Dígito RUC --}}
-                                <div class="flex flex-col items-center justify-center rounded-xl bg-gradient-to-b from-blue-50 to-indigo-100 border border-blue-200 px-3 py-1.5 text-center shrink-0 min-w-[52px] shadow-sm">
+                                <div class="flex flex-col items-center justify-center rounded-xl bg-gradient-to-b from-blue-50 to-indigo-100 border border-blue-200 px-3 py-1.5 text-center shrink-0 min-w-[52px] shadow-xs">
                                     <span class="text-[9px] uppercase font-bold text-blue-600 tracking-wider">Dígito</span>
                                     <span class="text-2xl font-black text-blue-800 leading-none mt-0.5">{{ $item['ultimo_digito_str'] }}</span>
                                 </div>
@@ -321,7 +321,7 @@
                             {{-- Botón de Acción Rápida (Directo a Operaciones) --}}
                             <div class="shrink-0 flex items-center justify-end sm:self-center">
                                 <a href="{{ route('clientes.show', ['cliente' => $item['cliente']->id, 'tab' => 'operaciones']) }}"
-                                   class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                   class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-xs transition hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     <span>Declarar</span>
                                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />

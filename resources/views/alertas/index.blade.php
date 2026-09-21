@@ -36,7 +36,7 @@
                 <button type="button"
                         @click="sincronizarSunat()"
                         :disabled="sincronizandoSunat || sincronizandoSunafil"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-xs font-semibold shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-xs font-semibold shadow-xs transition disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg x-show="!sincronizandoSunat" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                     </svg>
@@ -50,7 +50,7 @@
                 <button type="button"
                         @click="sincronizarSunafil()"
                         :disabled="sincronizandoSunat || sincronizandoSunafil"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white px-3 py-1.5 text-xs font-semibold shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white px-3 py-1.5 text-xs font-semibold shadow-xs transition disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg x-show="!sincronizandoSunafil" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                     </svg>
@@ -62,26 +62,26 @@
                 </button>
 
                 <a href="{{ route('alertas.index') }}"
-                   class="rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition border
+                   class="rounded-lg px-3 py-1.5 text-xs font-semibold shadow-xs transition border
                           {{ !request()->has('plataforma') && !request()->has('estado') ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
                     Todas ({{ $totalAlertas }})
                 </a>
 
                 <a href="{{ route('alertas.index', ['estado' => 'Pendiente']) }}"
-                   class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition border
+                   class="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold shadow-xs transition border
                           {{ request('estado') === 'Pendiente' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-rose-700 border-rose-200 hover:bg-rose-50' }}">
                     <span class="h-2 w-2 rounded-full bg-rose-500 {{ request('estado') === 'Pendiente' ? 'bg-white' : '' }}"></span>
                     Pendientes (<span x-text="pendientesCount">{{ $totalPendientes }}</span>)
                 </a>
 
                 <a href="{{ route('alertas.index', ['plataforma' => 'SUNAT']) }}"
-                   class="rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition border
+                   class="rounded-lg px-3 py-1.5 text-xs font-semibold shadow-xs transition border
                           {{ request('plataforma') === 'SUNAT' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50' }}">
                     SUNAT ({{ $totalSunatPendientes }} pend.)
                 </a>
 
                 <a href="{{ route('alertas.index', ['plataforma' => 'SUNAFIL']) }}"
-                   class="rounded-lg px-3 py-1.5 text-xs font-semibold shadow-sm transition border
+                   class="rounded-lg px-3 py-1.5 text-xs font-semibold shadow-xs transition border
                           {{ request('plataforma') === 'SUNAFIL' ? 'bg-rose-700 text-white border-rose-700' : 'bg-white text-rose-800 border-rose-200 hover:bg-rose-50' }}">
                     SUNAFIL ({{ $totalSunafilPendientes }} pend.)
                 </a>
@@ -89,7 +89,7 @@
         </div>
 
         {{-- ════════════════════ GRID DE INBOX (TABLA LIMPIA) ════════════════════ --}}
-        <div class="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div class="rounded-xl border border-gray-200 bg-white shadow-xs overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full divide-y divide-gray-200 text-left text-xs">
                     <thead class="bg-gray-50/90 text-gray-500 font-bold uppercase tracking-wider text-[11px] border-b border-gray-200">
@@ -210,7 +210,7 @@
                                 <td class="w-20 px-2 py-3 text-center whitespace-nowrap">
                                     <button type="button"
                                             @click.stop="abrirSlideOver(alerta)"
-                                            class="inline-flex items-center gap-0.5 rounded-lg border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-700 shadow-sm hover:bg-gray-50 hover:border-brand-500 transition active:scale-95">
+                                            class="inline-flex items-center gap-0.5 rounded-lg border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-700 shadow-xs hover:bg-gray-50 hover:border-brand-500 transition active:scale-95">
                                         <span>Detalle</span>
                                         <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
                                     </button>
@@ -249,7 +249,7 @@
                  x-transition:leave-start="opacity-100"
                  x-transition:leave-end="opacity-0"
                  @click="cerrarSlideOver()"
-                 class="fixed inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity">
+                 class="fixed inset-0 bg-gray-900/40 backdrop-blur-xs transition-opacity">
             </div>
 
             <div class="fixed inset-y-0 right-0 flex max-w-full pl-10">
@@ -325,7 +325,7 @@
 
                         {{-- Fallback oficial si es PDF o viene sin cuerpo detallado --}}
                         <template x-if="!alertaActiva?.contenido || alertaActiva?.contenido.trim().length < 25 || alertaActiva?.contenido.includes('formato PDF')">
-                            <div class="rounded-xl border border-sky-200 bg-sky-50/70 p-4 text-xs text-sky-900 leading-relaxed shadow-sm flex items-start gap-3">
+                            <div class="rounded-xl border border-sky-200 bg-sky-50/70 p-4 text-xs text-sky-900 leading-relaxed shadow-xs flex items-start gap-3">
                                 <svg class="h-5 w-5 text-sky-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                                 </svg>
@@ -348,7 +348,7 @@
                     <div class="border-t border-gray-200 bg-gray-50 px-6 py-4 flex items-center justify-between gap-3">
                         {{-- Enlace: Ir al Expediente --}}
                         <a :href="'/clientes/' + alertaActiva?.cliente_id"
-                           class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                           class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-xs transition hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                             <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z" />
                             </svg>
@@ -359,7 +359,7 @@
                         <button type="button"
                                 @click="marcarComoLeido(alertaActiva)"
                                 :disabled="marcando || alertaActiva?.estado === 'Leído'"
-                                class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold text-white shadow-sm transition focus:outline-none focus:ring-2"
+                                class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold text-white shadow-xs transition focus:outline-none focus:ring-2"
                                 :class="alertaActiva?.estado === 'Leído' ? 'bg-emerald-600 opacity-80 cursor-default' : 'bg-brand-600 hover:bg-brand-700 focus:ring-brand-500/30 active:scale-95'">
                             <svg x-show="!marcando" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />

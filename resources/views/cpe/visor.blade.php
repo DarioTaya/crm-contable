@@ -136,7 +136,7 @@
                     type="button"
                     @click="$refs.fileInput.click()"
                     :disabled="loading"
-                    class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-brand-700 active:scale-95 transition disabled:opacity-50">
+                    class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-brand-700 active:scale-95 transition disabled:opacity-50">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
@@ -208,7 +208,7 @@
         </div>
 
         {{-- ══════════ HOJA A4 REALISTA ══════════ --}}
-        <div id="cpe-hoja-a4" class="mx-auto max-w-4xl rounded-sm border border-gray-200 bg-white p-8 md:p-12 shadow-xl print:m-0 print:max-w-full print:p-0 print:border-0 print:shadow-none text-gray-900">
+        <div id="cpe-hoja-a4" class="mx-auto max-w-4xl rounded-xs border border-gray-200 bg-white p-8 md:p-12 shadow-xl print:m-0 print:max-w-full print:p-0 print:border-0 print:shadow-none text-gray-900">
 
             {{-- ───────────────────── PLANTILLA: PORTAL SOL (SUNAT SEE-SOL) ───────────────────── --}}
             <div x-show="esModoSol()">
@@ -409,7 +409,7 @@
                     {{-- Logo / Datos Emisor (7 cols) --}}
                     <div class="md:col-span-7 space-y-2">
                         <div class="flex items-center gap-3">
-                            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white font-bold text-base shadow-sm">
+                            <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-900 text-white font-bold text-base shadow-xs">
                                 CPE
                             </div>
                             <div>
@@ -426,7 +426,7 @@
                     </div>
 
                     {{-- Recuadro RUC Corporativo Moderno (5 cols) --}}
-                    <div class="md:col-span-5 rounded-xl border-2 border-slate-900 bg-white overflow-hidden shadow-sm">
+                    <div class="md:col-span-5 rounded-xl border-2 border-slate-900 bg-white overflow-hidden shadow-xs">
                         <div class="bg-slate-900 py-1.5 text-center text-xs font-bold text-white tracking-wider">
                             R.U.C. <span class="font-mono text-sm" x-text="cpeData?.emisor?.ruc"></span>
                         </div>

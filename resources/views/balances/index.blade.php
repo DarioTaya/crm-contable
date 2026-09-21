@@ -21,7 +21,7 @@
         {{-- Barra de Herramientas y Selector de Ejercicio Fiscal --}}
         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
             {{-- Leyenda Rápida de Estados --}}
-            <div class="hidden lg:flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm">
+            <div class="hidden lg:flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-medium text-gray-600 shadow-xs">
                 <span>⚪ Pendiente</span>
                 <span class="text-gray-300">|</span>
                 <span>🟡 En Proceso</span>
@@ -36,7 +36,7 @@
             {{-- Enlace Directo a Cronograma SUNAT (Balances) --}}
             <a href="{{ route('cronogramas.index', ['anio' => $anio, 'tipo' => 'balance_mensual']) }}"
                title="Ver Cronograma de Balances y DJ Anual"
-               class="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 shadow-sm transition hover:bg-amber-100">
+               class="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 shadow-xs transition hover:bg-amber-100">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0 0 12 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 0 1-2.031.352 5.988 5.988 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971Zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 0 1-2.031.352 5.989 5.989 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971Z" />
                 </svg>
@@ -47,7 +47,7 @@
             <div class="flex items-center gap-1.5">
                 <a href="{{ route('balances.index', ['anio' => $anio - 1]) }}"
                    title="Año {{ $anio - 1 }}"
-                   class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-600 shadow-sm transition hover:bg-gray-50">
+                   class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-600 shadow-xs transition hover:bg-gray-50">
                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
                     </svg>
@@ -56,7 +56,7 @@
                 <select
                     id="selectorAnioBalances"
                     onchange="window.location.href = '{{ route('balances.index') }}?anio=' + this.value"
-                    class="rounded-lg border border-gray-300 bg-white py-1.5 pl-3 pr-7 text-xs font-bold text-gray-800 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
+                    class="rounded-lg border border-gray-300 bg-white py-1.5 pl-3 pr-7 text-xs font-bold text-gray-800 shadow-xs transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
                 >
                     @foreach ($aniosDisponibles as $y)
                         <option value="{{ $y }}" {{ $y === $anio ? 'selected' : '' }}>
@@ -67,7 +67,7 @@
 
                 <a href="{{ route('balances.index', ['anio' => $anio + 1]) }}"
                    title="Año {{ $anio + 1 }}"
-                   class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-600 shadow-sm transition hover:bg-gray-50">
+                   class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-600 shadow-xs transition hover:bg-gray-50">
                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                     </svg>
@@ -97,7 +97,7 @@
              }
          }">
         {{-- KPI 1: Empresas MYPE / General --}}
-        <div class="rounded-lg border border-gray-300 bg-white px-3.5 py-2 shadow-sm flex items-center justify-between">
+        <div class="rounded-lg border border-gray-300 bg-white px-3.5 py-2 shadow-xs flex items-center justify-between">
             <div>
                 <p class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Empresas MYPE/General</p>
                 <p class="text-lg font-black text-gray-900 leading-tight" x-text="totalClientes">{{ $totalClientes }}</p>
@@ -106,7 +106,7 @@
         </div>
 
         {{-- KPI 2: Balances Declarados --}}
-        <div class="rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 shadow-sm flex items-center justify-between">
+        <div class="rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 shadow-xs flex items-center justify-between">
             <div>
                 <p class="text-[10px] uppercase font-bold text-emerald-700 tracking-wider">Balances Declarados</p>
                 <p class="text-lg font-black text-emerald-800 leading-tight">
@@ -118,7 +118,7 @@
         </div>
 
         {{-- KPI 3: Balances En Proceso --}}
-        <div class="rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2 shadow-sm flex items-center justify-between">
+        <div class="rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2 shadow-xs flex items-center justify-between">
             <div>
                 <p class="text-[10px] uppercase font-bold text-amber-700 tracking-wider">En Proceso</p>
                 <p class="text-lg font-black text-amber-800 leading-tight" x-text="balancesProcesando">{{ $balancesProcesando }}</p>
@@ -127,7 +127,7 @@
         </div>
 
         {{-- KPI 4: Balances Pendientes --}}
-        <div class="rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 shadow-sm flex items-center justify-between">
+        <div class="rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 shadow-xs flex items-center justify-between">
             <div>
                 <p class="text-[10px] uppercase font-bold text-slate-600 tracking-wider">Pendientes</p>
                 <p class="text-lg font-black text-slate-800 leading-tight" x-text="balancesPendientes">{{ $balancesPendientes }}</p>
@@ -136,7 +136,7 @@
         </div>
 
         {{-- KPI 5: DJ Anual --}}
-        <div class="rounded-lg border border-indigo-300 bg-indigo-50 px-3.5 py-2 shadow-sm flex items-center justify-between col-span-2 sm:col-span-1">
+        <div class="rounded-lg border border-indigo-300 bg-indigo-50 px-3.5 py-2 shadow-xs flex items-center justify-between col-span-2 sm:col-span-1">
             <div>
                 <p class="text-[10px] uppercase font-bold text-indigo-700 tracking-wider">DJ Anual {{ $anio - 1 }}</p>
                 <p class="text-lg font-black text-indigo-800 leading-tight">
@@ -153,7 +153,7 @@
         <table class="w-full table-fixed border-collapse border border-gray-300 text-xs text-left">
 
             {{-- ═══════════════ CABECERA ÚNICA (THEAD - 14 COLUMNAS) ═══════════════ --}}
-            <thead class="bg-gray-100 text-gray-700 text-xs font-extrabold select-none shadow-sm">
+            <thead class="bg-gray-100 text-gray-700 text-xs font-extrabold select-none shadow-xs">
                 <tr class="border-b border-gray-300 bg-gray-200/90 text-center">
                     {{-- Columna 1: Cliente/RUC (Sticky Left) con N° Correlativo Original --}}
                     <th class="w-[20%] px-2.5 py-2 text-left border-r border-b border-gray-300 bg-gray-200 sticky left-0 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
@@ -204,7 +204,7 @@
                             <div class="flex items-center justify-between gap-2">
                                 <div class="flex items-center gap-2 min-w-0 flex-1">
                                     {{-- N° Correlativo Original respetando su ID/Posición general (ej. 2, 5, 10) --}}
-                                    <span class="inline-flex h-5 min-w-[24px] px-1 items-center justify-center rounded-md bg-gray-100 border border-gray-300 text-[10px] font-mono font-black text-gray-700 shrink-0 shadow-sm"
+                                    <span class="inline-flex h-5 min-w-[24px] px-1 items-center justify-center rounded-md bg-gray-100 border border-gray-300 text-[10px] font-mono font-black text-gray-700 shrink-0 shadow-xs"
                                           title="Cliente N° {{ $item['numero'] }} (Correlativo original)">
                                         {{ $item['numero'] }}
                                     </span>
@@ -274,7 +274,7 @@
                                         >
                                             <span x-show="meses[{{ $idx }}].estado === 'Declarado'">🟢</span>
                                             <span x-show="meses[{{ $idx }}].estado === 'Proceso' || meses[{{ $idx }}].estado === 'Procesando'">🟡</span>
-                                            <span x-show="meses[{{ $idx }}].estado === 'Pendiente' || !meses[{{ $idx }}].estado" class="drop-shadow-sm">⚪</span>
+                                            <span x-show="meses[{{ $idx }}].estado === 'Pendiente' || !meses[{{ $idx }}].estado" class="drop-shadow-xs">⚪</span>
                                         </button>
 
                                         {{-- Botón micro de nota al hover si no tiene nota --}}
@@ -372,7 +372,7 @@
                                                     type="button"
                                                     @click="guardarNota()"
                                                     :disabled="guardando"
-                                                    class="px-2.5 py-0.5 text-[10px] font-bold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-sm transition active:scale-95 disabled:opacity-50"
+                                                    class="px-2.5 py-0.5 text-[10px] font-bold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-xs transition active:scale-95 disabled:opacity-50"
                                                 >
                                                     <span x-show="!guardando">Guardar</span>
                                                     <span x-show="guardando">...</span>
@@ -393,7 +393,7 @@
                                     type="button"
                                     @click="openDJAnual = !openDJAnual"
                                     :title="'DJ Anual {{ $anio - 1 }}: ' + djAnual"
-                                    class="inline-flex items-center justify-center gap-1 px-2 py-1 text-xs font-bold rounded-lg border transition shadow-sm hover:scale-105 active:scale-95 focus:outline-none"
+                                    class="inline-flex items-center justify-center gap-1 px-2 py-1 text-xs font-bold rounded-lg border transition shadow-xs hover:scale-105 active:scale-95 focus:outline-none"
                                     :class="{
                                         'border-emerald-300 bg-emerald-100/90 text-emerald-900': djAnual === 'Declarado',
                                         'border-amber-300 bg-amber-100/90 text-amber-900': djAnual === 'Procesando' || djAnual === 'Proceso',

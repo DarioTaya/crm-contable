@@ -148,7 +148,7 @@
                     </div>
 
                     @if (($alertasPendientesCount ?? 0) > 0)
-                        <span x-show="!sidebarCollapsed" x-transition.opacity.duration.200ms class="inline-flex items-center justify-center rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-black text-white shadow-sm shrink-0">
+                        <span x-show="!sidebarCollapsed" x-transition.opacity.duration.200ms class="inline-flex items-center justify-center rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-black text-white shadow-xs shrink-0">
                             {{ $alertasPendientesCount }}
                         </span>
                         <span x-show="sidebarCollapsed" class="absolute top-2 right-2.5 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-sidebar" title="{{ $alertasPendientesCount }} alertas pendientes"></span>
@@ -304,7 +304,7 @@
                          x-transition:leave="transition ease-in duration-300"
                          x-transition:leave-start="opacity-100 translate-y-0"
                          x-transition:leave-end="opacity-0 -translate-y-2"
-                         class="mb-6 flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/90 backdrop-blur px-4 py-3.5 text-sm text-emerald-800 shadow-sm"
+                         class="mb-6 flex items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/90 backdrop-blur px-4 py-3.5 text-sm text-emerald-800 shadow-xs"
                          role="alert">
                         <div class="flex items-center gap-3">
                             <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600">
@@ -336,7 +336,7 @@
                          x-transition:leave="transition ease-in duration-300"
                          x-transition:leave-start="opacity-100 translate-y-0"
                          x-transition:leave-end="opacity-0 -translate-y-2"
-                         class="mb-6 flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50/90 backdrop-blur px-4 py-3.5 text-sm text-rose-800 shadow-sm"
+                         class="mb-6 flex items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50/90 backdrop-blur px-4 py-3.5 text-sm text-rose-800 shadow-xs"
                          role="alert">
                         <div class="flex items-center gap-3">
                             <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600">

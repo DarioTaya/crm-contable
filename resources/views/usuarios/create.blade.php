@@ -46,7 +46,7 @@
         @csrf
 
         {{-- Datos Básicos --}}
-        <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-5">
+        <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-xs space-y-5">
             <h3 class="text-base font-bold text-gray-900 border-b border-gray-100 pb-3 flex items-center gap-2">
                 <span class="flex h-6 w-6 items-center justify-center rounded-md bg-brand-50 text-brand-600 text-xs font-bold">1</span>
                 <span>Información Personal y Acceso</span>
@@ -148,7 +148,7 @@
         </div>
 
         {{-- Asignación de Cartera de Clientes --}}
-        <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm space-y-4"
+        <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-xs space-y-4"
              x-show="rol === 'asistente'"
              x-transition>
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-3">
@@ -219,7 +219,7 @@
                 Cancelar
             </a>
             <button type="submit"
-                    class="rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-brand-500 transition active:scale-95">
+                    class="rounded-xl bg-brand-600 px-6 py-2.5 text-sm font-bold text-white shadow-xs hover:bg-brand-500 transition active:scale-95">
                 Registrar Usuario
             </button>
         </div>

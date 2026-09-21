@@ -86,7 +86,7 @@
                 type="button"
                 @click="importarDesdeSunat"
                 :disabled="importando"
-                class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed transition"
             >
                 <template x-if="!importando">
                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -107,7 +107,7 @@
                 type="button"
                 @click="sincronizarPendientes"
                 :disabled="sincronizandoSoap"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-purple-300 bg-purple-50 px-3.5 py-2 text-xs font-semibold text-purple-800 shadow-sm hover:bg-purple-100 hover:border-purple-400 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-purple-300 bg-purple-50 px-3.5 py-2 text-xs font-semibold text-purple-800 shadow-xs hover:bg-purple-100 hover:border-purple-400 active:scale-95 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 title="Sincronizar comprobantes pendientes mediante servicio SOAP SUNAT"
             >
                 <template x-if="!sincronizandoSoap">
@@ -127,7 +127,7 @@
             {{-- Botón Descargar Paquete ZIP --}}
             <a
                 href="{{ route('comprobantes.zip', request()->query()) }}"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-400 active:scale-95 transition"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3.5 py-2 text-xs font-semibold text-gray-700 shadow-xs hover:bg-gray-50 hover:border-gray-400 active:scale-95 transition"
                 title="Descargar paquete ZIP con archivos y manifiesto"
             >
                 <svg class="h-3.5 w-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -139,7 +139,7 @@
             {{-- Botón Exportar Excel / CSV --}}
             <a
                 href="{{ route('comprobantes.export', request()->query()) }}"
-                class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-800 shadow-sm hover:bg-emerald-100 hover:border-emerald-400 active:scale-95 transition"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-800 shadow-xs hover:bg-emerald-100 hover:border-emerald-400 active:scale-95 transition"
                 title="Exportar registros filtrados a formato Excel compatible"
             >
                 <svg class="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -151,12 +151,12 @@
     </div>
 
     {{-- ════════════════════ GRID DE FILTROS COMBINADOS ════════════════════ --}}
-    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs">
         <form method="GET" action="{{ route('comprobantes.index') }}" class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5 items-end">
             {{-- Filtro: Cliente --}}
             <div class="space-y-1">
                 <label for="cliente_id" class="block text-xs font-semibold text-gray-700">Cliente</label>
-                <select name="cliente_id" id="cliente_id" class="w-full rounded-lg border-gray-300 py-2 px-2.5 text-xs text-gray-800 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                <select name="cliente_id" id="cliente_id" class="w-full rounded-lg border-gray-300 py-2 px-2.5 text-xs text-gray-800 shadow-xs focus:border-brand-500 focus:ring-brand-500">
                     <option value="">Todos los Clientes</option>
                     @foreach ($clientes as $c)
                         <option value="{{ $c->id }}" {{ request('cliente_id') == $c->id ? 'selected' : '' }}>
@@ -169,7 +169,7 @@
             {{-- Filtro: Tipo de Registro --}}
             <div class="space-y-1">
                 <label for="tipo_registro" class="block text-xs font-semibold text-gray-700">Tipo de Registro</label>
-                <select name="tipo_registro" id="tipo_registro" class="w-full rounded-lg border-gray-300 py-2 px-2.5 text-xs text-gray-800 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                <select name="tipo_registro" id="tipo_registro" class="w-full rounded-lg border-gray-300 py-2 px-2.5 text-xs text-gray-800 shadow-xs focus:border-brand-500 focus:ring-brand-500">
                     <option value="">Todos los Registros</option>
                     <option value="RCE" {{ request('tipo_registro') === 'RCE' ? 'selected' : '' }}>RCE - Registro de Compras</option>
                     <option value="RVIE" {{ request('tipo_registro') === 'RVIE' ? 'selected' : '' }}>RVIE - Registro de Ventas</option>
@@ -184,7 +184,7 @@
                     name="periodo"
                     id="periodo"
                     value="{{ request('periodo') }}"
-                    class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                    class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 shadow-xs focus:border-brand-500 focus:ring-brand-500"
                 />
             </div>
 
@@ -198,7 +198,7 @@
                         id="buscar"
                         placeholder="Serie, RUC o Razón Social..."
                         value="{{ request('buscar') }}"
-                        class="w-full rounded-lg border-gray-300 py-1.5 pl-8 pr-2.5 text-xs text-gray-800 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                        class="w-full rounded-lg border-gray-300 py-1.5 pl-8 pr-2.5 text-xs text-gray-800 shadow-xs focus:border-brand-500 focus:ring-brand-500"
                     />
                     <svg class="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -210,7 +210,7 @@
             <div class="flex items-center gap-2">
                 <button
                     type="submit"
-                    class="flex-1 inline-flex justify-center items-center gap-1 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/20 active:scale-95 transition"
+                    class="flex-1 inline-flex justify-center items-center gap-1 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-900/20 active:scale-95 transition"
                 >
                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -221,7 +221,7 @@
                 @if(request()->hasAny(['cliente_id', 'tipo_registro', 'periodo', 'buscar']))
                     <a
                         href="{{ route('comprobantes.index') }}"
-                        class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-xs font-semibold text-gray-600 shadow-sm hover:bg-gray-50 hover:text-gray-900 active:scale-95 transition"
+                        class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-xs font-semibold text-gray-600 shadow-xs hover:bg-gray-50 hover:text-gray-900 active:scale-95 transition"
                         title="Limpiar todos los filtros"
                     >
                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -236,7 +236,7 @@
     {{-- ════════════════════ TRES TARJETAS RESUMEN ════════════════════ --}}
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {{-- Tarjeta 1: Total Base Imponible --}}
-        <div class="relative overflow-hidden rounded-xl border border-blue-100 bg-white p-5 shadow-sm">
+        <div class="relative overflow-hidden rounded-xl border border-blue-100 bg-white p-5 shadow-xs">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-blue-600">Total Base Imponible</p>
@@ -255,7 +255,7 @@
         </div>
 
         {{-- Tarjeta 2: Total IGV --}}
-        <div class="relative overflow-hidden rounded-xl border border-emerald-100 bg-white p-5 shadow-sm">
+        <div class="relative overflow-hidden rounded-xl border border-emerald-100 bg-white p-5 shadow-xs">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600">Total IGV</p>
@@ -274,7 +274,7 @@
         </div>
 
         {{-- Tarjeta 3: Total Facturado --}}
-        <div class="relative overflow-hidden rounded-xl border border-purple-100 bg-white p-5 shadow-sm">
+        <div class="relative overflow-hidden rounded-xl border border-purple-100 bg-white p-5 shadow-xs">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-purple-600">Total Facturado</p>
@@ -297,7 +297,7 @@
     </div>
 
     {{-- ════════════════════ TABLA DE COMPROBANTES ════════════════════ --}}
-    <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 text-left text-xs">
                 <thead class="bg-gray-50/80 uppercase tracking-wider text-gray-500 font-semibold">

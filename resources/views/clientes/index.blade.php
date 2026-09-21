@@ -74,7 +74,7 @@
                 @input="filtrarEnTiempoReal()"
                 @keydown.escape="limpiarBusqueda()"
                 placeholder="Buscar en tiempo real por RUC o Razón Social…"
-                class="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-10 text-sm text-gray-700 placeholder-gray-400 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                class="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-10 pr-10 text-sm text-gray-700 placeholder-gray-400 shadow-xs transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                 autocomplete="off"
             >
             {{-- Botón Limpiar (✕) --}}
@@ -94,7 +94,7 @@
 
         {{-- Botón Nuevo Cliente --}}
         <a href="{{ route('clientes.create') }}"
-           class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+           class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white shadow-xs transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
@@ -111,7 +111,7 @@
                  ejecutarConsultaServidor(link.href);
              }
          }"
-         class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+         class="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-xs">
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
@@ -130,7 +130,7 @@
                         data-cliente-razon="{{ mb_strtolower($cliente->razon_social) }}"
                         x-show="coincide('{{ $cliente->ruc }}', '{{ addslashes(mb_strtolower($cliente->razon_social)) }}')">
                         <td class="whitespace-nowrap px-4 py-4 text-center">
-                            <span class="inline-flex h-6 min-w-[26px] px-1.5 items-center justify-center rounded-md bg-gray-100 border border-gray-300 text-xs font-mono font-black text-gray-700 shadow-sm"
+                            <span class="inline-flex h-6 min-w-[26px] px-1.5 items-center justify-center rounded-md bg-gray-100 border border-gray-300 text-xs font-mono font-black text-gray-700 shadow-xs"
                                   title="Cliente N° {{ $cliente->numero }}">
                                 {{ $cliente->numero }}
                             </span>
@@ -175,7 +175,7 @@
                                 {{-- Botón 1: Expediente --}}
                                 <a href="{{ route('clientes.show', $cliente) }}"
                                    title="Ver Expediente"
-                                   class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                   class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 shadow-xs transition hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     <svg class="h-3.5 w-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
@@ -189,7 +189,7 @@
                                        target="_blank"
                                        rel="noopener noreferrer"
                                        title="AFPnet - Portal Oficial (Usuario: {{ $cliente->credencial->usuario_afp }})"
-                                       class="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-sky-700 hover:shadow active:scale-95 focus:outline-none focus:ring-2 focus:ring-sky-500/40">
+                                       class="inline-flex items-center gap-1.5 rounded-lg bg-sky-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-sky-700 hover:shadow active:scale-95 focus:outline-none focus:ring-2 focus:ring-sky-500/40">
                                         <span class="text-xs">💼</span>
                                         <span>AFP</span>
                                     </a>
@@ -209,7 +209,7 @@
                                        target="_blank"
                                        rel="noopener noreferrer"
                                        title="Banco de la Nación - Detracciones (Cta: {{ $cliente->credencial->cuenta_detracciones }})"
-                                       class="inline-flex items-center gap-1.5 rounded-lg bg-red-700 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-red-800 hover:shadow active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-600/40">
+                                       class="inline-flex items-center gap-1.5 rounded-lg bg-red-700 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-red-800 hover:shadow active:scale-95 focus:outline-none focus:ring-2 focus:ring-red-600/40">
                                         <span class="text-xs">🏦</span>
                                         <span>DETRAC.</span>
                                     </a>
@@ -227,7 +227,7 @@
                                 <a href="{{ route('clientes.sunat', $cliente) }}"
                                    @click.prevent="lanzarAcceso('{{ route('clientes.sunat', $cliente) }}', 'SUNAT', '{{ addslashes($cliente->razon_social) }}', '{{ $cliente->ruc }}')"
                                    title="Ingreso Automático a SUNAT SOL (1 Clic)"
-                                   class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-700 hover:shadow active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+                                   class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-emerald-700 hover:shadow active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
                                     <span class="text-xs">🚀</span>
                                     <span>SUNAT</span>
                                 </a>
@@ -236,7 +236,7 @@
                                 <a href="{{ route('clientes.sunafil', $cliente) }}"
                                    @click.prevent="lanzarAcceso('{{ route('clientes.sunafil', $cliente) }}', 'SUNAFIL', '{{ addslashes($cliente->razon_social) }}', '{{ $cliente->ruc }}')"
                                    title="Ingreso Automático a Casilla Electrónica SUNAFIL (1 Clic)"
-                                   class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700 hover:shadow active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500/40">
+                                   class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-blue-700 hover:shadow active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500/40">
                                     <span class="text-xs">👷</span>
                                     <span>SUNAFIL</span>
                                 </a>
@@ -246,7 +246,7 @@
                 @empty
                     <tr>
                         <td colspan="6" class="px-6 py-12 text-center">
-                            <div class="mx-auto max-w-lg rounded-2xl border border-indigo-100 bg-gradient-to-b from-indigo-50/60 to-white p-8 shadow-sm">
+                            <div class="mx-auto max-w-lg rounded-2xl border border-indigo-100 bg-gradient-to-b from-indigo-50/60 to-white p-8 shadow-xs">
                                 <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-2xl text-white shadow-md shadow-indigo-200">
                                     🏢
                                 </div>
@@ -260,7 +260,7 @@
                                             <span>⚙️ Configurar Estudio</span>
                                         </a>
                                     @endif
-                                    <a href="{{ route('clientes.create') }}" class="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700 active:scale-95">
+                                    <a href="{{ route('clientes.create') }}" class="inline-flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-brand-700 active:scale-95">
                                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                                         </svg>
@@ -316,7 +316,7 @@
          x-transition:leave="transition ease-in duration-200"
          x-transition:leave-start="opacity-100 scale-100"
          x-transition:leave-end="opacity-0 scale-95"
-         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+         class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
         
         <div class="relative w-full max-w-md overflow-hidden rounded-2xl bg-white p-6 shadow-2xl border border-slate-100"
              @click.away="if (completado || error) abierto = false">

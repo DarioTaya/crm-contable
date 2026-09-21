@@ -45,7 +45,7 @@
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-5">
             <div>
                 <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 border border-brand-200 text-brand-600 shadow-sm">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 border border-brand-200 text-brand-600 shadow-xs">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-3.75h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />
                         </svg>
@@ -67,7 +67,7 @@
             {{-- Botones de Acción y Selector de Ejercicio Fiscal --}}
             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                 {{-- Selector interactivo de Año --}}
-                <div class="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+                <div class="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-gray-200 shadow-xs">
                     <a href="{{ route('cronogramas.index', ['anio' => $anio - 1, 'tipo' => $tipo]) }}"
                        title="Año {{ $anio - 1 }}"
                        class="inline-flex items-center justify-center rounded-lg p-1.5 text-gray-600 hover:bg-gray-100 transition">
@@ -101,7 +101,7 @@
                     <button type="button"
                             @click="autogenerarSire()"
                             :disabled="guardando"
-                            class="inline-flex items-center gap-2 rounded-xl bg-purple-50 border border-purple-200 px-3.5 py-2 text-xs font-bold text-purple-700 hover:bg-purple-100 shadow-sm transition disabled:opacity-50">
+                            class="inline-flex items-center gap-2 rounded-xl bg-purple-50 border border-purple-200 px-3.5 py-2 text-xs font-bold text-purple-700 hover:bg-purple-100 shadow-xs transition disabled:opacity-50">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
                         </svg>
@@ -113,7 +113,7 @@
                     <button type="button"
                             @click="restablecerOficial()"
                             :disabled="guardando"
-                            class="inline-flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 shadow-sm transition disabled:opacity-50"
+                            class="inline-flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 shadow-xs transition disabled:opacity-50"
                             title="Restablece las fechas oficiales según Resolución SUNAT para 2026">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -125,7 +125,7 @@
                 <button type="button"
                         @click="guardarCambios()"
                         :disabled="guardando"
-                        class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700 shadow-sm transition disabled:opacity-50">
+                        class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700 shadow-xs transition disabled:opacity-50">
                     <svg x-show="!guardando" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
@@ -193,7 +193,7 @@
         </div>
 
         {{-- ════════════════════ BANNER INFORMATIVO CONTEXTUAL ════════════════════ --}}
-        <div class="rounded-2xl border p-4 bg-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
+        <div class="rounded-2xl border p-4 bg-white shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
              :class="{
                  'border-brand-200 bg-gradient-to-r from-brand-50/50 to-white': '{{ $tipo }}' === 'pdt_621',
                  'border-purple-200 bg-gradient-to-r from-purple-50/50 to-white': '{{ $tipo }}' === 'sire',
@@ -248,7 +248,7 @@
 
         {{-- ════════════════════ MATRIZ INTERACTIVA EDITABLE ════════════════════ --}}
         <form id="formCronograma" @submit.prevent="guardarCambios">
-            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 text-left text-xs">
                         <thead class="bg-gray-50 text-[11px] font-bold uppercase tracking-wider text-gray-600">
@@ -309,7 +309,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][fecha_vencimiento_general]"
                                                    value="{{ $cronograma->fecha_vencimiento_general ? $cronograma->fecha_vencimiento_general->format('Y-m-d') : '' }}"
-                                                   class="w-44 rounded-lg border border-gray-300 py-1.5 px-2 text-center text-xs font-medium text-gray-800 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-44 rounded-lg border border-gray-300 py-1.5 px-2 text-center text-xs font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
                                         <td class="py-2.5 px-4 font-sans text-xs text-gray-600">
                                             <input type="text"
@@ -324,7 +324,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][digito_0]"
                                                    value="{{ $cronograma->digito_0 ? $cronograma->digito_0->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
 
                                         {{-- Dígito 1 --}}
@@ -332,7 +332,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][digito_1]"
                                                    value="{{ $cronograma->digito_1 ? $cronograma->digito_1->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
 
                                         {{-- Dígitos 2 y 3 --}}
@@ -340,7 +340,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][digito_2_3]"
                                                    value="{{ $cronograma->digito_2_3 ? $cronograma->digito_2_3->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
 
                                         {{-- Dígitos 4 y 5 --}}
@@ -348,7 +348,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][digito_4_5]"
                                                    value="{{ $cronograma->digito_4_5 ? $cronograma->digito_4_5->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
 
                                         {{-- Dígitos 6 y 7 --}}
@@ -356,7 +356,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][digito_6_7]"
                                                    value="{{ $cronograma->digito_6_7 ? $cronograma->digito_6_7->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
 
                                         {{-- Dígitos 8 y 9 --}}
@@ -364,7 +364,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][digito_8_9]"
                                                    value="{{ $cronograma->digito_8_9 ? $cronograma->digito_8_9->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
 
                                         {{-- Buenos Contribuyentes / UESP --}}
@@ -372,7 +372,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][buenos_contribuyentes]"
                                                    value="{{ $cronograma->buenos_contribuyentes ? $cronograma->buenos_contribuyentes->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-emerald-300 py-1 px-1.5 text-center text-[11px] font-semibold text-emerald-900 bg-emerald-50/60 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                                                   class="w-full rounded-lg border border-emerald-300 py-1 px-1.5 text-center text-[11px] font-semibold text-emerald-900 bg-emerald-50/60 shadow-xs focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500">
                                         </td>
 
                                         @if ($tipo === 'balance_anual')
@@ -380,7 +380,7 @@
                                                 <input type="date"
                                                        name="cronogramas[{{ $index }}][fecha_vencimiento_general]"
                                                        value="{{ $cronograma->fecha_vencimiento_general ? $cronograma->fecha_vencimiento_general->format('Y-m-d') : '' }}"
-                                                       class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                       class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                             </td>
                                         @endif
                                     @endif
@@ -403,7 +403,7 @@
                     </p>
                     <button type="submit"
                             :disabled="guardando"
-                            class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700 shadow-sm transition disabled:opacity-50">
+                            class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700 shadow-xs transition disabled:opacity-50">
                         <svg x-show="!guardando" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                         </svg>
@@ -416,7 +416,7 @@
         {{-- ════════════════════ ACCESOS DIRECTOS RELACIONADOS ════════════════════ --}}
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <a href="{{ route('control.index', ['anio' => $anio]) }}"
-               class="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-sm hover:border-brand-300 hover:shadow-md transition">
+               class="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-xs hover:border-brand-300 hover:shadow-md transition">
                 <div class="flex items-center gap-3">
                     <div class="rounded-xl bg-brand-50 p-2.5 text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -434,7 +434,7 @@
             </a>
 
             <a href="{{ route('balances.index', ['anio' => $anio]) }}"
-               class="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-sm hover:border-amber-300 hover:shadow-md transition">
+               class="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-xs hover:border-amber-300 hover:shadow-md transition">
                 <div class="flex items-center gap-3">
                     <div class="rounded-xl bg-amber-50 p-2.5 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -452,7 +452,7 @@
             </a>
 
             <a href="{{ route('dashboard') }}"
-               class="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-sm hover:border-purple-300 hover:shadow-md transition">
+               class="group flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-xs hover:border-purple-300 hover:shadow-md transition">
                 <div class="flex items-center gap-3">
                     <div class="rounded-xl bg-purple-50 p-2.5 text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

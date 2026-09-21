@@ -56,7 +56,7 @@
     </div>
 
     {{-- Tabla de Clientes en Papelera --}}
-    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs">
         <div class="overflow-x-auto">
             <table class="w-full text-left text-sm text-gray-600">
                 <thead class="border-b border-gray-200 bg-gray-50/75 text-xs font-semibold uppercase tracking-wider text-gray-500">

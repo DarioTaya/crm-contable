@@ -13,7 +13,7 @@
             @csrf
 
             {{-- ═══════════════════════════ SECCIÓN 1: DATOS FISCALES ═══════════════════════════ --}}
-            <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div class="rounded-xl border border-gray-200 bg-white shadow-xs">
                 <div class="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-100 text-brand-600">
@@ -66,7 +66,7 @@
                                 maxlength="11"
                                 placeholder="20601234567"
                                 required
-                                class="block w-full rounded-lg border px-3.5 py-2.5 text-sm font-mono text-gray-900 shadow-sm transition placeholder-gray-400 focus:outline-none focus:ring-2"
+                                class="block w-full rounded-lg border px-3.5 py-2.5 text-sm font-mono text-gray-900 shadow-xs transition placeholder-gray-400 focus:outline-none focus:ring-2"
                                 :class="{
                                     'border-gray-300 focus:border-brand-500 focus:ring-brand-500/20': rucInfo.status === 'idle',
                                     'border-amber-400 ring-2 ring-amber-400/20': rucInfo.status === 'validating',
@@ -137,7 +137,7 @@
                             value="{{ old('razon_social') }}"
                             placeholder="EMPRESA DEMO S.A.C."
                             required
-                            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('razon_social') border-red-400 ring-2 ring-red-400/20 @enderror"
+                            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('razon_social') border-red-400 ring-2 ring-red-400/20 @enderror"
                         >
                         @error('razon_social')
                             <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
@@ -154,7 +154,7 @@
                             name="regimen_tributario"
                             x-model="regimenTributario"
                             required
-                            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('regimen_tributario') border-red-400 ring-2 ring-red-400/20 @enderror"
+                            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('regimen_tributario') border-red-400 ring-2 ring-red-400/20 @enderror"
                         >
                             <option value="" disabled {{ old('regimen_tributario') ? '' : 'selected' }}>Seleccionar régimen…</option>
                             @foreach (['MYPE' => 'MYPE Tributario', 'RER' => 'Régimen Especial (RER)', 'RUS' => 'Nuevo RUS', 'General' => 'Régimen General'] as $value => $label)
@@ -175,7 +175,7 @@
                             name="correo"
                             value="{{ old('correo') }}"
                             placeholder="contacto@empresa.pe"
-                            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('correo') border-red-400 ring-2 ring-red-400/20 @enderror"
+                            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('correo') border-red-400 ring-2 ring-red-400/20 @enderror"
                         >
                         @error('correo')
                             <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
@@ -191,7 +191,7 @@
                             name="telefono"
                             value="{{ old('telefono') }}"
                             placeholder="987 654 321"
-                            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('telefono') border-red-400 ring-2 ring-red-400/20 @enderror"
+                            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('telefono') border-red-400 ring-2 ring-red-400/20 @enderror"
                         >
                         @error('telefono')
                             <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
@@ -357,7 +357,7 @@
             </div>
 
             {{-- ═══════════════════════ SECCIÓN 2: CREDENCIALES DE ACCESO ═══════════════════════ --}}
-            <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div class="rounded-xl border border-gray-200 bg-white shadow-xs">
                 <div class="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
                     <div class="flex items-center gap-3">
                         <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
@@ -392,7 +392,7 @@
                                 type="button"
                                 @click="probarConexionSol()"
                                 :disabled="!ruc || !usuarioSol || !claveSol || solStatus === 'testing'"
-                                class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-xs transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
                                 <template x-if="solStatus === 'testing'">
                                     <svg class="h-3.5 w-3.5 animate-spin text-brand-600" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -419,7 +419,7 @@
                                     @input="onSolChange()"
                                     value="{{ old('usuario_sol') }}"
                                     placeholder="MODDATOS"
-                                    class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-mono uppercase text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                    class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-mono uppercase text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                 >
                             </div>
                             <div>
@@ -432,7 +432,7 @@
                                         x-model="claveSol"
                                         @input="onSolChange()"
                                         placeholder="••••••••"
-                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 pr-10 text-sm font-mono text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 pr-10 text-sm font-mono text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                     >
                                     <button
                                         type="button"
@@ -507,7 +507,7 @@
                                     name="usuario_afp"
                                     value="{{ old('usuario_afp') }}"
                                     placeholder="usuario_afp"
-                                    class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                    class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                 >
                             </div>
                             <div>
@@ -518,7 +518,7 @@
                                         id="clave_afp"
                                         name="clave_afp"
                                         placeholder="••••••••"
-                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 pr-10 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 pr-10 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                     >
                                     <button
                                         type="button"
@@ -566,7 +566,7 @@
                                     value="{{ old('dni_titular') }}"
                                     maxlength="8"
                                     placeholder="45678901"
-                                    class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-mono text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('dni_titular') border-red-400 ring-2 ring-red-400/20 @enderror"
+                                    class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-mono text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('dni_titular') border-red-400 ring-2 ring-red-400/20 @enderror"
                                 >
                             </div>
                             <div>
@@ -578,7 +578,7 @@
                                     value="{{ old('cuenta_detracciones') }}"
                                     maxlength="50"
                                     placeholder="00-000-000000"
-                                    class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-mono text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('cuenta_detracciones') border-red-400 ring-2 ring-red-400/20 @enderror"
+                                    class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-mono text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('cuenta_detracciones') border-red-400 ring-2 ring-red-400/20 @enderror"
                                 >
                             </div>
                             <div>
@@ -589,7 +589,7 @@
                                         id="clave_detracciones"
                                         name="clave_detracciones"
                                         placeholder="••••••••"
-                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 pr-10 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 pr-10 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                     >
                                     <button
                                         type="button"
@@ -631,7 +631,7 @@
                                         name="banco_1_nombre"
                                         value="{{ old('banco_1_nombre') }}"
                                         placeholder="Ej: Telecrédito BCP"
-                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                     >
                                 </div>
                                 <div>
@@ -642,7 +642,7 @@
                                         name="banco_1_usuario"
                                         value="{{ old('banco_1_usuario') }}"
                                         placeholder="Ej: 4557 0000 0000 0000"
-                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-mono text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-mono text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                     >
                                 </div>
                                 <div>
@@ -653,7 +653,7 @@
                                             id="banco_1_clave"
                                             name="banco_1_clave"
                                             placeholder="••••••••"
-                                            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 pr-10 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 pr-10 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                         >
                                         <button
                                             type="button"
@@ -682,7 +682,7 @@
                                         name="banco_1_notas"
                                         value="{{ old('banco_1_notas') }}"
                                         placeholder="Ej: Para descarga de movimientos bancarios y extractos"
-                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                     >
                                 </div>
                             </div>
@@ -707,7 +707,7 @@
                                         name="banco_2_nombre"
                                         value="{{ old('banco_2_nombre') }}"
                                         placeholder="Ej: BBVA Net Cash"
-                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                     >
                                 </div>
                                 <div>
@@ -718,7 +718,7 @@
                                         name="banco_2_usuario"
                                         value="{{ old('banco_2_usuario') }}"
                                         placeholder="Ej: BBVA-USER-123"
-                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-mono text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-mono text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                     >
                                 </div>
                                 <div>
@@ -729,7 +729,7 @@
                                             id="banco_2_clave"
                                             name="banco_2_clave"
                                             placeholder="••••••••"
-                                            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 pr-10 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 pr-10 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                         >
                                         <button
                                             type="button"
@@ -758,7 +758,7 @@
                                         name="banco_2_notas"
                                         value="{{ old('banco_2_notas') }}"
                                         placeholder="Ej: Token digital en celular de administración"
-                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                     >
                                 </div>
                             </div>
@@ -775,12 +775,12 @@
 
                 <div class="flex items-center gap-3">
                     <a href="{{ route('clientes.index') }}"
-                       class="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+                       class="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-xs transition hover:bg-gray-50">
                         Cancelar
                     </a>
                     <button
                         type="submit"
-                        class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+                        class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-6 py-2.5 text-sm font-medium text-white shadow-xs transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                         </svg>
@@ -800,7 +800,7 @@
              x-transition:leave="transition ease-in duration-150"
              x-transition:leave-start="opacity-100"
              x-transition:leave-end="opacity-0"
-             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm"
+             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-xs"
              style="display: none;">
 
             <div x-show="modalOpen"
@@ -815,7 +815,7 @@
                 {{-- Cabecera corporativa y limpia --}}
                 <div class="border-b border-gray-100 bg-gray-50/80 px-6 py-4 flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 border border-brand-100 shadow-sm">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600 border border-brand-100 shadow-xs">
                             <template x-if="modalStatus === 'validating'">
                                 <svg class="h-5 w-5 animate-spin text-brand-600" viewBox="0 0 24 24" fill="none">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -991,7 +991,7 @@
                             <button
                                 type="button"
                                 @click="cerrarModalYCorregir()"
-                                class="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400">
+                                class="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400">
                                 <span>Corregir credenciales</span>
                             </button>
                         </div>

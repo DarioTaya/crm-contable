@@ -21,7 +21,7 @@
         {{-- Barra de Herramientas y Selector de Ejercicio Fiscal --}}
         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
             {{-- Leyenda Rápida de Estados --}}
-            <div class="hidden lg:flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-medium text-gray-600 shadow-sm">
+            <div class="hidden lg:flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-medium text-gray-600 shadow-xs">
                 <span>⚪ Pendiente / Debe</span>
                 <span class="text-gray-300">|</span>
                 <span>🟡 En Proceso</span>
@@ -36,7 +36,7 @@
             {{-- Enlace Directo a Cronograma SUNAT --}}
             <a href="{{ route('cronogramas.index', ['anio' => $anio, 'tipo' => 'pdt_621']) }}"
                title="Ver Cronograma Oficial SUNAT"
-               class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 shadow-sm transition hover:bg-brand-100">
+               class="inline-flex items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 shadow-xs transition hover:bg-brand-100">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
                 </svg>
@@ -47,7 +47,7 @@
             <div class="flex items-center gap-1.5">
                 <a href="{{ route('control.index', ['anio' => $anio - 1]) }}"
                    title="Año {{ $anio - 1 }}"
-                   class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-600 shadow-sm transition hover:bg-gray-50">
+                   class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-600 shadow-xs transition hover:bg-gray-50">
                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
                     </svg>
@@ -56,7 +56,7 @@
                 <select
                     id="selectorAnio"
                     onchange="window.location.href = '{{ route('control.index') }}?anio=' + this.value"
-                    class="rounded-lg border border-gray-300 bg-white py-1.5 pl-3 pr-7 text-xs font-bold text-gray-800 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
+                    class="rounded-lg border border-gray-300 bg-white py-1.5 pl-3 pr-7 text-xs font-bold text-gray-800 shadow-xs transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer"
                 >
                     @foreach ($aniosDisponibles as $y)
                         <option value="{{ $y }}" {{ $y === $anio ? 'selected' : '' }}>
@@ -67,7 +67,7 @@
 
                 <a href="{{ route('control.index', ['anio' => $anio + 1]) }}"
                    title="Año {{ $anio + 1 }}"
-                   class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-600 shadow-sm transition hover:bg-gray-50">
+                   class="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white p-2 text-gray-600 shadow-xs transition hover:bg-gray-50">
                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                     </svg>
@@ -98,7 +98,7 @@
                  });
              }
          }">
-        <div class="rounded-lg border border-gray-300 bg-white px-3.5 py-2 shadow-sm flex items-center justify-between">
+        <div class="rounded-lg border border-gray-300 bg-white px-3.5 py-2 shadow-xs flex items-center justify-between">
             <div>
                 <p class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Clientes Activos</p>
                 <p class="text-lg font-black text-gray-900 leading-tight" x-text="totalClientes">{{ $totalClientes }}</p>
@@ -106,7 +106,7 @@
             <span class="text-xl">🏢</span>
         </div>
 
-        <div class="rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 shadow-sm flex items-center justify-between">
+        <div class="rounded-lg border border-emerald-300 bg-emerald-50 px-3.5 py-2 shadow-xs flex items-center justify-between">
             <div>
                 <p class="text-[10px] uppercase font-bold text-emerald-700 tracking-wider">Declaradas (DJ)</p>
                 <p class="text-lg font-black text-emerald-800 leading-tight">
@@ -117,7 +117,7 @@
             <span class="text-xl">🟢</span>
         </div>
 
-        <div class="rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2 shadow-sm flex items-center justify-between">
+        <div class="rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2 shadow-xs flex items-center justify-between">
             <div>
                 <p class="text-[10px] uppercase font-bold text-amber-700 tracking-wider">En Proceso</p>
                 <p class="text-lg font-black text-amber-800 leading-tight" x-text="procesandoTotal">{{ $procesandoTotal }}</p>
@@ -125,7 +125,7 @@
             <span class="text-xl">🟡</span>
         </div>
 
-        <div class="rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 shadow-sm flex items-center justify-between">
+        <div class="rounded-lg border border-slate-300 bg-slate-50 px-3.5 py-2 shadow-xs flex items-center justify-between">
             <div>
                 <p class="text-[10px] uppercase font-bold text-slate-600 tracking-wider">Pendientes (DJ)</p>
                 <p class="text-lg font-black text-slate-800 leading-tight" x-text="pendientesTotal">{{ $pendientesTotal }}</p>
@@ -133,7 +133,7 @@
             <span class="text-xl">⚪</span>
         </div>
 
-        <div class="rounded-lg border border-purple-300 bg-purple-50 px-3.5 py-2 shadow-sm flex items-center justify-between col-span-2 sm:col-span-1">
+        <div class="rounded-lg border border-purple-300 bg-purple-50 px-3.5 py-2 shadow-xs flex items-center justify-between col-span-2 sm:col-span-1">
             <div>
                 <p class="text-[10px] uppercase font-bold text-purple-700 tracking-wider">Honorarios (RH)</p>
                 <p class="text-lg font-black text-purple-800 leading-tight">
@@ -150,7 +150,7 @@
         <table class="w-full table-fixed border-collapse border border-gray-300 text-xs text-left">
 
             {{-- ═══════════════ CABECERA ÚNICA (THEAD - 13 COLUMNAS CON DJ Y RH) ═══════════════ --}}
-            <thead class="bg-gray-100 text-gray-700 text-xs font-extrabold select-none shadow-sm">
+            <thead class="bg-gray-100 text-gray-700 text-xs font-extrabold select-none shadow-xs">
                 <tr class="border-b border-gray-300 bg-gray-200/90 text-center">
                     {{-- Columna 1: Cliente/RUC (Sticky Left) con N° Correlativo --}}
                     <th class="w-[22%] px-2.5 py-2 text-left border-r border-b border-gray-300 bg-gray-200 sticky left-0 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
@@ -203,7 +203,7 @@
                             <div class="flex items-center justify-between gap-2">
                                 <div class="flex items-center gap-2 min-w-0 flex-1">
                                     {{-- N° Correlativo sincronizado con la lista de clientes --}}
-                                    <span class="inline-flex h-5 min-w-[24px] px-1 items-center justify-center rounded-md bg-gray-100 border border-gray-300 text-[10px] font-mono font-black text-gray-700 shrink-0 shadow-sm"
+                                    <span class="inline-flex h-5 min-w-[24px] px-1 items-center justify-center rounded-md bg-gray-100 border border-gray-300 text-[10px] font-mono font-black text-gray-700 shrink-0 shadow-xs"
                                           title="Cliente N° {{ $item['numero'] }}">
                                         {{ $item['numero'] }}
                                     </span>
@@ -272,7 +272,7 @@
                                         >
                                             <span x-show="meses[{{ $idx }}].estado === 'Declarado'">🟢</span>
                                             <span x-show="meses[{{ $idx }}].estado === 'Procesando'">🟡</span>
-                                            <span x-show="meses[{{ $idx }}].estado === 'Pendiente' || !meses[{{ $idx }}].estado" class="drop-shadow-sm">⚪</span>
+                                            <span x-show="meses[{{ $idx }}].estado === 'Pendiente' || !meses[{{ $idx }}].estado" class="drop-shadow-xs">⚪</span>
                                         </button>
 
                                         {{-- Miniventana Flotante Espaciosa para DJ --}}
@@ -332,7 +332,7 @@
                                             class="inline-flex items-center justify-center w-6 h-6 text-xs rounded hover:scale-110 active:scale-95 transition-transform select-none focus:outline-none"
                                         >
                                             <span x-show="meses[{{ $idx }}].honorarios === 'Pagado'">🟢</span>
-                                            <span x-show="meses[{{ $idx }}].honorarios !== 'Pagado'" class="drop-shadow-sm">⚪</span>
+                                            <span x-show="meses[{{ $idx }}].honorarios !== 'Pagado'" class="drop-shadow-xs">⚪</span>
                                         </button>
 
                                         {{-- Miniventana Flotante Espaciosa para RH --}}
@@ -423,7 +423,7 @@
                                                     type="button"
                                                     @click="guardarNota()"
                                                     :disabled="guardando"
-                                                    class="px-2.5 py-0.5 text-[10px] font-bold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-sm transition active:scale-95 disabled:opacity-50"
+                                                    class="px-2.5 py-0.5 text-[10px] font-bold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-xs transition active:scale-95 disabled:opacity-50"
                                                 >
                                                     <span x-show="!guardando">Guardar</span>
                                                     <span x-show="guardando">...</span>

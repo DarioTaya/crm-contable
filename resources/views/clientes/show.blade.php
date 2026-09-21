@@ -15,12 +15,12 @@
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-center gap-4">
             {{-- Avatar con iniciales --}}
-            <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-lg font-bold text-white shadow-sm">
+            <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-lg font-bold text-white shadow-xs">
                 {{ mb_substr($cliente->razon_social, 0, 2) }}
             </div>
             <div>
                 <div class="flex items-center gap-2 flex-wrap">
-                    <span class="inline-flex h-6 min-w-[26px] px-2 items-center justify-center rounded-md bg-gray-100 border border-gray-300 text-xs font-mono font-black text-gray-700 shadow-sm" title="Número de Cliente">
+                    <span class="inline-flex h-6 min-w-[26px] px-2 items-center justify-center rounded-md bg-gray-100 border border-gray-300 text-xs font-mono font-black text-gray-700 shadow-xs" title="Número de Cliente">
                         N° {{ $cliente->numero }}
                     </span>
                     <h2 class="text-xl font-bold text-gray-900">{{ $cliente->razon_social }}</h2>
@@ -80,7 +80,7 @@
                 @csrf
                 @method('DELETE')
                 <button type="submit"
-                        class="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition hover:bg-red-100 hover:text-red-800 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 active:scale-95">
+                        class="inline-flex items-center gap-2 rounded-lg border border-red-300 bg-red-50 px-3.5 py-2.5 text-sm font-semibold text-red-700 shadow-xs transition hover:bg-red-100 hover:text-red-800 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 active:scale-95">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                     </svg>
@@ -90,7 +90,7 @@
             @endif
 
             <a href="{{ route('clientes.index') }}"
-               class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50">
+               class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-xs transition hover:bg-gray-50">
                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
                 </svg>
@@ -153,7 +153,7 @@
              x-transition:leave="transition ease-in duration-200"
              x-transition:leave-start="opacity-100 scale-100"
              x-transition:leave-end="opacity-0 scale-95"
-             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
             
             <div class="relative w-full max-w-md overflow-hidden rounded-2xl bg-white p-6 shadow-2xl border border-slate-100"
                  @click.away="if (hudAcceso.completado || hudAcceso.error) hudAcceso.abierto = false">
@@ -329,7 +329,7 @@
         {{-- ════════════════════ PESTAÑA 1: DATOS Y ACCESOS ════════════════════ --}}
         <div x-show="tab === 'datos'" x-cloak class="mt-6 space-y-6">
             {{-- Datos Fiscales --}}
-            <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div class="rounded-xl border border-gray-200 bg-white shadow-xs">
                 <div class="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
                     <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-900">
                         <svg class="h-4 w-4 text-brand-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -343,7 +343,7 @@
                             type="button"
                             @click="sincronizarEstadoSunat()"
                             :disabled="sincronizandoSunat"
-                            class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-100 hover:text-emerald-800 hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 active:scale-95 disabled:opacity-60"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700 shadow-xs transition hover:bg-emerald-100 hover:text-emerald-800 hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 active:scale-95 disabled:opacity-60"
                         >
                             <svg class="h-3.5 w-3.5 text-emerald-600" :class="{ 'animate-spin': sincronizandoSunat }" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -354,7 +354,7 @@
                         <button
                             type="button"
                             @click="modalEstadoEstudio = true"
-                            class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-sm transition hover:bg-indigo-100 hover:text-indigo-800 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 shadow-xs transition hover:bg-indigo-100 hover:text-indigo-800 hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95"
                             title="Gestionar estado del cliente en el estudio contable"
                         >
                             <svg class="h-3.5 w-3.5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -366,7 +366,7 @@
                         <button
                             type="button"
                             @click="modalEditarDatos = true"
-                            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 active:scale-95"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-xs transition hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20 active:scale-95"
                         >
                             <svg class="h-3.5 w-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
@@ -583,7 +583,7 @@
                          x-transition:leave="ease-in duration-200"
                          x-transition:leave-start="opacity-100"
                          x-transition:leave-end="opacity-0"
-                         class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+                         class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity"
                          @click="modalEditarDatos = false"></div>
 
                     <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
@@ -642,7 +642,7 @@
                                 <select id="modal_regimen_tributario"
                                         name="regimen_tributario"
                                         required
-                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     @foreach (['MYPE', 'RER', 'RUS', 'General'] as $reg)
                                         <option value="{{ $reg }}" {{ old('regimen_tributario', $cliente->regimen_tributario) === $reg ? 'selected' : '' }}>
                                             {{ $reg }}
@@ -660,7 +660,7 @@
                                        name="correo"
                                        value="{{ old('correo', $cliente->correo) }}"
                                        placeholder="ejemplo@empresa.pe"
-                                       class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                       class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                             </div>
 
                             {{-- Teléfono (Editable) --}}
@@ -671,7 +671,7 @@
                                        name="telefono"
                                        value="{{ old('telefono', $cliente->telefono) }}"
                                        placeholder="987 654 321"
-                                       class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                       class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                             </div>
 
                             {{-- Dirección Fiscal (Editable) --}}
@@ -682,7 +682,7 @@
                                        name="direccion_fiscal"
                                        value="{{ old('direccion_fiscal', $cliente->direccion_fiscal) }}"
                                        placeholder="Ej: CALLE 4 MZA. G LOTE 1 URB. LA LAGUNA"
-                                       class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                       class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                             </div>
 
                             {{-- Ubicación (Editable) --}}
@@ -694,7 +694,7 @@
                                            name="ubigeo"
                                            value="{{ old('ubigeo', $cliente->ubigeo) }}"
                                            placeholder="040409"
-                                           class="block w-full rounded-lg border border-gray-300 px-2.5 py-1.5 font-mono text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                           class="block w-full rounded-lg border border-gray-300 px-2.5 py-1.5 font-mono text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                 </div>
                                 <div>
                                     <label for="modal_distrito" class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Distrito</label>
@@ -703,7 +703,7 @@
                                            name="distrito"
                                            value="{{ old('distrito', $cliente->distrito) }}"
                                            placeholder="ORCOPAMPA"
-                                           class="block w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                           class="block w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                 </div>
                                 <div>
                                     <label for="modal_provincia" class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Provincia</label>
@@ -712,7 +712,7 @@
                                            name="provincia"
                                            value="{{ old('provincia', $cliente->provincia) }}"
                                            placeholder="CASTILLA"
-                                           class="block w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                           class="block w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                 </div>
                                 <div>
                                     <label for="modal_departamento" class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Departamento</label>
@@ -721,7 +721,7 @@
                                            name="departamento"
                                            value="{{ old('departamento', $cliente->departamento) }}"
                                            placeholder="AREQUIPA"
-                                           class="block w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                           class="block w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                 </div>
                             </div>
 
@@ -746,11 +746,11 @@
                             <div class="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
                                 <button type="button"
                                         @click="modalEditarDatos = false"
-                                        class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+                                        class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-xs transition hover:bg-gray-50">
                                     Cancelar
                                 </button>
                                 <button type="submit"
-                                        class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+                                        class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                                     </svg>
@@ -777,7 +777,7 @@
                          x-transition:leave="ease-in duration-200"
                          x-transition:leave-start="opacity-100"
                          x-transition:leave-end="opacity-0"
-                         class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+                         class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity"
                          @click="modalEstadoEstudio = false"></div>
 
                     <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
@@ -835,7 +835,7 @@
                                         name="estado"
                                         x-model="estadoSeleccionado"
                                         required
-                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     <option value="activo">🟢 Activo en Cartera (Genera obligaciones mensuales)</option>
                                     <option value="suspendido">🟡 Suspendido Temporalmente (Pausa de servicios)</option>
                                     <option value="retirado">🔴 Retirado / Baja del Estudio (Cambio de contador, cese)</option>
@@ -852,7 +852,7 @@
                                            id="fecha_baja"
                                            name="fecha_baja"
                                            value="{{ old('fecha_baja', $cliente->fecha_baja ? $cliente->fecha_baja->format('Y-m-d') : date('Y-m-d')) }}"
-                                           class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                           class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     <p class="mt-1 text-[11px] text-gray-500">A partir del mes de esta fecha no generará pendientes ni alertas en Control de Impuestos ni Balances.</p>
                                 </div>
 
@@ -862,7 +862,7 @@
                                     </label>
                                     <select id="motivo_baja"
                                             name="motivo_baja"
-                                            class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                            class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                         <option value="cambio_contador" {{ old('motivo_baja', $cliente->motivo_baja) === 'cambio_contador' ? 'selected' : '' }}>Cambió de Contador / Estudio Contable</option>
                                         <option value="cese_actividades" {{ old('motivo_baja', $cliente->motivo_baja) === 'cese_actividades' ? 'selected' : '' }}>Cierre / Cese de Actividades de la Empresa</option>
                                         <option value="transferencia" {{ old('motivo_baja', $cliente->motivo_baja) === 'transferencia' ? 'selected' : '' }}>Transferencia / Venta de la Empresa</option>
@@ -881,18 +881,18 @@
                                           name="notas_estado"
                                           rows="3"
                                           placeholder="Ej: Se coordinó entrega de libros foliados y comprobantes al nuevo colega contador..."
-                                          class="block w-full rounded-lg border border-gray-300 px-3.5 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">{{ old('notas_estado', $cliente->notas_estado) }}</textarea>
+                                          class="block w-full rounded-lg border border-gray-300 px-3.5 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">{{ old('notas_estado', $cliente->notas_estado) }}</textarea>
                             </div>
 
                             {{-- Botones de Acción --}}
                             <div class="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
                                 <button type="button"
                                         @click="modalEstadoEstudio = false"
-                                        class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+                                        class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-xs transition hover:bg-gray-50">
                                     Cancelar
                                 </button>
                                 <button type="submit"
-                                        class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+                                        class="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                                     </svg>
@@ -943,7 +943,7 @@
 
             {{-- Credenciales de Acceso --}}
             @if ($cliente->credencial)
-                <div class="rounded-xl border border-gray-200 bg-white shadow-sm" x-data="credencialesClipboard()">
+                <div class="rounded-xl border border-gray-200 bg-white shadow-xs" x-data="credencialesClipboard()">
                     <div class="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
                         <div class="flex items-center gap-2">
                             <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-900">
@@ -957,7 +957,7 @@
                         <button
                             type="button"
                             @click="modalEditarCredenciales = true"
-                            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-amber-500 hover:bg-amber-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 active:scale-95"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-xs transition hover:border-amber-500 hover:bg-amber-50 hover:text-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 active:scale-95"
                         >
                             <svg class="h-3.5 w-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
@@ -1308,7 +1308,7 @@
                     <button
                         type="button"
                         @click="modalEditarCredenciales = true"
-                        class="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
+                        class="mt-4 inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500/40"
                     >
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -1333,7 +1333,7 @@
                          x-transition:leave="ease-in duration-200"
                          x-transition:leave-start="opacity-100"
                          x-transition:leave-end="opacity-0"
-                         class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity"
+                         class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity"
                          @click="modalEditarCredenciales = false"></div>
 
                     <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
@@ -1388,7 +1388,7 @@
                                                name="usuario_sol"
                                                value="{{ old('usuario_sol', $cliente->credencial?->usuario_sol) }}"
                                                placeholder="MODDATOS"
-                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     </div>
                                     <div x-data="{ showClave: false }">
                                         <label for="modal_clave_sol" class="block text-xs font-semibold text-gray-700 mb-1">Clave SOL</label>
@@ -1398,7 +1398,7 @@
                                                    name="clave_sol"
                                                    value="{{ old('clave_sol', $cliente->credencial?->clave_sol) }}"
                                                    placeholder="••••••••"
-                                                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 pr-9 text-xs text-gray-900 font-mono shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 pr-9 text-xs text-gray-900 font-mono shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                             <button type="button"
                                                     @click="showClave = !showClave"
                                                     class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600">
@@ -1431,7 +1431,7 @@
                                                name="usuario_afp"
                                                value="{{ old('usuario_afp', $cliente->credencial?->usuario_afp) }}"
                                                placeholder="Usuario AFP"
-                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     </div>
                                     <div x-data="{ showClave: false }">
                                         <label for="modal_clave_afp" class="block text-xs font-semibold text-gray-700 mb-1">Clave AFP</label>
@@ -1441,7 +1441,7 @@
                                                    name="clave_afp"
                                                    value="{{ old('clave_afp', $cliente->credencial?->clave_afp) }}"
                                                    placeholder="••••••••"
-                                                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 pr-9 text-xs text-gray-900 font-mono shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 pr-9 text-xs text-gray-900 font-mono shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                             <button type="button"
                                                     @click="showClave = !showClave"
                                                     class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600">
@@ -1475,7 +1475,7 @@
                                                maxlength="8"
                                                value="{{ old('dni_titular', $cliente->credencial?->dni_titular) }}"
                                                placeholder="8 dígitos"
-                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs font-mono text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs font-mono text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     </div>
                                     <div x-data="{ showClave: false }">
                                         <label for="modal_clave_detracciones" class="block text-xs font-semibold text-gray-700 mb-1">Clave BN</label>
@@ -1485,7 +1485,7 @@
                                                    name="clave_detracciones"
                                                    value="{{ old('clave_detracciones', $cliente->credencial?->clave_detracciones) }}"
                                                    placeholder="••••••••"
-                                                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 pr-9 text-xs text-gray-900 font-mono shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 pr-9 text-xs text-gray-900 font-mono shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                             <button type="button"
                                                     @click="showClave = !showClave"
                                                     class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600">
@@ -1502,7 +1502,7 @@
                                                maxlength="50"
                                                value="{{ old('cuenta_detracciones', $cliente->credencial?->cuenta_detracciones) }}"
                                                placeholder="00-000-000000"
-                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs font-mono text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs font-mono text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     </div>
                                 </div>
                             </div>
@@ -1523,7 +1523,7 @@
                                                name="banco_1_nombre"
                                                value="{{ old('banco_1_nombre', $cliente->credencial?->banco_1_nombre) }}"
                                                placeholder="Ej: Telecrédito BCP"
-                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     </div>
                                     <div>
                                         <label for="modal_banco_1_usuario" class="block text-xs font-semibold text-gray-700 mb-1">Usuario / N° Tarjeta</label>
@@ -1532,7 +1532,7 @@
                                                name="banco_1_usuario"
                                                value="{{ old('banco_1_usuario', $cliente->credencial?->banco_1_usuario) }}"
                                                placeholder="Ej: 4557 0000 0000 0000"
-                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs font-mono text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs font-mono text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     </div>
                                     <div x-data="{ showClave: false }">
                                         <label for="modal_banco_1_clave" class="block text-xs font-semibold text-gray-700 mb-1">Clave / Contraseña</label>
@@ -1542,7 +1542,7 @@
                                                    name="banco_1_clave"
                                                    value="{{ old('banco_1_clave', $cliente->credencial?->banco_1_clave) }}"
                                                    placeholder="••••••••"
-                                                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 pr-9 text-xs text-gray-900 font-mono shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 pr-9 text-xs text-gray-900 font-mono shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                             <button type="button"
                                                     @click="showClave = !showClave"
                                                     class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600">
@@ -1558,7 +1558,7 @@
                                                name="banco_1_notas"
                                                value="{{ old('banco_1_notas', $cliente->credencial?->banco_1_notas) }}"
                                                placeholder="Ej: Para descarga de movimientos bancarios y extractos"
-                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     </div>
                                 </div>
                             </div>
@@ -1579,7 +1579,7 @@
                                                name="banco_2_nombre"
                                                value="{{ old('banco_2_nombre', $cliente->credencial?->banco_2_nombre) }}"
                                                placeholder="Ej: BBVA Net Cash"
-                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     </div>
                                     <div>
                                         <label for="modal_banco_2_usuario" class="block text-xs font-semibold text-gray-700 mb-1">Usuario / N° Tarjeta</label>
@@ -1588,7 +1588,7 @@
                                                name="banco_2_usuario"
                                                value="{{ old('banco_2_usuario', $cliente->credencial?->banco_2_usuario) }}"
                                                placeholder="Ej: BBVA-USER-123"
-                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs font-mono text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs font-mono text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     </div>
                                     <div x-data="{ showClave: false }">
                                         <label for="modal_banco_2_clave" class="block text-xs font-semibold text-gray-700 mb-1">Clave / Contraseña</label>
@@ -1598,7 +1598,7 @@
                                                    name="banco_2_clave"
                                                    value="{{ old('banco_2_clave', $cliente->credencial?->banco_2_clave) }}"
                                                    placeholder="••••••••"
-                                                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 pr-9 text-xs text-gray-900 font-mono shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                                   class="block w-full rounded-lg border border-gray-300 px-3 py-2 pr-9 text-xs text-gray-900 font-mono shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                             <button type="button"
                                                     @click="showClave = !showClave"
                                                     class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 hover:text-gray-600">
@@ -1614,7 +1614,7 @@
                                                name="banco_2_notas"
                                                value="{{ old('banco_2_notas', $cliente->credencial?->banco_2_notas) }}"
                                                placeholder="Ej: Token digital en celular de administración"
-                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     </div>
                                 </div>
                             </div>
@@ -1623,11 +1623,11 @@
                             <div class="mt-6 flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
                                 <button type="button"
                                         @click="modalEditarCredenciales = false"
-                                        class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+                                        class="rounded-lg border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-xs transition hover:bg-gray-50">
                                     Cancelar
                                 </button>
                                 <button type="submit"
-                                        class="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-5 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500/50">
+                                        class="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500/50">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                                     </svg>
@@ -1645,7 +1645,7 @@
              x-data="expedienteAlertas({
                  alertas: @js($cliente->alertas->sortByDesc('fecha_recepcion')->values())
              })">
-            <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div class="rounded-xl border border-gray-200 bg-white shadow-xs">
                 <div class="flex flex-col gap-4 border-b border-gray-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-900">
@@ -1671,7 +1671,7 @@
                         <button type="button"
                                 @click="sincronizarSunat()"
                                 :disabled="sincronizandoSunat || sincronizandoSunafil"
-                                class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-xs font-semibold shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 text-xs font-semibold shadow-xs transition disabled:opacity-50 disabled:cursor-not-allowed">
                             <svg x-show="!sincronizandoSunat" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                             </svg>
@@ -1685,7 +1685,7 @@
                         <button type="button"
                                 @click="sincronizarSunafil()"
                                 :disabled="sincronizandoSunat || sincronizandoSunafil"
-                                class="inline-flex items-center gap-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white px-3 py-1.5 text-xs font-semibold shadow-sm transition disabled:opacity-50 disabled:cursor-not-allowed">
+                                class="inline-flex items-center gap-1.5 rounded-lg bg-rose-700 hover:bg-rose-800 text-white px-3 py-1.5 text-xs font-semibold shadow-xs transition disabled:opacity-50 disabled:cursor-not-allowed">
                             <svg x-show="!sincronizandoSunafil" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                             </svg>
@@ -1809,7 +1809,7 @@
                                     <td class="px-3 py-3.5 text-center whitespace-nowrap">
                                         <button type="button"
                                                 @click.stop="abrirSlideOver(alerta)"
-                                                class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 shadow-sm hover:bg-gray-50 hover:border-brand-500 transition active:scale-95">
+                                                class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-700 shadow-xs hover:bg-gray-50 hover:border-brand-500 transition active:scale-95">
                                             <span>Detalle</span>
                                             <svg class="h-3 w-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
                                         </button>
@@ -1850,7 +1850,7 @@
                      x-transition:leave-start="opacity-100"
                      x-transition:leave-end="opacity-0"
                      @click="cerrarSlideOver()"
-                     class="fixed inset-0 bg-gray-900/40 backdrop-blur-sm transition-opacity">
+                     class="fixed inset-0 bg-gray-900/40 backdrop-blur-xs transition-opacity">
                 </div>
 
                 <div class="fixed inset-y-0 right-0 flex max-w-full pl-10">
@@ -1918,7 +1918,7 @@
 
                             {{-- Fallback oficial si es PDF o viene sin cuerpo detallado --}}
                             <template x-if="!alertaActiva?.contenido || alertaActiva?.contenido.trim().length < 25 || alertaActiva?.contenido.includes('formato PDF')">
-                                <div class="rounded-xl border border-sky-200 bg-sky-50/70 p-4 text-xs text-sky-900 leading-relaxed shadow-sm flex items-start gap-3">
+                                <div class="rounded-xl border border-sky-200 bg-sky-50/70 p-4 text-xs text-sky-900 leading-relaxed shadow-xs flex items-start gap-3">
                                     <svg class="h-5 w-5 text-sky-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                                     </svg>
@@ -1948,7 +1948,7 @@
                             <button type="button"
                                     @click="marcarComoLeido(alertaActiva)"
                                     :disabled="marcando || alertaActiva?.estado === 'Leído'"
-                                    class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold text-white shadow-sm transition focus:outline-none focus:ring-2"
+                                    class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold text-white shadow-xs transition focus:outline-none focus:ring-2"
                                     :class="alertaActiva?.estado === 'Leído' ? 'bg-emerald-600 opacity-80 cursor-default' : 'bg-brand-600 hover:bg-brand-700 focus:ring-brand-500/30 active:scale-95'">
                                 <svg x-show="!marcando" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
@@ -1967,7 +1967,7 @@
 
         {{-- ════════════════════ PESTAÑA 3: OPERACIONES ════════════════════ --}}
         <div x-show="tab === 'operaciones'" x-cloak class="mt-6">
-            <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div class="rounded-xl border border-gray-200 bg-white shadow-xs">
                 <div class="flex flex-col gap-1 border-b border-gray-100 px-6 py-4">
                     <div class="flex items-center justify-between">
                         <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-900">
@@ -2071,7 +2071,7 @@
                                     {{-- Mes / Periodo --}}
                                     <td class="whitespace-nowrap px-4 py-3">
                                         <div class="flex items-center gap-3">
-                                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 font-mono text-xs font-bold text-gray-700 shadow-sm">
+                                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 font-mono text-xs font-bold text-gray-700 shadow-xs">
                                                 {{ sprintf('%02d', $mes['numero_mes']) }}
                                             </span>
                                             <div>
@@ -2085,7 +2085,7 @@
                                     <td class="px-4 py-3 text-center">
                                         <div class="relative inline-flex items-center justify-center">
                                             <button type="button" @click="openDJ = !openDJ"
-                                                class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                                                class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-xs transition hover:shadow focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                                                 :class="{
                                                     'border-emerald-300 bg-emerald-50 text-emerald-800': estado === 'Declarado',
                                                     'border-amber-300 bg-amber-50 text-amber-800': estado === 'Procesando',
@@ -2128,7 +2128,7 @@
                                     <td class="px-4 py-3 text-center">
                                         <div class="relative inline-flex items-center justify-center">
                                             <button type="button" @click="openRH = !openRH"
-                                                class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                                                class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-xs transition hover:shadow focus:outline-none focus:ring-2 focus:ring-brand-500/30"
                                                 :class="{
                                                     'border-emerald-300 bg-emerald-50 text-emerald-800': honorarios === 'Pagado',
                                                     'border-gray-300 bg-white text-gray-700': honorarios !== 'Pagado'
@@ -2166,7 +2166,7 @@
                                                    x-model="nota"
                                                    @blur="guardarNota()"
                                                    placeholder="Nota contable del mes..."
-                                                   class="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-800 placeholder-gray-400 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 print:border-0 print:shadow-none print:p-0"
+                                                   class="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-800 placeholder-gray-400 shadow-xs transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 print:border-0 print:shadow-none print:p-0"
                                             >
                                             <span x-show="guardandoNota" class="shrink-0 text-[10px] text-gray-400 animate-pulse">💾</span>
                                             <span x-show="notaGuardada" x-cloak class="shrink-0 text-[10px] text-emerald-600 font-bold">✅</span>
@@ -2181,7 +2181,7 @@
 
             {{-- ════════════════════ NUEVO: CONTROL DE BALANCES Y ESTADOS FINANCIEROS (SOLO MYPE Y GENERAL) ════════════════════ --}}
             @if ($tieneBalances ?? in_array($cliente->regimen_tributario, ['MYPE', 'General']))
-                <div class="mt-6 rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div class="mt-6 rounded-xl border border-gray-200 bg-white shadow-xs">
                     <div class="flex flex-col gap-1 border-b border-gray-100 px-6 py-4">
                         <div class="flex items-center justify-between">
                             <h3 class="flex items-center gap-2 text-sm font-semibold text-gray-900">
@@ -2290,7 +2290,7 @@
                                         {{-- Mes / Periodo --}}
                                         <td class="whitespace-nowrap px-4 py-3">
                                             <div class="flex items-center gap-3">
-                                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 font-mono text-xs font-bold text-indigo-700 shadow-sm border border-indigo-100">
+                                                <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 font-mono text-xs font-bold text-indigo-700 shadow-xs border border-indigo-100">
                                                     {{ sprintf('%02d', $bMes['numero_mes']) }}
                                                 </span>
                                                 <div>
@@ -2304,7 +2304,7 @@
                                         <td class="px-4 py-3 text-center">
                                             <div class="relative inline-flex items-center justify-center">
                                                 <button type="button" @click="openMenu = !openMenu"
-                                                    class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                                    class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-xs transition hover:shadow focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                                                     :class="{
                                                         'border-emerald-300 bg-emerald-50 text-emerald-800': estado === 'Declarado',
                                                         'border-amber-300 bg-amber-50 text-amber-800': estado === 'Procesando' || estado === 'Proceso',
@@ -2352,7 +2352,7 @@
                                                        x-model="nota"
                                                        @blur="guardarNota()"
                                                        placeholder="Nota o detalle de balance..."
-                                                       class="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-800 placeholder-gray-400 shadow-sm transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 print:border-0 print:shadow-none print:p-0"
+                                                       class="w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-800 placeholder-gray-400 shadow-xs transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 print:border-0 print:shadow-none print:p-0"
                                                 >
                                                 <span x-show="guardandoNota" class="shrink-0 text-[10px] text-gray-400 animate-pulse">💾</span>
                                                 <span x-show="notaGuardada" x-cloak class="shrink-0 text-[10px] text-emerald-600 font-bold">✅</span>
@@ -2410,7 +2410,7 @@
                                     <td class="px-4 py-3.5 text-center">
                                         <div class="relative inline-flex items-center justify-center">
                                             <button type="button" @click="openMenuDJ = !openMenuDJ"
-                                                class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold shadow-sm transition hover:shadow focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                                class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold shadow-xs transition hover:shadow focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
                                                 :class="{
                                                     'border-emerald-400 bg-emerald-100 text-emerald-900': djAnual === 'Declarado',
                                                     'border-amber-400 bg-amber-100 text-amber-900': djAnual === 'Procesando' || djAnual === 'Proceso',
@@ -2466,7 +2466,7 @@
     {{-- ════════════════════ PESTAÑA 4: SIRE / COMPROBANTES ════════════════════ --}}
         <div x-show="tab === 'sire'" x-cloak class="mt-6 space-y-6">
             {{-- Encabezado de la pestaña y Botonera SIRE --}}
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-gray-200 bg-white p-5 shadow-xs">
                 <div>
                     <h3 class="text-base font-bold text-gray-900 flex items-center gap-2">
                         <svg class="h-5 w-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -2484,7 +2484,7 @@
                         type="button"
                         @click="importarSireDesdeSunat"
                         :disabled="sireImportando"
-                        class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed transition"
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-xs hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed transition"
                     >
                         <template x-if="!sireImportando">
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -2503,7 +2503,7 @@
                     {{-- Botón Descargar Paquete ZIP --}}
                     <a
                         href="{{ route('comprobantes.zip', ['cliente_id' => $cliente->id, 'tipo_registro' => request('sire_tipo'), 'periodo' => request('sire_periodo')]) }}"
-                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-sm hover:bg-gray-50 hover:border-gray-400 active:scale-95 transition"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-xs hover:bg-gray-50 hover:border-gray-400 active:scale-95 transition"
                         title="Descargar paquete ZIP del cliente"
                     >
                         <svg class="h-3.5 w-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -2515,7 +2515,7 @@
                     {{-- Botón Exportar Excel --}}
                     <a
                         href="{{ route('comprobantes.export', ['cliente_id' => $cliente->id, 'tipo_registro' => request('sire_tipo'), 'periodo' => request('sire_periodo')]) }}"
-                        class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 shadow-sm hover:bg-emerald-100 hover:border-emerald-400 active:scale-95 transition"
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 shadow-xs hover:bg-emerald-100 hover:border-emerald-400 active:scale-95 transition"
                         title="Exportar comprobantes del cliente a Excel compatible"
                     >
                         <svg class="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -2527,14 +2527,14 @@
             </div>
 
             {{-- Filtros Rápidos Locales --}}
-            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs">
                 <form method="GET" action="{{ route('clientes.show', $cliente) }}" class="flex flex-wrap items-end gap-3">
                     <input type="hidden" name="tab" value="sire">
 
                     {{-- Filtro Registro --}}
                     <div class="space-y-1">
                         <label for="sire_tipo" class="block text-[11px] font-semibold text-gray-700">Tipo de Registro</label>
-                        <select name="sire_tipo" id="sire_tipo" class="rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                        <select name="sire_tipo" id="sire_tipo" class="rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 shadow-xs focus:border-brand-500 focus:ring-brand-500">
                             <option value="">Todos los Registros</option>
                             <option value="RCE" {{ request('sire_tipo') === 'RCE' ? 'selected' : '' }}>RCE - Registro de Compras</option>
                             <option value="RVIE" {{ request('sire_tipo') === 'RVIE' ? 'selected' : '' }}>RVIE - Registro de Ventas</option>
@@ -2549,14 +2549,14 @@
                             name="sire_periodo"
                             id="sire_periodo"
                             value="{{ request('sire_periodo') }}"
-                            class="rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 shadow-sm focus:border-brand-500 focus:ring-brand-500"
+                            class="rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 shadow-xs focus:border-brand-500 focus:ring-brand-500"
                         />
                     </div>
 
                     {{-- Botón Filtrar --}}
                     <button
                         type="submit"
-                        class="inline-flex items-center gap-1 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-gray-800 active:scale-95 transition"
+                        class="inline-flex items-center gap-1 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white shadow-xs hover:bg-gray-800 active:scale-95 transition"
                     >
                         <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -2567,7 +2567,7 @@
                     @if (request()->hasAny(['sire_tipo', 'sire_periodo']))
                         <a
                             href="{{ route('clientes.show', ['cliente' => $cliente, 'tab' => 'sire']) }}"
-                            class="inline-flex items-center rounded-lg border border-gray-300 bg-white p-2 text-xs font-semibold text-gray-600 shadow-sm hover:bg-gray-50 active:scale-95 transition"
+                            class="inline-flex items-center rounded-lg border border-gray-300 bg-white p-2 text-xs font-semibold text-gray-600 shadow-xs hover:bg-gray-50 active:scale-95 transition"
                             title="Limpiar filtros"
                         >
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -2581,7 +2581,7 @@
             {{-- Tres Tarjetas Resumen Pre-filtradas para el Cliente --}}
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 {{-- Base Imponible --}}
-                <div class="relative overflow-hidden rounded-xl border border-blue-100 bg-white p-5 shadow-sm">
+                <div class="relative overflow-hidden rounded-xl border border-blue-100 bg-white p-5 shadow-xs">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wider text-blue-600">Total Base Imponible</p>
@@ -2597,7 +2597,7 @@
                 </div>
 
                 {{-- IGV --}}
-                <div class="relative overflow-hidden rounded-xl border border-emerald-100 bg-white p-5 shadow-sm">
+                <div class="relative overflow-hidden rounded-xl border border-emerald-100 bg-white p-5 shadow-xs">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600">Total IGV</p>
@@ -2613,7 +2613,7 @@
                 </div>
 
                 {{-- Total Facturado --}}
-                <div class="relative overflow-hidden rounded-xl border border-purple-100 bg-white p-5 shadow-sm">
+                <div class="relative overflow-hidden rounded-xl border border-purple-100 bg-white p-5 shadow-xs">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wider text-purple-600">Total Facturado</p>
@@ -2633,7 +2633,7 @@
             </div>
 
             {{-- Tabla de Comprobantes del Cliente --}}
-            <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 text-left text-xs">
                         <thead class="bg-gray-50/80 uppercase tracking-wider text-gray-500 font-semibold">
@@ -2853,7 +2853,7 @@
     {{-- ═══════════════════ PESTAÑA 5: CREDENCIALES API SUNAT ═══════════════════ --}}
     <div x-show="tab === 'api_credentials'" x-cloak class="mt-6 space-y-6">
         {{-- Card Principal --}}
-        <div class="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div class="rounded-xl border border-gray-200 bg-white shadow-xs">
             <div class="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
@@ -2914,7 +2914,7 @@
                                id="api_client_id"
                                x-model="form.sunat_client_id"
                                placeholder="Ej: 4b2c8a1e-f3d9-4c7b-a8e5-1234567890ab"
-                               class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm font-mono" />
+                               class="block w-full rounded-lg border-gray-300 shadow-xs focus:border-brand-500 focus:ring-brand-500 sm:text-sm font-mono" />
                     </div>
 
                     {{-- Client Secret --}}
@@ -2926,7 +2926,7 @@
                                    id="api_client_secret"
                                    x-model="form.sunat_client_secret"
                                    placeholder="{{ ! empty($cliente->sunat_client_secret) ? '••••••••••••••••' : 'Ingrese el Client Secret de la aplicación registrada' }}"
-                                   class="block w-full rounded-lg border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm font-mono pr-10" />
+                                   class="block w-full rounded-lg border-gray-300 shadow-xs focus:border-brand-500 focus:ring-brand-500 sm:text-sm font-mono pr-10" />
                             <button type="button"
                                     @click="mostrarSecret = !mostrarSecret"
                                     class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition"
@@ -2953,7 +2953,7 @@
                     <div class="flex items-center justify-between pt-2">
                         <button type="submit"
                                 :disabled="guardando"
-                                class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition">
                             <template x-if="!guardando">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
@@ -2973,7 +2973,7 @@
         </div>
 
         {{-- Card de Ayuda --}}
-        <div class="rounded-xl border border-amber-200 bg-amber-50/50 shadow-sm">
+        <div class="rounded-xl border border-amber-200 bg-amber-50/50 shadow-xs">
             <div class="px-6 py-4">
                 <div class="flex items-start gap-3">
                     <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600 mt-0.5">
@@ -3338,7 +3338,7 @@
                     const originalClass = btn.className;
 
                     btn.innerHTML = `
-                        <span class="inline-flex items-center gap-1 rounded bg-emerald-100 border border-emerald-300 px-2 py-0.5 text-xs font-bold text-emerald-800 shadow-sm transition-all duration-200">
+                        <span class="inline-flex items-center gap-1 rounded bg-emerald-100 border border-emerald-300 px-2 py-0.5 text-xs font-bold text-emerald-800 shadow-xs transition-all duration-200">
                             <svg class="h-3.5 w-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                             </svg>

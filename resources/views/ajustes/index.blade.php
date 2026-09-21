@@ -50,7 +50,7 @@
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-5">
             <div>
                 <div class="flex items-center gap-3">
-                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 border border-brand-200 text-brand-600 shadow-sm">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 border border-brand-200 text-brand-600 shadow-xs">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
@@ -68,7 +68,7 @@
                 <button type="button"
                         @click="guardarAjustes()"
                         :disabled="guardando"
-                        class="inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 text-xs font-bold shadow-sm transition disabled:opacity-50 active:scale-95">
+                        class="inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 text-xs font-bold shadow-xs transition disabled:opacity-50 active:scale-95">
                     <svg x-show="!guardando" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                     </svg>
@@ -85,7 +85,7 @@
         <form @submit.prevent="guardarAjustes()" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             {{-- ───────── CARD 1: PERFIL DEL ESTUDIO CONTABLE ───────── --}}
-            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col justify-between overflow-hidden">
+            <div class="rounded-2xl border border-gray-200 bg-white shadow-xs flex flex-col justify-between overflow-hidden">
                 <div>
                     <div class="border-b border-gray-100 bg-gray-50/75 px-6 py-4 flex items-center justify-between">
                         <div class="flex items-center gap-2.5">
@@ -112,7 +112,7 @@
                                    x-model="form.razon_social"
                                    required
                                    placeholder="Ej. Grupo DC Soluciones Contables SAC"
-                                   class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                                   class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500">
                         </div>
 
                         {{-- RUC --}}
@@ -123,7 +123,7 @@
                                    maxlength="11"
                                    required
                                    placeholder="20601234567"
-                                   class="w-full font-mono rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                                   class="w-full font-mono rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500">
                         </div>
 
                         {{-- Representante Legal --}}
@@ -133,7 +133,7 @@
                                    x-model="form.representante"
                                    required
                                    placeholder="Ej. Sebastián Taya Yucra"
-                                   class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                                   class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500">
                         </div>
 
                         {{-- Correo Corporativo --}}
@@ -142,7 +142,7 @@
                             <input type="email"
                                    x-model="form.correo_corporativo"
                                    placeholder="contacto@grupodc.pe"
-                                   class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                                   class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500">
                         </div>
 
                         {{-- Teléfono de Contacto --}}
@@ -151,7 +151,7 @@
                             <input type="text"
                                    x-model="form.telefono_whatsapp"
                                    placeholder="+51 987 654 321"
-                                   class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                                   class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500">
                         </div>
                     </div>
                 </div>
@@ -165,7 +165,7 @@
             </div>
 
             {{-- ───────── CARD 2: MOTOR DE AUTOMATIZACIÓN (RPA) ───────── --}}
-            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col justify-between overflow-hidden">
+            <div class="rounded-2xl border border-gray-200 bg-white shadow-xs flex flex-col justify-between overflow-hidden">
                 <div>
                     <div class="border-b border-gray-100 bg-gray-50/75 px-6 py-4 flex items-center justify-between">
                         <div class="flex items-center gap-2.5">
@@ -190,7 +190,7 @@
                         <div>
                             <label class="block font-semibold text-gray-700 mb-1.5">Frecuencia de Sincronización Automática</label>
                             <select x-model.number="form.frecuencia_cron_horas"
-                                    class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:ring-brand-500 font-medium">
+                                    class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500 font-medium">
                                 <option value="2">Cada 2 horas (Monitoreo continuo intensivo)</option>
                                 <option value="4">Cada 4 horas (Recomendado para alto tráfico)</option>
                                 <option value="6">Cada 6 horas (Balance óptimo)</option>
@@ -245,7 +245,7 @@
             </div>
 
             {{-- ───────── CARD 3: INTEGRACIÓN WHATSAPP (BETA) ───────── --}}
-            <div class="rounded-2xl border border-gray-200 bg-white shadow-sm flex flex-col justify-between overflow-hidden">
+            <div class="rounded-2xl border border-gray-200 bg-white shadow-xs flex flex-col justify-between overflow-hidden">
                 <div>
                     <div class="border-b border-gray-100 bg-gray-50/75 px-6 py-4 flex items-center justify-between">
                         <div class="flex items-center gap-2.5">
@@ -289,7 +289,7 @@
                             <input type="text"
                                    x-model="form.telefono_whatsapp"
                                    placeholder="Ej. +51987654321"
-                                   class="w-full font-mono rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                                   class="w-full font-mono rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500">
                             <span class="text-[10px] text-gray-400 mt-1 block">Incluye el código de país (ej. +51 para Perú).</span>
                         </div>
 
@@ -297,7 +297,7 @@
                         <div :class="{ 'opacity-60 pointer-events-none': !form.notificar_whatsapp }">
                             <label class="block font-semibold text-gray-700 mb-1">Filtro de Despacho Móvil</label>
                             <select x-model="form.nivel_alerta_whatsapp"
-                                    class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-sm focus:border-brand-500 focus:ring-brand-500 font-medium">
+                                    class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500 font-medium">
                                 <option value="Solo Altas">Solo Alta Prioridad (Coactivas, Órdenes de Pago, Embargos, Multas)</option>
                                 <option value="Todas">Todas las notificaciones y avisos oficiales</option>
                             </select>
@@ -389,7 +389,7 @@
                             </div>
 
                             {{-- Estado: QR Ready --}}
-                            <div x-show="status === 'qr_ready'" class="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 text-center space-y-3 shadow-sm">
+                            <div x-show="status === 'qr_ready'" class="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 text-center space-y-3 shadow-xs">
                                 <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-black tracking-wide uppercase">
                                     <span class="h-2 w-2 rounded-full bg-emerald-600 animate-pulse"></span>
                                     <span>Código QR Listo</span>
@@ -420,7 +420,7 @@
                             </div>
 
                             {{-- Estado: Connected --}}
-                            <div x-show="status === 'connected'" class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3 shadow-sm">
+                            <div x-show="status === 'connected'" class="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-3 shadow-xs">
                                 <div class="flex items-center justify-between">
                                     <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-800 text-[11px] font-black">
                                         <span class="h-2 w-2 rounded-full bg-emerald-600"></span>
@@ -463,7 +463,7 @@
                                 <button type="button"
                                         @click="probarWhatsApp()"
                                         :disabled="probandoWhatsApp || !form.notificar_whatsapp"
-                                        class="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-600/30 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-xs font-bold transition shadow-sm active:scale-95 disabled:opacity-50">
+                                        class="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-600/30 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-xs font-bold transition shadow-xs active:scale-95 disabled:opacity-50">
                                     <svg x-show="!probandoWhatsApp" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
                                     </svg>
@@ -490,7 +490,7 @@
                                 <button type="button"
                                         @click="iniciarRobot()"
                                         :disabled="iniciandoServicio"
-                                        class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-xs font-bold transition shadow-sm active:scale-95 disabled:opacity-50">
+                                        class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 text-xs font-bold transition shadow-xs active:scale-95 disabled:opacity-50">
                                     <svg x-show="!iniciandoServicio" class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
                                     </svg>
@@ -542,19 +542,19 @@
         </form>
 
         {{-- ════════════════════ BARRA INFERIOR DE ACCIÓN FLOTANTE / FIJA ════════════════════ --}}
-        <div class="flex items-center justify-between bg-white border border-gray-200 p-4 rounded-2xl shadow-sm">
+        <div class="flex items-center justify-between bg-white border border-gray-200 p-4 rounded-2xl shadow-xs">
             <div class="text-xs text-gray-500">
                 <span>¿Deseas restablecer los valores? Puedes recargar la página antes de guardar.</span>
             </div>
             <div class="flex items-center gap-3">
                 <a href="{{ route('dashboard') }}"
-                   class="rounded-xl border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:bg-gray-50">
+                   class="rounded-xl border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-xs transition hover:bg-gray-50">
                     Cancelar
                 </a>
                 <button type="button"
                         @click="guardarAjustes()"
                         :disabled="guardando"
-                        class="inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-5 py-2 text-xs font-bold shadow-sm transition disabled:opacity-50 active:scale-95">
+                        class="inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-5 py-2 text-xs font-bold shadow-xs transition disabled:opacity-50 active:scale-95">
                     <svg x-show="!guardando" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                     </svg>
