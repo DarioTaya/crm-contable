@@ -11,6 +11,7 @@ use App\Http\Controllers\CronogramaSunatController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\OperacionController;
+use App\Http\Controllers\TipoCambioController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VisorXmlController;
 use Illuminate\Support\Facades\Route;
@@ -97,6 +98,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/clientes/{cliente}/operaciones', [OperacionController::class, 'storeOrUpdate'])->name('clientes.operaciones.store')->can('registrarOperaciones', 'cliente');
 
     // Cronograma Tributario SUNAT
+    Route::get('/tipo-cambio', [TipoCambioController::class, 'index'])->name('tipo-cambio.index');
+    Route::post('/tipo-cambio/sincronizar', [TipoCambioController::class, 'sincronizar'])->name('tipo-cambio.sincronizar');
+    Route::get('/tipo-cambio/actual', [TipoCambioController::class, 'actual'])->name('tipo-cambio.actual');
+
     Route::get('/cronogramas', [CronogramaSunatController::class, 'index'])->name('cronogramas.index');
     Route::post('/cronogramas/update', [CronogramaSunatController::class, 'update'])->name('cronogramas.update');
     Route::post('/cronogramas/autogenerar-sire', [CronogramaSunatController::class, 'autogenerarSire'])->name('cronogramas.autogenerar-sire');

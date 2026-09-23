@@ -34,7 +34,24 @@ class CronogramaSunatService
             return $cronogramaMes->periodo;
         }
 
-        // Si no hay cronograma configurado en BD, por defecto mantener el período del mes calendario
+        // Balances mensuales PLE: una sola fecha para todos los RUC (plazo máximo de atraso).
+        $porFechaGeneral = CronogramaSunat::query()
+            ->where('tipo', $tipo)
+            ->whereNotNull('fecha_vencimiento_general')
+            ->whereYear('fecha_vencimiento_general', $anioActual)
+            ->whereMonth('fecha_vencimiento_general', $mesActual)
+            ->first();
+
+        if ($porFechaGeneral) {
+            return $porFechaGeneral->periodo;
+        }
+
+        // R.S. N.° 234-2006/SUNAT: el libro del mes M se cierra, como máximo,
+        // dentro de los tres meses siguientes. En setiembre se abre junio.
+        if ($tipo === 'balance_mensual') {
+            return $fecha->copy()->subMonthsNoOverflow(3)->format('m-Y');
+        }
+
         return $fecha->format('m-Y');
     }
 

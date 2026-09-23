@@ -5,12 +5,18 @@ namespace App\Http\Controllers;
 use App\Enums\RegimenTributario;
 use App\Models\Cliente;
 use App\Models\ControlBalance;
+use App\Services\CronogramaSunatService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class ControlBalanceController extends Controller
 {
+    public function __construct(
+        protected CronogramaSunatService $cronogramaService
+    ) {}
+
     /**
      * Muestra la Matriz Anual de Control de Balances y Estados Financieros.
      */
@@ -42,6 +48,7 @@ class ControlBalanceController extends Controller
         ];
 
         $kpis = $this->calcularKpis($anio);
+        $aperturaBalance = $this->periodoEnApertura();
 
         // FILTRO INTELIGENTE: Consulta estricta para regímenes MYPE y General (excluye RUS y RER).
         // Carga clientes vigentes en el año fiscal, excluyendo bajas previas al año consultado.
@@ -126,8 +133,33 @@ class ControlBalanceController extends Controller
             'anio',
             'aniosDisponibles',
             'mesesEncabezado',
-            'matrizClientes'
+            'matrizClientes',
+            'aperturaBalance',
         ), $kpis));
+    }
+
+    /**
+     * Periodo de balance que se abre este mes según el plazo de 3 meses del PLE.
+     *
+     * @return array{mes: int, anio: int, periodo: string, nombre: string, vence: string|null}
+     */
+    private function periodoEnApertura(): array
+    {
+        $fecha = now('America/Lima');
+        $periodo = $this->cronogramaService->obtenerPeriodoEnCurso('balance_mensual', $fecha);
+        [$mesTexto, $anioTexto] = explode('-', $periodo);
+        $mes = (int) $mesTexto;
+        $anio = (int) $anioTexto;
+        $vence = $this->cronogramaService->obtenerFechaVencimiento('balance_mensual', $periodo, '');
+        $nombre = ucfirst(Carbon::createFromDate($anio, $mes, 1)->locale('es')->isoFormat('MMMM [de] YYYY'));
+
+        return [
+            'mes' => $mes,
+            'anio' => $anio,
+            'periodo' => $periodo,
+            'nombre' => str_replace('septiembre', 'setiembre', $nombre),
+            'vence' => $vence?->format('d/m/Y'),
+        ];
     }
 
     /**

@@ -20,3 +20,7 @@ Artisan::command('inspire', function () {
 Schedule::command('buzon:sync-sunat')->hourly();
 Schedule::command('buzon:sync-sunafil')->hourlyAt(30);
 Schedule::command('sunat:actualizar-estados')->weekly()->sundays()->at('03:00');
+Schedule::command('sunat:sincronizar-tipo-cambio')
+    ->dailyAt('08:15')
+    ->timezone('America/Lima')
+    ->withoutOverlapping();

@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\AlertaBuzon;
 use App\Models\Cliente;
+use App\Models\ControlBalance;
 use App\Models\Estudio;
 use App\Models\Operacion;
 use App\Models\User;
+use Database\Seeders\CronogramaSunatSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Tests\TestCase;
@@ -88,6 +90,16 @@ class DashboardTest extends TestCase
         $response->assertDontSee('Salir');
         $response->assertSee('EMPRESA ACTIVA SAC');
         $response->assertSee('Dígito');
+        $response->assertSee(route('clientes.index', ['estado' => 'activo']), false);
+        $response->assertSee(route('clientes.create'), false);
+        $response->assertSee(route('alertas.index', ['estado' => 'Pendiente']), false);
+        $response->assertSee(route('control.index', ['anio' => (int) now()->format('Y')]), false);
+        $response->assertDontSee('Obligaciones Pendientes');
+        $response->assertSee('+ Nuevo Cliente');
+        $response->assertSee('Suspendidos (0)');
+        $response->assertSee('Retirados (1)');
+        $response->assertSee('SUNAT (2)');
+        $response->assertSee('SUNAFIL (0)');
     }
 
     public function test_expiration_alerts_are_sorted_by_ruc_last_digit_according_to_sunat_schedule(): void
@@ -203,6 +215,56 @@ class DashboardTest extends TestCase
         $response->assertDontSee('Salir');
     }
 
+    public function test_dashboard_balance_advance_uses_the_three_month_ple_deadline(): void
+    {
+        $this->seed(CronogramaSunatSeeder::class);
+
+        $alDia = Cliente::create([
+            'razon_social' => 'BALANCE AL DIA SAC',
+            'ruc' => '20111111111',
+            'regimen_tributario' => 'MYPE',
+            'estado' => true,
+        ]);
+
+        ControlBalance::create([
+            'cliente_id' => $alDia->id,
+            'anio' => 2026,
+            'meses' => ['6' => 'Declarado'],
+        ]);
+
+        Cliente::create([
+            'razon_social' => 'BALANCE PENDIENTE SAC',
+            'ruc' => '20222222222',
+            'regimen_tributario' => 'General',
+            'estado' => true,
+        ]);
+
+        Cliente::create([
+            'razon_social' => 'RUS SIN BALANCE SAC',
+            'ruc' => '10333333333',
+            'regimen_tributario' => 'RUS',
+            'estado' => true,
+        ]);
+
+        $this->travelTo(Carbon::parse('2026-09-23 10:00:00', 'America/Lima'), function () {
+            $response = $this->actingAs($this->usuarioDelEstudio('Sebastian'))
+                ->get(route('dashboard'));
+
+            $response->assertOk();
+            $response->assertSee('Avance Impuestos');
+            $response->assertSee('Avance Balances');
+            $response->assertSee('Junio de 2026');
+            $response->assertSee('30/09/2026');
+            $response->assertSee('plazo PLE 3 meses');
+            $response->assertSee(route('balances.index', ['anio' => 2026]));
+
+            $avance = $response->viewData('avanceBalances');
+            $this->assertSame(1, $avance['declarados']);
+            $this->assertSame(2, $avance['total']);
+            $this->assertSame('06-2026', $avance['periodo']);
+        });
+    }
+
     public function test_dashboard_greets_admin_by_first_name_in_the_morning(): void
     {
         $usuario = $this->usuarioDelEstudio('sebastian');
@@ -213,7 +275,7 @@ class DashboardTest extends TestCase
                 ->assertOk()
                 ->assertSee('Buenos días, Sebastian')
                 ->assertSee('miércoles, 23 de setiembre de 2026')
-                ->assertSee('09:30');
+                ->assertSee('09:30 AM');
         });
     }
 
@@ -225,7 +287,8 @@ class DashboardTest extends TestCase
             $this->actingAs($usuario)
                 ->get(route('dashboard'))
                 ->assertOk()
-                ->assertSee('Buenas tardes, Diego');
+                ->assertSee('Buenas tardes, Diego')
+                ->assertSee('03:10 PM');
         });
     }
 
@@ -238,6 +301,100 @@ class DashboardTest extends TestCase
                 ->get(route('dashboard'))
                 ->assertOk()
                 ->assertSee('Buenas noches, María');
+        });
+    }
+
+    public function test_dashboard_lists_overdue_and_open_balance_alerts(): void
+    {
+        $this->seed(CronogramaSunatSeeder::class);
+
+        $vencido = Cliente::create([
+            'razon_social' => 'BALANCE VENCIDO SAC',
+            'ruc' => '20444444444',
+            'regimen_tributario' => 'MYPE',
+            'estado' => true,
+        ]);
+        ControlBalance::create([
+            'cliente_id' => $vencido->id,
+            'anio' => 2026,
+            'meses' => [
+                '1' => 'Declarado',
+                '2' => 'Declarado',
+                '3' => 'Declarado',
+                '4' => 'Declarado',
+                '6' => 'Declarado',
+            ],
+        ]);
+
+        $enCurso = Cliente::create([
+            'razon_social' => 'BALANCE DE JUNIO SAC',
+            'ruc' => '20555555555',
+            'regimen_tributario' => 'General',
+            'estado' => true,
+        ]);
+        ControlBalance::create([
+            'cliente_id' => $enCurso->id,
+            'anio' => 2026,
+            'meses' => [
+                '1' => 'Declarado',
+                '2' => 'Declarado',
+                '3' => 'Declarado',
+                '4' => 'Declarado',
+                '5' => 'Declarado',
+            ],
+        ]);
+
+        $completo = Cliente::create([
+            'razon_social' => 'BALANCE COMPLETO SAC',
+            'ruc' => '20666666666',
+            'regimen_tributario' => 'General',
+            'estado' => true,
+        ]);
+        ControlBalance::create([
+            'cliente_id' => $completo->id,
+            'anio' => 2026,
+            'meses' => [
+                '1' => 'Declarado',
+                '2' => 'Declarado',
+                '3' => 'Declarado',
+                '4' => 'Declarado',
+                '5' => 'Declarado',
+                '6' => 'Declarado',
+            ],
+        ]);
+
+        Cliente::create([
+            'razon_social' => 'RUS SIN LIBROS SAC',
+            'ruc' => '10777777777',
+            'regimen_tributario' => 'RUS',
+            'estado' => true,
+        ]);
+
+        $this->travelTo(Carbon::parse('2026-09-23 10:00:00', 'America/Lima'), function () {
+            $response = $this->actingAs($this->usuarioDelEstudio('Sebastian'))
+                ->get(route('dashboard'));
+
+            $response->assertOk();
+            $response->assertSee('Alertas de Vencimiento de Balances');
+            $response->assertSee('BALANCE VENCIDO SAC');
+            $response->assertSee('BALANCE DE JUNIO SAC');
+            $response->assertSee(route('balances.index', ['anio' => 2026]));
+
+            $alertas = collect($response->viewData('alertasBalances'));
+            $nombres = $alertas->map(fn (array $alerta): string => $alerta['cliente']->razon_social);
+
+            $this->assertTrue($nombres->contains('BALANCE VENCIDO SAC'));
+            $this->assertTrue($nombres->contains('BALANCE DE JUNIO SAC'));
+            $this->assertFalse($nombres->contains('BALANCE COMPLETO SAC'));
+            $this->assertFalse($nombres->contains('RUS SIN LIBROS SAC'));
+
+            $alertaVencida = $alertas->first(fn (array $alerta): bool => $alerta['cliente']->razon_social === 'BALANCE VENCIDO SAC');
+            $this->assertSame('vencido', $alertaVencida['estado_critico']['estado']);
+            $this->assertSame([5], array_column($alertaVencida['meses'], 'mes'));
+
+            $alertaJunio = $alertas->first(fn (array $alerta): bool => $alerta['cliente']->razon_social === 'BALANCE DE JUNIO SAC');
+            $this->assertSame('al_dia', $alertaJunio['estado_critico']['estado']);
+            $this->assertSame([6], array_column($alertaJunio['meses'], 'mes'));
         });
     }
 

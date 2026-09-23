@@ -14,7 +14,7 @@
                 </span>
             </div>
             <p class="mt-0.5 text-xs text-gray-500">
-                Monitoreo anual de balances mensuales y declaración jurada anual (DJ Anual {{ $anio - 1 }}) para empresas con contabilidad completa o simplificada.
+                Balances mensuales del PLE para MYPE y General, y DJ Anual {{ $anio - 1 }}. SUNAT concede tres meses de atraso máximo.
             </p>
         </div>
 
@@ -74,6 +74,22 @@
                 </a>
             </div>
         </div>
+    </div>
+
+    <div class="mb-4 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-xs text-amber-950">
+            Periodo en apertura: <strong>{{ $aperturaBalance['nombre'] }}</strong>.
+            El plazo máximo de atraso del PLE es de 3 meses
+            @if ($aperturaBalance['vence'])
+                y vence el <strong>{{ $aperturaBalance['vence'] }}</strong>
+            @endif.
+        </p>
+        @if ($anio !== $aperturaBalance['anio'])
+            <a href="{{ route('balances.index', ['anio' => $aperturaBalance['anio']]) }}"
+               class="inline-flex shrink-0 items-center text-xs font-bold text-amber-800 hover:text-amber-950">
+                Abrir {{ $aperturaBalance['anio'] }}
+            </a>
+        @endif
     </div>
 
     {{-- ═══════════════════════════════ RESUMEN SUPERIOR (KPIS DE BALANCES) ═══════════════════════════════ --}}
@@ -168,8 +184,15 @@
 
                     {{-- Columnas 2 a 13: 12 Meses LIMPIOS (SIN SUB-ETIQUETAS INFERIORES 'DJ | RH') --}}
                     @foreach ($mesesEncabezado as $mNum => $mInfo)
-                        <th class="w-[6%] px-0.5 py-2.5 border-r border-b border-gray-300 text-center whitespace-nowrap bg-gray-100 text-gray-800 select-none">
-                            <span class="block text-[11px] font-black tracking-tight uppercase">{{ $mInfo['corto'] }}-{{ substr($anio, -2) }}</span>
+                        @php
+                            $esApertura = $anio === $aperturaBalance['anio'] && $mNum === $aperturaBalance['mes'];
+                        @endphp
+                        <th class="w-[6%] px-0.5 py-2.5 border-r border-b border-gray-300 text-center whitespace-nowrap select-none {{ $esApertura ? 'bg-amber-100 text-amber-950' : 'bg-gray-100 text-gray-800' }}"
+                            @if ($esApertura) title="Periodo en apertura. Vence el {{ $aperturaBalance['vence'] }}" @endif>
+                            <span class="block text-[11px] font-black tracking-tight uppercase">{{ $mInfo['corto'] }}-{{ substr((string) $anio, -2) }}</span>
+                            @if ($esApertura)
+                                <span class="block text-[8px] font-bold uppercase tracking-wide text-amber-700">Abierto</span>
+                            @endif
                         </th>
                     @endforeach
 

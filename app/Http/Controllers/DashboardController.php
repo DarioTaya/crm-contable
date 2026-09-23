@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RegimenTributario;
 use App\Models\AlertaBuzon;
 use App\Models\Cliente;
+use App\Models\CronogramaSunat;
 use App\Services\CronogramaSunatService;
+use App\Services\TipoCambioSunatService;
 use Carbon\Carbon;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
     public function __construct(
-        protected CronogramaSunatService $cronogramaService
+        protected CronogramaSunatService $cronogramaService,
+        protected TipoCambioSunatService $tipoCambioSunat,
     ) {}
 
     /**
@@ -29,6 +33,12 @@ class DashboardController extends Controller
         $notificacionesPendientes = AlertaBuzon::where('estado', 'Pendiente')->count();
         $notificacionesImportantes = AlertaBuzon::where('estado', 'Pendiente')
             ->where('prioridad', 'Alta')
+            ->count();
+        $notificacionesSunat = AlertaBuzon::where('estado', 'Pendiente')
+            ->where('plataforma', 'SUNAT')
+            ->count();
+        $notificacionesSunafil = AlertaBuzon::where('estado', 'Pendiente')
+            ->where('plataforma', 'SUNAFIL')
             ->count();
 
         // Determinar el período tributario activo según el Cronograma Oficial SUNAT
@@ -140,13 +150,20 @@ class DashboardController extends Controller
         $nombreUsuario = $this->primerNombre(auth()->user()?->name);
         $ahoraLima = now('America/Lima')->locale('es');
         $fechaHoy = str_replace('septiembre', 'setiembre', $ahoraLima->isoFormat('dddd, D [de] MMMM [de] YYYY'));
-        $horaHoy = $ahoraLima->format('H:i');
+        $horaHoy = $ahoraLima->format('h:i A');
+        $avanceBalances = $this->avanceBalancesEnCurso($ahoraLima);
+        $alertasBalances = $this->alertasBalancesEnCurso($ahoraLima);
+        $tipoCambio = $this->tipoCambioSunat->vigente();
 
         return view('dashboard', compact(
             'totalClientesActivos',
+            'totalClientesSuspendidos',
+            'totalClientesRetirados',
             'totalClientesInactivos',
             'notificacionesPendientes',
             'notificacionesImportantes',
+            'notificacionesSunat',
+            'notificacionesSunafil',
             'periodoActual',
             'nombreMesActual',
             'mesVencimientoNombre',
@@ -160,7 +177,258 @@ class DashboardController extends Controller
             'nombreUsuario',
             'fechaHoy',
             'horaHoy',
+            'avanceBalances',
+            'alertasBalances',
+            'tipoCambio',
         ));
+    }
+
+    /**
+     * Avance de balances mensuales del periodo que vence este mes.
+     *
+     * SUNAT (R.S. N.° 234-2006/SUNAT) da tres meses de atraso máximo para
+     * generar los libros y balances que se envían por el PLE. Solo entran
+     * los regímenes obligados a llevarlos: MYPE y General.
+     *
+     * @return array{
+     *     declarados: int,
+     *     total: int,
+     *     porcentaje: int,
+     *     periodo: string,
+     *     anio: int,
+     *     mes: int,
+     *     nombre: string,
+     *     vence: string|null
+     * }
+     */
+    private function avanceBalancesEnCurso(Carbon $fecha): array
+    {
+        $periodo = $this->cronogramaService->obtenerPeriodoEnCurso('balance_mensual', $fecha);
+        [$mesTexto, $anioTexto] = explode('-', $periodo);
+        $mes = (int) $mesTexto;
+        $anio = (int) $anioTexto;
+        $periodoComparable = sprintf('%04d-%02d', $anio, $mes);
+
+        $clientes = Cliente::query()
+            ->whereIn('regimen_tributario', RegimenTributario::valoresConLibrosElectronicos())
+            ->where(function ($query) use ($anio) {
+                $query->where('estado', 'activo')
+                    ->orWhere('estado', 'suspendido')
+                    ->orWhere(function ($q) use ($anio) {
+                        $q->where('estado', 'retirado')
+                            ->whereNotNull('mes_baja')
+                            ->where('mes_baja', '>=', "{$anio}-01");
+                    });
+            })
+            ->with(['controlBalances' => fn ($query) => $query->where('anio', $anio)])
+            ->get();
+
+        $declarados = 0;
+        $total = 0;
+
+        foreach ($clientes as $cliente) {
+            $mesBaja = null;
+            if ($cliente->isRetirado()) {
+                $mesBaja = $cliente->mes_baja ?: ($cliente->fecha_baja ? $cliente->fecha_baja->format('Y-m') : null);
+            }
+
+            if ($mesBaja !== null && $periodoComparable >= $mesBaja) {
+                continue;
+            }
+
+            $total++;
+            $estado = $cliente->controlBalances->first()?->getEstadoMes($mes) ?? 'Pendiente';
+
+            if ($estado === 'Declarado') {
+                $declarados++;
+            }
+        }
+
+        $fechaVence = $this->cronogramaService->obtenerFechaVencimiento('balance_mensual', $periodo, '');
+        $nombre = ucfirst(Carbon::createFromDate($anio, $mes, 1)->locale('es')->isoFormat('MMMM [de] YYYY'));
+
+        return [
+            'declarados' => $declarados,
+            'total' => $total,
+            'porcentaje' => $total > 0 ? (int) round(($declarados / $total) * 100) : 0,
+            'periodo' => $periodo,
+            'anio' => $anio,
+            'mes' => $mes,
+            'nombre' => str_replace(['Septiembre', 'septiembre'], ['Setiembre', 'setiembre'], $nombre),
+            'vence' => $fechaVence?->format('d/m/Y'),
+        ];
+    }
+
+    /**
+     * Clientes con balances mensuales exigibles que aún no están declarados.
+     *
+     * Incluye el periodo que vence este mes y los que ya vencieron dentro
+     * del último año. Solo MYPE y Régimen General llevan libros por el PLE.
+     *
+     * @return array<int, array{
+     *     cliente: Cliente,
+     *     meses: array<int, array{
+     *         periodo: string,
+     *         anio: int,
+     *         mes: int,
+     *         nombre: string,
+     *         estado: string,
+     *         estado_critico: array<string, mixed>
+     *     }>,
+     *     estado_critico: array<string, mixed>,
+     *     fecha_critica: Carbon|null,
+     *     anio: int
+     * }>
+     */
+    private function alertasBalancesEnCurso(Carbon $fecha): array
+    {
+        $fecha = $fecha->copy()->timezone('America/Lima');
+        $finMes = $fecha->copy()->endOfMonth()->toDateString();
+        $desde = $fecha->copy()->subMonthsNoOverflow(12)->startOfMonth()->toDateString();
+
+        $cronogramas = CronogramaSunat::query()
+            ->where('tipo', 'balance_mensual')
+            ->whereNotNull('fecha_vencimiento_general')
+            ->whereDate('fecha_vencimiento_general', '>=', $desde)
+            ->whereDate('fecha_vencimiento_general', '<=', $finMes)
+            ->orderBy('fecha_vencimiento_general')
+            ->get();
+
+        $periodos = $cronogramas->map(function (CronogramaSunat $cronograma): array {
+            $partes = explode('-', $cronograma->periodo);
+
+            return [
+                'periodo' => $cronograma->periodo,
+                'anio' => (int) ($cronograma->anio ?: ($partes[1] ?? 0)),
+                'mes' => (int) ($cronograma->mes ?: ($partes[0] ?? 0)),
+                'fecha' => $cronograma->fecha_vencimiento_general
+                    ? Carbon::parse($cronograma->fecha_vencimiento_general)
+                    : null,
+            ];
+        })->filter(fn (array $periodo): bool => $periodo['mes'] >= 1 && $periodo['mes'] <= 12)->values();
+
+        if ($periodos->isEmpty()) {
+            $periodoAbierto = $this->cronogramaService->obtenerPeriodoEnCurso('balance_mensual', $fecha);
+            [$mesTexto, $anioTexto] = explode('-', $periodoAbierto);
+            $periodos->push([
+                'periodo' => $periodoAbierto,
+                'anio' => (int) $anioTexto,
+                'mes' => (int) $mesTexto,
+                'fecha' => $this->cronogramaService->obtenerFechaVencimiento('balance_mensual', $periodoAbierto, ''),
+            ]);
+        }
+
+        $anios = $periodos->pluck('anio')->unique()->values();
+        $anioMinimo = (int) $anios->min();
+
+        $clientes = Cliente::query()
+            ->whereIn('regimen_tributario', RegimenTributario::valoresConLibrosElectronicos())
+            ->where(function ($query) use ($anioMinimo) {
+                $query->where('estado', 'activo')
+                    ->orWhere('estado', 'suspendido')
+                    ->orWhere(function ($q) use ($anioMinimo) {
+                        $q->where('estado', 'retirado')
+                            ->whereNotNull('mes_baja')
+                            ->where('mes_baja', '>=', "{$anioMinimo}-01");
+                    });
+            })
+            ->with(['controlBalances' => fn ($query) => $query->whereIn('anio', $anios->all())])
+            ->orderBy('razon_social')
+            ->get();
+
+        $alertas = [];
+
+        foreach ($clientes as $cliente) {
+            if (! $cliente->llevaBalances()) {
+                continue;
+            }
+
+            $meses = [];
+
+            foreach ($periodos as $periodo) {
+                $periodoComparable = sprintf('%04d-%02d', $periodo['anio'], $periodo['mes']);
+                $mesBaja = null;
+
+                if ($cliente->isRetirado()) {
+                    $mesBaja = $cliente->mes_baja ?: ($cliente->fecha_baja ? $cliente->fecha_baja->format('Y-m') : null);
+                }
+
+                if ($mesBaja !== null && $periodoComparable >= $mesBaja) {
+                    continue;
+                }
+
+                $estado = $cliente->controlBalances->firstWhere('anio', $periodo['anio'])?->getEstadoMes($periodo['mes']) ?? 'Pendiente';
+
+                if ($estado === 'Declarado') {
+                    continue;
+                }
+
+                $nombre = str_replace(
+                    ['Septiembre', 'septiembre'],
+                    ['Setiembre', 'setiembre'],
+                    ucfirst(Carbon::createFromDate($periodo['anio'], $periodo['mes'], 1)->locale('es')->isoFormat('MMMM YYYY'))
+                );
+
+                $meses[] = [
+                    'periodo' => $periodo['periodo'],
+                    'anio' => $periodo['anio'],
+                    'mes' => $periodo['mes'],
+                    'nombre' => $nombre,
+                    'estado' => $estado,
+                    'fecha' => $periodo['fecha'],
+                    'estado_critico' => $this->cronogramaService->calcularEstadoVencimiento($periodo['fecha'], $fecha),
+                ];
+            }
+
+            if ($meses === []) {
+                continue;
+            }
+
+            usort($meses, fn (array $a, array $b): int => $this->compararUrgenciaBalance($a, $b));
+
+            $alertas[] = [
+                'cliente' => $cliente,
+                'meses' => $meses,
+                'estado_critico' => $meses[0]['estado_critico'],
+                'fecha_critica' => $meses[0]['fecha'],
+                'anio' => $meses[0]['anio'],
+            ];
+        }
+
+        usort($alertas, fn (array $a, array $b): int => $this->compararUrgenciaBalance($a, $b));
+
+        return $alertas;
+    }
+
+    /**
+     * @param  array{estado_critico: array{estado: string}, fecha_critica?: Carbon|null, fecha?: Carbon|null}  $a
+     * @param  array{estado_critico: array{estado: string}, fecha_critica?: Carbon|null, fecha?: Carbon|null}  $b
+     */
+    private function compararUrgenciaBalance(array $a, array $b): int
+    {
+        $prioridad = [
+            'hoy' => 1,
+            'vencido' => 2,
+            'proximo' => 3,
+            'al_dia' => 4,
+            'sin_cronograma' => 5,
+        ];
+
+        $pesoA = $prioridad[$a['estado_critico']['estado']] ?? 9;
+        $pesoB = $prioridad[$b['estado_critico']['estado']] ?? 9;
+
+        if ($pesoA !== $pesoB) {
+            return $pesoA <=> $pesoB;
+        }
+
+        $fechaA = $a['fecha_critica'] ?? $a['fecha'] ?? null;
+        $fechaB = $b['fecha_critica'] ?? $b['fecha'] ?? null;
+
+        if ($fechaA && $fechaB) {
+            return $fechaA->timestamp <=> $fechaB->timestamp;
+        }
+
+        return 0;
     }
 
     /**

@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Cliente;
 use App\Models\ControlBalance;
+use Database\Seeders\CronogramaSunatSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class ControlBalanceTest extends TestCase
@@ -101,6 +103,22 @@ class ControlBalanceTest extends TestCase
         $balance = ControlBalance::where('cliente_id', $mype->id)->where('anio', 2026)->first();
         $this->assertNotNull($balance);
         $this->assertEquals('Declarado', $balance->getEstadoMes(5));
+    }
+
+    public function test_balance_control_opens_the_month_due_under_the_three_month_ple_rule(): void
+    {
+        $this->seed(CronogramaSunatSeeder::class);
+
+        $this->travelTo(Carbon::parse('2026-09-23 10:00:00', 'America/Lima'), function () {
+            $response = $this->get(route('balances.index', ['anio' => 2026]));
+
+            $response->assertOk();
+            $response->assertSee('Periodo en apertura');
+            $response->assertSee('Junio de 2026');
+            $response->assertSee('30/09/2026');
+            $response->assertSee('Abierto');
+            $response->assertSee('3 meses');
+        });
     }
 
     public function test_control_balances_update_saves_dj_anual_via_ajax(): void

@@ -83,6 +83,24 @@ class CronogramaSunatTest extends TestCase
         $this->assertEquals('08-2026', $periodoEnCurso);
     }
 
+    public function test_monthly_balance_period_closes_three_months_after_the_operations_month(): void
+    {
+        $this->seed(CronogramaSunatSeeder::class);
+
+        $junio = $this->service->obtenerPeriodoEnCurso('balance_mensual', Carbon::create(2026, 9, 23));
+        $octubre = $this->service->obtenerPeriodoEnCurso('balance_mensual', Carbon::create(2027, 1, 15));
+
+        $this->assertSame('06-2026', $junio);
+        $this->assertSame('10-2026', $octubre);
+    }
+
+    public function test_monthly_balance_period_falls_back_to_three_months_without_a_schedule(): void
+    {
+        $periodo = $this->service->obtenerPeriodoEnCurso('balance_mensual', Carbon::create(2026, 9, 23));
+
+        $this->assertSame('06-2026', $periodo);
+    }
+
     public function test_obtener_fecha_vencimiento_by_client_ruc_digit_and_buen_contribuyente(): void
     {
         $this->seed(CronogramaSunatSeeder::class);

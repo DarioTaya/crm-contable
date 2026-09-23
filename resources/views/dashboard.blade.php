@@ -4,26 +4,24 @@
 
 @section('content')
     {{-- ═══════════════════════════════ ENCABEZADO Y PERIODO ═══════════════════════════════ --}}
-    <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div class="min-w-0">
-            <h2 class="text-2xl font-bold tracking-tight text-gray-900">{{ $saludo }}@if ($nombreUsuario !== ''), {{ $nombreUsuario }}@endif</h2>
-            <p class="mt-1 text-sm text-gray-500">
+    <div class="mb-8 flex w-full items-center justify-between">
+        <div class="min-w-0 shrink-0">
+            <p class="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
                 <time class="inline-flex items-baseline gap-2">
                     <span>{{ $fechaHoy }}</span>
-                    <span class="text-gray-300" aria-hidden="true">·</span>
-                    <span data-reloj-lima class="font-semibold tabular-nums tracking-tight text-gray-800">{{ $horaHoy }}</span>
+                    <span aria-hidden="true">·</span>
+                    <span data-reloj-lima class="tabular-nums">{{ $horaHoy }}</span>
                 </time>
             </p>
-            <p class="mt-1 text-sm text-gray-500">
-                Monitoreo en tiempo real de obligaciones mensuales y alertas de vencimiento SUNAT.
-            </p>
+            <h2 class="text-2xl font-bold tracking-tight text-gray-900">{{ $saludo }}@if ($nombreUsuario !== ''), {{ $nombreUsuario }}@endif</h2>
+            <p class="mt-1 text-sm text-gray-500">Radiografía en tiempo real del estado de tus clientes.</p>
         </div>
 
-        <div class="inline-flex w-fit max-w-full shrink-0 flex-col gap-2">
-            <div class="flex w-0 min-w-full items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-xs">
-                <div class="min-w-0">
-                    <p class="text-[11px] font-medium leading-none text-gray-500">Periodo a declarar:</p>
-                    <p class="mt-1 text-sm font-semibold leading-none text-gray-900">{{ $nombreMesActual }}</p>
+        <div class="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-4">
+            <div class="flex shrink-0 items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-xs">
+                <div>
+                    <p class="whitespace-nowrap text-[11px] font-medium leading-none text-gray-500">Periodo a declarar:</p>
+                    <p class="mt-1 whitespace-nowrap text-sm font-semibold leading-none text-gray-900">{{ $nombreMesActual }}</p>
                 </div>
                 <div class="flex shrink-0 flex-col items-end gap-1">
                     <span class="rounded bg-brand-50 px-1.5 py-0.5 text-xs font-semibold leading-none text-brand-700">{{ $periodoActual }}</span>
@@ -33,7 +31,22 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-2">
+            <a href="{{ route('tipo-cambio.index') }}"
+               data-tipo-cambio
+               data-tc-url="{{ route('tipo-cambio.actual') }}"
+               title="Ver tipo de cambio"
+               class="flex shrink-0 flex-col justify-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-xs transition hover:border-brand-300 hover:shadow-md">
+                <p class="whitespace-nowrap text-[11px] font-medium leading-none text-gray-500">
+                    Tipo de cambio<span data-tc-fecha class="font-semibold tabular-nums text-gray-700">@if ($tipoCambio) · {{ $tipoCambio['fecha_corta'] }}@endif</span>
+                </p>
+                <div data-tc-lleno @unless ($tipoCambio) hidden @endunless class="flex items-center gap-2 whitespace-nowrap leading-none">
+                    <span class="text-[11px] font-medium text-emerald-700">Compra <span data-tc-compra class="text-xs font-bold tabular-nums text-gray-900">{{ $tipoCambio['compra_texto'] ?? '' }}</span></span>
+                    <span class="text-[11px] font-medium text-sky-700">Venta <span data-tc-venta class="text-xs font-bold tabular-nums text-sky-800">{{ $tipoCambio['venta_texto'] ?? '' }}</span></span>
+                </div>
+                <p data-tc-vacio @if ($tipoCambio) hidden @endif class="whitespace-nowrap text-xs font-semibold leading-none text-gray-900">Sin cotización</p>
+            </a>
+
+            <div class="flex shrink-0 items-center gap-2">
                 <a href="{{ route('cronogramas.index') }}"
                    class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-xs transition hover:bg-gray-50">
                     <svg class="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
@@ -54,29 +67,37 @@
     </div>
 
     {{-- ═══════════════════════════════ FILA 1: TARJETAS KPI ═══════════════════════════════ --}}
-    <div class="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="@container mb-8">
+    <div class="grid grid-cols-1 gap-4 @min-[40rem]:grid-cols-2 @min-[84rem]:grid-cols-4">
 
         {{-- KPI 1: Clientes Activos --}}
-        <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-xs transition hover:shadow-md">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Clientes Activos</p>
-                    <p class="mt-2 text-3xl font-extrabold text-gray-900">{{ $totalClientesActivos }}</p>
+        <div class="relative flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-brand-300 hover:shadow-md">
+            <a href="{{ route('clientes.index', ['estado' => 'activo']) }}"
+               title="Ver clientes activos"
+               class="block">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Clientes Activos</p>
+                        <p class="mt-2 text-3xl font-extrabold text-gray-900">{{ $totalClientesActivos }}</p>
+                    </div>
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-brand-600">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                        </svg>
+                    </div>
                 </div>
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-brand-600">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-                    </svg>
-                </div>
-            </div>
-            <div class="mt-4 flex items-center gap-2 text-xs text-gray-500">
-                <span class="inline-block h-2 w-2 rounded-full bg-emerald-500"></span>
-                <span>{{ $totalClientesInactivos }} clientes inactivos en el sistema</span>
+            </a>
+            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
+                <a href="{{ route('clientes.create') }}" class="cursor-pointer rounded-md bg-blue-50 px-2 py-1 text-[11px] font-medium text-blue-700">+ Nuevo Cliente</a>
+                <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Suspendidos ({{ $totalClientesSuspendidos }})</span>
+                <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Retirados ({{ $totalClientesRetirados }})</span>
             </div>
         </div>
 
         {{-- KPI 2: Buzón SOL Pendiente --}}
-        <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-xs transition hover:shadow-md">
+        <a href="{{ route('alertas.index', $notificacionesPendientes > 0 ? ['estado' => 'Pendiente'] : []) }}"
+           title="{{ $notificacionesPendientes > 0 ? 'Ver alertas pendientes del buzón SOL' : 'Abrir buzón de alertas' }}"
+           class="relative block overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-amber-300 hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
                     <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Buzón SOL Pendiente</p>
@@ -88,23 +109,19 @@
                     </svg>
                 </div>
             </div>
-            <div class="mt-4 flex items-center gap-2 text-xs">
-                @if ($notificacionesImportantes > 0)
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-0.5 font-semibold text-red-700">
-                        <span class="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
-                        {{ $notificacionesImportantes }} de alta prioridad
-                    </span>
-                @else
-                    <span class="text-gray-500">Sin mensajes críticos pendientes</span>
-                @endif
+            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
+                <span class="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">SUNAT ({{ $notificacionesSunat }})</span>
+                <span class="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">SUNAFIL ({{ $notificacionesSunafil }})</span>
             </div>
-        </div>
+        </a>
 
-        {{-- KPI 3: Declaraciones Realizadas --}}
-        <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-xs transition hover:shadow-md">
+        {{-- KPI 3: Avance de impuestos del periodo en curso --}}
+        <a href="{{ route('control.index', ['anio' => (int) explode('-', $periodoActual)[1]]) }}"
+           title="Ver control de impuestos"
+           class="relative block overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-emerald-300 hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Avance Declarado</p>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Avance Impuestos</p>
                     <div class="mt-2 flex items-baseline gap-2">
                         <span class="text-3xl font-extrabold text-emerald-600">{{ $declarados }}</span>
                         <span class="text-sm font-medium text-gray-400">/ {{ $totalObligaciones }}</span>
@@ -116,9 +133,8 @@
                     </svg>
                 </div>
             </div>
-            {{-- Mini barra de progreso --}}
             <div class="mt-4">
-                <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <div class="mb-1 flex items-center justify-between text-xs text-gray-500">
                     <span>Progreso total</span>
                     <span class="font-semibold text-emerald-600">{{ $porcentajeAvance }}%</span>
                 </div>
@@ -126,27 +142,52 @@
                     <div class="h-1.5 rounded-full bg-emerald-500 transition-all duration-500" style="width: {{ $porcentajeAvance }}%"></div>
                 </div>
             </div>
-        </div>
+            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
+                <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Pendientes</span>
+                <span class="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">En Proceso</span>
+            </div>
+        </a>
 
-        {{-- KPI 4: Tareas Pendientes / En Proceso --}}
-        <div class="relative overflow-hidden rounded-xl border border-gray-200 bg-white p-6 shadow-xs transition hover:shadow-md">
+        {{-- KPI: Avance de balances mensuales PLE (plazo máximo de atraso: 3 meses) --}}
+        <a href="{{ route('balances.index', ['anio' => $avanceBalances['anio']]) }}"
+           class="relative block overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-emerald-300 hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Obligaciones Pendientes</p>
-                    <p class="mt-2 text-3xl font-extrabold text-rose-600">{{ $pendientes }}</p>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Avance Balances</p>
+                    <div class="mt-2 flex items-baseline gap-2">
+                        <span class="text-3xl font-extrabold text-emerald-600">{{ $avanceBalances['declarados'] }}</span>
+                        <span class="text-sm font-medium text-gray-400">/ {{ $avanceBalances['total'] }}</span>
+                    </div>
                 </div>
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
                     <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0 0 12 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 0 1-2.031.352 5.988 5.988 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971Zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 0 1-2.031.352 5.989 5.989 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971Z" />
                     </svg>
                 </div>
             </div>
-            <div class="mt-4 flex items-center gap-2 text-xs text-gray-500">
-                <span class="inline-block h-2 w-2 rounded-full bg-amber-500"></span>
-                <span>{{ $procesando }} obligaciones en proceso</span>
+            <div class="mt-4">
+                <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
+                    <span>{{ $avanceBalances['nombre'] }}</span>
+                    <span class="font-semibold text-emerald-600">{{ $avanceBalances['porcentaje'] }}%</span>
+                </div>
+                <div class="h-1.5 w-full rounded-full bg-gray-100">
+                    <div class="h-1.5 rounded-full bg-emerald-500 transition-all duration-500" style="width: {{ $avanceBalances['porcentaje'] }}%"></div>
+                </div>
+                <p class="mt-2 text-[11px] text-gray-500">
+                    @if ($avanceBalances['vence'])
+                        Vence el {{ $avanceBalances['vence'] }} · plazo PLE 3 meses
+                    @else
+                        Plazo máximo de atraso PLE: 3 meses
+                    @endif
+                </p>
             </div>
-        </div>
+            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
+                <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Pendientes</span>
+                <span class="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">En Proceso</span>
+            </div>
+        </a>
 
+    </div>
     </div>
 
     {{-- ═══════════════════════════════ FILA 2: GRÁFICO + ALERTAS DE VENCIMIENTO ═══════════════════════════════ --}}
@@ -336,6 +377,98 @@
 
     </div>
 
+    {{-- ═══════════════════════════════ ALERTAS DE VENCIMIENTO DE BALANCES ═══════════════════════════════ --}}
+    <div class="mt-8 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs">
+        <div class="flex flex-col gap-2 border-b border-gray-100 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <div class="flex items-center gap-2">
+                    <h3 class="text-base font-semibold text-gray-900">Alertas de Vencimiento de Balances</h3>
+                    <span class="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700">
+                        {{ count($alertasBalances) }}
+                    </span>
+                </div>
+                <p class="mt-0.5 text-xs text-gray-500">
+                    Balances mensuales del PLE. SUNAT da un plazo máximo de 3 meses; aquí aparecen los periodos ya exigibles que todavía no están declarados.
+                </p>
+            </div>
+            <a href="{{ route('balances.index', ['anio' => $avanceBalances['anio']]) }}"
+               class="inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-bold text-brand-600 transition hover:text-brand-700">
+                <span>Ver Control de Balances</span>
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+            </a>
+        </div>
+
+        @if (count($alertasBalances) === 0)
+            <div class="flex flex-col items-center justify-center p-12 text-center">
+                <div class="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+                    <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                </div>
+                <h4 class="text-base font-bold text-gray-900">Balances al día</h4>
+                <p class="mt-1 max-w-sm text-sm text-gray-500">
+                    Los clientes de MYPE y Régimen General no tienen balances mensuales vencidos ni pendientes en el plazo del PLE.
+                </p>
+            </div>
+        @else
+            <div class="max-h-[580px] divide-y divide-gray-100 overflow-y-auto">
+                @foreach ($alertasBalances as $item)
+                    <div class="flex flex-col justify-between gap-4 p-4 transition hover:bg-gray-50/80 sm:flex-row sm:items-center">
+                        <div class="flex items-start gap-3.5">
+                            <div class="flex min-w-[52px] shrink-0 flex-col items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-center shadow-xs">
+                                <span class="text-[9px] font-bold uppercase tracking-wider text-amber-700">Meses</span>
+                                <span class="mt-0.5 text-2xl font-black leading-none text-amber-900">{{ count($item['meses']) }}</span>
+                            </div>
+                            <div>
+                                <a href="{{ route('clientes.show', $item['cliente']) }}"
+                                   class="text-sm font-semibold text-gray-900 transition hover:text-brand-600">
+                                    {{ $item['cliente']->razon_social }}
+                                </a>
+                                <div class="mt-1 flex items-center gap-2">
+                                    <x-ui.badge-regimen :regimen="$item['cliente']->regimen_tributario" />
+                                    <span class="font-mono text-xs text-gray-500">RUC: {{ $item['cliente']->ruc }}</span>
+                                </div>
+                                <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                                    <span class="inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-semibold {{ $item['estado_critico']['badge_clase'] }}">
+                                        {{ $item['estado_critico']['badge_texto'] }}
+                                    </span>
+                                    @foreach ($item['meses'] as $mesBalance)
+                                        @if ($mesBalance['estado'] === 'Procesando' || $mesBalance['estado'] === 'Proceso')
+                                            <span class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                                {{ $mesBalance['nombre'] }} (En proceso)
+                                            </span>
+                                        @elseif ($mesBalance['estado_critico']['estado'] === 'vencido')
+                                            <span class="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                                                {{ $mesBalance['nombre'] }}
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-0.5 text-[11px] font-medium text-gray-600">
+                                                {{ $mesBalance['nombre'] }}
+                                            </span>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex shrink-0 items-center justify-end sm:self-center">
+                            <a href="{{ route('balances.index', ['anio' => $item['anio']]) }}"
+                               class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-xs transition hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                <span>Registrar</span>
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
+    </div>
+
     {{-- ═══════════════════════════════ SCRIPTS: CHART.JS ═══════════════════════════════ --}}
     {{-- Chart.js se carga aparte y solo en esta pagina. Ver resources/js/app.js. --}}
     <script>
@@ -407,16 +540,76 @@
             }
 
             const pintar = function () {
-                reloj.textContent = new Intl.DateTimeFormat('en-GB', {
+                const partes = new Intl.DateTimeFormat('en-US', {
                     timeZone: 'America/Lima',
                     hour: '2-digit',
                     minute: '2-digit',
-                    hourCycle: 'h23',
-                }).format(new Date());
+                    hour12: true,
+                }).formatToParts(new Date());
+                const hora = partes.find(function (parte) { return parte.type === 'hour'; }).value;
+                const minuto = partes.find(function (parte) { return parte.type === 'minute'; }).value;
+                const periodo = partes.find(function (parte) { return parte.type === 'dayPeriod'; }).value.toUpperCase();
+
+                reloj.textContent = hora + ':' + minuto + ' ' + periodo;
             };
 
             pintar();
             window.setInterval(pintar, 10000);
+        })();
+
+        (function () {
+            const raiz = document.querySelector('[data-tipo-cambio]');
+            if (!raiz) {
+                return;
+            }
+
+            const lleno = raiz.querySelector('[data-tc-lleno]');
+            const vacio = raiz.querySelector('[data-tc-vacio]');
+            const fecha = raiz.querySelector('[data-tc-fecha]');
+            const compra = raiz.querySelector('[data-tc-compra]');
+            const venta = raiz.querySelector('[data-tc-venta]');
+
+            const pintar = function (dato) {
+                if (!dato || !dato.disponible) {
+                    if (lleno) lleno.hidden = true;
+                    if (vacio) vacio.hidden = false;
+                    if (fecha) fecha.textContent = '';
+                    return;
+                }
+
+                if (fecha) fecha.textContent = dato.fecha_corta ? ' · ' + dato.fecha_corta : '';
+                if (compra) compra.textContent = dato.compra;
+                if (venta) venta.textContent = dato.venta;
+                if (lleno) lleno.hidden = false;
+                if (vacio) vacio.hidden = true;
+            };
+
+            const consultar = function () {
+                if (document.hidden) {
+                    return;
+                }
+
+                window.fetch(raiz.dataset.tcUrl, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                }).then(function (respuesta) {
+                    if (!respuesta.ok) {
+                        return null;
+                    }
+
+                    return respuesta.json();
+                }).then(function (dato) {
+                    if (dato) {
+                        pintar(dato);
+                    }
+                }).catch(function () {});
+            };
+
+            window.setInterval(consultar, 60000);
+            document.addEventListener('visibilitychange', function () {
+                if (!document.hidden) {
+                    consultar();
+                }
+            });
         })();
     </script>
 @endsection
