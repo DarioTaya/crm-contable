@@ -153,6 +153,7 @@ class DashboardController extends Controller
         $horaHoy = $ahoraLima->format('h:i A');
         $avanceBalances = $this->avanceBalancesEnCurso($ahoraLima);
         $alertasBalances = $this->alertasBalancesEnCurso($ahoraLima);
+        $honorariosAtrasados = $this->honorariosAtrasados($ahoraLima);
         $tipoCambio = $this->tipoCambioSunat->vigente();
 
         return view('dashboard', compact(
@@ -179,8 +180,111 @@ class DashboardController extends Controller
             'horaHoy',
             'avanceBalances',
             'alertasBalances',
+            'honorariosAtrasados',
             'tipoCambio',
         ));
+    }
+
+    /**
+     * Honorarios (RH) no cobrados en los tres meses ya cerrados.
+     *
+     * En la matriz de control, un mes sin fila o distinto de Pagado se muestra
+     * como Debe. Se excluye el mes en curso y los meses posteriores a la baja.
+     *
+     * @return array{
+     *     total: int,
+     *     anio: int,
+     *     meses: list<array{etiqueta: string, cantidad: int, periodo: string}>
+     * }
+     */
+    private function honorariosAtrasados(Carbon $fecha): array
+    {
+        $fecha = $fecha->copy()->timezone('America/Lima');
+        $cortos = [
+            1 => 'ENE',
+            2 => 'FEB',
+            3 => 'MAR',
+            4 => 'ABR',
+            5 => 'MAY',
+            6 => 'JUN',
+            7 => 'JUL',
+            8 => 'AGO',
+            9 => 'SET',
+            10 => 'OCT',
+            11 => 'NOV',
+            12 => 'DIC',
+        ];
+
+        $ventana = [];
+
+        for ($atraso = 1; $atraso <= 3; $atraso++) {
+            $mes = $fecha->copy()->startOfMonth()->subMonthsNoOverflow($atraso);
+            $ventana[] = [
+                'anio' => $mes->year,
+                'mes' => $mes->month,
+                'periodo' => $mes->format('m-Y'),
+                'comparable' => $mes->format('Y-m'),
+                'etiqueta' => $cortos[$mes->month].'-'.$mes->format('y'),
+            ];
+        }
+
+        $anioMinimo = min(array_column($ventana, 'anio'));
+        $periodos = array_column($ventana, 'periodo');
+
+        $clientes = Cliente::query()
+            ->where(function ($query) use ($anioMinimo) {
+                $query->where('estado', 'activo')
+                    ->orWhere('estado', 'suspendido')
+                    ->orWhere(function ($q) use ($anioMinimo) {
+                        $q->where('estado', 'retirado')
+                            ->whereNotNull('mes_baja')
+                            ->where('mes_baja', '>=', "{$anioMinimo}-01");
+                    });
+            })
+            ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $periodos)])
+            ->get();
+
+        $meses = [];
+        $total = 0;
+
+        foreach ($ventana as $mes) {
+            $cantidad = 0;
+
+            foreach ($clientes as $cliente) {
+                $mesBaja = null;
+
+                if ($cliente->isRetirado()) {
+                    $mesBaja = $cliente->mes_baja ?: ($cliente->fecha_baja ? $cliente->fecha_baja->format('Y-m') : null);
+                }
+
+                if ($mesBaja !== null && $mes['comparable'] >= $mesBaja) {
+                    continue;
+                }
+
+                $estado = $cliente->operaciones->firstWhere('periodo', $mes['periodo'])?->estado_pago_honorarios ?? 'Pendiente';
+
+                if ($estado !== 'Pagado') {
+                    $cantidad++;
+                }
+            }
+
+            if ($cantidad === 0) {
+                continue;
+            }
+
+            $total += $cantidad;
+            $meses[] = [
+                'etiqueta' => $mes['etiqueta'],
+                'cantidad' => $cantidad,
+                'periodo' => $mes['periodo'],
+            ];
+        }
+
+        return [
+            'total' => $total,
+            'anio' => $ventana[0]['anio'],
+            'meses' => $meses,
+        ];
     }
 
     /**

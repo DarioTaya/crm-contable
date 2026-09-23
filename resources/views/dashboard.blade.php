@@ -67,27 +67,28 @@
     </div>
 
     {{-- ═══════════════════════════════ FILA 1: TARJETAS KPI ═══════════════════════════════ --}}
-    <div class="@container mb-8">
-    <div class="grid grid-cols-1 gap-4 @min-[40rem]:grid-cols-2 @min-[84rem]:grid-cols-4">
+    <div class="mb-8 grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-5">
 
         {{-- KPI 1: Clientes Activos --}}
-        <div class="relative flex flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-brand-300 hover:shadow-md">
-            <a href="{{ route('clientes.index', ['estado' => 'activo']) }}"
-               title="Ver clientes activos"
-               class="block">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Clientes Activos</p>
-                        <p class="mt-2 text-3xl font-extrabold text-gray-900">{{ $totalClientesActivos }}</p>
+        <div class="relative flex h-full min-w-0 flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-brand-300 hover:shadow-md">
+            <div class="flex-1">
+                <a href="{{ route('clientes.index', ['estado' => 'activo']) }}"
+                   title="Ver clientes activos"
+                   class="block">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Clientes Activos</p>
+                            <p class="mt-2 text-3xl font-extrabold text-gray-900">{{ $totalClientesActivos }}</p>
+                        </div>
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-brand-600">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                            </svg>
+                        </div>
                     </div>
-                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-brand-600">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-                        </svg>
-                    </div>
-                </div>
-            </a>
-            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
+                </a>
+            </div>
+            <div class="mt-4 flex flex-wrap content-start items-center gap-2 border-t border-gray-100 pt-3 xl:min-h-[4.5rem]">
                 <a href="{{ route('clientes.create') }}" class="cursor-pointer rounded-md bg-blue-50 px-2 py-1 text-[11px] font-medium text-blue-700">+ Nuevo Cliente</a>
                 <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Suspendidos ({{ $totalClientesSuspendidos }})</span>
                 <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Retirados ({{ $totalClientesRetirados }})</span>
@@ -97,19 +98,21 @@
         {{-- KPI 2: Buzón SOL Pendiente --}}
         <a href="{{ route('alertas.index', $notificacionesPendientes > 0 ? ['estado' => 'Pendiente'] : []) }}"
            title="{{ $notificacionesPendientes > 0 ? 'Ver alertas pendientes del buzón SOL' : 'Abrir buzón de alertas' }}"
-           class="relative block overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-amber-300 hover:shadow-md">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Buzón SOL Pendiente</p>
-                    <p class="mt-2 text-3xl font-extrabold text-gray-900">{{ $notificacionesPendientes }}</p>
-                </div>
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl {{ $notificacionesImportantes > 0 ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600' }}">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                    </svg>
+           class="relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-amber-300 hover:shadow-md">
+            <div class="flex-1">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Buzón SOL Pendiente</p>
+                        <p class="mt-2 text-3xl font-extrabold text-gray-900">{{ $notificacionesPendientes }}</p>
+                    </div>
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl {{ $notificacionesImportantes > 0 ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600' }}">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                        </svg>
+                    </div>
                 </div>
             </div>
-            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
+            <div class="mt-4 flex flex-wrap content-start items-center gap-2 border-t border-gray-100 pt-3 xl:min-h-[4.5rem]">
                 <span class="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">SUNAT ({{ $notificacionesSunat }})</span>
                 <span class="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">SUNAFIL ({{ $notificacionesSunafil }})</span>
             </div>
@@ -118,31 +121,33 @@
         {{-- KPI 3: Avance de impuestos del periodo en curso --}}
         <a href="{{ route('control.index', ['anio' => (int) explode('-', $periodoActual)[1]]) }}"
            title="Ver control de impuestos"
-           class="relative block overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-emerald-300 hover:shadow-md">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Avance Impuestos</p>
-                    <div class="mt-2 flex items-baseline gap-2">
-                        <span class="text-3xl font-extrabold text-emerald-600">{{ $declarados }}</span>
-                        <span class="text-sm font-medium text-gray-400">/ {{ $totalObligaciones }}</span>
+           class="relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-emerald-300 hover:shadow-md">
+            <div class="flex-1">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Avance Impuestos</p>
+                        <div class="mt-2 flex items-baseline gap-2">
+                            <span class="text-3xl font-extrabold text-emerald-600">{{ $declarados }}</span>
+                            <span class="text-sm font-medium text-gray-400">/ {{ $totalObligaciones }}</span>
+                        </div>
+                    </div>
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
                     </div>
                 </div>
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                    </svg>
+                <div class="mt-4">
+                    <div class="mb-1 flex items-center justify-between text-xs text-gray-500">
+                        <span>Progreso total</span>
+                        <span class="font-semibold text-emerald-600">{{ $porcentajeAvance }}%</span>
+                    </div>
+                    <div class="h-1.5 w-full rounded-full bg-gray-100">
+                        <div class="h-1.5 rounded-full bg-emerald-500 transition-all duration-500" style="width: {{ $porcentajeAvance }}%"></div>
+                    </div>
                 </div>
             </div>
-            <div class="mt-4">
-                <div class="mb-1 flex items-center justify-between text-xs text-gray-500">
-                    <span>Progreso total</span>
-                    <span class="font-semibold text-emerald-600">{{ $porcentajeAvance }}%</span>
-                </div>
-                <div class="h-1.5 w-full rounded-full bg-gray-100">
-                    <div class="h-1.5 rounded-full bg-emerald-500 transition-all duration-500" style="width: {{ $porcentajeAvance }}%"></div>
-                </div>
-            </div>
-            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
+            <div class="mt-4 flex flex-wrap content-start items-center gap-2 border-t border-gray-100 pt-3 xl:min-h-[4.5rem]">
                 <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Pendientes</span>
                 <span class="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">En Proceso</span>
             </div>
@@ -150,44 +155,72 @@
 
         {{-- KPI: Avance de balances mensuales PLE (plazo máximo de atraso: 3 meses) --}}
         <a href="{{ route('balances.index', ['anio' => $avanceBalances['anio']]) }}"
-           class="relative block overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-emerald-300 hover:shadow-md">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Avance Balances</p>
-                    <div class="mt-2 flex items-baseline gap-2">
-                        <span class="text-3xl font-extrabold text-emerald-600">{{ $avanceBalances['declarados'] }}</span>
-                        <span class="text-sm font-medium text-gray-400">/ {{ $avanceBalances['total'] }}</span>
+           class="relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-emerald-300 hover:shadow-md">
+            <div class="flex-1">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Avance Balances</p>
+                        <div class="mt-2 flex items-baseline gap-2">
+                            <span class="text-3xl font-extrabold text-emerald-600">{{ $avanceBalances['declarados'] }}</span>
+                            <span class="text-sm font-medium text-gray-400">/ {{ $avanceBalances['total'] }}</span>
+                        </div>
+                    </div>
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0 0 12 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 0 1-2.031.352 5.988 5.988 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971Zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 0 1-2.031.352 5.989 5.989 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971Z" />
+                        </svg>
                     </div>
                 </div>
-                <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0 0 12 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 0 1-2.031.352 5.988 5.988 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971Zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 0 1-2.031.352 5.989 5.989 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971Z" />
-                    </svg>
+                <div class="mt-4">
+                    <div class="mb-1 flex items-center justify-between text-xs text-gray-500">
+                        <span>{{ $avanceBalances['nombre'] }}</span>
+                        <span class="font-semibold text-emerald-600">{{ $avanceBalances['porcentaje'] }}%</span>
+                    </div>
+                    <div class="h-1.5 w-full rounded-full bg-gray-100">
+                        <div class="h-1.5 rounded-full bg-emerald-500 transition-all duration-500" style="width: {{ $avanceBalances['porcentaje'] }}%"></div>
+                    </div>
+                    <p class="mt-2 text-[11px] text-gray-500">
+                        @if ($avanceBalances['vence'])
+                            Vence el {{ $avanceBalances['vence'] }} · plazo PLE 3 meses
+                        @else
+                            Plazo máximo de atraso PLE: 3 meses
+                        @endif
+                    </p>
                 </div>
             </div>
-            <div class="mt-4">
-                <div class="flex items-center justify-between text-xs text-gray-500 mb-1">
-                    <span>{{ $avanceBalances['nombre'] }}</span>
-                    <span class="font-semibold text-emerald-600">{{ $avanceBalances['porcentaje'] }}%</span>
-                </div>
-                <div class="h-1.5 w-full rounded-full bg-gray-100">
-                    <div class="h-1.5 rounded-full bg-emerald-500 transition-all duration-500" style="width: {{ $avanceBalances['porcentaje'] }}%"></div>
-                </div>
-                <p class="mt-2 text-[11px] text-gray-500">
-                    @if ($avanceBalances['vence'])
-                        Vence el {{ $avanceBalances['vence'] }} · plazo PLE 3 meses
-                    @else
-                        Plazo máximo de atraso PLE: 3 meses
-                    @endif
-                </p>
-            </div>
-            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
+            <div class="mt-4 flex flex-wrap content-start items-center gap-2 border-t border-gray-100 pt-3 xl:min-h-[4.5rem]">
                 <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Pendientes</span>
                 <span class="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">En Proceso</span>
             </div>
         </a>
 
-    </div>
+        {{-- KPI 5: Honorarios (RH) de los meses ya cerrados --}}
+        <a href="{{ route('control.index', ['anio' => $honorariosAtrasados['anio']]) }}"
+           title="Ver control de honorarios"
+           class="relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-rose-300 hover:shadow-md">
+            <div class="flex-1">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Control Honorarios</p>
+                        <p class="mt-2 text-3xl font-extrabold text-rose-600">{{ $honorariosAtrasados['total'] }}</p>
+                        <p class="mt-1 text-xs font-medium text-gray-500">Pendientes de cobro</p>
+                    </div>
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 flex flex-wrap content-start items-center gap-2 border-t border-gray-100 pt-3 xl:min-h-[4.5rem]">
+                @forelse ($honorariosAtrasados['meses'] as $mesHonorario)
+                    <span class="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">{{ $mesHonorario['etiqueta'] }} ({{ $mesHonorario['cantidad'] }})</span>
+                @empty
+                    <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Sin atraso</span>
+                @endforelse
+            </div>
+        </a>
+
     </div>
 
     {{-- ═══════════════════════════════ FILA 2: GRÁFICO + ALERTAS DE VENCIMIENTO ═══════════════════════════════ --}}

@@ -398,6 +398,72 @@ class DashboardTest extends TestCase
         });
     }
 
+    public function test_dashboard_groups_unpaid_fees_from_the_last_three_closed_months(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-23 10:00:00', 'America/Lima'), function () {
+            $conDeuda = Cliente::create([
+                'razon_social' => 'HONORARIOS DEBE SAC',
+                'ruc' => '20111111111',
+                'regimen_tributario' => 'General',
+                'estado' => 'activo',
+            ]);
+            $alDia = Cliente::create([
+                'razon_social' => 'HONORARIOS PAGADOS SAC',
+                'ruc' => '20222222222',
+                'regimen_tributario' => 'General',
+                'estado' => 'activo',
+            ]);
+            Cliente::create([
+                'razon_social' => 'HONORARIOS SUSPENDIDO SAC',
+                'ruc' => '20333333333',
+                'regimen_tributario' => 'General',
+                'estado' => 'suspendido',
+            ]);
+            Cliente::create([
+                'razon_social' => 'HONORARIOS BAJA AGOSTO SAC',
+                'ruc' => '20444444444',
+                'regimen_tributario' => 'General',
+                'estado' => 'retirado',
+                'mes_baja' => '2026-08',
+            ]);
+
+            foreach (['08-2026' => 'Pendiente', '07-2026' => 'Pendiente', '06-2026' => 'Pagado', '09-2026' => 'Pendiente'] as $periodo => $estado) {
+                Operacion::create([
+                    'cliente_id' => $conDeuda->id,
+                    'periodo' => $periodo,
+                    'estado_pago_honorarios' => $estado,
+                ]);
+            }
+
+            foreach (['08-2026', '07-2026', '06-2026'] as $periodo) {
+                Operacion::create([
+                    'cliente_id' => $alDia->id,
+                    'periodo' => $periodo,
+                    'estado_pago_honorarios' => 'Pagado',
+                ]);
+            }
+
+            $response = $this->get(route('dashboard'));
+
+            $response->assertOk();
+            $response->assertViewHas('honorariosAtrasados', [
+                'total' => 7,
+                'anio' => 2026,
+                'meses' => [
+                    ['etiqueta' => 'AGO-26', 'cantidad' => 2, 'periodo' => '08-2026'],
+                    ['etiqueta' => 'JUL-26', 'cantidad' => 3, 'periodo' => '07-2026'],
+                    ['etiqueta' => 'JUN-26', 'cantidad' => 2, 'periodo' => '06-2026'],
+                ],
+            ]);
+            $response->assertSee('Control Honorarios');
+            $response->assertSee('Pendientes de cobro');
+            $response->assertSeeInOrder(['AGO-26 (2)', 'JUL-26 (3)', 'JUN-26 (2)']);
+            $response->assertSee(route('control.index', ['anio' => 2026]), false);
+            $response->assertSee('Ver control de honorarios', false);
+            $response->assertDontSee('SET-26');
+        });
+    }
+
     private function usuarioDelEstudio(string $nombre, string $rol = 'admin'): User
     {
         $estudio = Estudio::firstOrCreate(
