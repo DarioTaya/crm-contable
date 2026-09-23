@@ -13,7 +13,7 @@
                     <span data-reloj-lima class="tabular-nums">{{ $horaHoy }}</span>
                 </time>
             </p>
-            <h2 class="text-2xl font-bold tracking-tight text-gray-900">{{ $saludo }}@if ($nombreUsuario !== ''), {{ $nombreUsuario }}@endif</h2>
+            <h2 class="text-2xl font-bold tracking-tight text-gray-900">{{ $saludo }}@if ($nombreUsuario !== ''), {{ $nombreUsuario }}@endif 👋</h2>
             <p class="mt-1 text-sm text-gray-500">Radiografía en tiempo real del estado de tus clientes.</p>
         </div>
 
@@ -72,24 +72,20 @@
         {{-- KPI 1: Clientes Activos --}}
         <div class="relative flex h-full min-w-0 flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-brand-300 hover:shadow-md">
             <div class="flex-1">
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Clientes Activos</p>
                 <a href="{{ route('clientes.index', ['estado' => 'activo']) }}"
                    title="Ver clientes activos"
-                   class="block">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Clientes Activos</p>
-                            <p class="mt-2 text-3xl font-extrabold text-gray-900">{{ $totalClientesActivos }}</p>
-                        </div>
-                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-brand-600">
-                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
-                            </svg>
-                        </div>
+                   class="mt-2 flex items-center justify-between">
+                    <p class="text-3xl font-extrabold text-gray-900">{{ $totalClientesActivos }}</p>
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-brand-600">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                        </svg>
                     </div>
                 </a>
+                <a href="{{ route('clientes.create') }}" class="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg text-[13px] font-semibold transition-all duration-200">+ Registrar cliente nuevo</a>
             </div>
-            <div class="mt-4 flex flex-wrap content-start items-center gap-2 border-t border-gray-100 pt-3 xl:min-h-[4.5rem]">
-                <a href="{{ route('clientes.create') }}" class="cursor-pointer rounded-md bg-blue-50 px-2 py-1 text-[11px] font-medium text-blue-700">+ Nuevo Cliente</a>
+            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
                 <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Suspendidos ({{ $totalClientesSuspendidos }})</span>
                 <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Retirados ({{ $totalClientesRetirados }})</span>
             </div>
@@ -112,7 +108,7 @@
                     </div>
                 </div>
             </div>
-            <div class="mt-4 flex flex-wrap content-start items-center gap-2 border-t border-gray-100 pt-3 xl:min-h-[4.5rem]">
+            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
                 <span class="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">SUNAT ({{ $notificacionesSunat }})</span>
                 <span class="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">SUNAFIL ({{ $notificacionesSunafil }})</span>
             </div>
@@ -147,9 +143,9 @@
                     </div>
                 </div>
             </div>
-            <div class="mt-4 flex flex-wrap content-start items-center gap-2 border-t border-gray-100 pt-3 xl:min-h-[4.5rem]">
-                <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Pendientes</span>
-                <span class="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">En Proceso</span>
+            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
+                <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Pendientes ({{ $pendientes ?? 0 }})</span>
+                <span class="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">En Proceso ({{ $procesando ?? 0 }})</span>
             </div>
         </a>
 
@@ -188,9 +184,9 @@
                     </p>
                 </div>
             </div>
-            <div class="mt-4 flex flex-wrap content-start items-center gap-2 border-t border-gray-100 pt-3 xl:min-h-[4.5rem]">
-                <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Pendientes</span>
-                <span class="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">En Proceso</span>
+            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
+                <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Pendientes ({{ $avanceBalances['pendientes'] ?? 0 }})</span>
+                <span class="rounded-md bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-800">En Proceso ({{ $avanceBalances['procesando'] ?? 0 }})</span>
             </div>
         </a>
 
@@ -202,8 +198,13 @@
                 <div class="flex items-center justify-between gap-3">
                     <div class="min-w-0">
                         <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Control Honorarios</p>
-                        <p class="mt-2 text-3xl font-extrabold text-rose-600">{{ $honorariosAtrasados['total'] }}</p>
-                        <p class="mt-1 text-xs font-medium text-gray-500">Pendientes de cobro</p>
+                        @if (($honorariosAtrasados['total'] ?? 0) === 0)
+                            <p class="mt-2 text-3xl font-extrabold text-emerald-500">0</p>
+                            <p class="mt-1 text-xs font-medium text-gray-500">Cartera al día, sin deudas</p>
+                        @else
+                            <p class="mt-2 text-3xl font-extrabold text-rose-600">{{ $honorariosAtrasados['total'] }}</p>
+                            <p class="mt-1 text-xs font-medium text-gray-500">Pendientes de cobro</p>
+                        @endif
                     </div>
                     <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -212,12 +213,14 @@
                     </div>
                 </div>
             </div>
-            <div class="mt-4 flex flex-wrap content-start items-center gap-2 border-t border-gray-100 pt-3 xl:min-h-[4.5rem]">
-                @forelse ($honorariosAtrasados['meses'] as $mesHonorario)
-                    <span class="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">{{ $mesHonorario['etiqueta'] }} ({{ $mesHonorario['cantidad'] }})</span>
-                @empty
-                    <span class="rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">Sin atraso</span>
-                @endforelse
+            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
+                @if (($honorariosAtrasados['total'] ?? 0) === 0)
+                    <span class="rounded-md bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-600">✨ 100% Cobrado</span>
+                @else
+                    @foreach ($honorariosAtrasados['meses'] as $mesHonorario)
+                        <span class="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">{{ $mesHonorario['etiqueta'] }} ({{ $mesHonorario['cantidad'] }})</span>
+                    @endforeach
+                @endif
             </div>
         </a>
 
@@ -226,8 +229,9 @@
     {{-- ═══════════════════════════════ FILA 2: GRÁFICO + ALERTAS DE VENCIMIENTO ═══════════════════════════════ --}}
     <div class="grid grid-cols-1 gap-8 lg:grid-cols-12 items-start">
 
-        {{-- COLUMNA IZQUIERDA: GRÁFICO DINÁMICO (CHART.JS) --}}
-        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-xs lg:col-span-5">
+        {{-- COLUMNA IZQUIERDA: GRÁFICO Y, DEBAJO, RADAR DE VENCIMIENTOS --}}
+        <div class="flex h-full min-w-0 flex-col gap-8 self-stretch lg:col-span-5">
+        <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-xs">
             <div class="flex items-center justify-between border-b border-gray-100 pb-4">
                 <div>
                     <h3 class="text-base font-semibold text-gray-900">Estado Tributario Mensual</h3>
@@ -279,8 +283,33 @@
             </p>
         </div>
 
-        {{-- COLUMNA DERECHA: PANEL DE ALERTAS DE VENCIMIENTO (ORDENADO 0-9 SUNAT) --}}
-        <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs lg:col-span-7">
+        <div class="flex flex-1 flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-xs">
+            <h3 class="text-base font-semibold text-gray-900">Radar de Vencimientos (Mes Activo)</h3>
+            <p class="mt-0.5 text-xs text-gray-500">Dígito de RUC y buenos contribuyentes, según el cronograma SUNAT.</p>
+
+            <div class="mt-5 flex flex-1 flex-col justify-between gap-6">
+                <div>
+                    <div class="flex flex-wrap items-center">
+                        <p class="text-xs font-semibold text-gray-700">Impuestos (SIRE y PDT 621)</p>
+                        <span class="ml-2 inline-flex items-center rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-bold text-indigo-700">{{ $radarVencimientos['impuestos']['periodo'] }}</span>
+                    </div>
+                    @include('dashboard.partials.radar-fechas', ['fechas' => $radarVencimientos['impuestos']['fechas'], 'conSire' => true])
+                </div>
+
+                <div>
+                    <div class="flex flex-wrap items-center">
+                        <p class="text-xs font-semibold text-gray-700">Balances Mensuales (PLE)</p>
+                        <span class="ml-2 inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-700">{{ $radarVencimientos['balances']['periodo'] }}</span>
+                    </div>
+                    @include('dashboard.partials.radar-fechas', ['fechas' => $radarVencimientos['balances']['fechas'], 'conSire' => false])
+                </div>
+            </div>
+        </div>
+        </div>
+
+        {{-- COLUMNA DERECHA: ALERTAS DE IMPUESTOS Y, DEBAJO, ALERTAS DE BALANCES --}}
+        <div class="flex flex-col gap-8 lg:col-span-7">
+        <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs">
             <div class="flex flex-col gap-2 border-b border-gray-100 p-6 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <div class="flex items-center gap-2">
@@ -319,7 +348,7 @@
                     </p>
                 </div>
             @else
-                <div class="divide-y divide-gray-100 max-h-[580px] overflow-y-auto">
+                <div class="custom-scrollbar max-h-[432px] divide-y divide-gray-100 overflow-y-auto pr-2">
                     @foreach ($alertasVencimiento as $item)
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 transition hover:bg-gray-50/80">
 
@@ -408,10 +437,7 @@
             @endif
         </div>
 
-    </div>
-
-    {{-- ═══════════════════════════════ ALERTAS DE VENCIMIENTO DE BALANCES ═══════════════════════════════ --}}
-    <div class="mt-8 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs">
+        <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs">
         <div class="flex flex-col gap-2 border-b border-gray-100 p-6 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <div class="flex items-center gap-2">
@@ -446,7 +472,7 @@
                 </p>
             </div>
         @else
-            <div class="max-h-[580px] divide-y divide-gray-100 overflow-y-auto">
+            <div class="custom-scrollbar max-h-[432px] divide-y divide-gray-100 overflow-y-auto pr-2">
                 @foreach ($alertasBalances as $item)
                     <div class="flex flex-col justify-between gap-4 p-4 transition hover:bg-gray-50/80 sm:flex-row sm:items-center">
                         <div class="flex items-start gap-3.5">
@@ -500,6 +526,9 @@
                 @endforeach
             </div>
         @endif
+        </div>
+        </div>
+
     </div>
 
     {{-- ═══════════════════════════════ SCRIPTS: CHART.JS ═══════════════════════════════ --}}

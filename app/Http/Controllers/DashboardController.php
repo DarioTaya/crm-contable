@@ -154,6 +154,7 @@ class DashboardController extends Controller
         $avanceBalances = $this->avanceBalancesEnCurso($ahoraLima);
         $alertasBalances = $this->alertasBalancesEnCurso($ahoraLima);
         $honorariosAtrasados = $this->honorariosAtrasados($ahoraLima);
+        $radarVencimientos = $this->radarVencimientos($ahoraLima);
         $tipoCambio = $this->tipoCambioSunat->vigente();
 
         return view('dashboard', compact(
@@ -181,6 +182,7 @@ class DashboardController extends Controller
             'avanceBalances',
             'alertasBalances',
             'honorariosAtrasados',
+            'radarVencimientos',
             'tipoCambio',
         ));
     }
@@ -288,6 +290,115 @@ class DashboardController extends Controller
     }
 
     /**
+     * Fechas del cronograma SUNAT para el periodo de impuestos en curso
+     * y el periodo de balances que ya es exigible.
+     *
+     * Los dígitos 2-3, 4-5, 6-7 y 8-9 comparten fecha en la tabla oficial.
+     * Si el balance solo tiene una fecha general, esa fecha vale para todos.
+     *
+     * @return array{
+     *     impuestos: array{periodo: string, fechas: list<array{digito: string, pdt: string|null, sire: string|null, estado: string}>},
+     *     balances: array{periodo: string, fechas: list<array{digito: string, pdt: string|null, sire: string|null, estado: string}>}
+     * }
+     */
+    private function radarVencimientos(Carbon $fecha): array
+    {
+        $fecha = $fecha->copy()->timezone('America/Lima');
+        $hoy = $fecha->toDateString();
+        $periodoImpuestos = $this->cronogramaService->obtenerPeriodoEnCurso('pdt_621', $fecha);
+        $periodoBalances = $this->cronogramaService->obtenerPeriodoEnCurso('balance_mensual', $fecha);
+
+        $cronogramas = CronogramaSunat::query()
+            ->where(function ($query) use ($periodoImpuestos, $periodoBalances): void {
+                $query->where(function ($impuestos) use ($periodoImpuestos): void {
+                    $impuestos->where('periodo', $periodoImpuestos)
+                        ->whereIn('tipo', ['pdt_621', 'sire']);
+                })->orWhere(function ($balances) use ($periodoBalances): void {
+                    $balances->where('periodo', $periodoBalances)
+                        ->where('tipo', 'balance_mensual');
+                });
+            })
+            ->get()
+            ->keyBy('tipo');
+
+        return [
+            'impuestos' => [
+                'periodo' => $periodoImpuestos,
+                'fechas' => $this->fechasRadar($cronogramas->get('pdt_621'), $cronogramas->get('sire'), $hoy),
+            ],
+            'balances' => [
+                'periodo' => $periodoBalances,
+                'fechas' => $this->fechasRadar($cronogramas->get('balance_mensual'), null, $hoy),
+            ],
+        ];
+    }
+
+    /**
+     * @return list<array{digito: string, pdt: string|null, sire: string|null, estado: string}>
+     */
+    private function fechasRadar(?CronogramaSunat $principal, ?CronogramaSunat $sire, string $hoy): array
+    {
+        $campos = [
+            '0' => 'digito_0',
+            '1' => 'digito_1',
+            '2' => 'digito_2_3',
+            '3' => 'digito_2_3',
+            '4' => 'digito_4_5',
+            '5' => 'digito_4_5',
+            '6' => 'digito_6_7',
+            '7' => 'digito_6_7',
+            '8' => 'digito_8_9',
+            '9' => 'digito_8_9',
+            'BC' => 'buenos_contribuyentes',
+        ];
+
+        $fechas = [];
+
+        foreach ($campos as $digito => $campo) {
+            $pdt = $principal?->{$campo} ?? $principal?->fecha_vencimiento_general;
+            $fechaSire = $sire?->{$campo};
+
+            if (! $pdt instanceof Carbon && ! $fechaSire instanceof Carbon) {
+                continue;
+            }
+
+            $fechas[] = [
+                'digito' => $digito,
+                'pdt' => $pdt instanceof Carbon ? $pdt->format('d/m') : null,
+                'sire' => $fechaSire instanceof Carbon ? $fechaSire->format('d/m') : null,
+                'estado' => $this->estadoRadar($hoy, $pdt instanceof Carbon ? $pdt : null, $fechaSire instanceof Carbon ? $fechaSire : null),
+            ];
+        }
+
+        return $fechas;
+    }
+
+    private function estadoRadar(string $hoy, ?Carbon $pdt, ?Carbon $sire): string
+    {
+        $estados = [];
+
+        foreach ([$pdt, $sire] as $fecha) {
+            if (! $fecha instanceof Carbon) {
+                continue;
+            }
+
+            $dia = $fecha->toDateString();
+
+            if ($dia === $hoy) {
+                return 'hoy';
+            }
+
+            $estados[] = $dia < $hoy ? 'pasado' : 'futuro';
+        }
+
+        if ($estados === [] || in_array('futuro', $estados, true)) {
+            return 'futuro';
+        }
+
+        return 'pasado';
+    }
+
+    /**
      * Avance de balances mensuales del periodo que vence este mes.
      *
      * SUNAT (R.S. N.° 234-2006/SUNAT) da tres meses de atraso máximo para
@@ -296,6 +407,8 @@ class DashboardController extends Controller
      *
      * @return array{
      *     declarados: int,
+     *     procesando: int,
+     *     pendientes: int,
      *     total: int,
      *     porcentaje: int,
      *     periodo: string,
@@ -328,6 +441,8 @@ class DashboardController extends Controller
             ->get();
 
         $declarados = 0;
+        $procesando = 0;
+        $pendientes = 0;
         $total = 0;
 
         foreach ($clientes as $cliente) {
@@ -345,6 +460,10 @@ class DashboardController extends Controller
 
             if ($estado === 'Declarado') {
                 $declarados++;
+            } elseif ($estado === 'Procesando' || $estado === 'Proceso') {
+                $procesando++;
+            } else {
+                $pendientes++;
             }
         }
 
@@ -353,6 +472,8 @@ class DashboardController extends Controller
 
         return [
             'declarados' => $declarados,
+            'procesando' => $procesando,
+            'pendientes' => $pendientes,
             'total' => $total,
             'porcentaje' => $total > 0 ? (int) round(($declarados / $total) * 100) : 0,
             'periodo' => $periodo,

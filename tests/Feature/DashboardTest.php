@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AlertaBuzon;
 use App\Models\Cliente;
 use App\Models\ControlBalance;
+use App\Models\CronogramaSunat;
 use App\Models\Estudio;
 use App\Models\Operacion;
 use App\Models\User;
@@ -95,9 +96,12 @@ class DashboardTest extends TestCase
         $response->assertSee(route('alertas.index', ['estado' => 'Pendiente']), false);
         $response->assertSee(route('control.index', ['anio' => (int) now()->format('Y')]), false);
         $response->assertDontSee('Obligaciones Pendientes');
-        $response->assertSee('+ Nuevo Cliente');
+        $response->assertSee('+ Registrar cliente nuevo');
+        $response->assertDontSee('+ Nuevo Cliente');
         $response->assertSee('Suspendidos (0)');
         $response->assertSee('Retirados (1)');
+        $response->assertSee('Pendientes (0)');
+        $response->assertSee('En Proceso (1)');
         $response->assertSee('SUNAT (2)');
         $response->assertSee('SUNAFIL (0)');
     }
@@ -239,6 +243,18 @@ class DashboardTest extends TestCase
             'estado' => true,
         ]);
 
+        $enProceso = Cliente::create([
+            'razon_social' => 'BALANCE EN PROCESO SAC',
+            'ruc' => '20444444444',
+            'regimen_tributario' => 'MYPE',
+            'estado' => true,
+        ]);
+        ControlBalance::create([
+            'cliente_id' => $enProceso->id,
+            'anio' => 2026,
+            'meses' => ['6' => 'Procesando'],
+        ]);
+
         Cliente::create([
             'razon_social' => 'RUS SIN BALANCE SAC',
             'ruc' => '10333333333',
@@ -256,11 +272,15 @@ class DashboardTest extends TestCase
             $response->assertSee('Junio de 2026');
             $response->assertSee('30/09/2026');
             $response->assertSee('plazo PLE 3 meses');
+            $response->assertSee('Pendientes (1)');
+            $response->assertSee('En Proceso (1)');
             $response->assertSee(route('balances.index', ['anio' => 2026]));
 
             $avance = $response->viewData('avanceBalances');
             $this->assertSame(1, $avance['declarados']);
-            $this->assertSame(2, $avance['total']);
+            $this->assertSame(1, $avance['procesando']);
+            $this->assertSame(1, $avance['pendientes']);
+            $this->assertSame(3, $avance['total']);
             $this->assertSame('06-2026', $avance['periodo']);
         });
     }
@@ -273,7 +293,7 @@ class DashboardTest extends TestCase
             $this->actingAs($usuario)
                 ->get(route('dashboard'))
                 ->assertOk()
-                ->assertSee('Buenos días, Sebastian')
+                ->assertSee('Buenos días, Sebastian 👋')
                 ->assertSee('miércoles, 23 de setiembre de 2026')
                 ->assertSee('09:30 AM');
         });
@@ -287,7 +307,7 @@ class DashboardTest extends TestCase
             $this->actingAs($usuario)
                 ->get(route('dashboard'))
                 ->assertOk()
-                ->assertSee('Buenas tardes, Diego')
+                ->assertSee('Buenas tardes, Diego 👋')
                 ->assertSee('03:10 PM');
         });
     }
@@ -300,7 +320,7 @@ class DashboardTest extends TestCase
             $this->actingAs($usuario)
                 ->get(route('dashboard'))
                 ->assertOk()
-                ->assertSee('Buenas noches, María');
+                ->assertSee('Buenas noches, María 👋');
         });
     }
 
@@ -375,7 +395,10 @@ class DashboardTest extends TestCase
                 ->get(route('dashboard'));
 
             $response->assertOk();
-            $response->assertSee('Alertas de Vencimiento de Balances');
+            $response->assertSeeInOrder([
+                'Alertas de Vencimiento de Impuestos',
+                'Alertas de Vencimiento de Balances',
+            ]);
             $response->assertSee('BALANCE VENCIDO SAC');
             $response->assertSee('BALANCE DE JUNIO SAC');
             $response->assertSee(route('balances.index', ['anio' => 2026]));
@@ -461,6 +484,107 @@ class DashboardTest extends TestCase
             $response->assertSee(route('control.index', ['anio' => 2026]), false);
             $response->assertSee('Ver control de honorarios', false);
             $response->assertDontSee('SET-26');
+            $response->assertDontSee('100% Cobrado');
+        });
+    }
+
+    public function test_dashboard_shows_a_clear_honorarios_card_when_nothing_is_owed(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-23 10:00:00', 'America/Lima'), function () {
+            $cliente = Cliente::create([
+                'razon_social' => 'HONORARIOS AL DIA SAC',
+                'ruc' => '20555555555',
+                'regimen_tributario' => 'General',
+                'estado' => 'activo',
+            ]);
+
+            foreach (['08-2026', '07-2026', '06-2026'] as $periodo) {
+                Operacion::create([
+                    'cliente_id' => $cliente->id,
+                    'periodo' => $periodo,
+                    'estado_pago_honorarios' => 'Pagado',
+                ]);
+            }
+
+            $response = $this->get(route('dashboard'));
+
+            $response->assertOk();
+            $response->assertViewHas('honorariosAtrasados.total', 0);
+            $response->assertSee('Cartera al día, sin deudas');
+            $response->assertSee('100% Cobrado');
+            $response->assertSee('text-emerald-500', false);
+            $response->assertDontSee('Pendientes de cobro');
+        });
+    }
+
+    public function test_dashboard_radar_dims_past_dates_and_highlights_today(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-23 10:00:00', 'America/Lima'), function () {
+            CronogramaSunat::create([
+                'anio' => 2026,
+                'tipo' => 'pdt_621',
+                'mes' => 8,
+                'periodo' => '08-2026',
+                'digito_0' => '2026-09-10',
+                'digito_1' => '2026-09-23',
+                'digito_2_3' => '2026-09-24',
+                'buenos_contribuyentes' => '2026-09-28',
+            ]);
+            CronogramaSunat::create([
+                'anio' => 2026,
+                'tipo' => 'sire',
+                'mes' => 8,
+                'periodo' => '08-2026',
+                'digito_0' => '2026-09-09',
+                'digito_1' => '2026-09-22',
+                'digito_2_3' => '2026-09-22',
+                'buenos_contribuyentes' => '2026-09-25',
+            ]);
+            CronogramaSunat::create([
+                'anio' => 2026,
+                'tipo' => 'balance_mensual',
+                'mes' => 6,
+                'periodo' => '06-2026',
+                'fecha_vencimiento_general' => '2026-09-30',
+            ]);
+
+            $response = $this->get(route('dashboard'));
+
+            $response->assertOk();
+            $response->assertSeeInOrder([
+                'Estado Tributario Mensual',
+                'Radar de Vencimientos (Mes Activo)',
+                'Impuestos (SIRE y PDT 621)',
+                'Balances Mensuales (PLE)',
+            ]);
+
+            $radar = $response->viewData('radarVencimientos');
+            $impuestos = collect($radar['impuestos']['fechas'])->keyBy('digito');
+
+            $this->assertSame('08-2026', $radar['impuestos']['periodo']);
+            $this->assertSame('pasado', $impuestos['0']['estado']);
+            $this->assertSame('10/09', $impuestos['0']['pdt']);
+            $this->assertSame('09/09', $impuestos['0']['sire']);
+            $this->assertSame('hoy', $impuestos['1']['estado']);
+            $this->assertSame('futuro', $impuestos['2']['estado']);
+            $this->assertSame('futuro', $impuestos['3']['estado']);
+            $this->assertSame('futuro', $impuestos['BC']['estado']);
+            $this->assertSame('06-2026', $radar['balances']['periodo']);
+            $this->assertSame('futuro', $radar['balances']['fechas'][0]['estado']);
+            $this->assertSame('30/09', $radar['balances']['fechas'][0]['pdt']);
+            $this->assertCount(11, $radar['balances']['fechas']);
+            $response->assertSeeInOrder([
+                'Impuestos (SIRE y PDT 621)',
+                '08-2026',
+                'Balances Mensuales (PLE)',
+                '06-2026',
+            ]);
+            $response->assertSee('grid-cols-6', false);
+            $response->assertSee('col-span-2', false);
+            $response->assertSee('bg-indigo-50', false);
+            $response->assertSee('opacity-70', false);
+            $response->assertDontSee('opacity-50', false);
+            $response->assertSee('ring-emerald-500', false);
         });
     }
 

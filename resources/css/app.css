@@ -188,6 +188,25 @@
     transition-duration: 150ms;
 }
 
+/* Barra delgada para listas que scrollean dentro de la tarjeta. */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgb(203 213 225);
+    border-radius: 999px;
+}
+
 @media print {
     .no-print {
         display: none !important;
