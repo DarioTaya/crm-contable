@@ -66,7 +66,7 @@
                         <input type="email"
                                id="email"
                                name="email"
-                               value="{{ old('email') }}"
+                               value="{{ old('email', $rememberedEmail ?? '') }}"
                                required
                                autofocus
                                autocomplete="username"
@@ -91,6 +91,7 @@
                         <input :type="showPass ? 'text' : 'password'"
                                id="password"
                                name="password"
+                               value="{{ old('password', $rememberedPassword ?? '') }}"
                                required
                                autocomplete="current-password"
                                placeholder="••••••••••••"
@@ -112,10 +113,12 @@
 
                 {{-- Recordar Sesión --}}
                 <div class="flex items-center justify-between text-xs">
-                    <label class="flex items-center gap-2 cursor-pointer select-none text-slate-300 hover:text-white transition">
+                    <label for="remember" class="flex items-center gap-2 cursor-pointer select-none text-slate-300 hover:text-white transition">
                         <input type="checkbox"
+                               id="remember"
                                name="remember"
                                value="1"
+                               @checked(old('remember', $rememberDevice ?? false))
                                class="h-4 w-4 rounded border-slate-700 bg-slate-800 text-brand-600 focus:ring-brand-500 focus:ring-offset-slate-900">
                         <span>Recordar sesión en este equipo</span>
                     </label>

@@ -4,8 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\AlertaBuzon;
 use App\Models\Cliente;
+use App\Models\Estudio;
 use App\Models\Operacion;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
@@ -81,7 +84,8 @@ class DashboardTest extends TestCase
         $response->assertViewHas('pendientes', 0);
         $response->assertViewHas('totalObligaciones', 1);
 
-        $response->assertSee('Centro de Comando');
+        $response->assertDontSee('Centro de Comando');
+        $response->assertDontSee('Salir');
         $response->assertSee('EMPRESA ACTIVA SAC');
         $response->assertSee('Dígito');
     }
@@ -196,5 +200,59 @@ class DashboardTest extends TestCase
         // Sidebar limpio: no debe contener los enlaces anteriores de Notificaciones ni Operaciones
         $response->assertDontSee('Notificaciones');
         $response->assertDontSee('Operaciones');
+        $response->assertDontSee('Salir');
+    }
+
+    public function test_dashboard_greets_admin_by_first_name_in_the_morning(): void
+    {
+        $usuario = $this->usuarioDelEstudio('sebastian');
+
+        $this->travelTo(Carbon::parse('2026-09-23 09:30:00', 'America/Lima'), function () use ($usuario) {
+            $this->actingAs($usuario)
+                ->get(route('dashboard'))
+                ->assertOk()
+                ->assertSee('Buenos días, Sebastian')
+                ->assertSee('miércoles, 23 de setiembre de 2026')
+                ->assertSee('09:30');
+        });
+    }
+
+    public function test_dashboard_greets_assistant_by_first_name_in_the_afternoon(): void
+    {
+        $usuario = $this->usuarioDelEstudio('diego', 'asistente');
+
+        $this->travelTo(Carbon::parse('2026-09-23 15:10:00', 'America/Lima'), function () use ($usuario) {
+            $this->actingAs($usuario)
+                ->get(route('dashboard'))
+                ->assertOk()
+                ->assertSee('Buenas tardes, Diego');
+        });
+    }
+
+    public function test_dashboard_greets_with_good_evening_after_seven(): void
+    {
+        $usuario = $this->usuarioDelEstudio('MARÍA LÓPEZ');
+
+        $this->travelTo(Carbon::parse('2026-09-23 21:05:00', 'America/Lima'), function () use ($usuario) {
+            $this->actingAs($usuario)
+                ->get(route('dashboard'))
+                ->assertOk()
+                ->assertSee('Buenas noches, María');
+        });
+    }
+
+    private function usuarioDelEstudio(string $nombre, string $rol = 'admin'): User
+    {
+        $estudio = Estudio::firstOrCreate(
+            ['id' => 1],
+            ['nombre' => 'Estudio Test', 'correo' => 'estudio@test.com', 'activo' => true]
+        );
+
+        return User::factory()->create([
+            'estudio_id' => $estudio->id,
+            'name' => $nombre,
+            'rol' => $rol,
+            'activo' => true,
+        ]);
     }
 }

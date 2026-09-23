@@ -214,13 +214,13 @@
                                 @endif
 
                                 {{-- Botón 4: SUNAT (1 Clic) --}}
-                                <a href="{{ route('clientes.sunat', $cliente) }}"
-                                   @click.prevent="lanzarAcceso('{{ route('clientes.sunat', $cliente) }}', 'SUNAT', '{{ addslashes($cliente->razon_social) }}', '{{ $cliente->ruc }}')"
-                                   title="Ingreso Automático a SUNAT SOL (1 Clic)"
+                                <button type="button"
+                                   @click.stop="abrirMenuSunat($event, '{{ route('clientes.sunat', $cliente) }}', '{{ addslashes($cliente->razon_social) }}', '{{ $cliente->ruc }}')"
+                                   title="Accesos SUNAT con Clave SOL"
                                    class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-emerald-700 hover:shadow active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
                                     <span class="text-xs">🚀</span>
                                     <span>SUNAT</span>
-                                </a>
+                                </button>
 
                                 {{-- Botón 5: SUNAFIL (1 Clic) --}}
                                 <a href="{{ route('clientes.sunafil', $cliente) }}"
@@ -297,6 +297,8 @@
         </p>
     </div>
 
+    @include('clientes.partials.menu-accesos-sunat')
+
     {{-- ════════════════════ MODAL HUD PREMIUM DE ACCESO RÁPIDO ════════════════════ --}}
     <div x-show="abierto"
          x-cloak
@@ -371,7 +373,7 @@
                     </div>
 
                     <div class="flex items-center justify-between pt-1 text-[11px] text-slate-400">
-                        <span x-text="(nombreNavegador || 'Navegador') + ' (Modo Aplicación)'"></span>
+                        <span x-text="(nombreNavegador || 'Navegador') + ' · ventana normal'"></span>
                         <span x-text="completado ? 'Portal listo en pantalla' : 'Conexión cifrada'"></span>
                     </div>
                 </div>
@@ -526,6 +528,37 @@
             completado: false,
             error: null,
             animTimer: null,
+            menuSunat: { abierto: false, top: 0, left: 0, url: '', nombre: '', ruc: '' },
+            _ignorarCierreSunat: false,
+
+            abrirMenuSunat(event, url, nombre, ruc) {
+                document.querySelectorAll('[data-ancla-sunat]').forEach((nodo) => nodo.removeAttribute('data-ancla-sunat'));
+                event.currentTarget.setAttribute('data-ancla-sunat', '1');
+                this.menuSunat.url = url;
+                this.menuSunat.nombre = nombre;
+                this.menuSunat.ruc = ruc;
+                window.posicionarMenuAccesosSunat(this.menuSunat);
+                this.menuSunat.abierto = true;
+                if (!this._oyendoScrollSunat) {
+                    this._oyendoScrollSunat = true;
+                    const seguir = () => {
+                        if (!this.menuSunat.abierto) {
+                            return;
+                        }
+                        window.posicionarMenuAccesosSunat(this.menuSunat);
+                    };
+                    window.addEventListener('scroll', seguir, true);
+                    window.addEventListener('resize', seguir);
+                }
+            },
+
+            elegirAccesoSunat(destino) {
+                const url = this.menuSunat.url + '?destino=' + encodeURIComponent(destino);
+                const nombre = this.menuSunat.nombre;
+                const ruc = this.menuSunat.ruc;
+                this.menuSunat.abierto = false;
+                this.lanzarAcceso(url, 'SUNAT', nombre, ruc);
+            },
 
             async lanzarAcceso(url, portal, nombre, ruc) {
                 if (this.animTimer) clearInterval(this.animTimer);
@@ -534,7 +567,9 @@
                 this.clienteRuc = ruc;
                 this.icono = portal === 'SUNAT' ? '🚀' : '👷';
                 this.progreso = 15;
-                this.faseTexto = 'Detectando navegador predeterminado...';
+                this.faseTexto = portal === 'SUNAT'
+                    ? 'Ingresando a SUNAT...'
+                    : 'Ingresando a SUNAFIL...';
                 this.completado = false;
                 this.error = null;
                 this.abierto = true;
@@ -545,15 +580,15 @@
                     step++;
                     if (step === 1 && this.progreso < 40) {
                         this.progreso = 38;
+                        this.faseTexto = 'Preparando el navegador...';
+                    } else if (step === 2 && this.progreso < 70) {
+                        this.progreso = 68;
                         this.faseTexto = portal === 'SUNAT'
-                            ? 'Conectando con SUNAT SOL...'
-                            : 'Conectando con Casilla SUNAFIL...';
-                    } else if (step === 2 && this.progreso < 65) {
-                        this.progreso = 65;
-                        this.faseTexto = 'Autenticando credenciales Clave SOL...';
+                            ? 'Ingresando a SUNAT...'
+                            : 'Ingresando a SUNAFIL...';
                     } else if (step >= 3 && this.progreso < 92) {
-                        this.progreso = Math.min(92, this.progreso + 5);
-                        this.faseTexto = 'Desplegando portal en pantalla...';
+                        this.progreso = Math.min(92, this.progreso + 4);
+                        this.faseTexto = 'La ventana se abre cuando la sesión ya está lista...';
                     }
                 }, 550);
 

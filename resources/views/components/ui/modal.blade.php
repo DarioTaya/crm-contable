@@ -38,7 +38,7 @@
          x-transition:enter-start="opacity-0 translate-y-3 sm:scale-95"
          x-transition:leave="transition ease-in duration-150"
          x-transition:leave-end="opacity-0 translate-y-3 sm:scale-95"
-         {{ $attributes->class(['relative my-8 w-full rounded-overlay bg-surface shadow-overlay', $widths[$maxWidth] ?? $widths['2xl']]) }}>
+         {{ $attributes->class(['relative z-10 my-8 w-full rounded-overlay bg-surface shadow-overlay', $widths[$maxWidth] ?? $widths['2xl']]) }}>
 
         @if ($title)
             <div class="flex items-center justify-between gap-4 border-b border-gray-200 px-6 py-4">

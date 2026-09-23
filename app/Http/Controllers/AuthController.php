@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
@@ -15,13 +16,20 @@ class AuthController extends Controller
     /**
      * Muestra el formulario de inicio de sesión.
      */
-    public function showLoginForm(): View|RedirectResponse
+    public function showLoginForm(Request $request): View|RedirectResponse
     {
         if (Auth::check()) {
             return redirect()->route('dashboard');
         }
 
-        return view('auth.login');
+        $rememberedEmail = $request->cookie((string) config('auth.device_remember.email_cookie'));
+        $rememberedPassword = $request->cookie((string) config('auth.device_remember.secret_cookie'));
+
+        return view('auth.login', [
+            'rememberedEmail' => is_string($rememberedEmail) ? $rememberedEmail : '',
+            'rememberedPassword' => is_string($rememberedPassword) ? $rememberedPassword : '',
+            'rememberDevice' => filled($rememberedEmail),
+        ]);
     }
 
     /**
@@ -61,6 +69,12 @@ class AuthController extends Controller
             RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
 
+            if ($remember) {
+                $this->queueDeviceRememberCookies($credentials['email'], $credentials['password']);
+            } elseif ($this->hasDeviceRememberCookies($request)) {
+                $this->forgetDeviceRememberCookies();
+            }
+
             return redirect()->intended(route('dashboard'));
         }
 
@@ -82,5 +96,43 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login');
+    }
+
+    /**
+     * Guarda el correo y la contraseña de este equipo en cookies cifradas.
+     */
+    private function queueDeviceRememberCookies(string $email, string $password): void
+    {
+        $minutes = (int) config('auth.device_remember.minutes');
+
+        Cookie::queue(cookie(
+            (string) config('auth.device_remember.email_cookie'),
+            $email,
+            $minutes,
+        ));
+
+        Cookie::queue(cookie(
+            (string) config('auth.device_remember.secret_cookie'),
+            $password,
+            $minutes,
+        ));
+    }
+
+    /**
+     * Determina si el equipo ya tiene credenciales recordadas.
+     */
+    private function hasDeviceRememberCookies(Request $request): bool
+    {
+        return $request->hasCookie((string) config('auth.device_remember.email_cookie'))
+            || $request->hasCookie((string) config('auth.device_remember.secret_cookie'));
+    }
+
+    /**
+     * Elimina las credenciales recordadas en este equipo.
+     */
+    private function forgetDeviceRememberCookies(): void
+    {
+        Cookie::queue(Cookie::forget((string) config('auth.device_remember.email_cookie')));
+        Cookie::queue(Cookie::forget((string) config('auth.device_remember.secret_cookie')));
     }
 }

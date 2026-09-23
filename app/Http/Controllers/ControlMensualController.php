@@ -53,7 +53,7 @@ class ControlMensualController extends Controller
                         ->where('mes_baja', '>=', "{$anio}-01");
                 });
         })
-            ->with(['operaciones' => fn ($query) => $query->where('periodo', 'like', "%-{$anio}")])
+            ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $this->periodosDelAnio($anio))])
             ->orderBy('numero')
             ->get();
 
@@ -160,7 +160,7 @@ class ControlMensualController extends Controller
                         ->where('mes_baja', '>=', "{$anio}-01");
                 });
         })
-            ->with(['operaciones' => fn ($query) => $query->where('periodo', 'like', "%-{$anio}")])
+            ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $this->periodosDelAnio($anio))])
             ->get();
 
         $totalClientes = $clientes->count();
@@ -393,5 +393,19 @@ class ControlMensualController extends Controller
             'operacion' => $operacion,
             'kpis' => $this->calcularKpis($anio),
         ]);
+    }
+
+    /**
+     * Los doce periodos MM-AAAA de un ejercicio, para filtrar con whereIn y
+     * usar el indice en lugar de un LIKE que no puede aprovecharlo.
+     *
+     * @return array<int, string>
+     */
+    private function periodosDelAnio(int $anio): array
+    {
+        return array_map(
+            fn (int $mes) => sprintf('%02d-%d', $mes, $anio),
+            range(1, 12),
+        );
     }
 }

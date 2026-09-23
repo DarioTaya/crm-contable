@@ -118,6 +118,44 @@
 
     html {
         -webkit-text-size-adjust: 100%;
+        scrollbar-gutter: stable;
+    }
+
+    /* El scroll horizontal vive dentro de las matrices, nunca en la página.
+       Si el body se desplaza, la barra lateral —aunque sea fixed— se ve correr. */
+    body {
+        overflow-x: clip;
+    }
+
+    /* Ancho de la barra resuelto en CSS, antes de que Alpine arranque.
+       La transición solo existe después de que el usuario pulsa el botón. */
+    .app-sidebar {
+        width: 16rem;
+    }
+
+    .app-main {
+        margin-left: 16rem;
+    }
+
+    html[data-sidebar='collapsed'] .app-sidebar {
+        width: 5rem;
+    }
+
+    html[data-sidebar='collapsed'] .app-main {
+        margin-left: 5rem;
+    }
+
+    html[data-sidebar='collapsed'] .app-sidebar [x-show='!sidebarCollapsed'] {
+        display: none !important;
+    }
+
+    html:not([data-sidebar='collapsed']) .app-sidebar [x-show='sidebarCollapsed'] {
+        display: none !important;
+    }
+
+    html.sidebar-animating .app-sidebar,
+    html.sidebar-animating .app-main {
+        transition: width 180ms ease, margin-left 180ms ease;
     }
 
     /* Evita el parpadeo de los bloques de Alpine antes de la hidratacion. */
@@ -145,9 +183,9 @@
 
 /* Conservada desde el layout heredado: la usa el sidebar colapsable. */
 @utility transition-sidebar {
-    transition-property: all;
+    transition-property: background-color, color, border-color;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 200ms;
+    transition-duration: 150ms;
 }
 
 @media print {

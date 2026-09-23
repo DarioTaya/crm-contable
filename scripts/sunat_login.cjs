@@ -1,14 +1,13 @@
 /**
  * scripts/sunat_login.cjs
  *
- * Automatización de login en SUNAT Operaciones en Línea (Clave SOL).
- * - Lanza Chrome fuera de la pantalla (--window-position=-32000,-32000) para un tipeo 100% invisible.
- * - Suprime infobars con --test-type y elimina banner con ignoreDefaultArgs: ['--enable-automation'].
- * - No incluye flags de sandbox incompatibles en Windows.
- * - Al completar el login, teletransporta la ventana a x:0, y:0, la maximiza con CDP y la trae al frente.
+ * Login en SUNAT Operaciones en Línea (Clave SOL).
+ * La ventana nace fuera de la pantalla y ahí se escriben RUC, usuario y clave,
+ * así el usuario nunca ve el tecleo. El CRM recibe la señal "opening" y, un
+ * segundo después, recién ahí se muestra el módulo ya iniciado.
  *
  * Uso:
- *   node scripts/sunat_login.cjs <RUC> <USUARIO_SOL> <CLAVE_SOL>
+ *   node scripts/sunat_login.cjs <RUC> <USUARIO_SOL> <CLAVE_SOL> [URL_DESTINO]
  */
 
 const fs = require('fs');
@@ -17,10 +16,10 @@ const { execSync } = require('child_process');
 const puppeteer = require('puppeteer');
 
 // ─── Validar argumentos ───────────────────────────────────────────────────────
-const [,, ruc, usuario, clave] = process.argv;
+const [,, ruc, usuario, clave, destinoArg] = process.argv;
 
 if (!ruc || !usuario || !clave) {
-    console.error('❌ Uso: node scripts/sunat_login.cjs <RUC> <USUARIO_SOL> <CLAVE_SOL>');
+    console.error('❌ Uso: node scripts/sunat_login.cjs <RUC> <USUARIO_SOL> <CLAVE_SOL> [URL_DESTINO]');
     process.exit(1);
 }
 
@@ -30,11 +29,56 @@ try {
     fs.writeFileSync(pidFile, process.pid.toString());
 } catch (_) {}
 
+// El navegador sobrevive al proceso Node, así que su PID se guarda aparte: si
+// queda abierto de un acceso anterior, retiene el perfil y el siguiente intento
+// se queda colgado al navegar.
+const browserPidFile = path.join(__dirname, '..', 'storage', 'framework', `login_browser_sunat_${ruc}.pid`);
+
 function cleanupPid() {
     try {
         if (fs.existsSync(pidFile)) fs.unlinkSync(pidFile);
     } catch (_) {}
+    try {
+        if (fs.existsSync(browserPidFile)) fs.unlinkSync(browserPidFile);
+    } catch (_) {}
 }
+
+function cerrarNavegadorAnterior() {
+    let pid = 0;
+    try {
+        if (!fs.existsSync(browserPidFile)) {
+            return;
+        }
+        pid = parseInt(fs.readFileSync(browserPidFile, 'utf8'), 10);
+        fs.unlinkSync(browserPidFile);
+    } catch (_) {
+        return;
+    }
+
+    if (!pid) {
+        return;
+    }
+
+    try {
+        if (process.platform === 'win32') {
+            execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
+        } else {
+            process.kill(pid, 'SIGKILL');
+        }
+    } catch (_) {}
+}
+
+function recordarNavegador(browser) {
+    try {
+        const pid = browser.process() ? browser.process().pid : null;
+        if (pid) {
+            fs.writeFileSync(browserPidFile, String(pid));
+        }
+    } catch (_) {}
+}
+
+// ─── Archivo de Señal de Sincronización en Tiempo Real con el CRM ─────────────
+const signalFile = path.join(__dirname, '..', 'storage', 'framework', `login_ready_sunat_${ruc}.json`);
 
 function writeSignal(status, extra = {}) {
     try {
@@ -45,6 +89,163 @@ function writeSignal(status, extra = {}) {
             ...extra
         }));
     } catch (_) {}
+}
+
+function destinoSeguro(valor) {
+    if (!valor || !valor.startsWith('https://')) return null;
+    try {
+        const host = new URL(valor).hostname;
+        if (host === 'sunat.gob.pe' || host.endsWith('.sunat.gob.pe')) return valor;
+    } catch (_) {}
+    return null;
+}
+
+const destinoUrl = destinoSeguro(destinoArg);
+
+function directorioPerfil() {
+    const base = process.env.LOCALAPPDATA
+        || process.env.HOME
+        || process.env.USERPROFILE
+        || path.join(__dirname, '..', 'storage', 'app');
+    const dir = path.join(base, 'CrmContable', 'navegador', 'sunat', ruc);
+    fs.mkdirSync(path.join(dir, 'Default'), { recursive: true });
+    const prefs = path.join(dir, 'Default', 'Preferences');
+    if (!fs.existsSync(prefs)) {
+        fs.writeFileSync(prefs, JSON.stringify({
+            profile: { name: 'SUNAT' },
+            bookmark_bar: { show_on_all_tabs: true },
+        }));
+    }
+    return dir;
+}
+
+async function ocultarVentana(page) {
+    try {
+        const cdp = await page.createCDPSession();
+        const { windowId } = await cdp.send('Browser.getWindowForTarget');
+        await cdp.send('Browser.setWindowBounds', {
+            windowId,
+            bounds: { windowState: 'normal', left: -32000, top: -32000, width: 1100, height: 700 },
+        });
+        return { cdp, windowId };
+    } catch (_) {
+        return null;
+    }
+}
+
+async function mostrarVentanaNormal(page, ventana, browserName) {
+    writeSignal('opening', { browser: browserName });
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    try {
+        const cdp = ventana?.cdp || await page.createCDPSession();
+        const windowId = ventana?.windowId || (await cdp.send('Browser.getWindowForTarget')).windowId;
+        await cdp.send('Browser.setWindowBounds', {
+            windowId,
+            bounds: { windowState: 'normal', left: 48, top: 32, width: 1280, height: 820 },
+        });
+        await cdp.send('Browser.setWindowBounds', {
+            windowId,
+            bounds: { windowState: 'maximized' },
+        });
+        await page.bringToFront();
+    } catch (error) {
+        console.log('ℹ️ No se pudo restaurar la ventana:', error.message);
+        try { await page.bringToFront(); } catch (_) {}
+    }
+}
+
+/**
+ * El formulario de SOL valida con sus propios manejadores de teclado: asignar
+ * el value por DOM deja la clave sin registrar y el portal rechaza el ingreso.
+ * Puppeteer inyecta los eventos en el renderer, así que no se ve nada en
+ * pantalla aunque la ventana esté fuera de cuadro.
+ */
+async function escribirCampo(page, selector, valor) {
+    await page.click(selector, { clickCount: 3 });
+    await page.type(selector, valor, { delay: 0 });
+}
+
+async function pulsar(page, selector) {
+    await page.click(selector);
+}
+
+/**
+ * Espera a que se detenga la cadena de redirecciones del portal. SUNAT pasa por
+ * varias URLs de api-seguridad antes de soltar el módulo pedido.
+ */
+async function esperarEstabilidad(page, limiteMs = 25000) {
+    const fin = Date.now() + limiteMs;
+    let anterior = '';
+    let quietas = 0;
+
+    while (Date.now() < fin) {
+        await new Promise((resolve) => setTimeout(resolve, 400));
+
+        const actual = page.url();
+        if (actual === anterior) {
+            quietas++;
+        } else {
+            quietas = 0;
+            anterior = actual;
+        }
+
+        if (quietas >= 3) {
+            const pendiente = await page.$('#txtRuc, input[name="txtRuc"]').catch(() => null);
+            if (!pendiente) {
+                return;
+            }
+        }
+    }
+}
+
+/**
+ * Completa el formulario de Clave SOL si SUNAT lo muestra y espera a que la
+ * cadena OAuth devuelva la sesión al portal. Navegar antes de ese aterrizaje
+ * deja al usuario de vuelta en el login.
+ */
+async function autenticar(page, esperaFormulario = 30000) {
+    const inicio = Date.now();
+
+    const formulario = await page
+        .waitForSelector('#txtRuc, input[name="txtRuc"]', { timeout: esperaFormulario, visible: true })
+        .catch(() => null);
+
+    if (!formulario) {
+        return false;
+    }
+
+    await ocultarVentana(page);
+
+    try {
+        if (await page.$('#btnPorRuc')) {
+            await pulsar(page, '#btnPorRuc');
+        }
+    } catch (_) {}
+
+    console.log('✍️  Rellenando credenciales fuera de la pantalla...');
+    await escribirCampo(page, (await page.$('#txtRuc')) ? '#txtRuc' : 'input[name="txtRuc"]', ruc);
+    await escribirCampo(page, (await page.$('#txtUsuario')) ? '#txtUsuario' : 'input[name="txtUsuario"]', usuario);
+    await escribirCampo(page, (await page.$('#txtContrasena')) ? '#txtContrasena' : 'input[name="txtContrasena"]', clave);
+    await ocultarVentana(page);
+
+    console.log('🔐 Enviando Clave SOL...');
+    await pulsar(page, (await page.$('#btnAceptar')) ? '#btnAceptar' : 'button[type="submit"]');
+
+    try {
+        await page.waitForFunction(() => !document.querySelector('#txtRuc, input[name="txtRuc"]'), { timeout: 30000 });
+    } catch (_) {
+        const aviso = await page.evaluate(() => {
+            const nodo = document.querySelector('.alert, .error, #spanError, [class*="error"]');
+            return nodo ? nodo.innerText.trim() : '';
+        }).catch(() => '');
+        throw new Error(aviso || 'SUNAT no aceptó la Clave SOL de este cliente.');
+    }
+
+    await esperarEstabilidad(page, 20000);
+    await ocultarVentana(page);
+    console.log(`🔓 Sesión SOL lista en ${Date.now() - inicio} ms.`);
+
+    return true;
 }
 
 // ─── Localizar navegador predeterminado del sistema operativo ────────────────
@@ -137,22 +338,33 @@ const SUNAT_LOGIN_URL = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.h
         const launchOptions = {
             headless: false,
             defaultViewport: null,
+            userDataDir: directorioPerfil(),
             ignoreDefaultArgs: ['--enable-automation'],
             args: [
                 '--test-type',
                 '--no-first-run',
                 '--no-default-browser-check',
-                '--window-position=-32000,-32000',
-                '--window-size=1280,800',
                 '--disable-blink-features=AutomationControlled',
+                '--window-position=-32000,-32000',
+                '--window-size=1100,700',
+                // Fuera de la pantalla, Chrome congela la pestaña y el login se
+                // arrastra. Estos tres interruptores la mantienen a full ritmo.
+                '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding',
+                '--disable-background-timer-throttling',
             ],
         };
 
         if (browserInfo.path) {
             launchOptions.executablePath = browserInfo.path;
+            if (browserInfo.path.toLowerCase().includes('firefox')) {
+                launchOptions.browser = 'firefox';
+            }
         }
 
+        cerrarNavegadorAnterior();
         browser = await puppeteer.launch(launchOptions);
+        recordarNavegador(browser);
 
         // Limpiar proceso Node cuando el usuario cierre el navegador
         browser.on('disconnected', () => {
@@ -163,6 +375,7 @@ const SUNAT_LOGIN_URL = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.h
 
         const pages = await browser.pages();
         page = pages.length > 0 ? pages[0] : await browser.newPage();
+        const ventana = await ocultarVentana(page);
 
         page.on('close', () => {
             cleanupPid();
@@ -174,86 +387,48 @@ const SUNAT_LOGIN_URL = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.h
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
         );
 
-        console.log('📡 Conectando al portal SOL de SUNAT (100% fuera de pantalla)...');
-        await page.goto(SUNAT_LOGIN_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        // Una sesión vieja a medio vencer hacía que el formulario tardara en
+        // aparecer, el script la daba por válida y el usuario terminaba frente
+        // a la pantalla de Clave SOL. Partir de cero es más rápido que adivinar
+        // si la cookie todavía sirve.
+        const sesionCdp = await page.createCDPSession();
+        await sesionCdp.send('Network.clearBrowserCookies').catch(() => {});
 
-        console.log('⏳ Esperando formulario de login...');
-        await page.waitForSelector('#txtRuc, input[name="txtRuc"]', { timeout: 25000 });
+        // Se entra directo al módulo pedido: SUNAT rebota a su pantalla de
+        // Clave SOL arrastrando el destino y, al autenticar, abre justo ahí.
+        // Iniciar sesión primero y navegar después reinicia el circuito OAuth
+        // y devuelve al usuario al login.
+        const urlEntrada = destinoUrl || SUNAT_LOGIN_URL;
+        console.log(`📡 Entrando a ${urlEntrada} (fuera de la pantalla)...`);
+        await page.goto(urlEntrada, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        await ocultarVentana(page);
 
-        try {
-            const btnPorRuc = await page.$('#btnPorRuc');
-            if (btnPorRuc) {
-                await btnPorRuc.click();
+        await autenticar(page);
+        await esperarEstabilidad(page);
+
+        // A veces el portal se queda en su pasarela con el código OAuth en la
+        // barra y no termina de soltar el módulo. Con la sesión ya creada,
+        // volver a pedir la URL entra derecho.
+        for (let intento = 0; intento < 2; intento++) {
+            const enPasarela = page.url().includes('api-seguridad');
+            const pideClave = Boolean(await page.$('#txtRuc, input[name="txtRuc"]'));
+
+            if (!enPasarela && !pideClave) {
+                break;
             }
-        } catch (_) {}
 
-        // ─── Rellenar credenciales fuera de pantalla a máxima velocidad ───────
-        console.log('✍️  Rellenando credenciales...');
+            console.log('🔁 Reintentando la entrada al módulo...');
+            await page.goto(urlEntrada, { waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => {});
+            await autenticar(page, 12000);
+            await esperarEstabilidad(page, 15000);
+        }
 
-        const selRuc = (await page.$('#txtRuc')) ? '#txtRuc' : 'input[name="txtRuc"]';
-        const selUsuario = (await page.$('#txtUsuario')) ? '#txtUsuario' : 'input[name="txtUsuario"]';
-        const selClave = (await page.$('#txtContrasena')) ? '#txtContrasena' : 'input[name="txtContrasena"]';
-
-        await page.click(selRuc, { clickCount: 3 });
-        await page.type(selRuc, ruc, { delay: 8 });
-
-        await page.click(selUsuario, { clickCount: 3 });
-        await page.type(selUsuario, usuario, { delay: 8 });
-
-        await page.click(selClave, { clickCount: 3 });
-        await page.type(selClave, clave, { delay: 8 });
-
-        // ─── Hacer clic en el botón de ingresar y esperar navegación ──────────
-        console.log('🔐 Haciendo clic en "Ingresar"...');
-        const selBoton = (await page.$('#btnAceptar')) ? '#btnAceptar' : 'button[type="submit"]';
-
-        await Promise.allSettled([
-            page.waitForFunction(() => {
-                const href = window.location.href;
-                return href.includes('MenuInternet') || href.includes('AutenticaMenuInternet') || document.querySelector('#divMenu') !== null;
-            }, { timeout: 12000 }),
-            page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 12000 }),
-            page.click(selBoton),
-        ]);
+        console.log(`📍 Módulo en pantalla: ${page.url().slice(0, 140)}`);
+        await ocultarVentana(page);
 
         // ─── Teletransportar la ventana a pantalla principal y maximizar ───────
-        try {
-            // Notificar al CRM que la sesión está lista antes de teletransportar la ventana.
-            // Esto permite que el HUD modal del CRM se cierre suavemente y desaparezca por completo
-            // antes de que la ventana aparezca en pantalla.
-            writeSignal('ready', { browser: browserInfo.name });
-
-            // Buffer de espera para que la notificación en el CRM desaparezca por completo
-            await new Promise(r => setTimeout(r, 850));
-
-            const cdpSession = await page.target().createCDPSession();
-            const { windowId } = await cdpSession.send('Browser.getWindowForTarget');
-
-            // Paso 1: Restablecer coordenadas a x: 0, y: 0 en estado normal
-            await cdpSession.send('Browser.setWindowBounds', {
-                windowId,
-                bounds: {
-                    left: 0,
-                    top: 0,
-                    windowState: 'normal',
-                },
-            });
-
-            // Paso 2: Maximizar ventana en pantalla
-            await cdpSession.send('Browser.setWindowBounds', {
-                windowId,
-                bounds: {
-                    windowState: 'maximized',
-                },
-            });
-
-            // Paso 3: Traer la ventana al frente
-            await page.bringToFront();
-            console.log(`🎉 Ventana teletransportada a x:0, y:0 y maximizada en primer plano (${browserInfo.name}).`);
-        } catch (cdpErr) {
-            console.log('ℹ️ Aviso al teletransportar ventana:', cdpErr.message);
-            writeSignal('ready', { browser: browserInfo.name });
-        }
+        await mostrarVentanaNormal(page, ventana, browserInfo.name);
+        console.log(`🎉 Ventana normal de ${browserInfo.name} en primer plano.`);
 
         console.log(`✅ Login completado. ${browserInfo.name} disponible para el usuario.`);
 
@@ -268,7 +443,7 @@ const SUNAT_LOGIN_URL = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.h
         // Si ocurre un error, teletransportar la ventana a la pantalla para diagnóstico visual
         try {
             if (page) {
-                const cdp = await page.target().createCDPSession();
+                const cdp = await page.createCDPSession();
                 const { windowId } = await cdp.send('Browser.getWindowForTarget');
                 await cdp.send('Browser.setWindowBounds', {
                     windowId,

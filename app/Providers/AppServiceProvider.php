@@ -4,7 +4,6 @@ namespace App\Providers;
 
 use App\Models\AlertaBuzon;
 use App\Services\SunatBuzonSyncService;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -24,11 +23,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         View::composer('layouts.app', function ($view) {
-            $alertasPendientesCount = Schema::hasTable('alertas_buzon')
-                ? AlertaBuzon::where('estado', 'Pendiente')->count()
-                : 0;
-
-            $view->with('alertasPendientesCount', $alertasPendientesCount);
+            $view->with(
+                'alertasPendientesCount',
+                AlertaBuzon::where('estado', 'Pendiente')->count(),
+            );
         });
     }
 }

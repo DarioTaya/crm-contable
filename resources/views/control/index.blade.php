@@ -146,7 +146,7 @@
     </div>
 
     {{-- ═══════════════════════════════ TABLA MATRIZ 100% MONITOR (13 COLUMNAS: DJ + RH) ═══════════════════════════════ --}}
-    <div x-data x-cloak class="rounded-xl border border-gray-300 bg-white shadow-md min-h-[200px]">
+    <div class="overflow-x-auto rounded-xl border border-gray-300 bg-white shadow-md min-h-[200px]">
         <table class="w-full table-fixed border-collapse border border-gray-300 text-xs text-left">
 
             {{-- ═══════════════ CABECERA ÚNICA (THEAD - 13 COLUMNAS CON DJ Y RH) ═══════════════ --}}
@@ -257,6 +257,7 @@
 
                                     {{-- Triángulo Rojo en Esquina Superior Derecha (Google Sheets Comment Indicator) --}}
                                     <div x-show="tieneNota()"
+                                         x-cloak
                                          @click="abrir()"
                                          :title="'Nota: ' + nota"
                                          class="absolute top-0 right-0 w-0 h-0 border-t-[8px] border-r-[8px] border-t-transparent border-r-rose-600 cursor-pointer z-10">
@@ -266,22 +267,21 @@
                                     <div x-data="{ openDJ: false }" class="relative flex-1 flex items-center justify-center">
                                         <button
                                             type="button"
-                                            @click="openDJ = !openDJ"
+                                            @click="openDJ = !openDJ; if (openDJ) $nextTick(() => window.ubicarMenuFlotante($refs.menuDJ, $el))"
                                             :title="'DJ: ' + meses[{{ $idx }}].estado"
-                                            class="inline-flex items-center justify-center w-6 h-6 text-xs rounded hover:scale-110 active:scale-95 transition-transform select-none focus:outline-none"
+                                            class="inline-flex h-6 w-6 min-w-6 shrink-0 items-center justify-center overflow-hidden rounded text-xs transition-transform select-none hover:scale-110 focus:outline-none active:scale-95"
                                         >
-                                            <span x-show="meses[{{ $idx }}].estado === 'Declarado'">🟢</span>
-                                            <span x-show="meses[{{ $idx }}].estado === 'Procesando'">🟡</span>
-                                            <span x-show="meses[{{ $idx }}].estado === 'Pendiente' || !meses[{{ $idx }}].estado" class="drop-shadow-xs">⚪</span>
+                                            <span x-text="meses[{{ $idx }}].estado === 'Declarado' ? '🟢' : (meses[{{ $idx }}].estado === 'Procesando' ? '🟡' : '⚪')">{{ match ($m['estado'] ?? 'Pendiente') { 'Declarado' => '🟢', 'Procesando' => '🟡', default => '⚪' } }}</span>
                                         </button>
 
                                         {{-- Miniventana Flotante Espaciosa para DJ --}}
                                         <div
+                                            x-ref="menuDJ"
                                             x-show="openDJ"
                                             x-cloak
+                                            data-menu-flotante
                                             @click.outside="openDJ = false"
-                                            :class="{{ $idx }} > 6 ? 'right-0' : 'left-0'"
-                                            class="absolute top-full mt-1.5 z-50 w-44 rounded-xl border border-gray-200 bg-white p-2 shadow-2xl text-left"
+                                            class="fixed z-50 w-44 rounded-xl border border-gray-200 bg-white p-2 shadow-2xl text-left"
                                         >
                                             <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 mb-1">
                                                 Estado DJ ({{ $m['corto'] }})
@@ -327,21 +327,21 @@
                                     <div x-data="{ openRH: false }" class="relative flex-1 flex items-center justify-center">
                                         <button
                                             type="button"
-                                            @click="openRH = !openRH"
+                                            @click="openRH = !openRH; if (openRH) $nextTick(() => window.ubicarMenuFlotante($refs.menuRH, $el))"
                                             :title="'RH: ' + (meses[{{ $idx }}].honorarios === 'Pagado' ? 'Pagado' : 'Debe')"
-                                            class="inline-flex items-center justify-center w-6 h-6 text-xs rounded hover:scale-110 active:scale-95 transition-transform select-none focus:outline-none"
+                                            class="inline-flex h-6 w-6 min-w-6 shrink-0 items-center justify-center overflow-hidden rounded text-xs transition-transform select-none hover:scale-110 focus:outline-none active:scale-95"
                                         >
-                                            <span x-show="meses[{{ $idx }}].honorarios === 'Pagado'">🟢</span>
-                                            <span x-show="meses[{{ $idx }}].honorarios !== 'Pagado'" class="drop-shadow-xs">⚪</span>
+                                            <span x-text="meses[{{ $idx }}].honorarios === 'Pagado' ? '🟢' : '⚪'">{{ ($m['honorarios'] ?? '') === 'Pagado' ? '🟢' : '⚪' }}</span>
                                         </button>
 
                                         {{-- Miniventana Flotante Espaciosa para RH --}}
                                         <div
+                                            x-ref="menuRH"
                                             x-show="openRH"
                                             x-cloak
+                                            data-menu-flotante
                                             @click.outside="openRH = false"
-                                            :class="{{ $idx }} > 6 ? 'right-0' : 'left-0'"
-                                            class="absolute top-full mt-1.5 z-50 w-40 rounded-xl border border-gray-200 bg-white p-2 shadow-2xl text-left"
+                                            class="fixed z-50 w-40 rounded-xl border border-gray-200 bg-white p-2 shadow-2xl text-left"
                                         >
                                             <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 mb-1">
                                                 Honorarios ({{ $m['corto'] }})
@@ -382,11 +382,12 @@
                                     </button>
 
                                     {{-- Popover Flotante de Nota estilo Google Sheets / Excel --}}
-                                    <div x-show="openNote"
+                                    <div x-ref="menuNota"
+                                         x-show="openNote"
                                          x-cloak
+                                         data-menu-flotante
                                          @click.outside="cerrar()"
-                                         :class="{{ $idx }} > 6 ? 'right-0' : 'left-0'"
-                                         class="absolute top-full mt-1 w-64 rounded-xl border border-amber-300 bg-amber-50 p-3 shadow-2xl z-50 text-left">
+                                         class="fixed z-50 w-64 rounded-xl border border-amber-300 bg-amber-50 p-3 text-left shadow-2xl">
 
                                         {{-- Cabecera de la Nota --}}
                                         <div class="flex items-center justify-between pb-1.5 border-b border-amber-200 mb-2">
@@ -571,6 +572,7 @@
                 abrir() {
                     this.tempNota = this.nota;
                     this.openNote = true;
+                    this.$nextTick(() => window.ubicarMenuFlotante(this.$refs.menuNota, this.$el));
                 },
 
                 cerrar() {

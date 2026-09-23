@@ -1,45 +1,55 @@
 @extends('layouts.app')
 
-@section('title', 'Centro de Comando — Dashboard')
-@section('header', 'Centro de Comando')
+@section('title', 'Dashboard')
 
 @section('content')
     {{-- ═══════════════════════════════ ENCABEZADO Y PERIODO ═══════════════════════════════ --}}
-    <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-            <h2 class="text-2xl font-bold text-gray-900 tracking-tight">Panel de Control Tributario</h2>
+    <div class="mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div class="min-w-0">
+            <h2 class="text-2xl font-bold tracking-tight text-gray-900">{{ $saludo }}@if ($nombreUsuario !== ''), {{ $nombreUsuario }}@endif</h2>
+            <p class="mt-1 text-sm text-gray-500">
+                <time class="inline-flex items-baseline gap-2">
+                    <span>{{ $fechaHoy }}</span>
+                    <span class="text-gray-300" aria-hidden="true">·</span>
+                    <span data-reloj-lima class="font-semibold tabular-nums tracking-tight text-gray-800">{{ $horaHoy }}</span>
+                </time>
+            </p>
             <p class="mt-1 text-sm text-gray-500">
                 Monitoreo en tiempo real de obligaciones mensuales y alertas de vencimiento SUNAT.
             </p>
         </div>
 
-        <div class="flex items-center gap-3">
-            <span class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-xs">
-                <svg class="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                </svg>
-                Periodo a declarar: <strong class="font-semibold text-gray-900">{{ $nombreMesActual }}</strong>
-                <span class="rounded bg-brand-50 px-1.5 py-0.5 text-xs font-semibold text-brand-700">{{ $periodoActual }}</span>
-                <span class="hidden sm:inline-flex items-center rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 border border-amber-200">
-                    Vence en {{ $mesVencimientoNombre }}
-                </span>
-            </span>
+        <div class="inline-flex w-fit max-w-full shrink-0 flex-col gap-2">
+            <div class="flex w-0 min-w-full items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-xs">
+                <div class="min-w-0">
+                    <p class="text-[11px] font-medium leading-none text-gray-500">Periodo a declarar:</p>
+                    <p class="mt-1 text-sm font-semibold leading-none text-gray-900">{{ $nombreMesActual }}</p>
+                </div>
+                <div class="flex shrink-0 flex-col items-end gap-1">
+                    <span class="rounded bg-brand-50 px-1.5 py-0.5 text-xs font-semibold leading-none text-brand-700">{{ $periodoActual }}</span>
+                    <span class="rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium leading-none text-amber-800">
+                        Vence en {{ $mesVencimientoNombre }}
+                    </span>
+                </div>
+            </div>
 
-            <a href="{{ route('cronogramas.index') }}"
-               class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-xs transition hover:bg-gray-50">
-                <svg class="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                </svg>
-                Cronograma SUNAT
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="{{ route('cronogramas.index') }}"
+                   class="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-700 shadow-xs transition hover:bg-gray-50">
+                    <svg class="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                    </svg>
+                    Cronograma SUNAT
+                </a>
 
-            <a href="{{ route('clientes.index') }}"
-               class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-xs transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-                </svg>
-                Ver Clientes
-            </a>
+                <a href="{{ route('clientes.index') }}"
+                   class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white shadow-xs transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                    </svg>
+                    Ver Clientes
+                </a>
+            </div>
         </div>
     </div>
 
@@ -327,11 +337,12 @@
     </div>
 
     {{-- ═══════════════════════════════ SCRIPTS: CHART.JS ═══════════════════════════════ --}}
-    {{-- Chart.js llega desde el bundle (resources/js/app.js), no desde un CDN. --}}
+    {{-- Chart.js se carga aparte y solo en esta pagina. Ver resources/js/app.js. --}}
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        function renderObligacionesChart() {
             const ctx = document.getElementById('obligacionesChart');
-            if (!ctx) return;
+            if (!ctx || !window.Chart || ctx.dataset.rendered === '1') return;
+            ctx.dataset.rendered = '1';
 
             const declarados = {{ $declarados }};
             const procesando = {{ $procesando }};
@@ -381,6 +392,31 @@
                     }
                 }
             });
-        });
+        }
+
+        if (window.Chart) {
+            renderObligacionesChart();
+        } else {
+            document.addEventListener('crm:chart-ready', renderObligacionesChart, { once: true });
+        }
+
+        (function () {
+            const reloj = document.querySelector('[data-reloj-lima]');
+            if (!reloj) {
+                return;
+            }
+
+            const pintar = function () {
+                reloj.textContent = new Intl.DateTimeFormat('en-GB', {
+                    timeZone: 'America/Lima',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hourCycle: 'h23',
+                }).format(new Date());
+            };
+
+            pintar();
+            window.setInterval(pintar, 10000);
+        })();
     </script>
 @endsection

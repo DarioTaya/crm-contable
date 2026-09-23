@@ -114,4 +114,21 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Recordar credenciales en este equipo
+    |--------------------------------------------------------------------------
+    |
+    | Cookies cifradas que rellenan el formulario de acceso después de salir.
+    | Laravel también mantiene la sesión con remember_token si el usuario no
+    | cierra sesión de forma explícita.
+    |
+    */
+
+    'device_remember' => [
+        'email_cookie' => 'crm_device_email',
+        'secret_cookie' => 'crm_device_secret',
+        'minutes' => 60 * 24 * 90,
+    ],
+
 ];

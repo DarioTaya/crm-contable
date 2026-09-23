@@ -486,6 +486,72 @@
 
                     <hr class="border-gray-100">
 
+                    {{-- Credenciales API SUNAT: opcionales --}}
+                    <div>
+                        <div class="mb-3 flex items-center justify-between">
+                            <h3 class="text-sm font-semibold text-gray-700">Credenciales API SUNAT</h3>
+                            <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">Opcional</span>
+                        </div>
+                        <p class="mb-3 text-[11px] text-gray-500">Si aún no tienes el Client ID y el Client Secret, puedes registrar el cliente igual. Sirven para SIRE y la facturación electrónica.</p>
+                        <div class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                            <div>
+                                <label for="sunat_client_id" class="mb-1.5 block text-xs font-medium text-gray-600">Client ID</label>
+                                <input
+                                    type="text"
+                                    id="sunat_client_id"
+                                    name="sunat_client_id"
+                                    value="{{ old('sunat_client_id') }}"
+                                    autocomplete="off"
+                                    autocapitalize="off"
+                                    spellcheck="false"
+                                    data-1p-ignore
+                                    data-lpignore="true"
+                                    placeholder="Solo si ya lo tienes"
+                                    class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-mono text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                >
+                            </div>
+                            <div>
+                                <label for="sunat_client_secret" class="mb-1.5 block text-xs font-medium text-gray-600">Client Secret</label>
+                                <div class="relative">
+                                    <input
+                                        type="text"
+                                        id="sunat_client_secret"
+                                        name="sunat_client_secret"
+                                        value="{{ old('sunat_client_secret') }}"
+                                        autocomplete="off"
+                                        autocapitalize="off"
+                                        spellcheck="false"
+                                        data-1p-ignore
+                                        data-lpignore="true"
+                                        placeholder="••••••••"
+                                        :style="mostrarClaveApi ? '' : '-webkit-text-security: disc'"
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 pr-10 text-sm font-mono text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                    >
+                                    <button
+                                        type="button"
+                                        @click="mostrarClaveApi = !mostrarClaveApi"
+                                        tabindex="-1"
+                                        class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                                        title="Mostrar / ocultar clave">
+                                        <template x-if="!mostrarClaveApi">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </template>
+                                        <template x-if="mostrarClaveApi">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                                            </svg>
+                                        </template>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="border-gray-100">
+
                     {{-- AFP --}}
                     <div>
                         <div class="mb-3 flex items-center justify-between">
@@ -1032,6 +1098,7 @@
                 claveSol: '',
 
                 mostrarClaveSol: false,
+                mostrarClaveApi: false,
                 mostrarClaveAfp: false,
                 mostrarClaveDetracciones: false,
                 mostrarClaveBanco1: false,

@@ -5,7 +5,7 @@
 
 @section('content')
 <div x-data="expedienteCliente({
-    initialTab: '{{ request('tab', session('tab', 'datos')) }}',
+    initialTab: '{{ request('tab', session('tab', 'datos')) === 'api_credentials' ? 'datos' : request('tab', session('tab', 'datos')) }}',
     clienteId: {{ $cliente->id }},
     alertasPendientes: {{ $cliente->alertas->where('estado', 'Pendiente')->count() }},
     importarUrl: '{{ route('comprobantes.importar') }}',
@@ -208,7 +208,7 @@
                         </div>
 
                         <div class="flex items-center justify-between pt-1 text-[11px] text-slate-400">
-                            <span x-text="(hudAcceso.nombreNavegador || 'Navegador') + ' (Modo Aplicación)'"></span>
+                            <span x-text="(hudAcceso.nombreNavegador || 'Navegador') + ' · ventana normal'"></span>
                             <span x-text="hudAcceso.completado ? 'Portal listo en pantalla' : 'Conexión cifrada'"></span>
                         </div>
                     </div>
@@ -292,24 +292,6 @@
                     @if (($sireTotalRegistros ?? 0) > 0)
                         <span class="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-blue-100 border border-blue-200 px-1.5 text-[10px] font-bold text-blue-700">
                             {{ $sireTotalRegistros }}
-                        </span>
-                    @endif
-                </button>
-                <button
-                    @click="tab = 'api_credentials'"
-                    :class="tab === 'api_credentials'
-                        ? 'border-brand-500 text-brand-600'
-                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
-                    class="flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition"
-                    role="tab"
-                >
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1 1 21.75 8.25Z" />
-                    </svg>
-                    Credenciales API
-                    @if ($cliente->sunat_client_id)
-                        <span class="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-green-100 border border-green-200 px-1.5 text-[10px] font-bold text-green-700">
-                            OK
                         </span>
                     @endif
                 </button>
@@ -573,7 +555,7 @@
                          x-transition:leave="ease-in duration-200"
                          x-transition:leave-start="opacity-100"
                          x-transition:leave-end="opacity-0"
-                         class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity"
+                         class="fixed inset-0 z-0 bg-gray-900/60 backdrop-blur-xs transition-opacity"
                          @click="modalEditarDatos = false"></div>
 
                     <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
@@ -585,7 +567,7 @@
                          x-transition:leave="ease-in duration-200"
                          x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                          x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                         class="inline-block w-full max-w-lg transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:align-middle">
+                         class="relative z-10 inline-block w-full max-w-lg overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-2xl sm:my-8 sm:align-middle">
                         
                         {{-- Header del Modal --}}
                         <div class="border-b border-gray-100 bg-gray-50/70 px-6 py-4 flex items-center justify-between">
@@ -752,7 +734,10 @@
                 </div>
             </div>
 
-            {{-- MODAL: CAMBIAR ESTADO EN EL ESTUDIO CONTABLE --}}
+            {{-- MODAL: CAMBIAR ESTADO EN EL ESTUDIO CONTABLE.
+                 Se teletransporta al body: si queda dentro de la pestaña, el clic
+                 del encabezado no puede mostrar el diálogo. --}}
+            <template x-teleport="body">
             <div x-show="modalEstadoEstudio"
                  x-cloak
                  class="fixed inset-0 z-50 overflow-y-auto"
@@ -760,26 +745,12 @@
                  role="dialog"
                  aria-modal="true">
                 <div class="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                    <div x-show="modalEstadoEstudio"
-                         x-transition:enter="ease-out duration-300"
-                         x-transition:enter-start="opacity-0"
-                         x-transition:enter-end="opacity-100"
-                         x-transition:leave="ease-in duration-200"
-                         x-transition:leave-start="opacity-100"
-                         x-transition:leave-end="opacity-0"
-                         class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity"
+                    <div class="fixed inset-0 z-0 bg-gray-900/60 backdrop-blur-xs"
                          @click="modalEstadoEstudio = false"></div>
 
                     <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
 
-                    <div x-show="modalEstadoEstudio"
-                         x-transition:enter="ease-out duration-300"
-                         x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                         x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
-                         x-transition:leave="ease-in duration-200"
-                         x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
-                         x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                         class="inline-block w-full max-w-lg transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:align-middle">
+                    <div class="relative z-10 inline-block w-full max-w-lg overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-2xl sm:my-8 sm:align-middle">
 
                         {{-- Header del Modal --}}
                         <div class="border-b border-gray-100 bg-slate-50 px-6 py-4 flex items-center justify-between">
@@ -893,25 +864,28 @@
                     </div>
                 </div>
             </div>
+            </template>
 
             {{-- Botones de Acceso Rápido Automatizado (1 Clic) --}}
             @if ($cliente->credencial?->usuario_sol && $cliente->credencial?->clave_sol)
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {{-- Botón Ingresar a SUNAT --}}
-                    <a href="{{ route('clientes.sunat', $cliente) }}"
-                       @click.prevent="lanzarAcceso('{{ route('clientes.sunat', $cliente) }}', 'SUNAT', '{{ addslashes($cliente->razon_social) }}', '{{ $cliente->ruc }}')"
-                       class="group flex items-center justify-between gap-3 rounded-xl border-2 border-emerald-200 bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-3.5 text-white shadow-md transition-all hover:from-emerald-600 hover:to-teal-700 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]">
+                    <div class="relative">
+                    <button type="button"
+                       @click.stop="abrirMenuSunat($event, '{{ route('clientes.sunat', $cliente) }}', '{{ addslashes($cliente->razon_social) }}', '{{ $cliente->ruc }}')"
+                       class="group flex w-full items-center justify-between gap-3 rounded-xl border-2 border-emerald-200 bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-3.5 text-left text-white shadow-md transition-all hover:from-emerald-600 hover:to-teal-700 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]">
                         <div class="flex items-center gap-3">
                             <span class="text-2xl">🚀</span>
                             <div>
                                 <span class="block text-sm font-bold tracking-wide">Ingresar a SUNAT (1 Clic)</span>
-                                <span class="block text-xs font-medium text-emerald-100">Abre Chrome con sesión SOL automática</span>
+                                <span class="block text-xs font-medium text-emerald-100">Elige el módulo y abre tu navegador</span>
                             </div>
                         </div>
                         <svg class="h-5 w-5 shrink-0 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                         </svg>
-                    </a>
+                    </button>
+                    </div>
 
                     {{-- Botón Ingresar a SUNAFIL --}}
                     <a href="{{ route('clientes.sunafil', $cliente) }}"
@@ -1323,7 +1297,7 @@
                          x-transition:leave="ease-in duration-200"
                          x-transition:leave-start="opacity-100"
                          x-transition:leave-end="opacity-0"
-                         class="fixed inset-0 bg-gray-900/60 backdrop-blur-xs transition-opacity"
+                         class="fixed inset-0 z-0 bg-gray-900/60 backdrop-blur-xs transition-opacity"
                          @click="modalEditarCredenciales = false"></div>
 
                     <span class="hidden sm:inline-block sm:h-screen sm:align-middle" aria-hidden="true">&#8203;</span>
@@ -1335,7 +1309,7 @@
                          x-transition:leave="ease-in duration-200"
                          x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
                          x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
-                         class="inline-block w-full max-w-xl transform overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-2xl transition-all sm:my-8 sm:align-middle">
+                         class="relative z-10 inline-block w-full max-w-xl overflow-hidden rounded-2xl bg-white text-left align-bottom shadow-2xl sm:my-8 sm:align-middle">
                         
                         {{-- Header del Modal --}}
                         <div class="border-b border-gray-100 bg-amber-50/50 px-6 py-4 flex items-center justify-between">
@@ -1843,7 +1817,7 @@
                      class="fixed inset-0 bg-gray-900/40 backdrop-blur-xs transition-opacity">
                 </div>
 
-                <div class="fixed inset-y-0 right-0 flex max-w-full pl-10">
+                <div class="fixed inset-y-0 right-0 z-10 flex max-w-full pl-10">
                     <div x-show="slideOverOpen"
                          x-transition:enter="transform transition ease-in-out duration-300"
                          x-transition:enter-start="translate-x-full"
@@ -2841,10 +2815,10 @@
         </div>
 
     {{-- ═══════════════════ PESTAÑA 5: CREDENCIALES API SUNAT ═══════════════════ --}}
-    <div x-show="tab === 'api_credentials'" x-cloak class="mt-6 space-y-6">
+    <div x-show="tab === 'datos'" x-cloak class="mt-6 space-y-6">
         {{-- Card Principal --}}
-        <div class="rounded-xl border border-gray-200 bg-white shadow-xs">
-            <div class="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+        <div class="rounded-xl border border-gray-200 bg-white shadow-xs" x-data="apiCredentialsForm()">
+            <div class="border-b border-gray-100 px-6 py-4 flex items-center justify-between gap-4">
                 <div class="flex items-center gap-3">
                     <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -2856,20 +2830,26 @@
                         <p class="text-xs text-gray-500">Client ID y Client Secret para integraciones con la API de SUNAT (SIRE, facturación electrónica)</p>
                     </div>
                 </div>
-                @if ($cliente->sunat_client_id)
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-xs font-semibold text-green-700">
-                        <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>
-                        Configurado
-                    </span>
-                @else
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-gray-50 border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-500">
-                        <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>
-                        Sin configurar
-                    </span>
-                @endif
+                <div class="text-right shrink-0">
+                    <template x-if="clientIdVisible">
+                        <div>
+                            <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 border border-green-200 px-3 py-1 text-xs font-semibold text-green-700">
+                                <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>
+                                Configurado
+                            </span>
+                            <p class="mt-1 max-w-[16rem] truncate font-mono text-xs text-gray-800" x-text="clientIdVisible" title="Client ID"></p>
+                        </div>
+                    </template>
+                    <template x-if="!clientIdVisible">
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-gray-50 border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-500">
+                            <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+                            Sin configurar
+                        </span>
+                    </template>
+                </div>
             </div>
 
-            <div class="px-6 py-5" x-data="apiCredentialsForm()">
+            <div class="px-6 py-5">
                 {{-- Toast de feedback --}}
                 <div x-show="toast.mostrar"
                      x-cloak
@@ -2896,29 +2876,54 @@
                     <p class="text-sm font-medium" x-text="toast.mensaje"></p>
                 </div>
 
-                <form @submit.prevent="guardar" class="space-y-5">
+                <form @submit.prevent="guardar" autocomplete="off" class="space-y-5">
+                    {{-- Campos señuelo: el navegador vuelca aquí el usuario y la
+                         clave de la sesión en lugar de tocar Client ID / Secret. --}}
+                    <div class="hidden" aria-hidden="true">
+                        <input type="text" name="usuario" autocomplete="username" tabindex="-1">
+                        <input type="password" name="clave" autocomplete="current-password" tabindex="-1">
+                    </div>
+
                     {{-- Client ID --}}
                     <div>
                         <label for="api_client_id" class="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
                         <input type="text"
                                id="api_client_id"
+                               name="sunat_api_client_id"
+                               autocomplete="off"
+                               autocapitalize="off"
+                               spellcheck="false"
+                               data-1p-ignore
+                               data-lpignore="true"
+                               readonly
+                               @focus="$el.removeAttribute('readonly')"
                                x-model="form.sunat_client_id"
                                placeholder="Ej: 4b2c8a1e-f3d9-4c7b-a8e5-1234567890ab"
                                class="block w-full rounded-lg border-gray-300 shadow-xs focus:border-brand-500 focus:ring-brand-500 sm:text-sm font-mono" />
                     </div>
 
-                    {{-- Client Secret --}}
+                    {{-- Client Secret. Es texto, no password: si el tipo fuera
+                         password el navegador lo trata como un inicio de sesión
+                         y rellena la clave del estudio. --}}
                     <div>
                         <label for="api_client_secret" class="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
                         <div class="relative">
-                            <input :type="mostrarSecret ? 'text' : 'password'"
-                                   type="password"
+                            <input type="text"
                                    id="api_client_secret"
+                                   name="sunat_api_client_secret"
+                                   autocomplete="off"
+                                   autocapitalize="off"
+                                   spellcheck="false"
+                                   data-1p-ignore
+                                   data-lpignore="true"
+                                   readonly
+                                   @focus="prepararSecreto($el)"
                                    x-model="form.sunat_client_secret"
+                                   :style="mostrarSecret ? '' : '-webkit-text-security: disc'"
                                    placeholder="{{ ! empty($cliente->sunat_client_secret) ? '••••••••••••••••' : 'Ingrese el Client Secret de la aplicación registrada' }}"
                                    class="block w-full rounded-lg border-gray-300 shadow-xs focus:border-brand-500 focus:ring-brand-500 sm:text-sm font-mono pr-10" />
                             <button type="button"
-                                    @click="mostrarSecret = !mostrarSecret"
+                                    @click="alternarSecreto()"
                                     class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition"
                                     title="Mostrar / ocultar clave">
                                 <template x-if="!mostrarSecret">
@@ -2993,6 +2998,8 @@
     </div>
     </div>
 
+    @include('clientes.partials.menu-accesos-sunat')
+
     {{-- ═══════════════════════════ ALPINE.JS + CLIPBOARD ═══════════════════════════ --}}
     <script>
         /**
@@ -3005,6 +3012,8 @@
                 modalEditarDatos: false,
                 modalEditarCredenciales: false,
                 modalEstadoEstudio: false,
+                menuSunat: { abierto: false, top: 0, left: 0, url: '', nombre: '', ruc: '' },
+                _ignorarCierreSunat: false,
                 sireImportando: false,
                 sincronizandoSunat: false,
                 sunatInfo: {
@@ -3074,6 +3083,33 @@
                     error: null,
                     animTimer: null,
                 },
+                abrirMenuSunat(event, url, nombre, ruc) {
+                    document.querySelectorAll('[data-ancla-sunat]').forEach((nodo) => nodo.removeAttribute('data-ancla-sunat'));
+                    event.currentTarget.setAttribute('data-ancla-sunat', '1');
+                    this.menuSunat.url = url;
+                    this.menuSunat.nombre = nombre;
+                    this.menuSunat.ruc = ruc;
+                    window.posicionarMenuAccesosSunat(this.menuSunat);
+                    this.menuSunat.abierto = true;
+                    if (!this._oyendoScrollSunat) {
+                        this._oyendoScrollSunat = true;
+                        const seguir = () => {
+                            if (!this.menuSunat.abierto) {
+                                return;
+                            }
+                            window.posicionarMenuAccesosSunat(this.menuSunat);
+                        };
+                        window.addEventListener('scroll', seguir, true);
+                        window.addEventListener('resize', seguir);
+                    }
+                },
+                elegirAccesoSunat(destino) {
+                    const url = this.menuSunat.url + '?destino=' + encodeURIComponent(destino);
+                    const nombre = this.menuSunat.nombre;
+                    const ruc = this.menuSunat.ruc;
+                    this.menuSunat.abierto = false;
+                    this.lanzarAcceso(url, 'SUNAT', nombre, ruc);
+                },
                 async lanzarAcceso(url, portal, nombre, ruc) {
                     if (this.hudAcceso.animTimer) clearInterval(this.hudAcceso.animTimer);
                     this.hudAcceso.portal = portal;
@@ -3081,7 +3117,9 @@
                     this.hudAcceso.clienteRuc = ruc;
                     this.hudAcceso.icono = portal === 'SUNAT' ? '🚀' : '👷';
                     this.hudAcceso.progreso = 15;
-                    this.hudAcceso.faseTexto = 'Detectando navegador predeterminado...';
+                    this.hudAcceso.faseTexto = portal === 'SUNAT'
+                        ? 'Ingresando a SUNAT...'
+                        : 'Ingresando a SUNAFIL...';
                     this.hudAcceso.completado = false;
                     this.hudAcceso.error = null;
                     this.hudAcceso.abierto = true;
@@ -3092,15 +3130,15 @@
                         step++;
                         if (step === 1 && this.hudAcceso.progreso < 40) {
                             this.hudAcceso.progreso = 38;
+                            this.hudAcceso.faseTexto = 'Preparando el navegador...';
+                        } else if (step === 2 && this.hudAcceso.progreso < 70) {
+                            this.hudAcceso.progreso = 68;
                             this.hudAcceso.faseTexto = portal === 'SUNAT'
-                                ? 'Conectando con SUNAT SOL...'
-                                : 'Conectando con Casilla SUNAFIL...';
-                        } else if (step === 2 && this.hudAcceso.progreso < 65) {
-                            this.hudAcceso.progreso = 65;
-                            this.hudAcceso.faseTexto = 'Autenticando credenciales Clave SOL...';
+                                ? 'Ingresando a SUNAT...'
+                                : 'Ingresando a SUNAFIL...';
                         } else if (step >= 3 && this.hudAcceso.progreso < 92) {
-                            this.hudAcceso.progreso = Math.min(92, this.hudAcceso.progreso + 5);
-                            this.hudAcceso.faseTexto = 'Desplegando portal en pantalla...';
+                            this.hudAcceso.progreso = Math.min(92, this.hudAcceso.progreso + 4);
+                            this.hudAcceso.faseTexto = 'La ventana se abre cuando la sesión ya está lista...';
                         }
                     }, 550);
 
@@ -3351,18 +3389,47 @@
          * Envía los datos por AJAX (PUT) y muestra feedback con toast.
          */
         function apiCredentialsForm() {
+            const clientIdGuardado = @json($cliente->sunat_client_id ?? '');
+            const secretGuardado = @json($cliente->sunat_client_secret ?? '');
+            const mascara = '••••••••••••••••';
+
             return {
+                clientIdVisible: clientIdGuardado,
                 form: {
-                    sunat_client_id: @json($cliente->sunat_client_id ?? ''),
-                    sunat_client_secret: '',
+                    sunat_client_id: clientIdGuardado,
+                    sunat_client_secret: secretGuardado ? mascara : '',
                 },
+                secretoReal: secretGuardado,
                 mostrarSecret: false,
                 guardando: false,
                 toast: { mostrar: false, mensaje: '', tipo: 'success' },
 
+                alternarSecreto() {
+                    this.mostrarSecret = !this.mostrarSecret;
+                    if (this.mostrarSecret) {
+                        if (!this.form.sunat_client_secret || this.form.sunat_client_secret === mascara) {
+                            this.form.sunat_client_secret = this.secretoReal;
+                        }
+                    } else if (this.secretoReal && this.form.sunat_client_secret === this.secretoReal) {
+                        this.form.sunat_client_secret = mascara;
+                    }
+                },
+
+                prepararSecreto(el) {
+                    el.removeAttribute('readonly');
+                    if (!this.mostrarSecret && this.form.sunat_client_secret === mascara) {
+                        this.form.sunat_client_secret = '';
+                    }
+                },
+
                 async guardar() {
                     this.guardando = true;
                     this.toast.mostrar = false;
+
+                    let secret = (this.form.sunat_client_secret || '').trim();
+                    if (!secret || secret === mascara || /^[•*]+$/.test(secret)) {
+                        secret = null;
+                    }
 
                     try {
                         const tokenEl = document.querySelector('meta[name="csrf-token"]');
@@ -3370,8 +3437,8 @@
 
                         const body = {
                             _method: 'PUT',
-                            sunat_client_id: this.form.sunat_client_id || null,
-                            sunat_client_secret: this.form.sunat_client_secret || null,
+                            sunat_client_id: (this.form.sunat_client_id || '').trim() || null,
+                            sunat_client_secret: secret,
                         };
 
                         const response = await fetch('{{ route("clientes.api-credentials.update", $cliente) }}', {
@@ -3390,10 +3457,16 @@
                             throw new Error(data.message || 'Error al guardar las credenciales.');
                         }
 
+                        this.clientIdVisible = body.sunat_client_id || '';
+                        if (secret) {
+                            this.secretoReal = secret;
+                        }
+                        this.mostrarSecret = false;
+                        this.form.sunat_client_secret = this.secretoReal ? mascara : '';
+
                         this.toast.tipo = 'success';
                         this.toast.mensaje = data.message || 'Credenciales guardadas correctamente.';
                         this.toast.mostrar = true;
-                        this.form.sunat_client_secret = '';
                         setTimeout(() => this.toast.mostrar = false, 5000);
                     } catch (err) {
                         this.toast.tipo = 'error';

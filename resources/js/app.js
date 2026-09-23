@@ -1,16 +1,20 @@
 import Alpine from 'alpinejs';
-import Chart from 'chart.js/auto';
 
 /**
- * Alpine y Chart.js se sirven desde el bundle, no desde un CDN: la aplicacion
- * debe renderizar por completo sin conexion a internet (requisito de la
- * distribucion de escritorio).
+ * Alpine se sirve desde el bundle, no desde un CDN: la aplicacion debe
+ * renderizar por completo sin conexion a internet.
  *
- * Se exponen en `window` porque las vistas heredadas los invocan desde bloques
- * <script> en linea. Esa dependencia desaparece a medida que esas vistas se
- * migren a componentes.
+ * Chart.js pesa mas que el resto del bundle junto y solo lo usa el dashboard.
+ * Se carga aparte, y unicamente cuando la pagina trae el grafico, para que el
+ * resto de pantallas no paguen ese parseo en cada navegacion.
  */
 window.Alpine = Alpine;
-window.Chart = Chart;
 
 Alpine.start();
+
+if (document.getElementById('obligacionesChart')) {
+    import('chart.js/auto').then(({ default: Chart }) => {
+        window.Chart = Chart;
+        document.dispatchEvent(new Event('crm:chart-ready'));
+    });
+}

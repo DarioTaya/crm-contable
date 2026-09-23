@@ -6,6 +6,7 @@ use App\Models\Cliente;
 use App\Models\Estudio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
@@ -130,6 +131,85 @@ class AuthAndRbacTest extends TestCase
 
         $response->assertRedirect(route('login'));
         $this->assertGuest();
+    }
+
+    public function test_login_with_remember_stores_device_credentials_and_remember_token(): void
+    {
+        $response = $this->post(route('login.post'), [
+            'email' => 'admin@estudio.com',
+            'password' => 'secret123',
+            'remember' => '1',
+        ]);
+
+        $response->assertRedirect(route('dashboard'));
+        $this->assertAuthenticatedAs($this->admin);
+        $response->assertCookie((string) config('auth.device_remember.email_cookie'), 'admin@estudio.com');
+        $response->assertCookie((string) config('auth.device_remember.secret_cookie'), 'secret123');
+        $response->assertCookie(Auth::guard('web')->getRecallerName());
+        $this->assertNotSame('', (string) $this->admin->fresh()->getRememberToken());
+    }
+
+    public function test_login_without_remember_does_not_store_device_credentials(): void
+    {
+        $response = $this->post(route('login.post'), [
+            'email' => 'admin@estudio.com',
+            'password' => 'secret123',
+        ]);
+
+        $response->assertRedirect(route('dashboard'));
+        $this->assertAuthenticatedAs($this->admin);
+        $response->assertCookieMissing((string) config('auth.device_remember.email_cookie'));
+        $response->assertCookieMissing((string) config('auth.device_remember.secret_cookie'));
+        $response->assertCookieMissing(Auth::guard('web')->getRecallerName());
+        $this->assertSame('', (string) $this->admin->fresh()->getRememberToken());
+    }
+
+    public function test_login_form_prefills_remembered_device_credentials_after_logout(): void
+    {
+        $emailCookie = (string) config('auth.device_remember.email_cookie');
+        $secretCookie = (string) config('auth.device_remember.secret_cookie');
+
+        $this->post(route('login.post'), [
+            'email' => 'admin@estudio.com',
+            'password' => 'secret123',
+            'remember' => '1',
+        ]);
+
+        $this->withCookies([
+            $emailCookie => 'admin@estudio.com',
+            $secretCookie => 'secret123',
+        ])->post(route('logout'));
+
+        $response = $this->withHeader('X-Test-Guest', '1')->withCookies([
+            $emailCookie => 'admin@estudio.com',
+            $secretCookie => 'secret123',
+        ])->get(route('login'));
+
+        $response->assertOk();
+        $response->assertSee('value="admin@estudio.com"', false);
+        $response->assertSee('value="secret123"', false);
+        $this->assertMatchesRegularExpression(
+            '/id="remember"[^>]*\bchecked\b/',
+            $response->getContent()
+        );
+    }
+
+    public function test_login_without_remember_clears_previous_device_credentials(): void
+    {
+        $emailCookie = (string) config('auth.device_remember.email_cookie');
+        $secretCookie = (string) config('auth.device_remember.secret_cookie');
+
+        $response = $this->withCookies([
+            $emailCookie => 'admin@estudio.com',
+            $secretCookie => 'secret123',
+        ])->post(route('login.post'), [
+            'email' => 'admin@estudio.com',
+            'password' => 'secret123',
+        ]);
+
+        $response->assertRedirect(route('dashboard'));
+        $response->assertCookieExpired($emailCookie);
+        $response->assertCookieExpired($secretCookie);
     }
 
     public function test_admin_can_access_ajustes_and_usuarios(): void

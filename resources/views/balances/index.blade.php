@@ -149,7 +149,7 @@
     </div>
 
     {{-- ═══════════════════════════════ TABLA MATRIZ 100% MONITOR (14 COLUMNAS) ═══════════════════════════════ --}}
-    <div x-data x-cloak class="rounded-xl border border-gray-300 bg-white shadow-md min-h-[200px]">
+    <div class="overflow-x-auto rounded-xl border border-gray-300 bg-white shadow-md min-h-[200px]">
         <table class="w-full table-fixed border-collapse border border-gray-300 text-xs text-left">
 
             {{-- ═══════════════ CABECERA ÚNICA (THEAD - 14 COLUMNAS) ═══════════════ --}}
@@ -259,6 +259,7 @@
 
                                     {{-- Triángulo Rojo en Esquina Superior Derecha (Google Sheets Comment Indicator) --}}
                                     <div x-show="tieneNota()"
+                                         x-cloak
                                          @click="abrir()"
                                          :title="'Nota: ' + nota"
                                          class="absolute top-0 right-0 w-0 h-0 border-t-[8px] border-r-[8px] border-t-transparent border-r-rose-600 cursor-pointer z-10">
@@ -268,19 +269,18 @@
                                     <div x-data="{ openMenu: false }" class="relative flex items-center justify-center w-full">
                                         <button
                                             type="button"
-                                            @click="openMenu = !openMenu"
+                                            @click="openMenu = !openMenu; if (openMenu) $nextTick(() => window.ubicarMenuFlotante($refs.menuMes, $el))"
                                             :title="'Mes ' + {{ $m['numero'] }} + ': ' + meses[{{ $idx }}].estado"
-                                            class="inline-flex items-center justify-center w-7 h-7 text-xs rounded hover:scale-110 active:scale-95 transition-transform select-none focus:outline-none"
+                                            class="inline-flex h-7 w-7 min-w-7 shrink-0 items-center justify-center overflow-hidden rounded text-xs transition-transform select-none hover:scale-110 focus:outline-none active:scale-95"
                                         >
-                                            <span x-show="meses[{{ $idx }}].estado === 'Declarado'">🟢</span>
-                                            <span x-show="meses[{{ $idx }}].estado === 'Proceso' || meses[{{ $idx }}].estado === 'Procesando'">🟡</span>
-                                            <span x-show="meses[{{ $idx }}].estado === 'Pendiente' || !meses[{{ $idx }}].estado" class="drop-shadow-xs">⚪</span>
+                                            <span x-text="meses[{{ $idx }}].estado === 'Declarado' ? '🟢' : ((meses[{{ $idx }}].estado === 'Proceso' || meses[{{ $idx }}].estado === 'Procesando') ? '🟡' : '⚪')">{{ match ($m['estado'] ?? 'Pendiente') { 'Declarado' => '🟢', 'Proceso', 'Procesando' => '🟡', default => '⚪' } }}</span>
                                         </button>
 
                                         {{-- Botón micro de nota al hover si no tiene nota --}}
                                         <button
                                             type="button"
                                             x-show="!tieneNota()"
+                                            x-cloak
                                             @click="abrir()"
                                             title="Agregar nota"
                                             class="absolute -right-0.5 top-0.5 opacity-0 hover:opacity-100 text-[9px] text-gray-400 hover:text-amber-700 transition"
@@ -290,11 +290,12 @@
 
                                         {{-- Miniventana Flotante Espaciosa para Estado del Mes --}}
                                         <div
+                                            x-ref="menuMes"
                                             x-show="openMenu"
                                             x-cloak
+                                            data-menu-flotante
                                             @click.outside="openMenu = false"
-                                            :class="{{ $idx }} > 6 ? 'right-0' : 'left-0'"
-                                            class="absolute top-full mt-1.5 z-50 w-44 rounded-xl border border-gray-200 bg-white p-2 shadow-2xl text-left"
+                                            class="fixed z-50 w-44 rounded-xl border border-gray-200 bg-white p-2 text-left shadow-2xl"
                                         >
                                             <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 mb-1">
                                                 Balance {{ $m['corto'] }}-{{ substr($anio, -2) }}
@@ -334,11 +335,12 @@
                                     </div>
 
                                     {{-- Popover Flotante de Nota estilo Google Sheets --}}
-                                    <div x-show="openNote"
+                                    <div x-ref="menuNota"
+                                         x-show="openNote"
                                          x-cloak
+                                         data-menu-flotante
                                          @click.outside="cerrar()"
-                                         :class="{{ $idx }} > 6 ? 'right-0' : 'left-0'"
-                                         class="absolute top-full mt-1 w-64 rounded-xl border border-amber-300 bg-amber-50 p-3 shadow-2xl z-50 text-left">
+                                         class="fixed z-50 w-64 rounded-xl border border-amber-300 bg-amber-50 p-3 text-left shadow-2xl">
 
                                         <div class="flex items-center justify-between pb-1.5 border-b border-amber-200 mb-2">
                                             <div class="truncate pr-2">
@@ -391,7 +393,7 @@
                             <div x-data="{ openDJAnual: false }" class="relative flex items-center justify-center w-full h-full">
                                 <button
                                     type="button"
-                                    @click="openDJAnual = !openDJAnual"
+                                    @click="openDJAnual = !openDJAnual; if (openDJAnual) $nextTick(() => window.ubicarMenuFlotante($refs.menuDJAnual, $el))"
                                     :title="'DJ Anual {{ $anio - 1 }}: ' + djAnual"
                                     class="inline-flex items-center justify-center gap-1 px-2 py-1 text-xs font-bold rounded-lg border transition shadow-xs hover:scale-105 active:scale-95 focus:outline-none"
                                     :class="{
@@ -400,18 +402,18 @@
                                         'border-slate-300 bg-white text-slate-700': djAnual === 'Pendiente' || !djAnual
                                     }"
                                 >
-                                    <span x-show="djAnual === 'Declarado'">🟢</span>
-                                    <span x-show="djAnual === 'Proceso' || djAnual === 'Procesando'">🟡</span>
-                                    <span x-show="djAnual === 'Pendiente' || !djAnual">⚪</span>
-                                    <span class="text-[10px]" x-text="djAnual === 'Declarado' ? 'Declarado' : (djAnual === 'Procesando' || djAnual === 'Proceso' ? 'Proceso' : 'Pendiente')"></span>
+                                    <span x-text="djAnual === 'Declarado' ? '🟢' : ((djAnual === 'Proceso' || djAnual === 'Procesando') ? '🟡' : '⚪')">{{ match ($item['dj_anual'] ?? 'Pendiente') { 'Declarado' => '🟢', 'Proceso', 'Procesando' => '🟡', default => '⚪' } }}</span>
+                                    <span class="text-[10px]" x-text="djAnual === 'Declarado' ? 'Declarado' : (djAnual === 'Procesando' || djAnual === 'Proceso' ? 'Proceso' : 'Pendiente')">{{ match ($item['dj_anual'] ?? 'Pendiente') { 'Declarado' => 'Declarado', 'Proceso', 'Procesando' => 'Proceso', default => 'Pendiente' } }}</span>
                                 </button>
 
                                 {{-- Dropdown DJ Anual --}}
                                 <div
+                                    x-ref="menuDJAnual"
                                     x-show="openDJAnual"
                                     x-cloak
+                                    data-menu-flotante
                                     @click.outside="openDJAnual = false"
-                                    class="absolute right-0 top-full mt-1.5 z-50 w-44 rounded-xl border border-indigo-200 bg-white p-2 shadow-2xl text-left"
+                                    class="fixed z-50 w-44 rounded-xl border border-indigo-200 bg-white p-2 text-left shadow-2xl"
                                 >
                                     <div class="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-700 border-b border-indigo-100 mb-1">
                                         DJ Anual {{ $anio - 1 }}
@@ -589,6 +591,7 @@
                 abrir() {
                     this.tempNota = this.nota;
                     this.openNote = true;
+                    this.$nextTick(() => window.ubicarMenuFlotante(this.$refs.menuNota, this.$el));
                 },
 
                 cerrar() {

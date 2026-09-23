@@ -136,6 +136,12 @@ class DashboardController extends Controller
 
         $porcentajeAvance = $totalObligaciones > 0 ? (int) round(($declarados / $totalObligaciones) * 100) : 0;
 
+        $saludo = $this->saludoSegunHora();
+        $nombreUsuario = $this->primerNombre(auth()->user()?->name);
+        $ahoraLima = now('America/Lima')->locale('es');
+        $fechaHoy = str_replace('septiembre', 'setiembre', $ahoraLima->isoFormat('dddd, D [de] MMMM [de] YYYY'));
+        $horaHoy = $ahoraLima->format('H:i');
+
         return view('dashboard', compact(
             'totalClientesActivos',
             'totalClientesInactivos',
@@ -149,7 +155,50 @@ class DashboardController extends Controller
             'procesando',
             'pendientes',
             'porcentajeAvance',
-            'alertasVencimiento'
+            'alertasVencimiento',
+            'saludo',
+            'nombreUsuario',
+            'fechaHoy',
+            'horaHoy',
         ));
+    }
+
+    /**
+     * Saludo según la hora en Lima: mañana, tarde o noche.
+     */
+    private function saludoSegunHora(): string
+    {
+        $hora = now('America/Lima')->hour;
+
+        if ($hora >= 5 && $hora < 12) {
+            return 'Buenos días';
+        }
+
+        if ($hora >= 12 && $hora < 19) {
+            return 'Buenas tardes';
+        }
+
+        return 'Buenas noches';
+    }
+
+    /**
+     * Primer nombre del usuario autenticado, listo para mostrar en el saludo.
+     */
+    private function primerNombre(?string $nombreCompleto): string
+    {
+        $nombreCompleto = trim((string) $nombreCompleto);
+
+        if ($nombreCompleto === '') {
+            return '';
+        }
+
+        $partes = preg_split('/\s+/u', $nombreCompleto) ?: [];
+        $primero = $partes[0] ?? '';
+
+        if ($primero === '') {
+            return '';
+        }
+
+        return mb_convert_case(mb_strtolower($primero, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
     }
 }

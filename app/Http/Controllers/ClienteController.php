@@ -8,6 +8,7 @@ use App\Models\Cliente;
 use App\Services\SunafilBuzonSyncService;
 use App\Services\SunatBuzonSyncService;
 use App\Services\WhatsAppService;
+use App\Support\AccesosSunat;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -117,6 +118,10 @@ class ClienteController extends Controller
             'banco_2_usuario' => ['nullable', 'string', 'max:255'],
             'banco_2_clave' => ['nullable', 'string', 'max:255'],
             'banco_2_notas' => ['nullable', 'string', 'max:1000'],
+
+            // Credenciales API SUNAT: opcionales al registrar el cliente.
+            'sunat_client_id' => ['nullable', 'string', 'max:255'],
+            'sunat_client_secret' => ['nullable', 'string', 'max:500'],
         ]);
 
         $clean = fn (?string $v) => ($v !== null && trim($v) !== '') ? trim($v) : null;
@@ -139,6 +144,8 @@ class ClienteController extends Controller
                 'telefono' => $clean($validated['telefono'] ?? null),
                 'es_buen_contribuyente' => $request->boolean('es_buen_contribuyente'),
                 'estado' => 'activo',
+                'sunat_client_id' => $clean($validated['sunat_client_id'] ?? null),
+                'sunat_client_secret' => $clean($validated['sunat_client_secret'] ?? null),
             ]);
 
             $cliente->credencial()->create([
@@ -842,8 +849,9 @@ class ClienteController extends Controller
                 // En Windows: Ejecución 100% oculta sin consola negra usando WScript/VBScript nativo
                 $vbsPath = realpath(base_path('scripts/run_hidden.vbs')) ?: base_path('scripts/run_hidden.vbs');
                 $logArg = '--log-file='.$logPath;
+                $destino = AccesosSunat::url($request->query('destino'));
                 $command = sprintf(
-                    'wscript.exe //B "%s" "%s" "%s" "%s" "%s" %s %s %s',
+                    'wscript.exe //B "%s" "%s" "%s" "%s" "%s" %s %s %s %s',
                     $vbsPath,
                     $baseDir,
                     $logArg,
@@ -851,63 +859,39 @@ class ClienteController extends Controller
                     $scriptPath,
                     escapeshellarg($ruc),
                     escapeshellarg($usuarioSol),
-                    escapeshellarg($claveSol)
+                    escapeshellarg($claveSol),
+                    escapeshellarg($destino)
                 );
             } else {
-                // En Linux/macOS: Desvinculación nativa con &
+                $destino = AccesosSunat::url($request->query('destino'));
                 $command = sprintf(
-                    'cd "%s" && "%s" "%s" %s %s %s > "%s" 2>&1 &',
+                    'cd "%s" && "%s" "%s" %s %s %s %s > "%s" 2>&1 &',
                     $baseDir,
                     $nodeExecutable,
                     $scriptPath,
                     escapeshellarg($ruc),
                     escapeshellarg($usuarioSol),
                     escapeshellarg($claveSol),
+                    escapeshellarg($destino),
                     $logPath
                 );
             }
 
-            // Ejecución asíncrona sin bloquear el hilo de PHP
-            $handle = popen($command, 'r');
-            if (is_resource($handle)) {
-                pclose($handle);
-            }
+            $this->iniciarProcesoEnSegundoPlano($command);
 
             Log::info("Automatización SUNAT iniciada en segundo plano para cliente {$cliente->ruc}");
 
             if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                // Sincronización en tiempo real: esperar activamente la señal de que el navegador está en pantalla
-                $maxWait = 15; // Hasta 15s de espera
-                $start = microtime(true);
-                $browserName = 'Google Chrome';
+                $senal = $this->esperarSenalDePortal($signalFile);
 
-                while (microtime(true) - $start < $maxWait) {
-                    if (file_exists($signalFile)) {
-                        $raw = @file_get_contents($signalFile);
-                        $data = json_decode($raw, true);
-                        if ($data && isset($data['status'])) {
-                            if ($data['status'] === 'ready') {
-                                $browserName = $data['browser'] ?? 'Navegador';
-                                @unlink($signalFile);
-                                break;
-                            }
-
-                            if ($data['status'] === 'error') {
-                                $errorMsg = $data['message'] ?? 'Error desconocido al iniciar sesión en SUNAT.';
-                                @unlink($signalFile);
-
-                                return response()->json([
-                                    'success' => false,
-                                    'message' => $errorMsg,
-                                ], 422);
-                            }
-                        }
-                    }
-                    usleep(150000); // 150ms
+                if (! $senal['ok']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $senal['message'] ?? 'Error desconocido al iniciar sesión en SUNAT.',
+                    ], 422);
                 }
 
-                @unlink($signalFile);
-
+                $browserName = $senal['browser'];
                 $mensaje = "🚀 Sesión SUNAT iniciada para {$cliente->razon_social}. {$browserName} abierto en primer plano.";
 
                 return response()->json([
@@ -1028,47 +1012,21 @@ class ClienteController extends Controller
                 );
             }
 
-            // Ejecución asíncrona sin bloquear el hilo de PHP
-            $handle = popen($command, 'r');
-            if (is_resource($handle)) {
-                pclose($handle);
-            }
+            $this->iniciarProcesoEnSegundoPlano($command);
 
             Log::info("Automatización SUNAFIL iniciada en segundo plano para cliente {$cliente->ruc}");
 
             if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                // Sincronización en tiempo real: esperar activamente la señal de que el navegador está en pantalla
-                $maxWait = 15; // Hasta 15s de espera
-                $start = microtime(true);
-                $browserName = 'Google Chrome';
+                $senal = $this->esperarSenalDePortal($signalFile);
 
-                while (microtime(true) - $start < $maxWait) {
-                    if (file_exists($signalFile)) {
-                        $raw = @file_get_contents($signalFile);
-                        $data = json_decode($raw, true);
-                        if ($data && isset($data['status'])) {
-                            if ($data['status'] === 'ready') {
-                                $browserName = $data['browser'] ?? 'Navegador';
-                                @unlink($signalFile);
-                                break;
-                            }
-
-                            if ($data['status'] === 'error') {
-                                $errorMsg = $data['message'] ?? 'Error desconocido al iniciar sesión en SUNAFIL.';
-                                @unlink($signalFile);
-
-                                return response()->json([
-                                    'success' => false,
-                                    'message' => $errorMsg,
-                                ], 422);
-                            }
-                        }
-                    }
-                    usleep(150000); // 150ms
+                if (! $senal['ok']) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => $senal['message'] ?? 'Error desconocido al iniciar sesión en SUNAFIL.',
+                    ], 422);
                 }
 
-                @unlink($signalFile);
-
+                $browserName = $senal['browser'];
                 $mensaje = "👷 Sesión SUNAFIL iniciada para {$cliente->razon_social}. {$browserName} abierto en la Casilla Electrónica.";
 
                 return response()->json([
@@ -1197,10 +1155,11 @@ class ClienteController extends Controller
 
         $datosActualizar = [];
 
-        if (array_key_exists('sunat_client_id', $validated)) {
-            $datosActualizar['sunat_client_id'] = filled($validated['sunat_client_id'])
-                ? trim($validated['sunat_client_id'], " \t\n\r\0\x0B\"'")
-                : null;
+        // Un Client ID vacío significa "no tocar lo guardado". El formulario
+        // se muestra siempre en blanco para que el navegador no lo rellene,
+        // así que guardar sin escribir no debe borrar la credencial vigente.
+        if (filled($validated['sunat_client_id'] ?? null)) {
+            $datosActualizar['sunat_client_id'] = trim($validated['sunat_client_id'], " \t\n\r\0\x0B\"'");
         }
 
         if (array_key_exists('sunat_client_secret', $validated)) {
@@ -1238,6 +1197,82 @@ class ClienteController extends Controller
     /**
      * Detecta dinámicamente la ruta del ejecutable de Node.js en Laragon o en el sistema operativo.
      */
+    /**
+     * Arranca el script sin heredar el pipe de PHP.
+     *
+     * pclose(popen()) esperaba a que cerraran el navegador, y el aviso de
+     * "cargando" se quedaba en el CRM aunque SUNAT ya estuviera abierta.
+     */
+    private function iniciarProcesoEnSegundoPlano(string $command): void
+    {
+        if (DIRECTORY_SEPARATOR === '\\') {
+            $handle = popen('cmd.exe /c start "" /B '.$command, 'r');
+            if (is_resource($handle)) {
+                pclose($handle);
+            }
+
+            return;
+        }
+
+        exec($command);
+    }
+
+    /**
+     * Espera la señal "opening" (justo antes de mostrar la ventana) y suelta
+     * la sesión para que el resto del CRM no quede bloqueado.
+     *
+     * @return array{ok: bool, browser: string, message: ?string}
+     */
+    private function esperarSenalDePortal(string $signalFile): array
+    {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
+        $limite = microtime(true) + 70;
+        $browser = 'Navegador';
+
+        while (microtime(true) < $limite) {
+            if (is_file($signalFile)) {
+                $data = json_decode((string) @file_get_contents($signalFile), true);
+                $estado = is_array($data) ? ($data['status'] ?? null) : null;
+
+                if ($estado === 'opening' || $estado === 'ready') {
+                    @unlink($signalFile);
+
+                    return [
+                        'ok' => true,
+                        'browser' => is_string($data['browser'] ?? null) ? $data['browser'] : $browser,
+                        'message' => null,
+                    ];
+                }
+
+                if ($estado === 'error') {
+                    $mensaje = is_string($data['message'] ?? null)
+                        ? $data['message']
+                        : 'No se pudo abrir el portal.';
+                    @unlink($signalFile);
+
+                    return [
+                        'ok' => false,
+                        'browser' => $browser,
+                        'message' => $mensaje,
+                    ];
+                }
+            }
+
+            usleep(120000);
+        }
+
+        @unlink($signalFile);
+
+        return [
+            'ok' => false,
+            'browser' => $browser,
+            'message' => 'El portal está tardando más de lo esperado. Cierra la ventana si quedó abierta e inténtalo otra vez.',
+        ];
+    }
+
     private function getNodeExecutable(): string
     {
         $laragonNodes = glob(base_path('../../bin/nodejs/*/node.exe'));

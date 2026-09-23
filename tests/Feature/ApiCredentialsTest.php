@@ -131,8 +131,8 @@ class ApiCredentialsTest extends TestCase
         $response = $this->get(route('clientes.show', $cliente));
 
         $response->assertOk();
-        $response->assertSee('Credenciales API');
-        $response->assertSee("tab = 'api_credentials'", false);
+        $response->assertSee('Credenciales API SUNAT');
+        $response->assertDontSee("tab = 'api_credentials'", false);
         $response->assertSee('Client ID');
         $response->assertSee('Client Secret');
     }
@@ -155,6 +155,12 @@ class ApiCredentialsTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Configurado');
+        $response->assertSee('configured-id');
+        $response->assertSee('Accesos SUNAT');
+        $response->assertSee('Trámites y consultas');
+        $response->assertSee('Declaraciones y pagos');
+        $response->assertSee('Renta anual empresas');
+        $response->assertSee('Renta anual persona natural');
     }
 
     /**
@@ -203,7 +209,7 @@ class ApiCredentialsTest extends TestCase
         $content = $response->getContent();
         $posOperaciones = strpos($content, "tab === 'operaciones'");
         $posSire = strpos($content, "tab === 'sire'");
-        $posApi = strpos($content, "tab === 'api_credentials'");
+        $posApi = strpos($content, 'Credenciales API SUNAT');
 
         $this->assertNotFalse($posOperaciones);
         $this->assertNotFalse($posSire);
@@ -319,6 +325,40 @@ class ApiCredentialsTest extends TestCase
         $cliente->refresh();
         $this->assertEquals('updated-id-3', $cliente->sunat_client_id);
         $this->assertEquals('my-original-secret==', $cliente->sunat_client_secret);
+    }
+
+    public function test_store_registers_client_when_api_credentials_are_blank(): void
+    {
+        $response = $this->post(route('clientes.store'), [
+            'razon_social' => 'SIN API S.A.C.',
+            'ruc' => '20100000011',
+            'regimen_tributario' => 'MYPE',
+        ]);
+
+        $response->assertRedirect(route('clientes.index'));
+
+        $cliente = Cliente::where('ruc', '20100000011')->first();
+        $this->assertNotNull($cliente);
+        $this->assertNull($cliente->sunat_client_id);
+        $this->assertNull($cliente->sunat_client_secret);
+    }
+
+    public function test_store_saves_api_credentials_when_the_user_fills_them(): void
+    {
+        $response = $this->post(route('clientes.store'), [
+            'razon_social' => 'CON API S.A.C.',
+            'ruc' => '20100000012',
+            'regimen_tributario' => 'MYPE',
+            'sunat_client_id' => 'id-alta',
+            'sunat_client_secret' => 'secreto-alta',
+        ]);
+
+        $response->assertRedirect(route('clientes.index'));
+
+        $cliente = Cliente::where('ruc', '20100000012')->first();
+        $this->assertNotNull($cliente);
+        $this->assertSame('id-alta', $cliente->sunat_client_id);
+        $this->assertSame('secreto-alta', $cliente->sunat_client_secret);
     }
 
     /**
