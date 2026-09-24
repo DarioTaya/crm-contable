@@ -88,7 +88,7 @@ class DashboardController extends Controller
                 $faltantes[] = ['nombre' => 'PDT 621', 'estado' => $pdt];
             }
             if ($ple !== 'Declarado') {
-                $faltantes[] = ['nombre' => 'PLE', 'estado' => $ple];
+                $faltantes[] = ['nombre' => 'PDT 601', 'estado' => $ple];
             }
 
             if (! empty($faltantes)) {

@@ -49,6 +49,8 @@ class TipoCambioController extends Controller
             'meses' => $this->mesesDisponibles($anio, $hoy),
             'anios' => range($hoy->year, 2010),
             'esMesActual' => $anio === $hoy->year && $mes === $hoy->month,
+            'mesAnterior' => $this->periodoVecino($anio, $mes, -1, $hoy),
+            'mesSiguiente' => $this->periodoVecino($anio, $mes, 1, $hoy),
             'serie' => $this->tipoCambioSunat->serieAnual($hoy),
             'hoyIso' => $hoy->toDateString(),
         ]);
@@ -158,6 +160,26 @@ class TipoCambioController extends Controller
         }
 
         return $semanas;
+    }
+
+    /**
+     * Mes anterior o siguiente dentro del rango publicado (desde 2010 hasta el mes en curso).
+     *
+     * @return array{anio: int, mes: int}|null
+     */
+    private function periodoVecino(int $anio, int $mes, int $delta, Carbon $hoy): ?array
+    {
+        $fecha = Carbon::create($anio, $mes, 1, 0, 0, 0, 'America/Lima')->addMonths($delta);
+
+        if ($fecha->year < 2010 || $fecha->year > $hoy->year) {
+            return null;
+        }
+
+        if ($fecha->year === $hoy->year && $fecha->month > $hoy->month) {
+            return null;
+        }
+
+        return ['anio' => $fecha->year, 'mes' => $fecha->month];
     }
 
     /**

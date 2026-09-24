@@ -104,6 +104,11 @@ class DashboardTest extends TestCase
         $response->assertSee('En Proceso (1)');
         $response->assertSee('SUNAT (2)');
         $response->assertSee('SUNAFIL (0)');
+        $response->assertSee('PDT 601');
+        $this->assertSame(
+            ['PDT 621', 'PDT 601'],
+            collect($response->viewData('alertasVencimiento')[0]['faltantes'])->pluck('nombre')->all()
+        );
     }
 
     public function test_expiration_alerts_are_sorted_by_ruc_last_digit_according_to_sunat_schedule(): void

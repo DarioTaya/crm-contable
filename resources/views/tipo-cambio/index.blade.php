@@ -83,21 +83,64 @@
                         <p class="mt-0.5 max-w-sm text-xs text-gray-500">Este mes no se descarga solo. Sincroniza para copiar el tipo de cambio oficial.</p>
                     @endif
                 </div>
-                <div class="flex shrink-0 flex-wrap items-end gap-2 sm:flex-nowrap">
-                    <form method="GET" action="{{ route('tipo-cambio.index') }}" class="flex flex-wrap items-end gap-2">
-                        <label class="block">
-                            <span class="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500">Mes</span>
+                <div class="flex shrink-0 flex-wrap items-center gap-2">
+                    <div class="flex items-center gap-1.5">
+                        @if ($mesAnterior)
+                            <a href="{{ route('tipo-cambio.index', ['anio' => $mesAnterior['anio'], 'mes' => $mesAnterior['mes']]) }}"
+                               title="Mes anterior"
+                               aria-label="Mes anterior"
+                               class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 shadow-xs transition hover:bg-gray-50">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                                </svg>
+                            </a>
+                        @else
+                            <span aria-hidden="true" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-300">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                                </svg>
+                            </span>
+                        @endif
+
+                        @if ($mesSiguiente)
+                            <a href="{{ route('tipo-cambio.index', ['anio' => $mesSiguiente['anio'], 'mes' => $mesSiguiente['mes']]) }}"
+                               title="Mes siguiente"
+                               aria-label="Mes siguiente"
+                               class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-600 shadow-xs transition hover:bg-gray-50">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </a>
+                        @else
+                            <span aria-hidden="true" class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-300">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                </svg>
+                            </span>
+                        @endif
+
+                        @unless ($esMesActual)
+                            <a href="{{ route('tipo-cambio.index') }}"
+                               class="inline-flex h-9 items-center rounded-lg border border-gray-300 bg-white px-3 text-xs font-semibold text-gray-700 shadow-xs transition hover:bg-gray-50">
+                                Mes actual
+                            </a>
+                        @endunless
+                    </div>
+
+                    <form method="GET" action="{{ route('tipo-cambio.index') }}" class="flex flex-wrap items-center gap-2">
+                        <label class="flex items-center gap-1.5">
+                            <span class="text-xs font-medium leading-none text-gray-700">Mes</span>
                             <select name="mes" onchange="this.form.submit()"
-                                    class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                    class="h-9 rounded-lg border border-gray-300 bg-white px-2.5 text-sm font-medium text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                 @foreach ($meses as $numero => $nombre)
                                     <option value="{{ $numero }}" @selected($numero === $mes)>{{ $nombre }}</option>
                                 @endforeach
                             </select>
                         </label>
-                        <label class="block">
-                            <span class="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500">Año</span>
+                        <label class="flex items-center gap-1.5">
+                            <span class="text-xs font-medium leading-none text-gray-700">Año</span>
                             <select name="anio" onchange="this.form.submit()"
-                                    class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                    class="h-9 rounded-lg border border-gray-300 bg-white px-2.5 text-sm font-medium text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                 @foreach ($anios as $opcion)
                                     <option value="{{ $opcion }}" @selected($opcion === $anio)>{{ $opcion }}</option>
                                 @endforeach
@@ -109,7 +152,7 @@
                         <input type="hidden" name="anio" value="{{ $anio }}">
                         <input type="hidden" name="mes" value="{{ $mes }}">
                         <button type="submit"
-                                class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-80">
+                                class="inline-flex h-9 items-center gap-2 rounded-lg bg-brand-600 px-4 text-xs font-bold text-white shadow-xs transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-80">
                             <svg data-tc-sincronizar-icono class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
                             </svg>
@@ -168,7 +211,7 @@
         <section class="overflow-hidden rounded-xl border border-gray-200 bg-white p-5 shadow-xs" data-tc-grafico data-hoy="{{ $hoyIso }}">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div class="min-w-0">
-                    <h3 class="text-base font-semibold text-gray-900">Comportamiento</h3>
+                    <h3 class="text-base font-semibold text-gray-900">Comportamiento del Dólar</h3>
                     <p data-tc-rango class="mt-0.5 text-xs text-gray-500">Compra y venta publicadas por SUNAT.</p>
                 </div>
                 <div class="inline-flex shrink-0 rounded-lg border border-gray-200 bg-gray-50 p-0.5" role="tablist" aria-label="Periodo del gráfico">
