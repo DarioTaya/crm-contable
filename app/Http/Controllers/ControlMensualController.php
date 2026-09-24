@@ -358,6 +358,7 @@ class ControlMensualController extends Controller
                 'honorarios' => ['nullable', 'string', 'in:Pendiente,Pagado'],
                 'estado_pago_honorarios' => ['nullable', 'string', 'in:Pendiente,Pagado'],
                 'tiene_deuda' => ['nullable', 'boolean'],
+                'descartar_deuda' => ['nullable', 'boolean'],
                 'tributo_codigo' => ['nullable', 'string', 'max:20'],
                 'es_igv_justo' => ['nullable', 'boolean'],
                 'monto_deuda_inicial' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
@@ -409,9 +410,15 @@ class ControlMensualController extends Controller
                         $operacion->vencimiento_deuda = $validated['vencimiento_deuda'];
                     }
                 }
-                // Si tiene_deuda es false, se conserva la configuración previa en la BD
-                // para que si el usuario lo apagó por error no se pierdan los montos ni abonos.
-                // En el Control de Deudas solo se consultan registros con tiene_deuda = true.
+                // Apagar el interruptor conserva monto y abonos mientras el panel sigue abierto.
+                // Al cerrarlo con el interruptor apagado, descartar_deuda borra esa deuda para siempre.
+                if (! $validated['tiene_deuda'] && $request->boolean('descartar_deuda')) {
+                    $operacion->tributo_codigo = null;
+                    $operacion->es_igv_justo = false;
+                    $operacion->monto_deuda_inicial = null;
+                    $operacion->vencimiento_deuda = null;
+                    $operacion->abonosDeuda()->delete();
+                }
             } elseif ($request->has('tributo_codigo')) {
                 $operacion->tributo_codigo = $validated['tributo_codigo'];
             }

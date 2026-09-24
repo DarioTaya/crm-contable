@@ -305,4 +305,53 @@ class ControlDeudasTest extends TestCase
                 'count' => 1,
             ]);
     }
+
+    public function test_closing_with_the_debt_switch_off_deletes_the_debt_and_its_payments(): void
+    {
+        $operacion = Operacion::create([
+            'estudio_id' => $this->estudio->id,
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'monto_deuda_inicial' => 850.50,
+            'vencimiento_deuda' => '2026-10-20',
+            'tributo_codigo' => '1011',
+            'es_igv_justo' => false,
+        ]);
+
+        $abono = AbonoDeuda::create([
+            'estudio_id' => $this->estudio->id,
+            'operacion_id' => $operacion->id,
+            'monto' => 200.00,
+            'fecha_pago' => '2026-09-18',
+        ]);
+
+        $this->postJson(route('control.update'), [
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => false,
+        ])->assertOk();
+
+        $operacion->refresh();
+        $this->assertFalse($operacion->tiene_deuda);
+        $this->assertEquals(850.50, (float) $operacion->monto_deuda_inicial);
+        $this->assertDatabaseHas('abonos_deudas', ['id' => $abono->id]);
+
+        $this->postJson(route('control.update'), [
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => false,
+            'descartar_deuda' => true,
+        ])->assertOk()
+            ->assertJson([
+                'tiene_deuda' => false,
+                'monto_deuda_inicial' => null,
+                'abonos' => [],
+            ]);
+
+        $operacion->refresh();
+        $this->assertNull($operacion->monto_deuda_inicial);
+        $this->assertNull($operacion->vencimiento_deuda);
+        $this->assertDatabaseMissing('abonos_deudas', ['id' => $abono->id]);
+    }
 }

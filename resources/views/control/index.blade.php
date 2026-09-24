@@ -557,27 +557,13 @@
                                                                     <label class="block text-[10px] font-bold text-gray-600 uppercase mb-1 flex items-center justify-between">
                                                                         <div class="flex items-center gap-1.5 min-w-0">
                                                                             <span class="whitespace-nowrap">Vencimiento Deuda</span>
-                                                                            {{-- Botón pequeño después de "Vencimiento Deuda" para editar la fecha (Fraccionamientos) --}}
-                                                                            <button
-                                                                                type="button"
-                                                                                x-show="!esIgvJusto && !editandoFechaManual"
-                                                                                @click="habilitarEdicionFecha()"
-                                                                                class="inline-flex items-center gap-1 rounded bg-gray-100 hover:bg-gray-200 border border-gray-300 px-1.5 py-0.5 text-[9px] font-semibold text-gray-700 transition normal-case shadow-2xs cursor-pointer shrink-0"
-                                                                                title="Editar fecha para Fraccionamiento o fecha personalizada"
-                                                                            >
-                                                                                <svg class="h-2.5 w-2.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                                                                                </svg>
-                                                                                <span>Editar</span>
-                                                                            </button>
-
                                                                             <button
                                                                                 type="button"
                                                                                 x-show="!esIgvJusto && editandoFechaManual"
                                                                                 x-cloak
                                                                                 @click="restablecerFechaSunat()"
                                                                                 class="inline-flex items-center gap-1 rounded bg-amber-100 hover:bg-amber-200 border border-amber-300 px-1.5 py-0.5 text-[9px] font-bold text-amber-900 transition normal-case shadow-2xs cursor-pointer shrink-0"
-                                                                                title="Modo Fraccionamiento activo. Clic para restablecer a fecha oficial PDT 621 de SUNAT"
+                                                                                title="Restablecer a la fecha oficial PDT 621 de SUNAT"
                                                                             >
                                                                                 <svg class="h-2.5 w-2.5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -594,13 +580,10 @@
                                                                             x-ref="inputVencimiento"
                                                                             type="date"
                                                                             x-model="vencimientoDeuda"
-                                                                            :readonly="esIgvJusto || !editandoFechaManual"
-                                                                            :class="esIgvJusto 
-                                                                                ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900 cursor-not-allowed font-bold' 
-                                                                                : (editandoFechaManual 
-                                                                                    ? 'bg-amber-50/40 border-amber-400 text-gray-900 focus:ring-2 focus:ring-amber-500 font-semibold' 
-                                                                                    : 'bg-gray-50 border-gray-300 text-gray-700 cursor-pointer font-medium hover:bg-gray-100')"
-                                                                            @click="if (!esIgvJusto && !editandoFechaManual) habilitarEdicionFecha()"
+                                                                            :readonly="esIgvJusto"
+                                                                            :class="esIgvJusto
+                                                                                ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900 cursor-not-allowed font-bold'
+                                                                                : 'bg-white border-gray-300 text-gray-900 font-semibold focus:ring-2 focus:ring-brand-500'"
                                                                             class="w-full rounded-lg py-1.5 px-2.5 text-xs shadow-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition"
                                                                         >
                                                                     </div>
@@ -985,6 +968,7 @@
                 calculandoIgv: false,
                 igvJustoMensaje: '',
                 cacheDeuda: null,
+                deudaDescartada: false,
                 deudaCargada: false,
                 savingDeuda: false,
                 guardadoDeudaExitoso: false,
@@ -1007,7 +991,8 @@
                     if (this.vencimientoDeuda && this.vencimientoOficialPdt && this.vencimientoDeuda !== this.vencimientoOficialPdt && !this.esIgvJusto) {
                         this.editandoFechaManual = true;
                     }
-                    if (this.meses[this.mesIdx].tiene_deuda || this.meses[this.mesIdx].monto_deuda_inicial || (this.abonos && this.abonos.length > 0)) {
+                    const mesInicial = this.meses[this.mesIdx];
+                    if (mesInicial.tiene_deuda && (mesInicial.monto_deuda_inicial || (this.abonos && this.abonos.length > 0))) {
                         this.cacheDeuda = {
                             montoDeuda: this.montoDeuda,
                             monto_deuda_inicial: parseFloat(this.meses[this.mesIdx].monto_deuda_inicial || 0),
@@ -1021,7 +1006,15 @@
                             saldo_pendiente: parseFloat(this.meses[this.mesIdx].saldo_pendiente || 0),
                             abonos: [...this.abonos]
                         };
+                    } else if (!mesInicial.tiene_deuda && (mesInicial.monto_deuda_inicial || (this.abonos && this.abonos.length > 0))) {
+                        this.descartarDeudaAlCerrar();
                     }
+                    this.$watch('openDJ', (abierto) => {
+                        if (!abierto) {
+                            this.descartarDeudaAlCerrar();
+                        }
+                    });
+                    window.addEventListener('pagehide', () => this.descartarDeudaAlCerrar(true));
                     this.$watch('tieneDeuda', () => {
                         this.$nextTick(() => {
                             if (this.$refs.menuDJ && this.$refs.menuDJ._anclaMenu) {
@@ -1201,6 +1194,7 @@
                         // Sincronizar en BD desactivación sin borrar datos existentes
                         await this.sincronizarToggleDeuda(false);
                     } else {
+                        this.deudaDescartada = false;
                         // El usuario reactivó el switch: restaurar datos desde caché inmediatamente
                         if (this.cacheDeuda) {
                             this.montoDeuda = this.cacheDeuda.montoDeuda || '';
@@ -1238,6 +1232,54 @@
                     }
                 },
 
+                descartarDeudaAlCerrar(keepalive = false) {
+                    if (this.tieneDeuda || this.deudaDescartada) {
+                        return;
+                    }
+
+                    const mes = this.meses[this.mesIdx];
+                    const hayDatos = !!(this.cacheDeuda || mes.monto_deuda_inicial || (mes.abonos && mes.abonos.length > 0) || (this.abonos && this.abonos.length > 0));
+                    if (!hayDatos) {
+                        return;
+                    }
+
+                    this.deudaDescartada = true;
+                    this.cacheDeuda = null;
+                    this.abonos = [];
+                    this.montoDeuda = '';
+                    this.esIgvJusto = false;
+                    this.editandoFechaManual = false;
+                    this.vencimientoDeuda = (!this.esIgvJusto && this.vencimientoOficialPdt) ? this.vencimientoOficialPdt : '';
+                    mes.tiene_deuda = false;
+                    mes.monto_deuda_inicial = 0;
+                    mes.vencimiento_deuda = '';
+                    mes.vencimiento_deuda_dmy = '';
+                    mes.abonos = [];
+                    mes.total_abonado = 0;
+                    mes.saldo_pendiente = 0;
+                    mes.es_igv_justo = false;
+                    mes.tributo_codigo = mes.tributo_codigo || '1011';
+
+                    const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                    const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                    window.fetch('{{ route('control.update') }}', {
+                        method: 'POST',
+                        keepalive: keepalive,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            cliente_id: this.clienteId,
+                            periodo: mes.periodo,
+                            tiene_deuda: false,
+                            descartar_deuda: true,
+                        }),
+                    }).catch(function () {});
+                },
+
                 async sincronizarToggleDeuda(activo) {
                     try {
                         const tokenEl = document.querySelector('meta[name="csrf-token"]');
@@ -1264,6 +1306,9 @@
                         });
 
                         const data = await response.json();
+                        if (this.deudaDescartada && !activo) {
+                            return;
+                        }
                         if (data.operacion_id) {
                             this.meses[this.mesIdx].operacion_id = data.operacion_id;
                         }
