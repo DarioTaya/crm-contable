@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\TipoTributoSunat;
 use App\Models\Cliente;
+use App\Models\CronogramaSunat;
 use App\Models\Operacion;
 use App\Services\CronogramaSunatService;
 use Carbon\Carbon;
@@ -60,6 +61,13 @@ class ControlMensualController extends Controller
             ->orderBy('numero')
             ->get();
 
+        $periodosAnio = $this->periodosDelAnio($anio);
+        $cronogramasPdt = CronogramaSunat::query()
+            ->where('tipo', 'pdt_621')
+            ->whereIn('periodo', $periodosAnio)
+            ->get()
+            ->keyBy('periodo');
+
         $matrizClientes = [];
 
         foreach ($clientes as $cliente) {
@@ -79,6 +87,13 @@ class ControlMensualController extends Controller
                 $periodoComparable = sprintf('%04d-%02d', $anio, $m);
                 $op = $opsMap->get($periodo);
 
+                $cronogramaPdt = $cronogramasPdt->get($periodo);
+                $fechaOficialPdt = $cronogramaPdt
+                    ? $cronogramaPdt->getFechaPorDigito($cliente->ruc ?? $cliente->numero_documento, (bool) $cliente->es_buen_contribuyente)
+                    : null;
+                $vencimientoOficialPdt = $fechaOficialPdt?->format('Y-m-d') ?? '';
+                $vencimientoOficialPdtDmy = $fechaOficialPdt?->format('d/m/Y') ?? '';
+
                 $esBajaMes = ($mesBaja !== null && $periodoComparable >= $mesBaja);
 
                 if ($esBajaMes) {
@@ -95,6 +110,8 @@ class ControlMensualController extends Controller
                         'pdt' => '—',
                         'ple' => '—',
                         'notas' => 'Cliente no activo en este periodo (Baja del Estudio Contable)',
+                        'vencimiento_oficial_pdt' => $vencimientoOficialPdt,
+                        'vencimiento_oficial_pdt_dmy' => $vencimientoOficialPdtDmy,
                     ];
 
                     continue;
@@ -134,8 +151,10 @@ class ControlMensualController extends Controller
                     'tributo_etiqueta' => $op?->tributo_etiqueta ?? '1011 - IGV Cuenta Propia 18%',
                     'es_igv_justo' => (bool) ($op?->es_igv_justo ?? false),
                     'monto_deuda_inicial' => (float) ($op->monto_deuda_inicial ?? 0),
-                    'vencimiento_deuda' => $op?->vencimiento_deuda ? $op->vencimiento_deuda->format('Y-m-d') : '',
-                    'vencimiento_deuda_dmy' => $op?->vencimiento_deuda ? $op->vencimiento_deuda->format('d/m/Y') : '',
+                    'vencimiento_deuda' => $op?->vencimiento_deuda ? $op->vencimiento_deuda->format('Y-m-d') : ($op?->es_igv_justo ? '' : $vencimientoOficialPdt),
+                    'vencimiento_deuda_dmy' => $op?->vencimiento_deuda ? $op->vencimiento_deuda->format('d/m/Y') : ($op?->es_igv_justo ? '' : $vencimientoOficialPdtDmy),
+                    'vencimiento_oficial_pdt' => $vencimientoOficialPdt,
+                    'vencimiento_oficial_pdt_dmy' => $vencimientoOficialPdtDmy,
                     'saldo_pendiente' => (float) ($op?->saldo_pendiente ?? 0),
                     'total_abonado' => (float) ($op?->total_abonado ?? 0),
                     'operacion_id' => $op?->id,
@@ -400,6 +419,12 @@ class ControlMensualController extends Controller
             $operacion->save();
             $operacion->load('abonosDeuda');
 
+            $cliente = $operacion->cliente ?? Cliente::find($validated['cliente_id']);
+            $cronogramaService = app(CronogramaSunatService::class);
+            $fechaOficialPdt = $cliente ? $cronogramaService->obtenerFechaVencimiento('pdt_621', $validated['periodo'], $cliente) : null;
+            $vencimientoOficialPdt = $fechaOficialPdt?->format('Y-m-d') ?? '';
+            $vencimientoOficialPdtDmy = $fechaOficialPdt?->format('d/m/Y') ?? '';
+
             $anio = (int) explode('-', $validated['periodo'])[1];
 
             return response()->json([
@@ -414,8 +439,10 @@ class ControlMensualController extends Controller
                 'es_igv_justo' => (bool) $operacion->es_igv_justo,
                 'monto_deuda_inicial' => $operacion->monto_deuda_inicial,
                 'monto_deuda_inicial_formateado' => $operacion->monto_deuda_inicial_formateado,
-                'vencimiento_deuda' => $operacion->vencimiento_deuda?->format('Y-m-d'),
-                'vencimiento_deuda_dmy' => $operacion->vencimiento_deuda?->format('d/m/Y'),
+                'vencimiento_deuda' => $operacion->vencimiento_deuda?->format('Y-m-d') ?: ($operacion->es_igv_justo ? '' : $vencimientoOficialPdt),
+                'vencimiento_deuda_dmy' => $operacion->vencimiento_deuda?->format('d/m/Y') ?: ($operacion->es_igv_justo ? '' : $vencimientoOficialPdtDmy),
+                'vencimiento_oficial_pdt' => $vencimientoOficialPdt,
+                'vencimiento_oficial_pdt_dmy' => $vencimientoOficialPdtDmy,
                 'total_abonado' => $operacion->total_abonado,
                 'total_abonado_formateado' => $operacion->total_abonado_formateado,
                 'saldo_pendiente' => $operacion->saldo_pendiente,
@@ -532,6 +559,12 @@ class ControlMensualController extends Controller
             'periodo' => ['required', 'string', 'regex:/^\d{2}-\d{4}$/'],
         ]);
 
+        $cliente = Cliente::find($validated['cliente_id']);
+        $cronogramaService = app(CronogramaSunatService::class);
+        $fechaOficialPdt = $cliente ? $cronogramaService->obtenerFechaVencimiento('pdt_621', $validated['periodo'], $cliente) : null;
+        $oficialPdtStr = $fechaOficialPdt?->format('Y-m-d') ?? '';
+        $oficialPdtDmy = $fechaOficialPdt?->format('d/m/Y') ?? '';
+
         $operacion = Operacion::where([
             'cliente_id' => $validated['cliente_id'],
             'periodo' => $validated['periodo'],
@@ -547,8 +580,10 @@ class ControlMensualController extends Controller
                 'tributo_etiqueta' => '1011 - IGV Cuenta Propia 18%',
                 'es_igv_justo' => false,
                 'monto_deuda_inicial' => null,
-                'vencimiento_deuda' => null,
-                'vencimiento_deuda_dmy' => null,
+                'vencimiento_deuda' => $oficialPdtStr,
+                'vencimiento_deuda_dmy' => $oficialPdtDmy,
+                'vencimiento_oficial_pdt' => $oficialPdtStr,
+                'vencimiento_oficial_pdt_dmy' => $oficialPdtDmy,
                 'abonos' => [],
                 'total_abonado' => 0,
                 'saldo_pendiente' => 0,
@@ -566,8 +601,10 @@ class ControlMensualController extends Controller
             'es_igv_justo' => (bool) $operacion->es_igv_justo,
             'monto_deuda_inicial' => $operacion->monto_deuda_inicial,
             'monto_deuda_inicial_formateado' => $operacion->monto_deuda_inicial_formateado,
-            'vencimiento_deuda' => $operacion->vencimiento_deuda?->format('Y-m-d'),
-            'vencimiento_deuda_dmy' => $operacion->vencimiento_deuda?->format('d/m/Y'),
+            'vencimiento_deuda' => $operacion->vencimiento_deuda?->format('Y-m-d') ?: ($operacion->es_igv_justo ? '' : $oficialPdtStr),
+            'vencimiento_deuda_dmy' => $operacion->vencimiento_deuda?->format('d/m/Y') ?: ($operacion->es_igv_justo ? '' : $oficialPdtDmy),
+            'vencimiento_oficial_pdt' => $oficialPdtStr,
+            'vencimiento_oficial_pdt_dmy' => $oficialPdtDmy,
             'abonos' => $operacion->abonosDeuda->sortByDesc('fecha_pago')->map(fn ($abono) => [
                 'id' => $abono->id,
                 'monto' => $abono->monto,

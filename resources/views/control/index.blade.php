@@ -552,19 +552,58 @@
                                                                     </div>
                                                                 </div>
 
-                                                                {{-- Fecha de Vencimiento (Bloqueada / Readonly si es IGV Justo) --}}
+                                                                {{-- Fecha de Vencimiento (Por defecto oficial PDT 621 con botón de edición para Fraccionamientos) --}}
                                                                 <div>
                                                                     <label class="block text-[10px] font-bold text-gray-600 uppercase mb-1 flex items-center justify-between">
-                                                                        <span>Vencimiento Deuda</span>
-                                                                        <span x-show="esIgvJusto" x-cloak class="text-[9px] text-indigo-700 font-bold">🔒 IGV Justo</span>
+                                                                        <div class="flex items-center gap-1.5 min-w-0">
+                                                                            <span class="whitespace-nowrap">Vencimiento Deuda</span>
+                                                                            {{-- Botón pequeño después de "Vencimiento Deuda" para editar la fecha (Fraccionamientos) --}}
+                                                                            <button
+                                                                                type="button"
+                                                                                x-show="!esIgvJusto && !editandoFechaManual"
+                                                                                @click="habilitarEdicionFecha()"
+                                                                                class="inline-flex items-center gap-1 rounded bg-gray-100 hover:bg-gray-200 border border-gray-300 px-1.5 py-0.5 text-[9px] font-semibold text-gray-700 transition normal-case shadow-2xs cursor-pointer shrink-0"
+                                                                                title="Editar fecha para Fraccionamiento o fecha personalizada"
+                                                                            >
+                                                                                <svg class="h-2.5 w-2.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                                                                                </svg>
+                                                                                <span>Editar</span>
+                                                                            </button>
+
+                                                                            <button
+                                                                                type="button"
+                                                                                x-show="!esIgvJusto && editandoFechaManual"
+                                                                                x-cloak
+                                                                                @click="restablecerFechaSunat()"
+                                                                                class="inline-flex items-center gap-1 rounded bg-amber-100 hover:bg-amber-200 border border-amber-300 px-1.5 py-0.5 text-[9px] font-bold text-amber-900 transition normal-case shadow-2xs cursor-pointer shrink-0"
+                                                                                title="Modo Fraccionamiento activo. Clic para restablecer a fecha oficial PDT 621 de SUNAT"
+                                                                            >
+                                                                                <svg class="h-2.5 w-2.5 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                                                                </svg>
+                                                                                <span>↺ SUNAT</span>
+                                                                            </button>
+                                                                        </div>
+
+                                                                        <span x-show="esIgvJusto" x-cloak class="text-[9px] text-indigo-700 font-bold shrink-0">🔒 IGV Justo</span>
                                                                     </label>
-                                                                    <input
-                                                                        type="date"
-                                                                        x-model="vencimientoDeuda"
-                                                                        :readonly="esIgvJusto"
-                                                                        :class="esIgvJusto ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900 cursor-not-allowed font-bold' : 'bg-white text-gray-800 border-gray-300'"
-                                                                        class="w-full rounded-lg py-1.5 px-2.5 text-xs shadow-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-medium"
-                                                                    >
+
+                                                                    <div class="relative">
+                                                                        <input
+                                                                            x-ref="inputVencimiento"
+                                                                            type="date"
+                                                                            x-model="vencimientoDeuda"
+                                                                            :readonly="esIgvJusto || !editandoFechaManual"
+                                                                            :class="esIgvJusto 
+                                                                                ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900 cursor-not-allowed font-bold' 
+                                                                                : (editandoFechaManual 
+                                                                                    ? 'bg-amber-50/40 border-amber-400 text-gray-900 focus:ring-2 focus:ring-amber-500 font-semibold' 
+                                                                                    : 'bg-gray-50 border-gray-300 text-gray-700 cursor-pointer font-medium hover:bg-gray-100')"
+                                                                            @click="if (!esIgvJusto && !editandoFechaManual) habilitarEdicionFecha()"
+                                                                            class="w-full rounded-lg py-1.5 px-2.5 text-xs shadow-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition"
+                                                                        >
+                                                                    </div>
                                                                 </div>
                                                             </div>
 
@@ -940,6 +979,8 @@
                 tributoCodigo: meses[mesIdx].tributo_codigo || '1011',
                 montoDeuda: '',
                 vencimientoDeuda: meses[mesIdx].vencimiento_deuda || '',
+                vencimientoOficialPdt: meses[mesIdx].vencimiento_oficial_pdt || '',
+                editandoFechaManual: false,
                 esIgvJusto: !!meses[mesIdx].es_igv_justo,
                 calculandoIgv: false,
                 igvJustoMensaje: '',
@@ -956,17 +997,26 @@
 
                 init() {
                     this.abonos = this.meses[this.mesIdx].abonos || [];
+                    this.vencimientoOficialPdt = this.meses[this.mesIdx].vencimiento_oficial_pdt || '';
                     if (this.meses[this.mesIdx].monto_deuda_inicial) {
                         this.montoDeuda = this.formatearNumeroConComas(this.meses[this.mesIdx].monto_deuda_inicial);
+                    }
+                    if (!this.vencimientoDeuda && !this.esIgvJusto && this.vencimientoOficialPdt) {
+                        this.vencimientoDeuda = this.vencimientoOficialPdt;
+                    }
+                    if (this.vencimientoDeuda && this.vencimientoOficialPdt && this.vencimientoDeuda !== this.vencimientoOficialPdt && !this.esIgvJusto) {
+                        this.editandoFechaManual = true;
                     }
                     if (this.meses[this.mesIdx].tiene_deuda || this.meses[this.mesIdx].monto_deuda_inicial || (this.abonos && this.abonos.length > 0)) {
                         this.cacheDeuda = {
                             montoDeuda: this.montoDeuda,
                             monto_deuda_inicial: parseFloat(this.meses[this.mesIdx].monto_deuda_inicial || 0),
-                            vencimientoDeuda: this.meses[this.mesIdx].vencimiento_deuda || '',
+                            vencimientoDeuda: this.vencimientoDeuda,
                             vencimiento_deuda_dmy: this.meses[this.mesIdx].vencimiento_deuda_dmy || '',
+                            vencimiento_oficial_pdt: this.vencimientoOficialPdt,
                             tributoCodigo: this.meses[this.mesIdx].tributo_codigo || '1011',
                             esIgvJusto: !!this.meses[this.mesIdx].es_igv_justo,
+                            editandoFechaManual: this.editandoFechaManual,
                             total_abonado: parseFloat(this.meses[this.mesIdx].total_abonado || 0),
                             saldo_pendiente: parseFloat(this.meses[this.mesIdx].saldo_pendiente || 0),
                             abonos: [...this.abonos]
@@ -1081,6 +1131,7 @@
 
                 sincronizarDesdeMes() {
                     const m = this.meses[this.mesIdx];
+                    this.vencimientoOficialPdt = m.vencimiento_oficial_pdt || '';
                     this.tieneDeuda = !!m.tiene_deuda;
                     this.tributoCodigo = m.tributo_codigo || '1011';
                     this.esIgvJusto = !!m.es_igv_justo;
@@ -1090,6 +1141,16 @@
                         this.montoDeuda = this.cacheDeuda.montoDeuda;
                     }
                     this.vencimientoDeuda = m.vencimiento_deuda || (this.cacheDeuda?.vencimientoDeuda || '');
+                    if (!this.vencimientoDeuda && !this.esIgvJusto && this.vencimientoOficialPdt) {
+                        this.vencimientoDeuda = this.vencimientoOficialPdt;
+                    }
+                    if (this.vencimientoDeuda && this.vencimientoOficialPdt && this.vencimientoDeuda !== this.vencimientoOficialPdt && !this.esIgvJusto) {
+                        this.editandoFechaManual = true;
+                    } else if (this.cacheDeuda?.editandoFechaManual !== undefined) {
+                        this.editandoFechaManual = !!this.cacheDeuda.editandoFechaManual;
+                    } else {
+                        this.editandoFechaManual = false;
+                    }
                 },
 
                 tooltipDJ() {
@@ -1127,8 +1188,10 @@
                                 monto_deuda_inicial: montoLimpio,
                                 vencimientoDeuda: this.vencimientoDeuda,
                                 vencimiento_deuda_dmy: this.meses[this.mesIdx].vencimiento_deuda_dmy || '',
+                                vencimiento_oficial_pdt: this.vencimientoOficialPdt,
                                 tributoCodigo: this.tributoCodigo,
                                 esIgvJusto: this.esIgvJusto,
+                                editandoFechaManual: this.editandoFechaManual,
                                 total_abonado: this.meses[this.mesIdx].total_abonado || 0,
                                 saldo_pendiente: this.meses[this.mesIdx].saldo_pendiente || 0,
                                 abonos: [...(this.abonos || [])]
@@ -1144,6 +1207,7 @@
                             this.vencimientoDeuda = this.cacheDeuda.vencimientoDeuda || '';
                             this.tributoCodigo = this.cacheDeuda.tributoCodigo || '1011';
                             this.esIgvJusto = !!this.cacheDeuda.esIgvJusto;
+                            this.editandoFechaManual = !!this.cacheDeuda.editandoFechaManual;
                             this.abonos = [...(this.cacheDeuda.abonos || [])];
                             this.meses[this.mesIdx].abonos = this.abonos;
                             this.meses[this.mesIdx].monto_deuda_inicial = this.cacheDeuda.monto_deuda_inicial;
@@ -1153,6 +1217,10 @@
                             this.meses[this.mesIdx].saldo_pendiente = this.cacheDeuda.saldo_pendiente;
                             this.meses[this.mesIdx].tributo_codigo = this.tributoCodigo;
                             this.meses[this.mesIdx].es_igv_justo = this.esIgvJusto;
+                        }
+
+                        if (!this.vencimientoDeuda && !this.esIgvJusto && this.vencimientoOficialPdt) {
+                            this.vencimientoDeuda = this.vencimientoOficialPdt;
                         }
 
                         if (!this.cacheDeuda && !this.deudaCargada) {
@@ -1228,8 +1296,36 @@
                 async toggleIgvJusto() {
                     this.esIgvJusto = !this.esIgvJusto;
                     if (this.esIgvJusto) {
+                        this.editandoFechaManual = false;
                         await this.calcularVencimientoIgvJusto();
+                    } else {
+                        // Al desmarcar Ley IGV Justo, asignar por defecto la fecha oficial del cronograma PDT 621
+                        const oficial = this.vencimientoOficialPdt || this.meses[this.mesIdx].vencimiento_oficial_pdt;
+                        if (oficial) {
+                            this.vencimientoDeuda = oficial;
+                        }
+                        this.editandoFechaManual = false;
                     }
+                },
+
+                habilitarEdicionFecha() {
+                    this.editandoFechaManual = true;
+                    this.$nextTick(() => {
+                        if (this.$refs.inputVencimiento) {
+                            this.$refs.inputVencimiento.focus();
+                            if (typeof this.$refs.inputVencimiento.showPicker === 'function') {
+                                try { this.$refs.inputVencimiento.showPicker(); } catch (e) {}
+                            }
+                        }
+                    });
+                },
+
+                restablecerFechaSunat() {
+                    const oficial = this.vencimientoOficialPdt || this.meses[this.mesIdx].vencimiento_oficial_pdt;
+                    if (oficial) {
+                        this.vencimientoDeuda = oficial;
+                    }
+                    this.editandoFechaManual = false;
                 },
 
                 async calcularVencimientoIgvJusto() {
@@ -1307,6 +1403,11 @@
                         if (!this.tieneDeuda) {
                             this.tieneDeuda = !!data.tiene_deuda;
                         }
+                        if (data.vencimiento_oficial_pdt) {
+                            this.vencimientoOficialPdt = data.vencimiento_oficial_pdt;
+                            this.meses[this.mesIdx].vencimiento_oficial_pdt = data.vencimiento_oficial_pdt;
+                            this.meses[this.mesIdx].vencimiento_oficial_pdt_dmy = data.vencimiento_oficial_pdt_dmy;
+                        }
                         this.tributoCodigo = data.tributo_codigo || '1011';
                         this.esIgvJusto = !!data.es_igv_justo;
                         if (data.monto_deuda_inicial) {
@@ -1318,6 +1419,12 @@
                             this.vencimientoDeuda = data.vencimiento_deuda || '';
                         } else if (this.cacheDeuda && this.cacheDeuda.vencimientoDeuda) {
                             this.vencimientoDeuda = this.cacheDeuda.vencimientoDeuda;
+                        } else if (!this.esIgvJusto && this.vencimientoOficialPdt) {
+                            this.vencimientoDeuda = this.vencimientoOficialPdt;
+                        }
+
+                        if (this.vencimientoDeuda && this.vencimientoOficialPdt && this.vencimientoDeuda !== this.vencimientoOficialPdt && !this.esIgvJusto) {
+                            this.editandoFechaManual = true;
                         }
 
                         if (data.tiene_deuda || data.monto_deuda_inicial || (this.abonos && this.abonos.length > 0)) {
@@ -1326,8 +1433,10 @@
                                 monto_deuda_inicial: parseFloat(data.monto_deuda_inicial || (this.cacheDeuda?.monto_deuda_inicial ?? 0)),
                                 vencimientoDeuda: this.vencimientoDeuda,
                                 vencimiento_deuda_dmy: data.vencimiento_deuda_dmy || (this.cacheDeuda?.vencimiento_deuda_dmy ?? ''),
+                                vencimiento_oficial_pdt: this.vencimientoOficialPdt,
                                 tributoCodigo: this.tributoCodigo,
                                 esIgvJusto: this.esIgvJusto,
+                                editandoFechaManual: this.editandoFechaManual,
                                 total_abonado: parseFloat(data.total_abonado || 0),
                                 saldo_pendiente: parseFloat(data.saldo_pendiente || 0),
                                 abonos: [...(this.abonos || [])]
@@ -1397,8 +1506,10 @@
                             monto_deuda_inicial: parseFloat(data.monto_deuda_inicial || 0),
                             vencimientoDeuda: this.vencimientoDeuda,
                             vencimiento_deuda_dmy: data.vencimiento_deuda_dmy || '',
+                            vencimiento_oficial_pdt: this.vencimientoOficialPdt,
                             tributoCodigo: this.tributoCodigo,
                             esIgvJusto: this.esIgvJusto,
+                            editandoFechaManual: this.editandoFechaManual,
                             total_abonado: parseFloat(data.total_abonado || 0),
                             saldo_pendiente: parseFloat(data.saldo_pendiente || 0),
                             abonos: [...(this.abonos || [])]
