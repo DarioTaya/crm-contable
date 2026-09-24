@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TipoTributoSunat;
 use App\Models\Cliente;
 use App\Models\Operacion;
+use App\Services\CronogramaSunatService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -125,11 +128,24 @@ class ControlMensualController extends Controller
                     'ple' => $ple,
                     'notas' => $notasMes,
                     'tiene_deuda' => (bool) ($op->tiene_deuda ?? false),
+                    'tributo_codigo' => $op?->tributo_codigo ?? '1011',
+                    'tributo_nombre' => $op?->tributo_nombre ?? 'IGV Cuenta Propia 18%',
+                    'tributo_nombre_corto' => $op?->tributo_nombre_corto ?? 'IGV 18%',
+                    'tributo_etiqueta' => $op?->tributo_etiqueta ?? '1011 - IGV Cuenta Propia 18%',
+                    'es_igv_justo' => (bool) ($op?->es_igv_justo ?? false),
                     'monto_deuda_inicial' => (float) ($op->monto_deuda_inicial ?? 0),
                     'vencimiento_deuda' => $op?->vencimiento_deuda ? $op->vencimiento_deuda->format('Y-m-d') : '',
+                    'vencimiento_deuda_dmy' => $op?->vencimiento_deuda ? $op->vencimiento_deuda->format('d/m/Y') : '',
                     'saldo_pendiente' => (float) ($op?->saldo_pendiente ?? 0),
                     'total_abonado' => (float) ($op?->total_abonado ?? 0),
                     'operacion_id' => $op?->id,
+                    'abonos' => $op?->abonosDeuda ? $op->abonosDeuda->sortByDesc('fecha_pago')->map(fn ($abono) => [
+                        'id' => $abono->id,
+                        'monto' => (float) $abono->monto,
+                        'monto_formateado' => $abono->monto_formateado,
+                        'fecha_pago' => $abono->fecha_pago?->format('d/m/Y') ?? '',
+                        'observacion' => $abono->observacion ?? '',
+                    ])->values()->all() : [],
                 ];
             }
 
@@ -144,11 +160,14 @@ class ControlMensualController extends Controller
             ];
         }
 
+        $tributosDisponibles = TipoTributoSunat::opciones();
+
         return view('control.index', array_merge(compact(
             'anio',
             'aniosDisponibles',
             'mesesEncabezado',
-            'matrizClientes'
+            'matrizClientes',
+            'tributosDisponibles'
         ), $kpis));
     }
 
@@ -307,6 +326,12 @@ class ControlMensualController extends Controller
 
         // 2. Guardado del interruptor maestro mensual, honorarios, deuda o nota mensual
         if ($request->has('estado') || $request->has('honorarios') || $request->has('estado_pago_honorarios') || $request->has('tiene_deuda') || (! $request->has('estado_compras_ventas') && $request->has('notas'))) {
+            if ($request->has('monto_deuda_inicial') && is_string($request->input('monto_deuda_inicial'))) {
+                $request->merge([
+                    'monto_deuda_inicial' => (float) str_replace(',', '', $request->input('monto_deuda_inicial')),
+                ]);
+            }
+
             $validated = $request->validate([
                 'cliente_id' => ['required', 'integer', Cliente::reglaPerteneceACartera()],
                 'periodo' => ['required', 'string', 'regex:/^\d{2}-\d{4}$/'],
@@ -314,6 +339,8 @@ class ControlMensualController extends Controller
                 'honorarios' => ['nullable', 'string', 'in:Pendiente,Pagado'],
                 'estado_pago_honorarios' => ['nullable', 'string', 'in:Pendiente,Pagado'],
                 'tiene_deuda' => ['nullable', 'boolean'],
+                'tributo_codigo' => ['nullable', 'string', 'max:20'],
+                'es_igv_justo' => ['nullable', 'boolean'],
                 'monto_deuda_inicial' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
                 'vencimiento_deuda' => ['nullable', 'date'],
                 'notas' => ['nullable', 'string', 'max:1000'],
@@ -354,12 +381,20 @@ class ControlMensualController extends Controller
             if ($request->has('tiene_deuda')) {
                 $operacion->tiene_deuda = $validated['tiene_deuda'];
                 if ($validated['tiene_deuda']) {
-                    $operacion->monto_deuda_inicial = $validated['monto_deuda_inicial'] ?? $operacion->monto_deuda_inicial;
-                    $operacion->vencimiento_deuda = $validated['vencimiento_deuda'] ?? $operacion->vencimiento_deuda;
-                } else {
-                    $operacion->monto_deuda_inicial = null;
-                    $operacion->vencimiento_deuda = null;
+                    $operacion->tributo_codigo = $validated['tributo_codigo'] ?? ($operacion->tributo_codigo ?: '1011');
+                    $operacion->es_igv_justo = $request->boolean('es_igv_justo');
+                    if (array_key_exists('monto_deuda_inicial', $validated) && $validated['monto_deuda_inicial'] !== null) {
+                        $operacion->monto_deuda_inicial = $validated['monto_deuda_inicial'];
+                    }
+                    if (array_key_exists('vencimiento_deuda', $validated) && $validated['vencimiento_deuda'] !== null) {
+                        $operacion->vencimiento_deuda = $validated['vencimiento_deuda'];
+                    }
                 }
+                // Si tiene_deuda es false, se conserva la configuración previa en la BD
+                // para que si el usuario lo apagó por error no se pierdan los montos ni abonos.
+                // En el Control de Deudas solo se consultan registros con tiene_deuda = true.
+            } elseif ($request->has('tributo_codigo')) {
+                $operacion->tributo_codigo = $validated['tributo_codigo'];
             }
 
             $operacion->save();
@@ -372,10 +407,26 @@ class ControlMensualController extends Controller
                 'message' => 'Operación actualizada exitosamente.',
                 'operacion_id' => $operacion->id,
                 'tiene_deuda' => $operacion->tiene_deuda,
+                'tributo_codigo' => $operacion->tributo_codigo,
+                'tributo_nombre' => $operacion->tributo_nombre,
+                'tributo_nombre_corto' => $operacion->tributo_nombre_corto,
+                'tributo_etiqueta' => $operacion->tributo_etiqueta,
+                'es_igv_justo' => (bool) $operacion->es_igv_justo,
                 'monto_deuda_inicial' => $operacion->monto_deuda_inicial,
+                'monto_deuda_inicial_formateado' => $operacion->monto_deuda_inicial_formateado,
                 'vencimiento_deuda' => $operacion->vencimiento_deuda?->format('Y-m-d'),
+                'vencimiento_deuda_dmy' => $operacion->vencimiento_deuda?->format('d/m/Y'),
                 'total_abonado' => $operacion->total_abonado,
+                'total_abonado_formateado' => $operacion->total_abonado_formateado,
                 'saldo_pendiente' => $operacion->saldo_pendiente,
+                'saldo_pendiente_formateado' => $operacion->saldo_pendiente_formateado,
+                'abonos' => $operacion->abonosDeuda->sortByDesc('fecha_pago')->map(fn ($abono) => [
+                    'id' => $abono->id,
+                    'monto' => (float) $abono->monto,
+                    'monto_formateado' => $abono->monto_formateado,
+                    'fecha_pago' => $abono->fecha_pago?->format('d/m/Y') ?? '',
+                    'observacion' => $abono->observacion ?? '',
+                ])->values()->all(),
                 'kpis' => $this->calcularKpis($anio),
             ]);
         }
@@ -436,6 +487,42 @@ class ControlMensualController extends Controller
     }
 
     /**
+     * Calcula la fecha oficial de vencimiento según la Ley de IGV Justo (prórroga de 3 meses).
+     * Consulta el Cronograma Oficial de SUNAT para el PDT 621 correspondiente al periodo + 3 meses.
+     */
+    public function calcularIgvJusto(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => ['required', 'integer', Cliente::reglaPerteneceACartera()],
+            'periodo' => ['required', 'string', 'regex:/^\d{2}-\d{4}$/'],
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+        $periodo = $validated['periodo'];
+
+        [$mes, $anio] = explode('-', $periodo);
+        $fechaBase = Carbon::createFromDate((int) $anio, (int) $mes, 1);
+        $fechaDestino = $fechaBase->copy()->addMonthsNoOverflow(3);
+        $periodoDestino = $fechaDestino->format('m-Y');
+
+        $cronogramaService = app(CronogramaSunatService::class);
+        $fechaOficial = $cronogramaService->obtenerFechaVencimiento('pdt_621', $periodoDestino, $cliente);
+
+        if (! $fechaOficial) {
+            $fechaOficial = $fechaDestino->copy()->endOfMonth();
+        }
+
+        return response()->json([
+            'success' => true,
+            'periodo_origen' => $periodo,
+            'periodo_destino' => $periodoDestino,
+            'fecha_vencimiento' => $fechaOficial->format('Y-m-d'),
+            'fecha_vencimiento_dmy' => $fechaOficial->format('d/m/Y'),
+            'mensaje' => "Fecha oficial SUNAT calculada para {$periodoDestino} (Ley IGV Justo +3 meses).",
+        ]);
+    }
+
+    /**
      * Obtiene los datos de deuda y abonos de una operación mensual vía AJAX.
      */
     public function getDeuda(Request $request): JsonResponse
@@ -454,27 +541,45 @@ class ControlMensualController extends Controller
             return response()->json([
                 'operacion_id' => null,
                 'tiene_deuda' => false,
+                'tributo_codigo' => '1011',
+                'tributo_nombre' => 'IGV Cuenta Propia 18%',
+                'tributo_nombre_corto' => 'IGV 18%',
+                'tributo_etiqueta' => '1011 - IGV Cuenta Propia 18%',
+                'es_igv_justo' => false,
                 'monto_deuda_inicial' => null,
                 'vencimiento_deuda' => null,
+                'vencimiento_deuda_dmy' => null,
                 'abonos' => [],
                 'total_abonado' => 0,
                 'saldo_pendiente' => 0,
+                'tributos_disponibles' => TipoTributoSunat::opciones(),
             ]);
         }
 
         return response()->json([
             'operacion_id' => $operacion->id,
             'tiene_deuda' => $operacion->tiene_deuda,
+            'tributo_codigo' => $operacion->tributo_codigo ?: '1011',
+            'tributo_nombre' => $operacion->tributo_nombre,
+            'tributo_nombre_corto' => $operacion->tributo_nombre_corto,
+            'tributo_etiqueta' => $operacion->tributo_etiqueta,
+            'es_igv_justo' => (bool) $operacion->es_igv_justo,
             'monto_deuda_inicial' => $operacion->monto_deuda_inicial,
+            'monto_deuda_inicial_formateado' => $operacion->monto_deuda_inicial_formateado,
             'vencimiento_deuda' => $operacion->vencimiento_deuda?->format('Y-m-d'),
-            'abonos' => $operacion->abonosDeuda->map(fn ($abono) => [
+            'vencimiento_deuda_dmy' => $operacion->vencimiento_deuda?->format('d/m/Y'),
+            'abonos' => $operacion->abonosDeuda->sortByDesc('fecha_pago')->map(fn ($abono) => [
                 'id' => $abono->id,
                 'monto' => $abono->monto,
+                'monto_formateado' => $abono->monto_formateado,
                 'fecha_pago' => $abono->fecha_pago->format('d/m/Y'),
                 'observacion' => $abono->observacion,
             ])->values(),
             'total_abonado' => $operacion->total_abonado,
+            'total_abonado_formateado' => $operacion->total_abonado_formateado,
             'saldo_pendiente' => $operacion->saldo_pendiente,
+            'saldo_pendiente_formateado' => $operacion->saldo_pendiente_formateado,
+            'tributos_disponibles' => TipoTributoSunat::opciones(),
         ]);
     }
 }

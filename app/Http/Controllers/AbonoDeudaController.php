@@ -14,6 +14,12 @@ class AbonoDeudaController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        if ($request->has('monto') && is_string($request->input('monto'))) {
+            $request->merge([
+                'monto' => (float) str_replace(',', '', $request->input('monto')),
+            ]);
+        }
+
         $validated = $request->validate([
             'operacion_id' => 'required|exists:operaciones,id',
             'monto' => 'required|numeric|min:0.01|max:99999999.99',
@@ -33,11 +39,14 @@ class AbonoDeudaController extends Controller
             'abono' => [
                 'id' => $abono->id,
                 'monto' => $abono->monto,
+                'monto_formateado' => $abono->monto_formateado,
                 'fecha_pago' => $abono->fecha_pago->format('d/m/Y'),
                 'observacion' => $abono->observacion,
             ],
             'total_abonado' => $operacion->total_abonado,
+            'total_abonado_formateado' => $operacion->total_abonado_formateado,
             'saldo_pendiente' => $operacion->saldo_pendiente,
+            'saldo_pendiente_formateado' => $operacion->saldo_pendiente_formateado,
         ]);
     }
 
@@ -54,7 +63,9 @@ class AbonoDeudaController extends Controller
         return response()->json([
             'success' => true,
             'total_abonado' => $operacion->total_abonado,
+            'total_abonado_formateado' => $operacion->total_abonado_formateado,
             'saldo_pendiente' => $operacion->saldo_pendiente,
+            'saldo_pendiente_formateado' => $operacion->saldo_pendiente_formateado,
         ]);
     }
 }

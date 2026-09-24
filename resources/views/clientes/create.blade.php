@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Nuevo Cliente — Onboarding')
+@section('title', 'Onboarding — Nuevo Cliente')
 @section('header', 'Onboarding — Nuevo Cliente')
 
 @section('content')

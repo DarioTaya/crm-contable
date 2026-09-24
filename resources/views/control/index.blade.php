@@ -243,430 +243,541 @@
                         {{-- COLUMNAS 2 A 13: UNA CELDA MAESTRA POR MES (DJ + RH + NOTA) --}}
                         @foreach ($item['meses'] as $idx => $m)
                             <td @class([
-                                    'w-[6.5%] p-0.5 border-r border-b border-gray-300 text-center transition-colors relative align-middle h-11',
+                                    'w-[6.5%] p-0.5 border-r border-b text-center transition-colors relative align-middle h-11 border-gray-300',
                                     'bg-gray-100/80 text-gray-400' => ! empty($m['es_baja']) || ($m['estado'] ?? '') === 'Baja',
                                     'bg-emerald-100/70 hover:bg-emerald-100' => empty($m['es_baja']) && ($m['estado'] ?? '') === 'Declarado',
                                     'bg-amber-100/70 hover:bg-amber-100' => empty($m['es_baja']) && in_array($m['estado'] ?? '', ['Procesando', 'Proceso'], true),
                                     'bg-white hover:bg-slate-100/60' => empty($m['es_baja']) && ! in_array($m['estado'] ?? 'Pendiente', ['Declarado', 'Procesando', 'Proceso', 'Baja'], true),
                                 ])
-                                x-effect="pintarFondo($el, meses[{{ $idx }}].estado)">
+                                x-effect="pintarFondo($el, meses[{{ $idx }}])">
 
                                 @if (!empty($m['es_baja']))
                                     <div class="flex items-center justify-center w-full h-full text-center py-1 select-none"
                                          title="{{ $m['motivo_baja'] ?? 'Cliente no activo en este periodo (Baja del Estudio Contable)' }}">
-                                        <span class="inline-flex items-center gap-1 rounded bg-rose-50 border border-rose-200 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 shadow-xs">
-                                            <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
-                                            Baja
-                                        </span>
+                                         <span class="inline-flex items-center gap-1 rounded bg-rose-50 border border-rose-200 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 shadow-xs">
+                                             <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                                             Baja
+                                         </span>
                                     </div>
                                 @else
-                                    {{-- Componente Alpine por celda: DJ + RH + Nota Flotante Google Sheets --}}
-                                    <div x-data="popoverNotaMes({
-                                            clienteId: {{ $item['cliente']->id }},
-                                            periodo: '{{ $m['periodo'] }}',
-                                            mesNombre: '{{ $m['nombre'] }}',
-                                            notaInicial: @js($m['notas'])
-                                         })"
-                                         class="flex items-center justify-between gap-0.5 px-0.5 w-full h-full relative">
+                                    {{-- Controles DJ + RH limpios y enfocados (Sin comentarios flotantes ni artefactos borrosos) --}}
+                                    <div class="flex items-center justify-between gap-1 px-1 w-full h-full relative">
 
-                                    {{-- Triángulo Rojo en Esquina Superior Derecha (Google Sheets Comment Indicator) --}}
-                                    <div x-show="tieneNota()"
-                                         x-cloak
-                                         @click="abrir()"
-                                         :title="'Nota: ' + nota"
-                                         class="absolute top-0 right-0 w-0 h-0 border-t-[8px] border-r-[8px] border-t-transparent border-r-rose-600 cursor-pointer z-10">
-                                    </div>
-
-                                    {{-- CONTROL 1: DJ (Declaración Jurada + Control de Deudas con Pestañas) --}}
-                                    <div x-data="controlCeldaDJ({{ $item['cliente']->id }}, {{ $idx }}, meses)" class="relative flex-1 flex items-center justify-center">
-                                        <div class="relative inline-flex items-center justify-center">
+                                        {{-- CONTROL 1: DJ (Declaración Jurada + Control de Deudas) --}}
+                                        <div x-data="controlCeldaDJ({{ $item['cliente']->id }}, {{ $idx }}, meses, @js($tributosDisponibles))"
+                                             class="relative flex-1 flex items-center justify-center">
+                                            @php
+                                                $estadoInicial = $m['estado'] ?? 'Pendiente';
+                                                $tieneDeudaInicial = !empty($m['tiene_deuda']) && floatval($m['saldo_pendiente'] ?? $m['monto_deuda_inicial'] ?? 0) > 0;
+                                                $tieneDeudaDeclaradaInicial = ($estadoInicial === 'Declarado') && $tieneDeudaInicial;
+                                            @endphp
                                             <button
                                                 type="button"
                                                 @click="abrirMenuDJ($el)"
-                                                :title="tooltipDJ()"
-                                                class="inline-flex h-6 w-6 min-w-6 shrink-0 items-center justify-center overflow-hidden rounded text-xs transition-transform select-none hover:scale-110 focus:outline-none active:scale-95"
+                                                @mouseenter="mostrarHoverDeuda($el)"
+                                                @mouseleave="ocultarHoverDeuda()"
+                                                :title="!tieneDeudaConSaldo() ? ('DJ: ' + (meses[{{ $idx }}].estado || 'Pendiente')) : null"
+                                                class="relative inline-flex h-6 w-6 min-w-6 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs transition-transform select-none hover:scale-110 focus:outline-none active:scale-95"
                                             >
-                                                <span x-text="meses[{{ $idx }}].estado === 'Declarado' ? '🟢' : (meses[{{ $idx }}].estado === 'Procesando' ? '🟡' : '⚪')">{{ match ($m['estado'] ?? 'Pendiente') { 'Declarado' => '🟢', 'Procesando' => '🟡', default => '⚪' } }}</span>
+                                                <span x-text="meses[{{ $idx }}].estado === 'Declarado' ? '🟢' : (meses[{{ $idx }}].estado === 'Procesando' ? '🟡' : '⚪')">
+                                                    {{ match ($m['estado'] ?? 'Pendiente') { 'Declarado' => '🟢', 'Procesando' => '🟡', default => '⚪' } }}
+                                                </span>
+                                                <svg
+                                                    x-show="tieneDeudaDeclarada()"
+                                                    x-cloak
+                                                    class="absolute inset-0 h-6 w-6 pointer-events-none {{ $tieneDeudaDeclaradaInicial ? '' : 'hidden' }}"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <circle cx="12" cy="12" r="6.8" fill="none" stroke="#ef4444" stroke-width="2.4" />
+                                                </svg>
                                             </button>
 
-                                            {{-- Indicador Premium de Deuda (Punto Rojo si saldo > 0 / Check Verde si saldo == 0) --}}
-                                            <template x-if="meses[{{ $idx }}].estado === 'Declarado' && meses[{{ $idx }}].tiene_deuda">
-                                                <div class="pointer-events-none">
-                                                    {{-- Saldo pendiente > 0: Punto Rojo --}}
-                                                    <span x-show="meses[{{ $idx }}].saldo_pendiente > 0"
-                                                          class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-xs pointer-events-auto cursor-pointer"
-                                                          :title="'Deuda Inicial: S/ ' + parseFloat(meses[{{ $idx }}].monto_deuda_inicial || 0).toFixed(2) + ' | Abonado: S/ ' + parseFloat(meses[{{ $idx }}].total_abonado || 0).toFixed(2) + ' | Saldo: S/ ' + parseFloat(meses[{{ $idx }}].saldo_pendiente || 0).toFixed(2)"
-                                                          @click.stop="abrirMenuDJConTab($el, 'deuda')">
-                                                    </span>
-                                                    {{-- Deuda saldada: Check Verde --}}
-                                                    <span x-show="meses[{{ $idx }}].saldo_pendiente <= 0"
-                                                          class="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center text-[7px] text-white font-black shadow-xs pointer-events-auto cursor-pointer"
-                                                          :title="'Deuda Inicial: S/ ' + parseFloat(meses[{{ $idx }}].monto_deuda_inicial || 0).toFixed(2) + ' | Abonado: S/ ' + parseFloat(meses[{{ $idx }}].total_abonado || 0).toFixed(2) + ' | Saldo: S/ 0.00'"
-                                                          @click.stop="abrirMenuDJConTab($el, 'deuda')">
-                                                        ✓
-                                                    </span>
-                                                </div>
-                                            </template>
-                                        </div>
-
-                                        {{-- Miniventana Flotante con 2 Pestañas para DJ y Deudas --}}
-                                        <div
-                                            x-ref="menuDJ"
-                                            x-show="openDJ"
-                                            x-cloak
-                                            data-menu-flotante
-                                            @click.outside="openDJ = false"
-                                            class="fixed z-50 w-80 sm:w-96 rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl text-left max-h-[90vh] overflow-y-auto"
-                                        >
-                                            {{-- Encabezado con Tabs --}}
-                                            <div class="border-b border-gray-100 pb-2 mb-3">
-                                                <div class="flex items-center justify-between mb-2">
-                                                    <span class="text-[11px] font-bold text-gray-800 truncate">
-                                                        {{ $m['corto'] }}-{{ substr($anio, -2) }} &bull; {{ $item['cliente']->razon_social }}
-                                                    </span>
-                                                    <button type="button" @click="openDJ = false" class="text-gray-400 hover:text-gray-700 text-sm font-bold">&times;</button>
-                                                </div>
-
-                                                {{-- 2 Pestañas: 'Estado Declaración' y 'Control de Deuda y Pagos' --}}
-                                                <div class="flex border-b border-gray-200 text-xs font-semibold">
-                                                    <button
-                                                        type="button"
-                                                        @click="activeTab = 'declaracion'"
-                                                        :class="activeTab === 'declaracion' ? 'border-b-2 border-brand-600 text-brand-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
-                                                        class="flex-1 pb-2 text-center transition"
-                                                    >
-                                                        Estado Declaración
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        @click="activeTab = 'deuda'; if (!deudaCargada) cargarDeuda()"
-                                                        :class="activeTab === 'deuda' ? 'border-b-2 border-brand-600 text-brand-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
-                                                        class="flex-1 pb-2 text-center transition relative"
-                                                    >
-                                                        Control de Deuda y Pagos
-                                                        <template x-if="meses[mesIdx].tiene_deuda && meses[mesIdx].saldo_pendiente > 0">
-                                                            <span class="inline-block w-2 h-2 rounded-full bg-red-500 ml-1"></span>
-                                                        </template>
-                                                        <template x-if="meses[mesIdx].tiene_deuda && meses[mesIdx].saldo_pendiente <= 0">
-                                                            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 ml-1"></span>
-                                                        </template>
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {{-- TAB 1: ESTADO DECLARACIÓN --}}
-                                            <div x-show="activeTab === 'declaracion'" class="space-y-1 py-1">
-                                                <button
-                                                    type="button"
-                                                    @click="cambiarEstado('Pendiente')"
-                                                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-slate-100 text-gray-800"
-                                                    :class="meses[mesIdx].estado === 'Pendiente' ? 'bg-slate-100 text-slate-800 ring-1 ring-slate-300' : ''"
-                                                >
-                                                    <span class="text-sm">⚪</span>
-                                                    <span>Pendiente</span>
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    @click="cambiarEstado('Procesando')"
-                                                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-amber-50 text-gray-800"
-                                                    :class="meses[mesIdx].estado === 'Procesando' ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' : ''"
-                                                >
-                                                    <span class="text-sm">🟡</span>
-                                                    <span>En Proceso</span>
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    @click="cambiarEstado('Declarado')"
-                                                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-emerald-50 text-gray-800"
-                                                    :class="meses[mesIdx].estado === 'Declarado' ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200' : ''"
-                                                >
-                                                    <span class="text-sm">🟢</span>
-                                                    <span>Declarado</span>
-                                                </button>
-                                            </div>
-
-                                            {{-- TAB 2: CONTROL DE DEUDA Y PAGOS --}}
-                                            <div x-show="activeTab === 'deuda'" class="space-y-3 py-1">
-                                                {{-- Switch: ¿Quedó deuda con SUNAT? --}}
-                                                <div class="flex items-center justify-between rounded-xl bg-gray-50 p-2.5 border border-gray-200">
-                                                    <div>
-                                                        <span class="block text-xs font-bold text-gray-800">¿Quedó deuda con SUNAT?</span>
-                                                        <span class="block text-[10px] text-gray-500">IGV Justo, Fraccionamiento, etc.</span>
+                                            {{-- Ventana flotante inteligente de información de deuda al pasar el mouse (sin hacer clic) --}}
+                                            <div
+                                                x-ref="tooltipDeuda"
+                                                x-show="hoverDeuda && tieneDeudaConSaldo() && !openDJ"
+                                                x-cloak
+                                                data-menu-flotante
+                                                class="fixed z-50 pointer-events-none rounded-2xl bg-white text-gray-800 p-3.5 shadow-2xl border border-gray-200 text-left min-w-[320px] max-w-sm ring-1 ring-black/5"
+                                                style="background-color: #ffffff !important; opacity: 1 !important;"
+                                            >
+                                                {{-- Header: Estado de deuda y periodo --}}
+                                                <div class="flex items-center justify-between pb-2 mb-2.5 border-b border-gray-100">
+                                                    <div class="flex items-center gap-1.5 rounded-full bg-rose-50 border border-rose-200/80 px-2.5 py-0.5 text-[11px] font-bold text-rose-700">
+                                                        <span class="inline-block h-2 w-2 rounded-full bg-rose-600 animate-pulse"></span>
+                                                        <span>Deuda SUNAT Pendiente</span>
                                                     </div>
+                                                    <span class="text-[10px] font-mono font-bold text-gray-600 bg-gray-100 border border-gray-200 rounded px-1.5 py-0.5" x-text="meses[{{ $idx }}].periodo"></span>
+                                                </div>
+
+                                                {{-- Datos principales de la deuda --}}
+                                                <div class="space-y-1.5 text-xs leading-normal">
+                                                    <div class="flex items-center justify-between gap-2">
+                                                        <span class="text-gray-500 font-medium">Tributo:</span>
+                                                        <span class="text-gray-900 font-bold text-right truncate max-w-[200px]" x-text="meses[{{ $idx }}].tributo_nombre || meses[{{ $idx }}].tributo_nombre_corto || 'Tributo SUNAT'"></span>
+                                                    </div>
+                                                    <div class="flex items-center justify-between">
+                                                        <span class="text-gray-500 font-medium">Monto Deuda:</span>
+                                                        <span class="text-gray-900 font-mono font-bold" x-text="formatearMoneda(meses[{{ $idx }}].monto_deuda_inicial)"></span>
+                                                    </div>
+                                                    <div class="flex items-center justify-between">
+                                                        <span class="text-gray-500 font-medium">Vencimiento:</span>
+                                                        <div class="flex items-center gap-1.5">
+                                                            <template x-if="meses[{{ $idx }}].es_igv_justo">
+                                                                <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded px-1">IGV Justo</span>
+                                                            </template>
+                                                            <span class="text-rose-600 font-mono font-bold" x-text="meses[{{ $idx }}].vencimiento_deuda_dmy || meses[{{ $idx }}].vencimiento_deuda || 'Sin fecha'"></span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {{-- Detalle de pagos parciales o abonos realizados (si es que existe alguno) --}}
+                                                <template x-if="meses[{{ $idx }}].abonos && meses[{{ $idx }}].abonos.length > 0">
+                                                    <div class="mt-2.5 pt-2.5 border-t border-gray-100">
+                                                        <div class="flex items-center justify-between text-[11px] font-bold text-gray-700 mb-1.5">
+                                                            <span class="flex items-center gap-1 text-emerald-700">
+                                                                <svg class="h-3.5 w-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                                                                </svg>
+                                                                <span>Abonos Realizados (<span x-text="meses[{{ $idx }}].abonos.length"></span>)</span>
+                                                            </span>
+                                                            <span class="font-mono text-emerald-700" x-text="'Total: ' + formatearMoneda(meses[{{ $idx }}].total_abonado)"></span>
+                                                        </div>
+                                                        <div class="space-y-1 max-h-28 overflow-y-auto pr-0.5">
+                                                            <template x-for="(abono, aIdx) in meses[{{ $idx }}].abonos" :key="abono.id || aIdx">
+                                                                <div class="flex items-center justify-between text-[11px] bg-gray-50 rounded-lg px-2 py-1 border border-gray-100">
+                                                                    <div class="flex items-center gap-1.5 truncate pr-2">
+                                                                        <span class="font-mono text-gray-500 text-[10px]" x-text="abono.fecha_pago"></span>
+                                                                        <span class="text-gray-600 truncate text-[10px]" x-show="abono.observacion" x-text="abono.observacion"></span>
+                                                                    </div>
+                                                                    <span class="font-mono font-bold text-emerald-600 shrink-0" x-text="'+ ' + (abono.monto_formateado || formatearMoneda(abono.monto))"></span>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </template>
+
+                                                {{-- Footer: Saldo Pendiente --}}
+                                                <div class="mt-2.5 pt-2 border-t border-gray-100 flex items-center justify-between rounded-xl bg-rose-50/70 border border-rose-100 p-2.5">
+                                                    <span class="text-xs font-bold text-rose-900">Saldo Pendiente:</span>
+                                                    <span class="text-rose-600 font-mono font-black text-sm" x-text="formatearMoneda(meses[{{ $idx }}].saldo_pendiente)"></span>
+                                                </div>
+                                            </div>
+
+                                            {{-- Miniventana Flotante Optimizada de 455px para DJ y Deudas --}}
+                                            <div
+                                                x-ref="menuDJ"
+                                                x-show="openDJ"
+                                                x-cloak
+                                                data-menu-flotante
+                                                @click.outside="openDJ = false"
+                                                class="fixed z-50 w-[455px] max-w-[95vw] rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl text-left max-h-[calc(100vh-24px)] overflow-y-auto"
+                                            >
+                                                {{-- Encabezado con Tabs en una sola línea --}}
+                                                <div class="border-b border-gray-100 pb-2.5 mb-3">
+                                                    <div class="flex items-center justify-between mb-2">
+                                                        <div class="flex items-center gap-2 truncate pr-2">
+                                                            <span class="inline-flex items-center justify-center rounded bg-gray-100 border border-gray-200 px-1.5 py-0.5 text-[10px] font-mono font-bold text-gray-700">
+                                                                {{ $m['corto'] }}-{{ substr($anio, -2) }}
+                                                            </span>
+                                                            <span class="text-xs font-bold text-gray-900 truncate">
+                                                                {{ $item['cliente']->razon_social }}
+                                                            </span>
+                                                        </div>
+                                                        <button type="button" @click="openDJ = false" class="text-gray-400 hover:text-gray-700 text-base font-bold leading-none p-1">&times;</button>
+                                                    </div>
+
+                                                    {{-- 2 Pestañas perfectamente alineadas en una sola línea --}}
+                                                    <div class="flex border-b border-gray-200 text-xs font-semibold">
+                                                        <button
+                                                            type="button"
+                                                            @click="activeTab = 'declaracion'"
+                                                            :class="activeTab === 'declaracion' ? 'border-b-2 border-brand-600 text-brand-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
+                                                            class="flex-1 pb-2 text-center transition flex items-center justify-center gap-1.5 whitespace-nowrap"
+                                                        >
+                                                            <span>Estado Declaración</span>
+                                                            <span class="text-[10px]" x-text="meses[mesIdx].estado === 'Declarado' ? '🟢' : (meses[mesIdx].estado === 'Procesando' ? '🟡' : '⚪')"></span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            @click="activeTab = 'deuda'; if (!deudaCargada) cargarDeuda()"
+                                                            :class="activeTab === 'deuda' ? 'border-b-2 border-brand-600 text-brand-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
+                                                            class="flex-1 pb-2 text-center transition relative flex items-center justify-center gap-1.5 whitespace-nowrap"
+                                                        >
+                                                            <span>Control de Deuda y Pagos</span>
+                                                            <template x-if="meses[mesIdx].tiene_deuda && meses[mesIdx].saldo_pendiente > 0">
+                                                                <span class="inline-flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                                                            </template>
+                                                            <template x-if="meses[mesIdx].tiene_deuda && meses[mesIdx].saldo_pendiente <= 0">
+                                                                <span class="inline-flex h-2 w-2 rounded-full bg-emerald-500"></span>
+                                                            </template>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {{-- TAB 1: ESTADO DECLARACIÓN --}}
+                                                <div x-show="activeTab === 'declaracion'" class="space-y-1.5 py-1">
                                                     <button
                                                         type="button"
-                                                        @click="toggleTieneDeuda()"
-                                                        :class="tieneDeuda ? 'bg-brand-600' : 'bg-gray-300'"
-                                                        class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                                        @click="cambiarEstado('Pendiente')"
+                                                        class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition hover:bg-slate-100 text-gray-800"
+                                                        :class="meses[mesIdx].estado === 'Pendiente' ? 'bg-slate-100 text-slate-900 ring-1 ring-slate-300' : ''"
                                                     >
-                                                        <span
-                                                            :class="tieneDeuda ? 'translate-x-4' : 'translate-x-0'"
-                                                            class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
-                                                        ></span>
+                                                        <div class="flex items-center gap-2.5">
+                                                            <span class="text-sm">⚪</span>
+                                                            <span>Pendiente</span>
+                                                        </div>
+                                                        <span class="text-[10px] text-gray-400">Sin iniciar</span>
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        @click="cambiarEstado('Procesando')"
+                                                        class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition hover:bg-amber-50 text-gray-800"
+                                                        :class="meses[mesIdx].estado === 'Procesando' ? 'bg-amber-50 text-amber-900 ring-1 ring-amber-300' : ''"
+                                                    >
+                                                        <div class="flex items-center gap-2.5">
+                                                            <span class="text-sm">🟡</span>
+                                                            <span>En Proceso</span>
+                                                        </div>
+                                                        <span class="text-[10px] text-amber-600 font-medium">Revisando libros / SIRE</span>
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        @click="cambiarEstado('Declarado')"
+                                                        class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition hover:bg-emerald-50 text-gray-800"
+                                                        :class="meses[mesIdx].estado === 'Declarado' ? 'bg-emerald-50 text-emerald-900 ring-1 ring-emerald-300' : ''"
+                                                    >
+                                                        <div class="flex items-center gap-2.5">
+                                                            <span class="text-sm">🟢</span>
+                                                            <span>Declarado</span>
+                                                        </div>
+                                                        <span class="text-[10px] text-emerald-600 font-medium">Constancia generada</span>
                                                     </button>
                                                 </div>
 
-                                                {{-- Contenido cuando tiene_deuda es true --}}
-                                                <div x-show="tieneDeuda" class="space-y-3">
-                                                    {{-- Formulario de Monto Inicial y Vencimiento --}}
-                                                    <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                                                {{-- TAB 2: CONTROL DE DEUDA Y PAGOS --}}
+                                                <div x-show="activeTab === 'deuda'" class="space-y-3 py-1">
+                                                    {{-- Switch: ¿Quedó deuda con SUNAT? --}}
+                                                    <div class="flex items-center justify-between rounded-xl bg-gray-50 p-3 border border-gray-200">
                                                         <div>
-                                                            <label class="block text-[10px] font-bold text-gray-600 uppercase">Monto Inicial (S/)</label>
-                                                            <div class="relative mt-0.5">
-                                                                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">S/</span>
-                                                                <input
-                                                                    type="number"
-                                                                    step="0.01"
-                                                                    min="0"
-                                                                    x-model="montoDeuda"
-                                                                    class="w-full pl-6 rounded border-gray-300 py-1 text-xs text-gray-800 bg-white shadow-xs focus:ring-1 focus:ring-brand-500"
-                                                                    placeholder="0.00"
+                                                            <span class="block text-xs font-bold text-gray-900">¿Quedó deuda con SUNAT en este mes?</span>
+                                                            <span class="block text-[11px] text-gray-500">IGV Justo, Fraccionamientos, multas o tributos pendientes.</span>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            @click="toggleTieneDeuda()"
+                                                            :class="tieneDeuda ? 'bg-brand-600' : 'bg-gray-300'"
+                                                            class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                                        >
+                                                            <span
+                                                                :class="tieneDeuda ? 'translate-x-5' : 'translate-x-0'"
+                                                                class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                                                            ></span>
+                                                        </button>
+                                                    </div>
+
+                                                    {{-- Contenido cuando tiene_deuda es true --}}
+                                                    <div x-show="tieneDeuda" class="space-y-3">
+                                                        {{-- Formulario de Configuración de Deuda --}}
+                                                        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2.5">
+                                                            {{-- Selector Elegante de Tributo SUNAT --}}
+                                                            <div>
+                                                                <label class="block text-[10px] font-bold text-gray-600 uppercase mb-1">
+                                                                    Tipo de Impuesto / Tributo SUNAT
+                                                                </label>
+                                                                <select
+                                                                    x-model="tributoCodigo"
+                                                                    class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 bg-white shadow-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-medium"
                                                                 >
+                                                                    <template x-for="(label, code) in tributosDisponibles" :key="code">
+                                                                        <option :value="code" x-text="label" :selected="code === tributoCodigo"></option>
+                                                                    </template>
+                                                                </select>
+                                                            </div>
+
+                                                            {{-- FASE 3: Switch/Toggle Ley IGV Justo (Prórroga de 3 meses) --}}
+                                                            <div x-show="tributoCodigo === '1011'"
+                                                                 x-cloak
+                                                                 class="rounded-xl border border-indigo-200 bg-indigo-50/70 p-2.5">
+                                                                <div class="flex items-center justify-between gap-2.5">
+                                                                    <div class="min-w-0 flex-1">
+                                                                        <p class="text-xs font-bold text-indigo-950 flex items-center gap-1.5 whitespace-nowrap">
+                                                                            <span class="whitespace-nowrap">¿Acoger a Ley IGV Justo (Prórroga de 3 meses)?</span>
+                                                                            <span class="rounded bg-indigo-200/80 px-1 py-0.2 text-[8px] font-black text-indigo-800 uppercase whitespace-nowrap shrink-0">Ley 30524</span>
+                                                                        </p>
+                                                                    </div>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        @click="toggleIgvJusto()"
+                                                                        :disabled="calculandoIgv"
+                                                                        class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                                                        :class="esIgvJusto ? 'bg-indigo-600' : 'bg-gray-300'"
+                                                                        role="switch"
+                                                                        :aria-checked="esIgvJusto">
+                                                                        <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out"
+                                                                              :class="esIgvJusto ? 'translate-x-4' : 'translate-x-0'"></span>
+                                                                    </button>
+                                                                </div>
+
+                                                                <div x-show="calculandoIgv" x-cloak class="mt-1.5 text-[10px] text-indigo-600 font-semibold flex items-center gap-1">
+                                                                    <svg class="animate-spin h-3 w-3 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                                    </svg>
+                                                                    <span>Consultando cronograma SUNAT...</span>
+                                                                </div>
+                                                            </div>
+
+                                                            <div class="grid grid-cols-2 gap-2.5">
+                                                                {{-- Monto Inicial con Formato de Miles en Tiempo Real --}}
+                                                                <div>
+                                                                    <label class="block text-[10px] font-bold text-gray-600 uppercase mb-1">
+                                                                        Monto Deuda Inicial (S/)
+                                                                    </label>
+                                                                    <div class="relative flex items-center">
+                                                                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                                                            <span class="text-xs font-bold text-gray-500 font-mono select-none">S/</span>
+                                                                        </div>
+                                                                        <input
+                                                                            type="text"
+                                                                            inputmode="decimal"
+                                                                            x-model="montoDeuda"
+                                                                            @input="montoDeuda = formatearMilesInput($event)"
+                                                                            class="w-full pl-10 pr-3 rounded-lg border-gray-300 py-1.5 text-xs font-semibold text-gray-800 bg-white shadow-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-mono leading-normal"
+                                                                            placeholder="0.00"
+                                                                        >
+                                                                    </div>
+                                                                </div>
+
+                                                                {{-- Fecha de Vencimiento (Bloqueada / Readonly si es IGV Justo) --}}
+                                                                <div>
+                                                                    <label class="block text-[10px] font-bold text-gray-600 uppercase mb-1 flex items-center justify-between">
+                                                                        <span>Vencimiento Deuda</span>
+                                                                        <span x-show="esIgvJusto" x-cloak class="text-[9px] text-indigo-700 font-bold">🔒 IGV Justo</span>
+                                                                    </label>
+                                                                    <input
+                                                                        type="date"
+                                                                        x-model="vencimientoDeuda"
+                                                                        :readonly="esIgvJusto"
+                                                                        :class="esIgvJusto ? 'bg-indigo-50/70 border-indigo-200 text-indigo-900 cursor-not-allowed font-bold' : 'bg-white text-gray-800 border-gray-300'"
+                                                                        class="w-full rounded-lg py-1.5 px-2.5 text-xs shadow-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-medium"
+                                                                    >
+                                                                </div>
+                                                            </div>
+
+                                                            {{-- Botón Guardar con Feedback Visual Dinámico --}}
+                                                            <div class="flex items-center justify-end pt-1">
+                                                                <button
+                                                                    type="button"
+                                                                    @click="guardarConfigDeuda()"
+                                                                    :disabled="savingDeuda"
+                                                                    class="px-4 py-1.5 rounded-lg text-white font-bold text-xs transition shadow-xs flex items-center gap-1.5"
+                                                                    :class="guardadoDeudaExitoso ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-brand-600 hover:bg-brand-700 disabled:opacity-50'"
+                                                                >
+                                                                    <template x-if="savingDeuda">
+                                                                        <span class="flex items-center gap-1.5">
+                                                                            <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                                            </svg>
+                                                                            Guardando...
+                                                                        </span>
+                                                                    </template>
+                                                                    <template x-if="!savingDeuda && guardadoDeudaExitoso">
+                                                                        <span class="flex items-center gap-1.5 text-white">
+                                                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                                                            </svg>
+                                                                            ¡Guardado con Éxito!
+                                                                        </span>
+                                                                    </template>
+                                                                    <template x-if="!savingDeuda && !guardadoDeudaExitoso">
+                                                                        <span>Guardar Datos Deuda</span>
+                                                                    </template>
+                                                                </button>
                                                             </div>
                                                         </div>
-                                                        <div>
-                                                            <label class="block text-[10px] font-bold text-gray-600 uppercase">Vencimiento</label>
-                                                            <input
-                                                                type="date"
-                                                                x-model="vencimientoDeuda"
-                                                                class="w-full rounded border-gray-300 py-1 text-xs text-gray-800 bg-white shadow-xs mt-0.5 focus:ring-1 focus:ring-brand-500"
-                                                            >
-                                                        </div>
-                                                        <div class="col-span-2 flex items-center justify-between pt-1">
-                                                            <span x-show="guardadoDeudaExitoso" class="text-[10px] font-bold text-emerald-600 animate-pulse">
-                                                                ✓ Guardado
-                                                            </span>
-                                                            <span x-show="!guardadoDeudaExitoso"></span>
-                                                            <button
-                                                                type="button"
-                                                                @click="guardarConfigDeuda()"
-                                                                :disabled="savingDeuda"
-                                                                class="px-3 py-1 rounded bg-brand-600 text-white font-bold text-xs hover:bg-brand-700 transition shadow-xs disabled:opacity-50"
-                                                            >
-                                                                <span x-text="savingDeuda ? 'Guardando...' : 'Guardar Datos Deuda'"></span>
-                                                            </button>
-                                                        </div>
-                                                    </div>
 
-                                                    {{-- Resumen Financiero Dinámico --}}
-                                                    <div class="grid grid-cols-3 gap-2">
-                                                        <div class="rounded-xl bg-gray-50 border border-gray-200 p-2 text-center">
-                                                            <p class="text-[9px] font-bold uppercase text-gray-500 tracking-wider">Deuda Total</p>
-                                                            <p class="text-xs font-black text-gray-800 mt-0.5" x-text="'S/ ' + parseFloat(meses[mesIdx].monto_deuda_inicial || 0).toFixed(2)"></p>
-                                                        </div>
-                                                        <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-2 text-center">
-                                                            <p class="text-[9px] font-bold uppercase text-emerald-600 tracking-wider">Total Abonado</p>
-                                                            <p class="text-xs font-black text-emerald-600 mt-0.5" x-text="'S/ ' + parseFloat(meses[mesIdx].total_abonado || 0).toFixed(2)"></p>
-                                                        </div>
-                                                        <div class="rounded-xl p-2 text-center border transition-colors"
-                                                             :class="meses[mesIdx].saldo_pendiente > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'">
-                                                            <p class="text-[9px] font-bold uppercase tracking-wider"
-                                                               :class="meses[mesIdx].saldo_pendiente > 0 ? 'text-red-600' : 'text-gray-500'">Saldo</p>
-                                                            <p class="text-xs font-black mt-0.5"
-                                                               :class="meses[mesIdx].saldo_pendiente > 0 ? 'text-red-600' : 'text-gray-600'"
-                                                               x-text="'S/ ' + parseFloat(meses[mesIdx].saldo_pendiente || 0).toFixed(2)"></p>
-                                                        </div>
-                                                    </div>
-
-                                                    {{-- Mini-Sistema de Pagos --}}
-                                                    <div class="space-y-2 border-t border-gray-100 pt-2">
-                                                        <div class="flex items-center justify-between">
-                                                            <span class="text-[11px] font-bold text-gray-700">Abonos Registrados</span>
-                                                            <span class="text-[10px] text-gray-400" x-text="abonos.length + ' pagos'"></span>
+                                                        {{-- Resumen Financiero Dinámico con number_format --}}
+                                                        <div class="grid grid-cols-3 gap-2">
+                                                            <div class="rounded-xl bg-gray-50 border border-gray-200 p-2 text-center">
+                                                                <p class="text-[9px] font-bold uppercase text-gray-500 tracking-wider">Deuda Total</p>
+                                                                <p class="text-xs font-black text-gray-800 mt-0.5" x-text="formatearMoneda(meses[mesIdx].monto_deuda_inicial)"></p>
+                                                            </div>
+                                                            <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-2 text-center">
+                                                                <p class="text-[9px] font-bold uppercase text-emerald-600 tracking-wider">Total Abonado</p>
+                                                                <p class="text-xs font-black text-emerald-600 mt-0.5" x-text="formatearMoneda(meses[mesIdx].total_abonado)"></p>
+                                                            </div>
+                                                            <div class="rounded-xl p-2 text-center border transition-colors"
+                                                                 :class="meses[mesIdx].saldo_pendiente > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'">
+                                                                <p class="text-[9px] font-bold uppercase tracking-wider"
+                                                                   :class="meses[mesIdx].saldo_pendiente > 0 ? 'text-red-600' : 'text-gray-500'">Saldo</p>
+                                                                <p class="text-xs font-black mt-0.5"
+                                                                   :class="meses[mesIdx].saldo_pendiente > 0 ? 'text-red-600' : 'text-gray-600'"
+                                                                   x-text="formatearMoneda(meses[mesIdx].saldo_pendiente)"></p>
+                                                            </div>
                                                         </div>
 
-                                                        {{-- Tabla de Abonos --}}
-                                                        <div class="max-h-28 overflow-y-auto rounded-lg border border-gray-200 bg-white">
-                                                            <table class="w-full text-[10px]">
-                                                                <thead class="bg-gray-50 text-gray-500 border-b border-gray-200 sticky top-0">
-                                                                    <tr>
-                                                                        <th class="py-1 px-2 text-left">Fecha</th>
-                                                                        <th class="py-1 px-2 text-right">Monto</th>
-                                                                        <th class="py-1 px-2 text-left">Nota</th>
-                                                                        <th class="py-1 px-1 text-center w-5"></th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody class="divide-y divide-gray-100">
-                                                                    <template x-for="abono in abonos" :key="abono.id">
-                                                                        <tr class="hover:bg-gray-50">
-                                                                            <td class="py-1 px-2 text-gray-600 font-mono" x-text="abono.fecha_pago"></td>
-                                                                            <td class="py-1 px-2 text-right font-bold text-emerald-600" x-text="'S/ ' + parseFloat(abono.monto).toFixed(2)"></td>
-                                                                            <td class="py-1 px-2 text-gray-500 truncate max-w-[80px]" x-text="abono.observacion || '—'" :title="abono.observacion"></td>
-                                                                            <td class="py-1 px-1 text-center">
-                                                                                <button type="button" @click="eliminarAbono(abono.id)" class="text-gray-300 hover:text-red-600 font-bold" title="Eliminar abono">&times;</button>
-                                                                            </td>
+                                                        {{-- Mini-Sistema de Pagos --}}
+                                                        <div class="space-y-2 border-t border-gray-100 pt-2">
+                                                            <div class="flex items-center justify-between">
+                                                                <span class="text-[11px] font-bold text-gray-800">Historial de Pagos / Abonos</span>
+                                                                <span class="text-[10px] font-medium text-gray-500" x-text="abonos.length + (abonos.length === 1 ? ' pago' : ' pagos')"></span>
+                                                            </div>
+
+                                                            {{-- Tabla de Abonos --}}
+                                                            <div class="max-h-28 overflow-y-auto rounded-xl border border-gray-200 bg-white">
+                                                                <table class="w-full text-[10px]">
+                                                                    <thead class="bg-gray-50 text-gray-500 border-b border-gray-200 sticky top-0">
+                                                                        <tr>
+                                                                            <th class="py-1.5 px-2 text-left">Fecha</th>
+                                                                            <th class="py-1.5 px-2 text-right">Monto</th>
+                                                                            <th class="py-1.5 px-2 text-left">Nota</th>
+                                                                            <th class="py-1.5 px-1 text-center w-6"></th>
                                                                         </tr>
-                                                                    </template>
-                                                                    <tr x-show="abonos.length === 0">
-                                                                        <td colspan="4" class="py-2.5 text-center text-gray-400">Sin abonos registrados</td>
-                                                                    </tr>
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
+                                                                    </thead>
+                                                                    <tbody class="divide-y divide-gray-100">
+                                                                        <template x-for="abono in abonos" :key="abono.id">
+                                                                            <tr class="hover:bg-gray-50">
+                                                                                <td class="py-1 px-2 text-gray-600 font-mono" x-text="abono.fecha_pago"></td>
+                                                                                <td class="py-1 px-2 text-right font-bold text-emerald-600" x-text="abono.monto_formateado || formatearMoneda(abono.monto)"></td>
+                                                                                <td class="py-1 px-2 text-gray-500 truncate max-w-[120px]" x-text="abono.observacion || '—'" :title="abono.observacion"></td>
+                                                                                <td class="py-1 px-1 text-center">
+                                                                                    <button type="button" @click="eliminarAbono(abono.id)" class="text-gray-300 hover:text-red-600 font-bold p-0.5" title="Eliminar abono">&times;</button>
+                                                                                </td>
+                                                                            </tr>
+                                                                        </template>
+                                                                        <tr x-show="abonos.length === 0">
+                                                                            <td colspan="4" class="py-3 text-center text-gray-400">Sin abonos registrados aún</td>
+                                                                        </tr>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
 
-                                                        {{-- Mini-Formulario Flotante/Inline para Registrar 'Nuevo Abono' --}}
-                                                        <div class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-2.5 space-y-2">
-                                                            <span class="block text-[10px] font-bold uppercase tracking-wider text-emerald-800">+ Registrar Nuevo Abono</span>
-                                                            <div class="grid grid-cols-2 gap-2">
-                                                                <div>
-                                                                    <label class="block text-[9px] font-bold text-gray-600 uppercase">Monto</label>
-                                                                    <div class="relative mt-0.5">
-                                                                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">S/</span>
+                                                            {{-- Mini-Formulario Inline para Registrar 'Nuevo Abono' --}}
+                                                            <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-2">
+                                                                <span class="block text-[10px] font-bold uppercase tracking-wider text-emerald-900">+ Registrar Nuevo Abono</span>
+                                                                <div class="grid grid-cols-2 gap-2.5">
+                                                                    <div>
+                                                                        <label class="block text-[9px] font-bold text-gray-600 uppercase mb-1">Monto del Pago (S/)</label>
+                                                                        <div class="relative flex items-center">
+                                                                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                                                                <span class="text-xs font-bold text-gray-500 font-mono select-none">S/</span>
+                                                                            </div>
+                                                                            <input
+                                                                                type="text"
+                                                                                inputmode="decimal"
+                                                                                x-model="nuevoMonto"
+                                                                                @input="nuevoMonto = formatearMilesInput($event)"
+                                                                                placeholder="0.00"
+                                                                                class="w-full pl-10 pr-3 rounded-lg border-gray-300 py-1.5 text-xs font-semibold text-gray-800 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-mono leading-normal"
+                                                                            >
+                                                                        </div>
+                                                                    </div>
+                                                                    <div>
+                                                                        <label class="block text-[9px] font-bold text-gray-600 uppercase mb-1">Fecha de Pago</label>
                                                                         <input
-                                                                            type="number"
-                                                                            step="0.01"
-                                                                            min="0.01"
-                                                                            :max="meses[mesIdx].saldo_pendiente"
-                                                                            x-model="nuevoMonto"
-                                                                            placeholder="0.00"
-                                                                            class="w-full pl-6 rounded border-gray-300 py-1 text-xs text-gray-800 bg-white focus:ring-1 focus:ring-emerald-500"
+                                                                            type="date"
+                                                                            x-model="nuevaFecha"
+                                                                            class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-medium"
                                                                         >
                                                                     </div>
                                                                 </div>
                                                                 <div>
-                                                                    <label class="block text-[9px] font-bold text-gray-600 uppercase">Fecha Pago</label>
+                                                                    <label class="block text-[9px] font-bold text-gray-600 uppercase mb-1">Observación / N° Operación</label>
                                                                     <input
-                                                                        type="date"
-                                                                        x-model="nuevaFecha"
-                                                                        class="w-full rounded border-gray-300 py-1 text-xs text-gray-800 bg-white mt-0.5 focus:ring-1 focus:ring-emerald-500"
+                                                                        type="text"
+                                                                        x-model="nuevaObs"
+                                                                        placeholder="Ej. Cuota fraccionamiento, Transf. BCP..."
+                                                                        class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                                                     >
                                                                 </div>
-                                                            </div>
-                                                            <div>
-                                                                <label class="block text-[9px] font-bold text-gray-600 uppercase">Nota / Referencia</label>
-                                                                <input
-                                                                    type="text"
-                                                                    x-model="nuevaObs"
-                                                                    placeholder="Ej. Abono cuota 1"
-                                                                    class="w-full rounded border-gray-300 py-1 text-xs text-gray-800 bg-white mt-0.5 focus:ring-1 focus:ring-emerald-500"
+                                                                <button
+                                                                    type="button"
+                                                                    @click="registrarAbono()"
+                                                                    :disabled="savingAbono || !nuevoMonto || limpiarMoneda(nuevoMonto) <= 0"
+                                                                    class="w-full py-2 rounded-lg text-white font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5"
+                                                                    :class="abonoGuardadoExitoso ? 'bg-emerald-700' : 'bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50'"
                                                                 >
+                                                                    <template x-if="savingAbono">
+                                                                        <span class="flex items-center gap-1.5">
+                                                                            <svg class="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                                                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                                                            </svg>
+                                                                            Registrando Abono...
+                                                                        </span>
+                                                                    </template>
+                                                                    <template x-if="!savingAbono && abonoGuardadoExitoso">
+                                                                        <span class="flex items-center gap-1.5 text-white">
+                                                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                                                            </svg>
+                                                                            ¡Abono Registrado!
+                                                                        </span>
+                                                                    </template>
+                                                                    <template x-if="!savingAbono && !abonoGuardadoExitoso">
+                                                                        <span>+ Registrar Abono</span>
+                                                                    </template>
+                                                                </button>
                                                             </div>
-                                                            <button
-                                                                type="button"
-                                                                @click="registrarAbono()"
-                                                                :disabled="savingAbono || !nuevoMonto || parseFloat(nuevoMonto) <= 0"
-                                                                class="w-full py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
-                                                            >
-                                                                <span x-text="savingAbono ? 'Registrando...' : 'Registrar Abono'"></span>
-                                                            </button>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    {{-- Separador vertical micro --}}
-                                    <div class="h-3.5 w-px bg-gray-300/60 shrink-0"></div>
+                                        {{-- Separador vertical micro --}}
+                                        <div class="h-3.5 w-px bg-gray-300/60 shrink-0"></div>
 
-                                    {{-- CONTROL 2: RH (Recibo por Honorarios - Miniventana Flotante Amplia) --}}
-                                    <div x-data="{ openRH: false }" class="relative flex-1 flex items-center justify-center">
-                                        <button
-                                            type="button"
-                                            @click="openRH = !openRH; if (openRH) $nextTick(() => window.ubicarMenuFlotante($refs.menuRH, $el))"
-                                            :title="'RH: ' + (meses[{{ $idx }}].honorarios === 'Pagado' ? 'Pagado' : 'Debe')"
-                                            class="inline-flex h-6 w-6 min-w-6 shrink-0 items-center justify-center overflow-hidden rounded text-xs transition-transform select-none hover:scale-110 focus:outline-none active:scale-95"
-                                        >
-                                            <span x-text="meses[{{ $idx }}].honorarios === 'Pagado' ? '🟢' : '⚪'">{{ ($m['honorarios'] ?? '') === 'Pagado' ? '🟢' : '⚪' }}</span>
-                                        </button>
-
-                                        {{-- Miniventana Flotante Espaciosa para RH --}}
-                                        <div
-                                            x-ref="menuRH"
-                                            x-show="openRH"
-                                            x-cloak
-                                            data-menu-flotante
-                                            @click.outside="openRH = false"
-                                            class="fixed z-50 w-40 rounded-xl border border-gray-200 bg-white p-2 shadow-2xl text-left"
-                                        >
-                                            <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 mb-1">
-                                                Honorarios ({{ $m['corto'] }})
-                                            </div>
-                                            <div class="space-y-1">
-                                                <button
-                                                    type="button"
-                                                    @click="meses[{{ $idx }}].honorarios = 'Pendiente'; actualizarHonorarios({{ $idx }}); openRH = false"
-                                                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-slate-100 text-gray-800"
-                                                    :class="meses[{{ $idx }}].honorarios !== 'Pagado' ? 'bg-slate-100 text-slate-800 ring-1 ring-slate-300' : ''"
-                                                >
-                                                    <span class="text-sm">⚪</span>
-                                                    <span>Debe</span>
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    @click="meses[{{ $idx }}].honorarios = 'Pagado'; actualizarHonorarios({{ $idx }}); openRH = false"
-                                                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-emerald-50 text-gray-800"
-                                                    :class="meses[{{ $idx }}].honorarios === 'Pagado' ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200' : ''"
-                                                >
-                                                    <span class="text-sm">🟢</span>
-                                                    <span>Pagó</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {{-- Botón Icono de Nota (💬) para desplegar el Popover Flotante --}}
-                                    <button
-                                        type="button"
-                                        @click="abrir()"
-                                        :class="tieneNota() ? 'text-amber-700 opacity-100' : 'text-gray-400 opacity-25 hover:opacity-100'"
-                                        title="Nota / Cobranza del mes"
-                                        class="shrink-0 p-0.5 text-[10px] leading-none rounded hover:bg-black/5 transition"
-                                    >
-                                        💬
-                                    </button>
-
-                                    {{-- Popover Flotante de Nota estilo Google Sheets / Excel --}}
-                                    <div x-ref="menuNota"
-                                         x-show="openNote"
-                                         x-cloak
-                                         data-menu-flotante
-                                         @click.outside="cerrar()"
-                                         class="fixed z-50 w-64 rounded-xl border border-amber-300 bg-amber-50 p-3 text-left shadow-2xl">
-
-                                        {{-- Cabecera de la Nota --}}
-                                        <div class="flex items-center justify-between pb-1.5 border-b border-amber-200 mb-2">
-                                            <div class="truncate pr-2">
-                                                <span class="block text-[11px] font-bold text-amber-900 truncate">
-                                                    Nota: {{ $m['corto'] }}-{{ substr($anio, -2) }} &bull; {{ $item['cliente']->razon_social }}
+                                        {{-- CONTROL 2: RH (Recibo por Honorarios) --}}
+                                        <div x-data="{ openRH: false }" class="relative flex-1 flex items-center justify-center">
+                                            <button
+                                                type="button"
+                                                @click="openRH = !openRH; if (openRH) $nextTick(() => window.ubicarMenuFlotante($refs.menuRH, $el))"
+                                                :title="'RH: ' + (meses[{{ $idx }}].honorarios === 'Pagado' ? 'Pagado' : 'Debe')"
+                                                class="inline-flex h-6 w-6 min-w-6 shrink-0 items-center justify-center overflow-hidden rounded-full text-xs transition-transform select-none hover:scale-110 focus:outline-none active:scale-95"
+                                            >
+                                                <span x-text="meses[{{ $idx }}].honorarios === 'Pagado' ? '🟢' : '⚪'">
+                                                    {{ ($m['honorarios'] ?? '') === 'Pagado' ? '🟢' : '⚪' }}
                                                 </span>
-                                            </div>
-                                            <button type="button" @click="cerrar()" class="text-gray-400 hover:text-gray-700 text-sm font-bold leading-none">&times;</button>
-                                        </div>
+                                            </button>
 
-                                        {{-- Campo de Texto --}}
-                                        <textarea
-                                            x-model="tempNota"
-                                            rows="3"
-                                            placeholder="Escribir nota contable (ej. DEBE RH, falta factura venta)..."
-                                            class="w-full rounded border border-amber-200 bg-white p-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-inner"
-                                        ></textarea>
+                                            <div
+                                                x-ref="menuRH"
+                                                x-show="openRH"
+                                                x-cloak
+                                                data-menu-flotante
+                                                @click.outside="openRH = false"
+                                                class="fixed z-50 w-40 rounded-xl border border-gray-200 bg-white p-2 shadow-2xl text-left"
+                                            >
+                                                <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 mb-1">
+                                                    Honorarios ({{ $m['corto'] }})
+                                                </div>
+                                                <div class="space-y-1">
+                                                    <button
+                                                        type="button"
+                                                        @click="meses[{{ $idx }}].honorarios = 'Pendiente'; actualizarHonorarios({{ $idx }}); openRH = false"
+                                                        class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-slate-100 text-gray-800"
+                                                        :class="meses[{{ $idx }}].honorarios !== 'Pagado' ? 'bg-slate-100 text-slate-800 ring-1 ring-slate-300' : ''"
+                                                    >
+                                                        <span class="text-sm">⚪</span>
+                                                        <span>Debe</span>
+                                                    </button>
 
-                                        {{-- Pie del Popover y Acciones --}}
-                                        <div class="mt-2 flex items-center justify-between">
-                                            <span x-show="guardadoExitoso" class="text-[10px] text-emerald-700 font-bold animate-pulse">✅ Guardada</span>
-                                            <span x-show="!guardadoExitoso"></span>
-
-                                            <div class="flex items-center gap-1.5">
-                                                <button
-                                                    type="button"
-                                                    @click="cerrar()"
-                                                    class="px-2 py-0.5 text-[10px] text-gray-600 hover:bg-amber-100 rounded transition"
-                                                >
-                                                    Cerrar
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    @click="guardarNota()"
-                                                    :disabled="guardando"
-                                                    class="px-2.5 py-0.5 text-[10px] font-bold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-xs transition active:scale-95 disabled:opacity-50"
-                                                >
-                                                    <span x-show="!guardando">Guardar</span>
-                                                    <span x-show="guardando">...</span>
-                                                </button>
+                                                    <button
+                                                        type="button"
+                                                        @click="meses[{{ $idx }}].honorarios = 'Pagado'; actualizarHonorarios({{ $idx }}); openRH = false"
+                                                        class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-emerald-50 text-gray-800"
+                                                        :class="meses[{{ $idx }}].honorarios === 'Pagado' ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200' : ''"
+                                                    >
+                                                        <span class="text-sm">🟢</span>
+                                                        <span>Pagó</span>
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -700,25 +811,33 @@
                 anio: config.anio,
                 meses: config.meses,
 
-                fondosCelda: ['bg-gray-100/80', 'text-gray-400', 'bg-emerald-100/70', 'hover:bg-emerald-100', 'bg-amber-100/70', 'hover:bg-amber-100', 'bg-white', 'hover:bg-slate-100/60'],
+                fondosCelda: [
+                    'bg-gray-100/80', 'text-gray-400',
+                    'bg-emerald-100/70', 'hover:bg-emerald-100',
+                    'bg-amber-100/70', 'hover:bg-amber-100',
+                    'bg-white', 'hover:bg-slate-100/60'
+                ],
                 fondosAvance: ['bg-emerald-100', 'text-emerald-800', 'bg-gray-100', 'text-gray-700'],
 
-                bgClass(estado) {
-                    if (estado === 'Baja') {
+                bgClass(mes) {
+                    if (!mes) return 'bg-white hover:bg-slate-100/60';
+                    if (mes.es_baja || mes.estado === 'Baja') {
                         return 'bg-gray-100/80 text-gray-400';
                     }
-                    if (estado === 'Declarado') {
+                    if (mes.estado === 'Declarado') {
                         return 'bg-emerald-100/70 hover:bg-emerald-100';
                     }
-                    if (estado === 'Procesando') {
+                    if (mes.estado === 'Procesando' || mes.estado === 'Proceso') {
                         return 'bg-amber-100/70 hover:bg-amber-100';
                     }
                     return 'bg-white hover:bg-slate-100/60';
                 },
 
-                pintarFondo(el, estado) {
+                pintarFondo(el, mes) {
                     this.fondosCelda.forEach((clase) => el.classList.remove(clase));
-                    this.bgClass(estado).split(' ').forEach((clase) => el.classList.add(clase));
+                    this.bgClass(mes).split(' ').forEach((clase) => {
+                        if (clase.trim()) el.classList.add(clase.trim());
+                    });
                 },
 
                 pintarAvance(el) {
@@ -808,99 +927,142 @@
             };
         }
 
-        function popoverNotaMes(config) {
-            return {
-                clienteId: config.clienteId,
-                periodo: config.periodo,
-                mesNombre: config.mesNombre,
-                nota: config.notaInicial || '',
-                tempNota: config.notaInicial || '',
-                openNote: false,
-                guardando: false,
-                guardadoExitoso: false,
-
-                tieneNota() {
-                    return this.nota && this.nota.trim().length > 0;
-                },
-
-                abrir() {
-                    this.tempNota = this.nota;
-                    this.openNote = true;
-                    this.$nextTick(() => window.ubicarMenuFlotante(this.$refs.menuNota, this.$el));
-                },
-
-                cerrar() {
-                    this.openNote = false;
-                },
-
-                async guardarNota() {
-                    this.guardando = true;
-                    this.guardadoExitoso = false;
-
-                    try {
-                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
-                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
-
-                        const response = await fetch('{{ route('control.update') }}', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken,
-                                'Accept': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                cliente_id: this.clienteId,
-                                periodo: this.periodo,
-                                notas: this.tempNota
-                            }),
-                        });
-
-                        const data = await response.json();
-                        if (!response.ok) {
-                            throw new Error(data.message || 'Error al guardar nota.');
-                        }
-
-                        this.nota = this.tempNota;
-                        this.guardando = false;
-                        this.guardadoExitoso = true;
-
-                        setTimeout(() => {
-                            this.guardadoExitoso = false;
-                            this.openNote = false;
-                        }, 700);
-                    } catch (err) {
-                        this.guardando = false;
-                        alert('No se pudo guardar la nota: ' + err.message);
-                    }
-                }
-            };
-        }
-
-        function controlCeldaDJ(clienteId, mesIdx, meses) {
+        function controlCeldaDJ(clienteId, mesIdx, meses, tributosDisponibles) {
             return {
                 clienteId: clienteId,
                 mesIdx: mesIdx,
                 meses: meses,
+                tributosDisponibles: tributosDisponibles || {},
                 openDJ: false,
+                hoverDeuda: false,
                 activeTab: 'declaracion',
                 tieneDeuda: !!meses[mesIdx].tiene_deuda,
-                montoDeuda: meses[mesIdx].monto_deuda_inicial || '',
+                tributoCodigo: meses[mesIdx].tributo_codigo || '1011',
+                montoDeuda: '',
                 vencimientoDeuda: meses[mesIdx].vencimiento_deuda || '',
+                esIgvJusto: !!meses[mesIdx].es_igv_justo,
+                calculandoIgv: false,
+                igvJustoMensaje: '',
+                cacheDeuda: null,
                 deudaCargada: false,
                 savingDeuda: false,
                 guardadoDeudaExitoso: false,
                 savingAbono: false,
+                abonoGuardadoExitoso: false,
                 abonos: [],
                 nuevoMonto: '',
                 nuevaFecha: new Date().toISOString().split('T')[0],
                 nuevaObs: '',
 
+                init() {
+                    this.abonos = this.meses[this.mesIdx].abonos || [];
+                    if (this.meses[this.mesIdx].monto_deuda_inicial) {
+                        this.montoDeuda = this.formatearNumeroConComas(this.meses[this.mesIdx].monto_deuda_inicial);
+                    }
+                    if (this.meses[this.mesIdx].tiene_deuda || this.meses[this.mesIdx].monto_deuda_inicial || (this.abonos && this.abonos.length > 0)) {
+                        this.cacheDeuda = {
+                            montoDeuda: this.montoDeuda,
+                            monto_deuda_inicial: parseFloat(this.meses[this.mesIdx].monto_deuda_inicial || 0),
+                            vencimientoDeuda: this.meses[this.mesIdx].vencimiento_deuda || '',
+                            vencimiento_deuda_dmy: this.meses[this.mesIdx].vencimiento_deuda_dmy || '',
+                            tributoCodigo: this.meses[this.mesIdx].tributo_codigo || '1011',
+                            esIgvJusto: !!this.meses[this.mesIdx].es_igv_justo,
+                            total_abonado: parseFloat(this.meses[this.mesIdx].total_abonado || 0),
+                            saldo_pendiente: parseFloat(this.meses[this.mesIdx].saldo_pendiente || 0),
+                            abonos: [...this.abonos]
+                        };
+                    }
+                    this.$watch('tieneDeuda', () => {
+                        this.$nextTick(() => {
+                            if (this.$refs.menuDJ && this.$refs.menuDJ._anclaMenu) {
+                                window.ubicarMenuFlotante(this.$refs.menuDJ, this.$refs.menuDJ._anclaMenu);
+                            }
+                        });
+                    });
+                    this.$watch('activeTab', () => {
+                        this.$nextTick(() => {
+                            if (this.$refs.menuDJ && this.$refs.menuDJ._anclaMenu) {
+                                window.ubicarMenuFlotante(this.$refs.menuDJ, this.$refs.menuDJ._anclaMenu);
+                            }
+                        });
+                    });
+                },
+
+                formatearMoneda(val) {
+                    const n = parseFloat(val || 0);
+                    return 'S/ ' + n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                },
+
+                formatearNumeroConComas(val) {
+                    if (val === null || val === undefined || val === '') return '';
+                    const num = parseFloat(String(val).replace(/,/g, ''));
+                    if (isNaN(num) || num === 0) return '';
+                    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                },
+
+                limpiarMoneda(val) {
+                    if (val === null || val === undefined || val === '') return 0;
+                    const cleanStr = String(val).replace(/,/g, '').trim();
+                    const num = parseFloat(cleanStr);
+                    return isNaN(num) ? 0 : num;
+                },
+
+                formatearMilesInput(event) {
+                    const inputVal = event.target.value;
+                    const cleaned = inputVal.replace(/[^\d.]/g, '');
+                    const parts = cleaned.split('.');
+                    let integerPart = parts[0] || '';
+                    let decimalPart = parts.length > 1 ? parts.slice(1).join('') : null;
+
+                    if (decimalPart !== null) {
+                        decimalPart = decimalPart.substring(0, 2);
+                    }
+
+                    if (integerPart) {
+                        integerPart = integerPart.replace(/^0+(?=\d)/, '');
+                        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                    }
+
+                    let formatted = decimalPart !== null ? `${integerPart}.${decimalPart}` : integerPart;
+                    if (cleaned.endsWith('.') && decimalPart === '') {
+                        formatted = integerPart ? `${integerPart}.` : '0.';
+                    }
+
+                    event.target.value = formatted;
+                    return formatted;
+                },
+
+                tieneDeudaConSaldo() {
+                    const m = this.meses[this.mesIdx];
+                    return !!m.tiene_deuda && parseFloat(m.saldo_pendiente ?? m.monto_deuda_inicial ?? 0) > 0;
+                },
+
+                tieneDeudaDeclarada() {
+                    const m = this.meses[this.mesIdx];
+                    return m.estado === 'Declarado' && this.tieneDeudaConSaldo();
+                },
+
+                mostrarHoverDeuda(el) {
+                    if (!this.tieneDeudaConSaldo() || this.openDJ) {
+                        return;
+                    }
+                    this.hoverDeuda = true;
+                    this.$nextTick(() => {
+                        if (this.$refs.tooltipDeuda) {
+                            window.ubicarMenuFlotante(this.$refs.tooltipDeuda, el);
+                        }
+                    });
+                },
+
+                ocultarHoverDeuda() {
+                    this.hoverDeuda = false;
+                },
+
                 abrirMenuDJ(ancla) {
+                    this.hoverDeuda = false;
                     this.openDJ = !this.openDJ;
                     if (this.openDJ) {
-                        this.tieneDeuda = !!this.meses[this.mesIdx].tiene_deuda;
-                        this.montoDeuda = this.meses[this.mesIdx].monto_deuda_inicial || '';
-                        this.vencimientoDeuda = this.meses[this.mesIdx].vencimiento_deuda || '';
+                        this.sincronizarDesdeMes();
                         this.$nextTick(() => window.ubicarMenuFlotante(this.$refs.menuDJ, ancla));
                         if (this.tieneDeuda && !this.deudaCargada) {
                             this.cargarDeuda();
@@ -909,21 +1071,33 @@
                 },
 
                 abrirMenuDJConTab(ancla, tabName) {
+                    this.hoverDeuda = false;
                     this.activeTab = tabName;
                     this.openDJ = true;
-                    this.tieneDeuda = !!this.meses[this.mesIdx].tiene_deuda;
-                    this.montoDeuda = this.meses[this.mesIdx].monto_deuda_inicial || '';
-                    this.vencimientoDeuda = this.meses[this.mesIdx].vencimiento_deuda || '';
+                    this.sincronizarDesdeMes();
                     this.$nextTick(() => window.ubicarMenuFlotante(this.$refs.menuDJ, ancla));
                     this.cargarDeuda();
                 },
 
-                tooltipDJ() {
+                sincronizarDesdeMes() {
                     const m = this.meses[this.mesIdx];
-                    if (m.estado === 'Declarado' && m.tiene_deuda) {
-                        return 'Deuda Inicial: S/ ' + parseFloat(m.monto_deuda_inicial || 0).toFixed(2) + ' | Abonado: S/ ' + parseFloat(m.total_abonado || 0).toFixed(2) + ' | Saldo: S/ ' + parseFloat(m.saldo_pendiente || 0).toFixed(2);
+                    this.tieneDeuda = !!m.tiene_deuda;
+                    this.tributoCodigo = m.tributo_codigo || '1011';
+                    this.esIgvJusto = !!m.es_igv_justo;
+                    if (m.monto_deuda_inicial) {
+                        this.montoDeuda = this.formatearNumeroConComas(m.monto_deuda_inicial);
+                    } else if (this.cacheDeuda && this.cacheDeuda.montoDeuda) {
+                        this.montoDeuda = this.cacheDeuda.montoDeuda;
                     }
-                    return 'DJ: ' + m.estado;
+                    this.vencimientoDeuda = m.vencimiento_deuda || (this.cacheDeuda?.vencimientoDeuda || '');
+                },
+
+                tooltipDJ() {
+                    if (this.tieneDeudaConSaldo()) {
+                        return null;
+                    }
+                    const m = this.meses[this.mesIdx];
+                    return 'DJ: ' + (m.estado || 'Pendiente');
                 },
 
                 async cambiarEstado(nuevoEstado) {
@@ -936,10 +1110,158 @@
 
                 async toggleTieneDeuda() {
                     this.tieneDeuda = !this.tieneDeuda;
+                    this.meses[this.mesIdx].tiene_deuda = this.tieneDeuda;
+
+                    this.$nextTick(() => {
+                        if (this.$refs.menuDJ && this.$refs.menuDJ._anclaMenu) {
+                            window.ubicarMenuFlotante(this.$refs.menuDJ, this.$refs.menuDJ._anclaMenu);
+                        }
+                    });
+
                     if (!this.tieneDeuda) {
-                        await this.guardarConfigDeuda();
-                    } else if (!this.deudaCargada) {
-                        await this.cargarDeuda();
+                        // Guardar en cache local antes de apagar el switch
+                        const montoLimpio = this.limpiarMoneda(this.montoDeuda);
+                        if (montoLimpio > 0 || this.vencimientoDeuda || (this.abonos && this.abonos.length > 0)) {
+                            this.cacheDeuda = {
+                                montoDeuda: this.montoDeuda,
+                                monto_deuda_inicial: montoLimpio,
+                                vencimientoDeuda: this.vencimientoDeuda,
+                                vencimiento_deuda_dmy: this.meses[this.mesIdx].vencimiento_deuda_dmy || '',
+                                tributoCodigo: this.tributoCodigo,
+                                esIgvJusto: this.esIgvJusto,
+                                total_abonado: this.meses[this.mesIdx].total_abonado || 0,
+                                saldo_pendiente: this.meses[this.mesIdx].saldo_pendiente || 0,
+                                abonos: [...(this.abonos || [])]
+                            };
+                        }
+
+                        // Sincronizar en BD desactivación sin borrar datos existentes
+                        await this.sincronizarToggleDeuda(false);
+                    } else {
+                        // El usuario reactivó el switch: restaurar datos desde caché inmediatamente
+                        if (this.cacheDeuda) {
+                            this.montoDeuda = this.cacheDeuda.montoDeuda || '';
+                            this.vencimientoDeuda = this.cacheDeuda.vencimientoDeuda || '';
+                            this.tributoCodigo = this.cacheDeuda.tributoCodigo || '1011';
+                            this.esIgvJusto = !!this.cacheDeuda.esIgvJusto;
+                            this.abonos = [...(this.cacheDeuda.abonos || [])];
+                            this.meses[this.mesIdx].abonos = this.abonos;
+                            this.meses[this.mesIdx].monto_deuda_inicial = this.cacheDeuda.monto_deuda_inicial;
+                            this.meses[this.mesIdx].vencimiento_deuda = this.cacheDeuda.vencimientoDeuda;
+                            this.meses[this.mesIdx].vencimiento_deuda_dmy = this.cacheDeuda.vencimiento_deuda_dmy;
+                            this.meses[this.mesIdx].total_abonado = this.cacheDeuda.total_abonado;
+                            this.meses[this.mesIdx].saldo_pendiente = this.cacheDeuda.saldo_pendiente;
+                            this.meses[this.mesIdx].tributo_codigo = this.tributoCodigo;
+                            this.meses[this.mesIdx].es_igv_justo = this.esIgvJusto;
+                        }
+
+                        if (!this.cacheDeuda && !this.deudaCargada) {
+                            await this.cargarDeuda();
+                        }
+
+                        // Sincronizar en BD reactivación
+                        await this.sincronizarToggleDeuda(true);
+
+                        this.$nextTick(() => {
+                            if (this.$refs.menuDJ && this.$refs.menuDJ._anclaMenu) {
+                                window.ubicarMenuFlotante(this.$refs.menuDJ, this.$refs.menuDJ._anclaMenu);
+                            }
+                        });
+                    }
+                },
+
+                async sincronizarToggleDeuda(activo) {
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const montoLimpio = this.limpiarMoneda(this.montoDeuda);
+
+                        const response = await fetch('{{ route('control.update') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: this.meses[this.mesIdx].periodo,
+                                tiene_deuda: activo,
+                                tributo_codigo: this.tributoCodigo || '1011',
+                                es_igv_justo: this.tributoCodigo === '1011' ? this.esIgvJusto : false,
+                                monto_deuda_inicial: montoLimpio > 0 ? montoLimpio : (this.cacheDeuda?.monto_deuda_inicial ?? null),
+                                vencimiento_deuda: this.vencimientoDeuda || (this.cacheDeuda?.vencimientoDeuda || null),
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (data.operacion_id) {
+                            this.meses[this.mesIdx].operacion_id = data.operacion_id;
+                        }
+                        this.meses[this.mesIdx].tiene_deuda = !!data.tiene_deuda;
+                        if (data.tributo_codigo) this.meses[this.mesIdx].tributo_codigo = data.tributo_codigo;
+                        if (data.tributo_nombre) this.meses[this.mesIdx].tributo_nombre = data.tributo_nombre;
+                        if (data.tributo_nombre_corto) this.meses[this.mesIdx].tributo_nombre_corto = data.tributo_nombre_corto;
+                        if (data.tributo_etiqueta) this.meses[this.mesIdx].tributo_etiqueta = data.tributo_etiqueta;
+                        this.meses[this.mesIdx].es_igv_justo = !!data.es_igv_justo;
+                        if (data.monto_deuda_inicial !== undefined && data.monto_deuda_inicial !== null) {
+                            this.meses[this.mesIdx].monto_deuda_inicial = parseFloat(data.monto_deuda_inicial || 0);
+                        }
+                        if (data.vencimiento_deuda) this.meses[this.mesIdx].vencimiento_deuda = data.vencimiento_deuda;
+                        if (data.vencimiento_deuda_dmy) this.meses[this.mesIdx].vencimiento_deuda_dmy = data.vencimiento_deuda_dmy;
+                        if (data.total_abonado !== undefined) this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado || 0);
+                        if (data.saldo_pendiente !== undefined) this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente || 0);
+                        if (data.abonos) {
+                            this.abonos = data.abonos;
+                            this.meses[this.mesIdx].abonos = this.abonos;
+                        }
+
+                        if (activo && !this.montoDeuda && data.monto_deuda_inicial) {
+                            this.montoDeuda = this.formatearNumeroConComas(data.monto_deuda_inicial);
+                        }
+                    } catch (err) {
+                        console.error('Error al sincronizar estado de deuda:', err);
+                    }
+                },
+
+                async toggleIgvJusto() {
+                    this.esIgvJusto = !this.esIgvJusto;
+                    if (this.esIgvJusto) {
+                        await this.calcularVencimientoIgvJusto();
+                    }
+                },
+
+                async calcularVencimientoIgvJusto() {
+                    this.calculandoIgv = true;
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch('{{ route('control.calcular_igv_justo') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: this.meses[this.mesIdx].periodo,
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (response.ok && data.fecha_vencimiento) {
+                            this.vencimientoDeuda = data.fecha_vencimiento;
+                            this.igvJustoMensaje = data.mensaje || '';
+                        } else {
+                            alert(data.message || 'No se pudo calcular el cronograma de IGV Justo.');
+                        }
+                    } catch (err) {
+                        console.error('Error al calcular IGV Justo:', err);
+                    } finally {
+                        this.calculandoIgv = false;
                     }
                 },
 
@@ -964,18 +1286,53 @@
                         const data = await response.json();
                         this.deudaCargada = true;
                         this.abonos = data.abonos || [];
+                        this.meses[this.mesIdx].abonos = this.abonos;
                         if (data.operacion_id) {
                             this.meses[this.mesIdx].operacion_id = data.operacion_id;
                         }
-                        this.meses[this.mesIdx].tiene_deuda = !!data.tiene_deuda;
+                        if (!this.tieneDeuda) {
+                            this.meses[this.mesIdx].tiene_deuda = !!data.tiene_deuda;
+                        }
+                        this.meses[this.mesIdx].tributo_codigo = data.tributo_codigo || '1011';
+                        this.meses[this.mesIdx].tributo_nombre = data.tributo_nombre;
+                        this.meses[this.mesIdx].tributo_nombre_corto = data.tributo_nombre_corto;
+                        this.meses[this.mesIdx].tributo_etiqueta = data.tributo_etiqueta;
+                        this.meses[this.mesIdx].es_igv_justo = !!data.es_igv_justo;
                         this.meses[this.mesIdx].monto_deuda_inicial = parseFloat(data.monto_deuda_inicial || 0);
                         this.meses[this.mesIdx].vencimiento_deuda = data.vencimiento_deuda || '';
+                        this.meses[this.mesIdx].vencimiento_deuda_dmy = data.vencimiento_deuda_dmy || '';
                         this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado || 0);
                         this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente || 0);
 
-                        this.tieneDeuda = !!data.tiene_deuda;
-                        this.montoDeuda = data.monto_deuda_inicial || '';
-                        this.vencimientoDeuda = data.vencimiento_deuda || '';
+                        if (!this.tieneDeuda) {
+                            this.tieneDeuda = !!data.tiene_deuda;
+                        }
+                        this.tributoCodigo = data.tributo_codigo || '1011';
+                        this.esIgvJusto = !!data.es_igv_justo;
+                        if (data.monto_deuda_inicial) {
+                            this.montoDeuda = this.formatearNumeroConComas(data.monto_deuda_inicial);
+                        } else if (this.cacheDeuda && this.cacheDeuda.montoDeuda) {
+                            this.montoDeuda = this.cacheDeuda.montoDeuda;
+                        }
+                        if (data.vencimiento_deuda) {
+                            this.vencimientoDeuda = data.vencimiento_deuda || '';
+                        } else if (this.cacheDeuda && this.cacheDeuda.vencimientoDeuda) {
+                            this.vencimientoDeuda = this.cacheDeuda.vencimientoDeuda;
+                        }
+
+                        if (data.tiene_deuda || data.monto_deuda_inicial || (this.abonos && this.abonos.length > 0)) {
+                            this.cacheDeuda = {
+                                montoDeuda: this.montoDeuda,
+                                monto_deuda_inicial: parseFloat(data.monto_deuda_inicial || (this.cacheDeuda?.monto_deuda_inicial ?? 0)),
+                                vencimientoDeuda: this.vencimientoDeuda,
+                                vencimiento_deuda_dmy: data.vencimiento_deuda_dmy || (this.cacheDeuda?.vencimiento_deuda_dmy ?? ''),
+                                tributoCodigo: this.tributoCodigo,
+                                esIgvJusto: this.esIgvJusto,
+                                total_abonado: parseFloat(data.total_abonado || 0),
+                                saldo_pendiente: parseFloat(data.saldo_pendiente || 0),
+                                abonos: [...(this.abonos || [])]
+                            };
+                        }
                     } catch (err) {
                         console.error('Error al cargar deuda:', err);
                     }
@@ -983,9 +1340,12 @@
 
                 async guardarConfigDeuda() {
                     this.savingDeuda = true;
+                    this.guardadoDeudaExitoso = false;
                     try {
                         const tokenEl = document.querySelector('meta[name="csrf-token"]');
                         const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const montoLimpio = this.limpiarMoneda(this.montoDeuda);
 
                         const response = await fetch('{{ route('control.update') }}', {
                             method: 'POST',
@@ -998,8 +1358,10 @@
                                 cliente_id: this.clienteId,
                                 periodo: this.meses[this.mesIdx].periodo,
                                 tiene_deuda: this.tieneDeuda,
-                                monto_deuda_inicial: this.tieneDeuda ? parseFloat(this.montoDeuda || 0) : null,
-                                vencimiento_deuda: this.tieneDeuda ? this.vencimientoDeuda : null,
+                                tributo_codigo: this.tieneDeuda ? this.tributoCodigo : null,
+                                es_igv_justo: this.tieneDeuda && this.tributoCodigo === '1011' ? this.esIgvJusto : false,
+                                monto_deuda_inicial: this.tieneDeuda ? montoLimpio : null,
+                                vencimiento_deuda: this.tieneDeuda ? (this.vencimientoDeuda || null) : null,
                             }),
                         });
 
@@ -1012,13 +1374,38 @@
                             this.meses[this.mesIdx].operacion_id = data.operacion_id;
                         }
                         this.meses[this.mesIdx].tiene_deuda = !!data.tiene_deuda;
+                        this.meses[this.mesIdx].tributo_codigo = data.tributo_codigo;
+                        this.meses[this.mesIdx].tributo_nombre = data.tributo_nombre;
+                        this.meses[this.mesIdx].tributo_nombre_corto = data.tributo_nombre_corto;
+                        this.meses[this.mesIdx].tributo_etiqueta = data.tributo_etiqueta;
+                        this.meses[this.mesIdx].es_igv_justo = !!data.es_igv_justo;
                         this.meses[this.mesIdx].monto_deuda_inicial = parseFloat(data.monto_deuda_inicial || 0);
                         this.meses[this.mesIdx].vencimiento_deuda = data.vencimiento_deuda || '';
+                        this.meses[this.mesIdx].vencimiento_deuda_dmy = data.vencimiento_deuda_dmy || '';
                         this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado || 0);
                         this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente || 0);
 
+                        if (data.abonos) {
+                            this.abonos = data.abonos;
+                            this.meses[this.mesIdx].abonos = this.abonos;
+                        }
+
+                        this.montoDeuda = this.formatearNumeroConComas(data.monto_deuda_inicial);
+
+                        this.cacheDeuda = {
+                            montoDeuda: this.montoDeuda,
+                            monto_deuda_inicial: parseFloat(data.monto_deuda_inicial || 0),
+                            vencimientoDeuda: this.vencimientoDeuda,
+                            vencimiento_deuda_dmy: data.vencimiento_deuda_dmy || '',
+                            tributoCodigo: this.tributoCodigo,
+                            esIgvJusto: this.esIgvJusto,
+                            total_abonado: parseFloat(data.total_abonado || 0),
+                            saldo_pendiente: parseFloat(data.saldo_pendiente || 0),
+                            abonos: [...(this.abonos || [])]
+                        };
+
                         this.guardadoDeudaExitoso = true;
-                        setTimeout(() => { this.guardadoDeudaExitoso = false; }, 1500);
+                        setTimeout(() => { this.guardadoDeudaExitoso = false; }, 2200);
                     } catch (err) {
                         console.error('Error al guardar datos de deuda:', err);
                         alert('No se pudo guardar la configuración de deuda: ' + err.message);
@@ -1038,7 +1425,14 @@
                         return;
                     }
 
+                    const montoLimpio = this.limpiarMoneda(this.nuevoMonto);
+                    if (montoLimpio <= 0) {
+                        alert('Ingrese un monto válido para el abono.');
+                        return;
+                    }
+
                     this.savingAbono = true;
+                    this.abonoGuardadoExitoso = false;
                     try {
                         const tokenEl = document.querySelector('meta[name="csrf-token"]');
                         const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
@@ -1052,7 +1446,7 @@
                             },
                             body: JSON.stringify({
                                 operacion_id: operacionId,
-                                monto: parseFloat(this.nuevoMonto),
+                                monto: montoLimpio,
                                 fecha_pago: this.nuevaFecha,
                                 observacion: this.nuevaObs || null,
                             }),
@@ -1064,10 +1458,20 @@
                         }
 
                         this.abonos.unshift(data.abono);
+                        this.meses[this.mesIdx].abonos = this.abonos;
                         this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado);
                         this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente);
+
+                        if (this.cacheDeuda) {
+                            this.cacheDeuda.abonos = [...this.abonos];
+                            this.cacheDeuda.total_abonado = parseFloat(data.total_abonado);
+                            this.cacheDeuda.saldo_pendiente = parseFloat(data.saldo_pendiente);
+                        }
+
                         this.nuevoMonto = '';
                         this.nuevaObs = '';
+                        this.abonoGuardadoExitoso = true;
+                        setTimeout(() => { this.abonoGuardadoExitoso = false; }, 2200);
                     } catch (err) {
                         console.error('Error al registrar abono:', err);
                         alert('Error al registrar abono: ' + err.message);
@@ -1099,8 +1503,15 @@
                         }
 
                         this.abonos = this.abonos.filter(a => a.id !== abonoId);
+                        this.meses[this.mesIdx].abonos = this.abonos;
                         this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado);
                         this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente);
+
+                        if (this.cacheDeuda) {
+                            this.cacheDeuda.abonos = [...this.abonos];
+                            this.cacheDeuda.total_abonado = parseFloat(data.total_abonado);
+                            this.cacheDeuda.saldo_pendiente = parseFloat(data.saldo_pendiente);
+                        }
                     } catch (err) {
                         console.error('Error al eliminar abono:', err);
                         alert('Error al eliminar abono: ' + err.message);

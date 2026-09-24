@@ -195,4 +195,114 @@ class ControlDeudasTest extends TestCase
             ])
             ->assertJsonCount(1, 'abonos');
     }
+
+    public function test_control_deudas_view_includes_client_code_tributo_and_export_buttons(): void
+    {
+        $this->cliente->update(['numero' => 42]);
+
+        Operacion::create([
+            'estudio_id' => $this->estudio->id,
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'monto_deuda_inicial' => 1250.00,
+            'vencimiento_deuda' => '2026-10-25',
+            'tributo_codigo' => '1011',
+        ]);
+
+        $response = $this->get(route('control_deudas.index'));
+
+        $response->assertStatus(200);
+        $response->assertSee('42');
+        $response->assertSee('1011 -');
+        $response->assertSee('IGV 18%');
+        $response->assertSee('Exportar a PDF');
+        $response->assertSee('Imprimir Reporte');
+        $response->assertSee('Filtrar Clientes');
+        $response->assertViewHas('clientesConDeuda');
+        $response->assertViewHas('deudasData');
+    }
+
+    public function test_abono_sanitizes_commas_in_monto(): void
+    {
+        $operacion = Operacion::create([
+            'estudio_id' => $this->estudio->id,
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'monto_deuda_inicial' => 5000.00,
+            'vencimiento_deuda' => '2026-10-25',
+        ]);
+
+        $response = $this->postJson(route('abonos_deudas.store'), [
+            'operacion_id' => $operacion->id,
+            'monto' => '1,250.50',
+            'fecha_pago' => '2026-09-24',
+            'observacion' => 'Abono con formato de miles',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'total_abonado' => 1250.50,
+                'saldo_pendiente' => 3749.50,
+            ]);
+
+        $this->assertDatabaseHas('abonos_deudas', [
+            'operacion_id' => $operacion->id,
+            'monto' => 1250.50,
+        ]);
+    }
+
+    public function test_calcular_igv_justo_calculates_correct_official_date(): void
+    {
+        $response = $this->postJson(route('control.calcular_igv_justo'), [
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'periodo_origen' => '08-2026',
+                'periodo_destino' => '11-2026',
+            ]);
+
+        $this->assertNotNull($response->json('fecha_vencimiento'));
+        $this->assertNotNull($response->json('fecha_vencimiento_dmy'));
+    }
+
+    public function test_control_deudas_ajax_filter_returns_json_and_recalculates_totals(): void
+    {
+        Operacion::create([
+            'estudio_id' => $this->estudio->id,
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'monto_deuda_inicial' => 2000.00,
+            'vencimiento_deuda' => '2026-10-25',
+            'tributo_codigo' => '1011',
+        ]);
+
+        $response = $this->getJson(route('control_deudas.index', [
+            'ajax' => 1,
+            'clientes' => [$this->cliente->id],
+        ]));
+
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'success',
+                'deudas',
+                'total_deuda',
+                'total_recaudado',
+                'total_saldo',
+                'count',
+            ])
+            ->assertJson([
+                'success' => true,
+                'total_deuda' => 2000.00,
+                'total_saldo' => 2000.00,
+                'count' => 1,
+            ]);
+    }
 }

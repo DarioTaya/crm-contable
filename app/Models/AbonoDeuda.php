@@ -28,6 +28,13 @@ class AbonoDeuda extends Model
     ];
 
     /**
+     * @var array<int, string>
+     */
+    protected $appends = [
+        'monto_formateado',
+    ];
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -36,6 +43,14 @@ class AbonoDeuda extends Model
             'monto' => 'decimal:2',
             'fecha_pago' => 'date',
         ];
+    }
+
+    /**
+     * Monto del abono formateado en Soles (S/ 0,000.00).
+     */
+    public function getMontoFormateadoAttribute(): string
+    {
+        return 'S/ '.number_format((float) ($this->monto ?? 0), 2);
     }
 
     /**

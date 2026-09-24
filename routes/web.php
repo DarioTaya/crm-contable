@@ -42,6 +42,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/control', fn () => redirect()->route('control.index'));
     Route::post('/control/update', [ControlMensualController::class, 'update'])->name('control.update');
     Route::post('/control/deuda', [ControlMensualController::class, 'getDeuda'])->name('control.deuda');
+    Route::post('/control/calcular-igv-justo', [ControlMensualController::class, 'calcularIgvJusto'])->name('control.calcular_igv_justo');
 
     // Control de Deudas (Dashboard)
     Route::get('/control-deudas', [ControlDeudaController::class, 'index'])->name('control_deudas.index');

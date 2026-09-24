@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TipoTributoSunat;
 use App\Traits\BelongsToEstudioViaCliente;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -35,8 +36,22 @@ class Operacion extends Model
         'notas',
         'estado_pago_honorarios',
         'tiene_deuda',
+        'tributo_codigo',
+        'es_igv_justo',
         'monto_deuda_inicial',
         'vencimiento_deuda',
+    ];
+
+    /**
+     * Atributos que deben anexarse en arrays o JSON.
+     *
+     * @var array<int, string>
+     */
+    protected $appends = [
+        'saldo_pendiente',
+        'total_abonado',
+        'tributo_nombre',
+        'tributo_etiqueta',
     ];
 
     /**
@@ -46,6 +61,8 @@ class Operacion extends Model
     {
         return [
             'tiene_deuda' => 'boolean',
+            'tributo_codigo' => 'string',
+            'es_igv_justo' => 'boolean',
             'monto_deuda_inicial' => 'decimal:2',
             'vencimiento_deuda' => 'date',
         ];
@@ -65,6 +82,52 @@ class Operacion extends Model
     public function abonosDeuda(): HasMany
     {
         return $this->hasMany(AbonoDeuda::class, 'operacion_id');
+    }
+
+    /**
+     * Instancia del enum del tributo SUNAT si fue seleccionado.
+     */
+    public function tributoEnum(): ?TipoTributoSunat
+    {
+        return $this->tributo_codigo ? TipoTributoSunat::tryFrom($this->tributo_codigo) : null;
+    }
+
+    /**
+     * Nombre oficial descriptivo del tributo adeudado.
+     */
+    protected function tributoNombre(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => TipoTributoSunat::obtenerNombre($this->tributo_codigo, 'Deuda Tributaria SUNAT'),
+        );
+    }
+
+    /**
+     * Nombre corto del tributo adeudado.
+     */
+    protected function tributoNombreCorto(): Attribute
+    {
+        return Attribute::make(
+            get: fn (): string => TipoTributoSunat::obtenerNombreCorto($this->tributo_codigo, 'Tributo'),
+        );
+    }
+
+    /**
+     * Etiqueta completa con código oficial [ej. [1011] IGV Cuenta Propia 18%].
+     */
+    protected function tributoEtiqueta(): Attribute
+    {
+        return Attribute::make(
+            get: function (): string {
+                if (empty($this->tributo_codigo)) {
+                    return 'Deuda Tributaria SUNAT';
+                }
+
+                $enum = $this->tributoEnum();
+
+                return $enum ? $enum->etiquetaCompleta() : "{$this->tributo_codigo} - Tributo SUNAT";
+            },
+        );
     }
 
     /**
@@ -89,8 +152,32 @@ class Operacion extends Model
                     return 0;
                 }
 
-                return round((float) $this->monto_deuda_inicial - $this->total_abonado, 2);
+                return max(0.00, round((float) $this->monto_deuda_inicial - $this->total_abonado, 2));
             },
         );
+    }
+
+    /**
+     * Monto de deuda inicial formateado con estándar peruano (S/ 0,000.00).
+     */
+    public function getMontoDeudaInicialFormateadoAttribute(): string
+    {
+        return 'S/ '.number_format((float) ($this->monto_deuda_inicial ?? 0), 2);
+    }
+
+    /**
+     * Total abonado formateado con estándar peruano (S/ 0,000.00).
+     */
+    public function getTotalAbonadoFormateadoAttribute(): string
+    {
+        return 'S/ '.number_format((float) $this->total_abonado, 2);
+    }
+
+    /**
+     * Saldo pendiente formateado con estándar peruano (S/ 0,000.00).
+     */
+    public function getSaldoPendienteFormateadoAttribute(): string
+    {
+        return 'S/ '.number_format((float) $this->saldo_pendiente, 2);
     }
 }

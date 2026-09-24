@@ -14,37 +14,52 @@
             }
         } catch (e) {}
 
-        // La miniventana queda fija en la pantalla: si no cabe debajo del botón,
-        // se abre hacia arriba y no alarga la tabla ni obliga a hacer scroll.
+        // Posicionamiento inteligente y sin parpadeo para menús y popovers flotantes
         window.ubicarMenuFlotante = function (panel, ancla, intento) {
             if (!panel || !ancla) {
                 return;
             }
 
-            if (!panel.offsetHeight && (intento || 0) < 3) {
+            const margen = 16;
+            const separacion = 6;
+            const rect = ancla.getBoundingClientRect();
+            
+            // Garantizar que la altura máxima nunca exceda el alto visible de la ventana
+            const maxAlto = window.innerHeight - (margen * 2);
+            panel.style.maxHeight = maxAlto + 'px';
+
+            // Si el elemento aún no tiene dimensiones en el DOM, esperar un frame sin parpadeo
+            const ancho = panel.offsetWidth || 455;
+            const alto = panel.offsetHeight || 380;
+
+            if ((!panel.offsetWidth || !panel.offsetHeight) && (intento || 0) < 3) {
+                panel.style.visibility = 'hidden';
                 requestAnimationFrame(function () {
                     window.ubicarMenuFlotante(panel, ancla, (intento || 0) + 1);
                 });
                 return;
             }
 
-            const margen = 8;
-            const separacion = 6;
-            const rect = ancla.getBoundingClientRect();
-            const alto = panel.offsetHeight;
-            const ancho = panel.offsetWidth;
             const cabeAbajo = window.innerHeight - rect.bottom >= alto + margen;
             const cabeArriba = rect.top >= alto + margen;
             const abrirArriba = !cabeAbajo && cabeArriba;
+            
             let top = abrirArriba ? rect.top - alto - separacion : rect.bottom + separacion;
             let left = rect.left;
 
+            // Ajustar horizontalmente si se desborda hacia la derecha
             if (left + ancho > window.innerWidth - margen) {
                 left = rect.right - ancho;
             }
+            // Asegurar que no quede pegado ni sobrepase el margen derecho de la pantalla
+            if (left + ancho > window.innerWidth - margen) {
+                left = window.innerWidth - ancho - margen;
+            }
+            // Asegurar que no quede por fuera de la izquierda
             if (left < margen) {
                 left = margen;
             }
+            // Asegurar que no quede por fuera arriba o abajo
             if (top < margen) {
                 top = margen;
             }
@@ -52,9 +67,20 @@
                 top = Math.max(margen, window.innerHeight - alto - margen);
             }
 
-            panel.style.top = top + 'px';
-            panel.style.left = left + 'px';
+            panel.style.top = Math.round(top) + 'px';
+            panel.style.left = Math.round(left) + 'px';
+            panel.style.visibility = 'visible';
             panel._anclaMenu = ancla;
+
+            // Escuchar cambios de tamaño dinámicos (ej: al activar switches o abrir acordeones) para reajustar posición de inmediato
+            if (!panel._menuResizeObserver && typeof ResizeObserver !== 'undefined') {
+                panel._menuResizeObserver = new ResizeObserver(function () {
+                    if (panel._anclaMenu && panel.style.display !== 'none' && panel.offsetParent !== null) {
+                        window.ubicarMenuFlotante(panel, panel._anclaMenu);
+                    }
+                });
+                panel._menuResizeObserver.observe(panel);
+            }
         };
 
         if (!window.__menuFlotanteListo) {
@@ -71,6 +97,29 @@
             window.addEventListener('resize', recolocarMenus);
         }
     </script>
+    <style>
+        @media print {
+            .app-sidebar,
+            header,
+            .no-print,
+            [data-menu-flotante] {
+                display: none !important;
+            }
+            body, .app-main, main {
+                margin: 0 !important;
+                padding: 0 !important;
+                background: white !important;
+                width: 100% !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            @page {
+                margin: 1cm;
+                size: landscape;
+            }
+        }
+    </style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('head')
 </head>
