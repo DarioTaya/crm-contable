@@ -53,7 +53,7 @@ class ControlMensualController extends Controller
                         ->where('mes_baja', '>=', "{$anio}-01");
                 });
         })
-            ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $this->periodosDelAnio($anio))])
+            ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $this->periodosDelAnio($anio))->with('abonosDeuda')])
             ->orderBy('numero')
             ->get();
 
@@ -124,6 +124,12 @@ class ControlMensualController extends Controller
                     'pdt' => $pdt,
                     'ple' => $ple,
                     'notas' => $notasMes,
+                    'tiene_deuda' => (bool) ($op->tiene_deuda ?? false),
+                    'monto_deuda_inicial' => (float) ($op->monto_deuda_inicial ?? 0),
+                    'vencimiento_deuda' => $op?->vencimiento_deuda ? $op->vencimiento_deuda->format('Y-m-d') : '',
+                    'saldo_pendiente' => (float) ($op?->saldo_pendiente ?? 0),
+                    'total_abonado' => (float) ($op?->total_abonado ?? 0),
+                    'operacion_id' => $op?->id,
                 ];
             }
 
@@ -299,14 +305,17 @@ class ControlMensualController extends Controller
             $request->merge(['periodo' => "{$m[2]}-{$m[1]}"]);
         }
 
-        // 2. Guardado del interruptor maestro mensual, honorarios o nota mensual (Fase 11.5 + Honorarios)
-        if ($request->has('estado') || $request->has('honorarios') || $request->has('estado_pago_honorarios') || (! $request->has('estado_compras_ventas') && $request->has('notas'))) {
+        // 2. Guardado del interruptor maestro mensual, honorarios, deuda o nota mensual
+        if ($request->has('estado') || $request->has('honorarios') || $request->has('estado_pago_honorarios') || $request->has('tiene_deuda') || (! $request->has('estado_compras_ventas') && $request->has('notas'))) {
             $validated = $request->validate([
                 'cliente_id' => ['required', 'integer', Cliente::reglaPerteneceACartera()],
                 'periodo' => ['required', 'string', 'regex:/^\d{2}-\d{4}$/'],
                 'estado' => ['nullable', 'string', 'in:Pendiente,Procesando,Declarado'],
                 'honorarios' => ['nullable', 'string', 'in:Pendiente,Pagado'],
                 'estado_pago_honorarios' => ['nullable', 'string', 'in:Pendiente,Pagado'],
+                'tiene_deuda' => ['nullable', 'boolean'],
+                'monto_deuda_inicial' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+                'vencimiento_deuda' => ['nullable', 'date'],
                 'notas' => ['nullable', 'string', 'max:1000'],
             ], [
                 'cliente_id.required' => 'El cliente es obligatorio.',
@@ -342,14 +351,31 @@ class ControlMensualController extends Controller
                 $operacion->notas = $validated['notas'];
             }
 
+            if ($request->has('tiene_deuda')) {
+                $operacion->tiene_deuda = $validated['tiene_deuda'];
+                if ($validated['tiene_deuda']) {
+                    $operacion->monto_deuda_inicial = $validated['monto_deuda_inicial'] ?? $operacion->monto_deuda_inicial;
+                    $operacion->vencimiento_deuda = $validated['vencimiento_deuda'] ?? $operacion->vencimiento_deuda;
+                } else {
+                    $operacion->monto_deuda_inicial = null;
+                    $operacion->vencimiento_deuda = null;
+                }
+            }
+
             $operacion->save();
+            $operacion->load('abonosDeuda');
 
             $anio = (int) explode('-', $validated['periodo'])[1];
 
             return response()->json([
                 'success' => true,
                 'message' => 'Operación actualizada exitosamente.',
-                'operacion' => $operacion,
+                'operacion_id' => $operacion->id,
+                'tiene_deuda' => $operacion->tiene_deuda,
+                'monto_deuda_inicial' => $operacion->monto_deuda_inicial,
+                'vencimiento_deuda' => $operacion->vencimiento_deuda?->format('Y-m-d'),
+                'total_abonado' => $operacion->total_abonado,
+                'saldo_pendiente' => $operacion->saldo_pendiente,
                 'kpis' => $this->calcularKpis($anio),
             ]);
         }
@@ -407,5 +433,48 @@ class ControlMensualController extends Controller
             fn (int $mes) => sprintf('%02d-%d', $mes, $anio),
             range(1, 12),
         );
+    }
+
+    /**
+     * Obtiene los datos de deuda y abonos de una operación mensual vía AJAX.
+     */
+    public function getDeuda(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => ['required', 'integer'],
+            'periodo' => ['required', 'string', 'regex:/^\d{2}-\d{4}$/'],
+        ]);
+
+        $operacion = Operacion::where([
+            'cliente_id' => $validated['cliente_id'],
+            'periodo' => $validated['periodo'],
+        ])->with('abonosDeuda')->first();
+
+        if (! $operacion) {
+            return response()->json([
+                'operacion_id' => null,
+                'tiene_deuda' => false,
+                'monto_deuda_inicial' => null,
+                'vencimiento_deuda' => null,
+                'abonos' => [],
+                'total_abonado' => 0,
+                'saldo_pendiente' => 0,
+            ]);
+        }
+
+        return response()->json([
+            'operacion_id' => $operacion->id,
+            'tiene_deuda' => $operacion->tiene_deuda,
+            'monto_deuda_inicial' => $operacion->monto_deuda_inicial,
+            'vencimiento_deuda' => $operacion->vencimiento_deuda?->format('Y-m-d'),
+            'abonos' => $operacion->abonosDeuda->map(fn ($abono) => [
+                'id' => $abono->id,
+                'monto' => $abono->monto,
+                'fecha_pago' => $abono->fecha_pago->format('d/m/Y'),
+                'observacion' => $abono->observacion,
+            ])->values(),
+            'total_abonado' => $operacion->total_abonado,
+            'saldo_pendiente' => $operacion->saldo_pendiente,
+        ]);
     }
 }

@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\AbonoDeudaController;
 use App\Http\Controllers\AjusteSistemaController;
 use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ComprobanteController;
 use App\Http\Controllers\ControlBalanceController;
+use App\Http\Controllers\ControlDeudaController;
 use App\Http\Controllers\ControlMensualController;
 use App\Http\Controllers\CronogramaSunatController;
 use App\Http\Controllers\DashboardController;
@@ -39,6 +41,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/control-impuestos', [ControlMensualController::class, 'index'])->name('control.index');
     Route::get('/control', fn () => redirect()->route('control.index'));
     Route::post('/control/update', [ControlMensualController::class, 'update'])->name('control.update');
+    Route::post('/control/deuda', [ControlMensualController::class, 'getDeuda'])->name('control.deuda');
+
+    // Control de Deudas (Dashboard)
+    Route::get('/control-deudas', [ControlDeudaController::class, 'index'])->name('control_deudas.index');
+
+    // Abonos de Deudas
+    Route::post('/abonos-deudas', [AbonoDeudaController::class, 'store'])->name('abonos_deudas.store');
+    Route::delete('/abonos-deudas/{abonoDeuda}', [AbonoDeudaController::class, 'destroy'])->name('abonos_deudas.destroy');
 
     // Control Anual de Balances
     Route::get('/control-balances', [ControlBalanceController::class, 'index'])->name('balances.index');

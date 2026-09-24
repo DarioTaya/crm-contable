@@ -30,7 +30,11 @@
                 <span class="text-gray-300">|</span>
                 <span class="font-bold text-gray-700">DJ: Declaración &bull; RH: Honorarios</span>
                 <span class="text-gray-300">|</span>
-                <span class="text-gray-500">💬 Nota por Mes</span>
+                <span class="text-gray-500">💬 Nota</span>
+                <span class="text-gray-300">|</span>
+                <span class="flex items-center gap-1 font-semibold text-gray-700">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-500 border border-white"></span> Deuda SUNAT
+                </span>
             </div>
 
             {{-- Enlace Directo a Cronograma SUNAT --}}
@@ -273,35 +277,90 @@
                                          class="absolute top-0 right-0 w-0 h-0 border-t-[8px] border-r-[8px] border-t-transparent border-r-rose-600 cursor-pointer z-10">
                                     </div>
 
-                                    {{-- CONTROL 1: DJ (Declaración Jurada - Miniventana Flotante Amplia) --}}
-                                    <div x-data="{ openDJ: false }" class="relative flex-1 flex items-center justify-center">
-                                        <button
-                                            type="button"
-                                            @click="openDJ = !openDJ; if (openDJ) $nextTick(() => window.ubicarMenuFlotante($refs.menuDJ, $el))"
-                                            :title="'DJ: ' + meses[{{ $idx }}].estado"
-                                            class="inline-flex h-6 w-6 min-w-6 shrink-0 items-center justify-center overflow-hidden rounded text-xs transition-transform select-none hover:scale-110 focus:outline-none active:scale-95"
-                                        >
-                                            <span x-text="meses[{{ $idx }}].estado === 'Declarado' ? '🟢' : (meses[{{ $idx }}].estado === 'Procesando' ? '🟡' : '⚪')">{{ match ($m['estado'] ?? 'Pendiente') { 'Declarado' => '🟢', 'Procesando' => '🟡', default => '⚪' } }}</span>
-                                        </button>
+                                    {{-- CONTROL 1: DJ (Declaración Jurada + Control de Deudas con Pestañas) --}}
+                                    <div x-data="controlCeldaDJ({{ $item['cliente']->id }}, {{ $idx }}, meses)" class="relative flex-1 flex items-center justify-center">
+                                        <div class="relative inline-flex items-center justify-center">
+                                            <button
+                                                type="button"
+                                                @click="abrirMenuDJ($el)"
+                                                :title="tooltipDJ()"
+                                                class="inline-flex h-6 w-6 min-w-6 shrink-0 items-center justify-center overflow-hidden rounded text-xs transition-transform select-none hover:scale-110 focus:outline-none active:scale-95"
+                                            >
+                                                <span x-text="meses[{{ $idx }}].estado === 'Declarado' ? '🟢' : (meses[{{ $idx }}].estado === 'Procesando' ? '🟡' : '⚪')">{{ match ($m['estado'] ?? 'Pendiente') { 'Declarado' => '🟢', 'Procesando' => '🟡', default => '⚪' } }}</span>
+                                            </button>
 
-                                        {{-- Miniventana Flotante Espaciosa para DJ --}}
+                                            {{-- Indicador Premium de Deuda (Punto Rojo si saldo > 0 / Check Verde si saldo == 0) --}}
+                                            <template x-if="meses[{{ $idx }}].estado === 'Declarado' && meses[{{ $idx }}].tiene_deuda">
+                                                <div class="pointer-events-none">
+                                                    {{-- Saldo pendiente > 0: Punto Rojo --}}
+                                                    <span x-show="meses[{{ $idx }}].saldo_pendiente > 0"
+                                                          class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-xs pointer-events-auto cursor-pointer"
+                                                          :title="'Deuda Inicial: S/ ' + parseFloat(meses[{{ $idx }}].monto_deuda_inicial || 0).toFixed(2) + ' | Abonado: S/ ' + parseFloat(meses[{{ $idx }}].total_abonado || 0).toFixed(2) + ' | Saldo: S/ ' + parseFloat(meses[{{ $idx }}].saldo_pendiente || 0).toFixed(2)"
+                                                          @click.stop="abrirMenuDJConTab($el, 'deuda')">
+                                                    </span>
+                                                    {{-- Deuda saldada: Check Verde --}}
+                                                    <span x-show="meses[{{ $idx }}].saldo_pendiente <= 0"
+                                                          class="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center text-[7px] text-white font-black shadow-xs pointer-events-auto cursor-pointer"
+                                                          :title="'Deuda Inicial: S/ ' + parseFloat(meses[{{ $idx }}].monto_deuda_inicial || 0).toFixed(2) + ' | Abonado: S/ ' + parseFloat(meses[{{ $idx }}].total_abonado || 0).toFixed(2) + ' | Saldo: S/ 0.00'"
+                                                          @click.stop="abrirMenuDJConTab($el, 'deuda')">
+                                                        ✓
+                                                    </span>
+                                                </div>
+                                            </template>
+                                        </div>
+
+                                        {{-- Miniventana Flotante con 2 Pestañas para DJ y Deudas --}}
                                         <div
                                             x-ref="menuDJ"
                                             x-show="openDJ"
                                             x-cloak
                                             data-menu-flotante
                                             @click.outside="openDJ = false"
-                                            class="fixed z-50 w-44 rounded-xl border border-gray-200 bg-white p-2 shadow-2xl text-left"
+                                            class="fixed z-50 w-80 sm:w-96 rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl text-left max-h-[90vh] overflow-y-auto"
                                         >
-                                            <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 mb-1">
-                                                Estado DJ ({{ $m['corto'] }})
+                                            {{-- Encabezado con Tabs --}}
+                                            <div class="border-b border-gray-100 pb-2 mb-3">
+                                                <div class="flex items-center justify-between mb-2">
+                                                    <span class="text-[11px] font-bold text-gray-800 truncate">
+                                                        {{ $m['corto'] }}-{{ substr($anio, -2) }} &bull; {{ $item['cliente']->razon_social }}
+                                                    </span>
+                                                    <button type="button" @click="openDJ = false" class="text-gray-400 hover:text-gray-700 text-sm font-bold">&times;</button>
+                                                </div>
+
+                                                {{-- 2 Pestañas: 'Estado Declaración' y 'Control de Deuda y Pagos' --}}
+                                                <div class="flex border-b border-gray-200 text-xs font-semibold">
+                                                    <button
+                                                        type="button"
+                                                        @click="activeTab = 'declaracion'"
+                                                        :class="activeTab === 'declaracion' ? 'border-b-2 border-brand-600 text-brand-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
+                                                        class="flex-1 pb-2 text-center transition"
+                                                    >
+                                                        Estado Declaración
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        @click="activeTab = 'deuda'; if (!deudaCargada) cargarDeuda()"
+                                                        :class="activeTab === 'deuda' ? 'border-b-2 border-brand-600 text-brand-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
+                                                        class="flex-1 pb-2 text-center transition relative"
+                                                    >
+                                                        Control de Deuda y Pagos
+                                                        <template x-if="meses[mesIdx].tiene_deuda && meses[mesIdx].saldo_pendiente > 0">
+                                                            <span class="inline-block w-2 h-2 rounded-full bg-red-500 ml-1"></span>
+                                                        </template>
+                                                        <template x-if="meses[mesIdx].tiene_deuda && meses[mesIdx].saldo_pendiente <= 0">
+                                                            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 ml-1"></span>
+                                                        </template>
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <div class="space-y-1">
+
+                                            {{-- TAB 1: ESTADO DECLARACIÓN --}}
+                                            <div x-show="activeTab === 'declaracion'" class="space-y-1 py-1">
                                                 <button
                                                     type="button"
-                                                    @click="meses[{{ $idx }}].estado = 'Pendiente'; actualizarEstadoMaestro({{ $idx }}); openDJ = false"
+                                                    @click="cambiarEstado('Pendiente')"
                                                     class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-slate-100 text-gray-800"
-                                                    :class="meses[{{ $idx }}].estado === 'Pendiente' ? 'bg-slate-100 text-slate-800 ring-1 ring-slate-300' : ''"
+                                                    :class="meses[mesIdx].estado === 'Pendiente' ? 'bg-slate-100 text-slate-800 ring-1 ring-slate-300' : ''"
                                                 >
                                                     <span class="text-sm">⚪</span>
                                                     <span>Pendiente</span>
@@ -309,9 +368,9 @@
 
                                                 <button
                                                     type="button"
-                                                    @click="meses[{{ $idx }}].estado = 'Procesando'; actualizarEstadoMaestro({{ $idx }}); openDJ = false"
+                                                    @click="cambiarEstado('Procesando')"
                                                     class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-amber-50 text-gray-800"
-                                                    :class="meses[{{ $idx }}].estado === 'Procesando' ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' : ''"
+                                                    :class="meses[mesIdx].estado === 'Procesando' ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' : ''"
                                                 >
                                                     <span class="text-sm">🟡</span>
                                                     <span>En Proceso</span>
@@ -319,13 +378,182 @@
 
                                                 <button
                                                     type="button"
-                                                    @click="meses[{{ $idx }}].estado = 'Declarado'; actualizarEstadoMaestro({{ $idx }}); openDJ = false"
+                                                    @click="cambiarEstado('Declarado')"
                                                     class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-emerald-50 text-gray-800"
-                                                    :class="meses[{{ $idx }}].estado === 'Declarado' ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200' : ''"
+                                                    :class="meses[mesIdx].estado === 'Declarado' ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200' : ''"
                                                 >
                                                     <span class="text-sm">🟢</span>
                                                     <span>Declarado</span>
                                                 </button>
+                                            </div>
+
+                                            {{-- TAB 2: CONTROL DE DEUDA Y PAGOS --}}
+                                            <div x-show="activeTab === 'deuda'" class="space-y-3 py-1">
+                                                {{-- Switch: ¿Quedó deuda con SUNAT? --}}
+                                                <div class="flex items-center justify-between rounded-xl bg-gray-50 p-2.5 border border-gray-200">
+                                                    <div>
+                                                        <span class="block text-xs font-bold text-gray-800">¿Quedó deuda con SUNAT?</span>
+                                                        <span class="block text-[10px] text-gray-500">IGV Justo, Fraccionamiento, etc.</span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        @click="toggleTieneDeuda()"
+                                                        :class="tieneDeuda ? 'bg-brand-600' : 'bg-gray-300'"
+                                                        class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                                                    >
+                                                        <span
+                                                            :class="tieneDeuda ? 'translate-x-4' : 'translate-x-0'"
+                                                            class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                                                        ></span>
+                                                    </button>
+                                                </div>
+
+                                                {{-- Contenido cuando tiene_deuda es true --}}
+                                                <div x-show="tieneDeuda" class="space-y-3">
+                                                    {{-- Formulario de Monto Inicial y Vencimiento --}}
+                                                    <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                                                        <div>
+                                                            <label class="block text-[10px] font-bold text-gray-600 uppercase">Monto Inicial (S/)</label>
+                                                            <div class="relative mt-0.5">
+                                                                <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">S/</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    min="0"
+                                                                    x-model="montoDeuda"
+                                                                    class="w-full pl-6 rounded border-gray-300 py-1 text-xs text-gray-800 bg-white shadow-xs focus:ring-1 focus:ring-brand-500"
+                                                                    placeholder="0.00"
+                                                                >
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <label class="block text-[10px] font-bold text-gray-600 uppercase">Vencimiento</label>
+                                                            <input
+                                                                type="date"
+                                                                x-model="vencimientoDeuda"
+                                                                class="w-full rounded border-gray-300 py-1 text-xs text-gray-800 bg-white shadow-xs mt-0.5 focus:ring-1 focus:ring-brand-500"
+                                                            >
+                                                        </div>
+                                                        <div class="col-span-2 flex items-center justify-between pt-1">
+                                                            <span x-show="guardadoDeudaExitoso" class="text-[10px] font-bold text-emerald-600 animate-pulse">
+                                                                ✓ Guardado
+                                                            </span>
+                                                            <span x-show="!guardadoDeudaExitoso"></span>
+                                                            <button
+                                                                type="button"
+                                                                @click="guardarConfigDeuda()"
+                                                                :disabled="savingDeuda"
+                                                                class="px-3 py-1 rounded bg-brand-600 text-white font-bold text-xs hover:bg-brand-700 transition shadow-xs disabled:opacity-50"
+                                                            >
+                                                                <span x-text="savingDeuda ? 'Guardando...' : 'Guardar Datos Deuda'"></span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Resumen Financiero Dinámico --}}
+                                                    <div class="grid grid-cols-3 gap-2">
+                                                        <div class="rounded-xl bg-gray-50 border border-gray-200 p-2 text-center">
+                                                            <p class="text-[9px] font-bold uppercase text-gray-500 tracking-wider">Deuda Total</p>
+                                                            <p class="text-xs font-black text-gray-800 mt-0.5" x-text="'S/ ' + parseFloat(meses[mesIdx].monto_deuda_inicial || 0).toFixed(2)"></p>
+                                                        </div>
+                                                        <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-2 text-center">
+                                                            <p class="text-[9px] font-bold uppercase text-emerald-600 tracking-wider">Total Abonado</p>
+                                                            <p class="text-xs font-black text-emerald-600 mt-0.5" x-text="'S/ ' + parseFloat(meses[mesIdx].total_abonado || 0).toFixed(2)"></p>
+                                                        </div>
+                                                        <div class="rounded-xl p-2 text-center border transition-colors"
+                                                             :class="meses[mesIdx].saldo_pendiente > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'">
+                                                            <p class="text-[9px] font-bold uppercase tracking-wider"
+                                                               :class="meses[mesIdx].saldo_pendiente > 0 ? 'text-red-600' : 'text-gray-500'">Saldo</p>
+                                                            <p class="text-xs font-black mt-0.5"
+                                                               :class="meses[mesIdx].saldo_pendiente > 0 ? 'text-red-600' : 'text-gray-600'"
+                                                               x-text="'S/ ' + parseFloat(meses[mesIdx].saldo_pendiente || 0).toFixed(2)"></p>
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- Mini-Sistema de Pagos --}}
+                                                    <div class="space-y-2 border-t border-gray-100 pt-2">
+                                                        <div class="flex items-center justify-between">
+                                                            <span class="text-[11px] font-bold text-gray-700">Abonos Registrados</span>
+                                                            <span class="text-[10px] text-gray-400" x-text="abonos.length + ' pagos'"></span>
+                                                        </div>
+
+                                                        {{-- Tabla de Abonos --}}
+                                                        <div class="max-h-28 overflow-y-auto rounded-lg border border-gray-200 bg-white">
+                                                            <table class="w-full text-[10px]">
+                                                                <thead class="bg-gray-50 text-gray-500 border-b border-gray-200 sticky top-0">
+                                                                    <tr>
+                                                                        <th class="py-1 px-2 text-left">Fecha</th>
+                                                                        <th class="py-1 px-2 text-right">Monto</th>
+                                                                        <th class="py-1 px-2 text-left">Nota</th>
+                                                                        <th class="py-1 px-1 text-center w-5"></th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody class="divide-y divide-gray-100">
+                                                                    <template x-for="abono in abonos" :key="abono.id">
+                                                                        <tr class="hover:bg-gray-50">
+                                                                            <td class="py-1 px-2 text-gray-600 font-mono" x-text="abono.fecha_pago"></td>
+                                                                            <td class="py-1 px-2 text-right font-bold text-emerald-600" x-text="'S/ ' + parseFloat(abono.monto).toFixed(2)"></td>
+                                                                            <td class="py-1 px-2 text-gray-500 truncate max-w-[80px]" x-text="abono.observacion || '—'" :title="abono.observacion"></td>
+                                                                            <td class="py-1 px-1 text-center">
+                                                                                <button type="button" @click="eliminarAbono(abono.id)" class="text-gray-300 hover:text-red-600 font-bold" title="Eliminar abono">&times;</button>
+                                                                            </td>
+                                                                        </tr>
+                                                                    </template>
+                                                                    <tr x-show="abonos.length === 0">
+                                                                        <td colspan="4" class="py-2.5 text-center text-gray-400">Sin abonos registrados</td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+
+                                                        {{-- Mini-Formulario Flotante/Inline para Registrar 'Nuevo Abono' --}}
+                                                        <div class="rounded-xl border border-emerald-200 bg-emerald-50/50 p-2.5 space-y-2">
+                                                            <span class="block text-[10px] font-bold uppercase tracking-wider text-emerald-800">+ Registrar Nuevo Abono</span>
+                                                            <div class="grid grid-cols-2 gap-2">
+                                                                <div>
+                                                                    <label class="block text-[9px] font-bold text-gray-600 uppercase">Monto</label>
+                                                                    <div class="relative mt-0.5">
+                                                                        <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">S/</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            step="0.01"
+                                                                            min="0.01"
+                                                                            :max="meses[mesIdx].saldo_pendiente"
+                                                                            x-model="nuevoMonto"
+                                                                            placeholder="0.00"
+                                                                            class="w-full pl-6 rounded border-gray-300 py-1 text-xs text-gray-800 bg-white focus:ring-1 focus:ring-emerald-500"
+                                                                        >
+                                                                    </div>
+                                                                </div>
+                                                                <div>
+                                                                    <label class="block text-[9px] font-bold text-gray-600 uppercase">Fecha Pago</label>
+                                                                    <input
+                                                                        type="date"
+                                                                        x-model="nuevaFecha"
+                                                                        class="w-full rounded border-gray-300 py-1 text-xs text-gray-800 bg-white mt-0.5 focus:ring-1 focus:ring-emerald-500"
+                                                                    >
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <label class="block text-[9px] font-bold text-gray-600 uppercase">Nota / Referencia</label>
+                                                                <input
+                                                                    type="text"
+                                                                    x-model="nuevaObs"
+                                                                    placeholder="Ej. Abono cuota 1"
+                                                                    class="w-full rounded border-gray-300 py-1 text-xs text-gray-800 bg-white mt-0.5 focus:ring-1 focus:ring-emerald-500"
+                                                                >
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                @click="registrarAbono()"
+                                                                :disabled="savingAbono || !nuevoMonto || parseFloat(nuevoMonto) <= 0"
+                                                                class="w-full py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition shadow-xs disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                                            >
+                                                                <span x-text="savingAbono ? 'Registrando...' : 'Registrar Abono'"></span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -643,6 +871,239 @@
                     } catch (err) {
                         this.guardando = false;
                         alert('No se pudo guardar la nota: ' + err.message);
+                    }
+                }
+            };
+        }
+
+        function controlCeldaDJ(clienteId, mesIdx, meses) {
+            return {
+                clienteId: clienteId,
+                mesIdx: mesIdx,
+                meses: meses,
+                openDJ: false,
+                activeTab: 'declaracion',
+                tieneDeuda: !!meses[mesIdx].tiene_deuda,
+                montoDeuda: meses[mesIdx].monto_deuda_inicial || '',
+                vencimientoDeuda: meses[mesIdx].vencimiento_deuda || '',
+                deudaCargada: false,
+                savingDeuda: false,
+                guardadoDeudaExitoso: false,
+                savingAbono: false,
+                abonos: [],
+                nuevoMonto: '',
+                nuevaFecha: new Date().toISOString().split('T')[0],
+                nuevaObs: '',
+
+                abrirMenuDJ(ancla) {
+                    this.openDJ = !this.openDJ;
+                    if (this.openDJ) {
+                        this.tieneDeuda = !!this.meses[this.mesIdx].tiene_deuda;
+                        this.montoDeuda = this.meses[this.mesIdx].monto_deuda_inicial || '';
+                        this.vencimientoDeuda = this.meses[this.mesIdx].vencimiento_deuda || '';
+                        this.$nextTick(() => window.ubicarMenuFlotante(this.$refs.menuDJ, ancla));
+                        if (this.tieneDeuda && !this.deudaCargada) {
+                            this.cargarDeuda();
+                        }
+                    }
+                },
+
+                abrirMenuDJConTab(ancla, tabName) {
+                    this.activeTab = tabName;
+                    this.openDJ = true;
+                    this.tieneDeuda = !!this.meses[this.mesIdx].tiene_deuda;
+                    this.montoDeuda = this.meses[this.mesIdx].monto_deuda_inicial || '';
+                    this.vencimientoDeuda = this.meses[this.mesIdx].vencimiento_deuda || '';
+                    this.$nextTick(() => window.ubicarMenuFlotante(this.$refs.menuDJ, ancla));
+                    this.cargarDeuda();
+                },
+
+                tooltipDJ() {
+                    const m = this.meses[this.mesIdx];
+                    if (m.estado === 'Declarado' && m.tiene_deuda) {
+                        return 'Deuda Inicial: S/ ' + parseFloat(m.monto_deuda_inicial || 0).toFixed(2) + ' | Abonado: S/ ' + parseFloat(m.total_abonado || 0).toFixed(2) + ' | Saldo: S/ ' + parseFloat(m.saldo_pendiente || 0).toFixed(2);
+                    }
+                    return 'DJ: ' + m.estado;
+                },
+
+                async cambiarEstado(nuevoEstado) {
+                    this.meses[this.mesIdx].estado = nuevoEstado;
+                    if (typeof this.actualizarEstadoMaestro === 'function') {
+                        this.actualizarEstadoMaestro(this.mesIdx);
+                    }
+                    this.openDJ = false;
+                },
+
+                async toggleTieneDeuda() {
+                    this.tieneDeuda = !this.tieneDeuda;
+                    if (!this.tieneDeuda) {
+                        await this.guardarConfigDeuda();
+                    } else if (!this.deudaCargada) {
+                        await this.cargarDeuda();
+                    }
+                },
+
+                async cargarDeuda() {
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch('{{ route('control.deuda') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: this.meses[this.mesIdx].periodo,
+                            }),
+                        });
+
+                        const data = await response.json();
+                        this.deudaCargada = true;
+                        this.abonos = data.abonos || [];
+                        if (data.operacion_id) {
+                            this.meses[this.mesIdx].operacion_id = data.operacion_id;
+                        }
+                        this.meses[this.mesIdx].tiene_deuda = !!data.tiene_deuda;
+                        this.meses[this.mesIdx].monto_deuda_inicial = parseFloat(data.monto_deuda_inicial || 0);
+                        this.meses[this.mesIdx].vencimiento_deuda = data.vencimiento_deuda || '';
+                        this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado || 0);
+                        this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente || 0);
+
+                        this.tieneDeuda = !!data.tiene_deuda;
+                        this.montoDeuda = data.monto_deuda_inicial || '';
+                        this.vencimientoDeuda = data.vencimiento_deuda || '';
+                    } catch (err) {
+                        console.error('Error al cargar deuda:', err);
+                    }
+                },
+
+                async guardarConfigDeuda() {
+                    this.savingDeuda = true;
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch('{{ route('control.update') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: this.meses[this.mesIdx].periodo,
+                                tiene_deuda: this.tieneDeuda,
+                                monto_deuda_inicial: this.tieneDeuda ? parseFloat(this.montoDeuda || 0) : null,
+                                vencimiento_deuda: this.tieneDeuda ? this.vencimientoDeuda : null,
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Error al guardar deuda.');
+                        }
+
+                        if (data.operacion_id) {
+                            this.meses[this.mesIdx].operacion_id = data.operacion_id;
+                        }
+                        this.meses[this.mesIdx].tiene_deuda = !!data.tiene_deuda;
+                        this.meses[this.mesIdx].monto_deuda_inicial = parseFloat(data.monto_deuda_inicial || 0);
+                        this.meses[this.mesIdx].vencimiento_deuda = data.vencimiento_deuda || '';
+                        this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado || 0);
+                        this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente || 0);
+
+                        this.guardadoDeudaExitoso = true;
+                        setTimeout(() => { this.guardadoDeudaExitoso = false; }, 1500);
+                    } catch (err) {
+                        console.error('Error al guardar datos de deuda:', err);
+                        alert('No se pudo guardar la configuración de deuda: ' + err.message);
+                    } finally {
+                        this.savingDeuda = false;
+                    }
+                },
+
+                async registrarAbono() {
+                    if (!this.meses[this.mesIdx].operacion_id) {
+                        await this.guardarConfigDeuda();
+                    }
+
+                    const operacionId = this.meses[this.mesIdx].operacion_id;
+                    if (!operacionId) {
+                        alert('Debe guardar primero la deuda antes de añadir un abono.');
+                        return;
+                    }
+
+                    this.savingAbono = true;
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch('{{ route('abonos_deudas.store') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                operacion_id: operacionId,
+                                monto: parseFloat(this.nuevoMonto),
+                                fecha_pago: this.nuevaFecha,
+                                observacion: this.nuevaObs || null,
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Error al guardar abono.');
+                        }
+
+                        this.abonos.unshift(data.abono);
+                        this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado);
+                        this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente);
+                        this.nuevoMonto = '';
+                        this.nuevaObs = '';
+                    } catch (err) {
+                        console.error('Error al registrar abono:', err);
+                        alert('Error al registrar abono: ' + err.message);
+                    } finally {
+                        this.savingAbono = false;
+                    }
+                },
+
+                async eliminarAbono(abonoId) {
+                    if (!confirm('¿Desea eliminar este abono?')) {
+                        return;
+                    }
+
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch(`/abonos-deudas/${abonoId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Error al eliminar abono.');
+                        }
+
+                        this.abonos = this.abonos.filter(a => a.id !== abonoId);
+                        this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado);
+                        this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente);
+                    } catch (err) {
+                        console.error('Error al eliminar abono:', err);
+                        alert('Error al eliminar abono: ' + err.message);
                     }
                 }
             };
