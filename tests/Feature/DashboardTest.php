@@ -552,7 +552,15 @@ class DashboardTest extends TestCase
 
             $response->assertOk();
             $response->assertSeeInOrder([
-                'Estado Tributario Mensual',
+                'Clientes Activos',
+                'Avance Impuestos',
+                'Avance Balances',
+                'Buzón SOL Pendiente',
+                'Control Honorarios',
+                'Estado General del Estudio',
+                'Obligaciones Mensuales',
+                'SIRE, PDT 621 y PLAME',
+                'PLE y DJ Anual',
                 'Radar de Vencimientos (Mes Activo)',
                 'Impuestos (SIRE y PDT 621)',
                 'Balances Mensuales (PLE)',

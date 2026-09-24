@@ -12,7 +12,7 @@ window.Alpine = Alpine;
 
 Alpine.start();
 
-if (document.getElementById('obligacionesChart') || document.getElementById('tipoCambioChart')) {
+if (document.getElementById('obligacionesChart') || document.getElementById('balancesChart') || document.getElementById('tipoCambioChart')) {
     import('chart.js/auto').then(({ default: Chart }) => {
         window.Chart = Chart;
         document.dispatchEvent(new Event('crm:chart-ready'));

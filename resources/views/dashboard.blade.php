@@ -91,30 +91,7 @@
             </div>
         </div>
 
-        {{-- KPI 2: Buzón SOL Pendiente --}}
-        <a href="{{ route('alertas.index', $notificacionesPendientes > 0 ? ['estado' => 'Pendiente'] : []) }}"
-           title="{{ $notificacionesPendientes > 0 ? 'Ver alertas pendientes del buzón SOL' : 'Abrir buzón de alertas' }}"
-           class="relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-amber-300 hover:shadow-md">
-            <div class="flex-1">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Buzón SOL Pendiente</p>
-                        <p class="mt-2 text-3xl font-extrabold text-gray-900">{{ $notificacionesPendientes }}</p>
-                    </div>
-                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl {{ $notificacionesImportantes > 0 ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600' }}">
-                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
-                        </svg>
-                    </div>
-                </div>
-            </div>
-            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
-                <span class="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">SUNAT ({{ $notificacionesSunat }})</span>
-                <span class="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">SUNAFIL ({{ $notificacionesSunafil }})</span>
-            </div>
-        </a>
-
-        {{-- KPI 3: Avance de impuestos del periodo en curso --}}
+        {{-- KPI 2: Avance de impuestos del periodo en curso --}}
         <a href="{{ route('control.index', ['anio' => (int) explode('-', $periodoActual)[1]]) }}"
            title="Ver control de impuestos"
            class="relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-emerald-300 hover:shadow-md">
@@ -190,6 +167,29 @@
             </div>
         </a>
 
+        {{-- KPI 4: Buzón SOL Pendiente --}}
+        <a href="{{ route('alertas.index', $notificacionesPendientes > 0 ? ['estado' => 'Pendiente'] : []) }}"
+           title="{{ $notificacionesPendientes > 0 ? 'Ver alertas pendientes del buzón SOL' : 'Abrir buzón de alertas' }}"
+           class="relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-xs transition hover:border-amber-300 hover:shadow-md">
+            <div class="flex-1">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wider text-gray-500">Buzón SOL Pendiente</p>
+                        <p class="mt-2 text-3xl font-extrabold text-gray-900">{{ $notificacionesPendientes }}</p>
+                    </div>
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl {{ $notificacionesImportantes > 0 ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600' }}">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke-currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center gap-2 overflow-hidden whitespace-nowrap border-t border-gray-100 pt-3">
+                <span class="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">SUNAT ({{ $notificacionesSunat }})</span>
+                <span class="rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-700">SUNAFIL ({{ $notificacionesSunafil }})</span>
+            </div>
+        </a>
+
         {{-- KPI 5: Honorarios (RH) de los meses ya cerrados --}}
         <a href="{{ route('control.index', ['anio' => $honorariosAtrasados['anio']]) }}"
            title="Ver control de honorarios"
@@ -232,55 +232,79 @@
         {{-- COLUMNA IZQUIERDA: GRÁFICO Y, DEBAJO, RADAR DE VENCIMIENTOS --}}
         <div class="flex h-full min-w-0 flex-col gap-8 self-stretch lg:col-span-5">
         <div class="rounded-xl border border-gray-200 bg-white p-6 shadow-xs">
-            <div class="flex items-center justify-between border-b border-gray-100 pb-4">
-                <div>
-                    <h3 class="text-base font-semibold text-gray-900">Estado Tributario Mensual</h3>
-                    <p class="text-xs text-gray-500 mt-0.5">SIRE, PDT 621 y PLE del periodo actual</p>
-                </div>
-                <span class="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">
-                    {{ $porcentajeAvance }}% Listo
-                </span>
+            <div class="border-b border-gray-100 pb-4">
+                <h3 class="text-base font-semibold text-gray-900">Estado General del Estudio</h3>
             </div>
 
-            {{-- Contenedor del Gráfico Doughnut --}}
-            <div class="relative my-6 flex items-center justify-center">
-                <div class="relative h-64 w-64 max-w-full">
-                    <canvas id="obligacionesChart"></canvas>
-                    {{-- Texto al centro de la dona --}}
-                    <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-                        <span class="text-3xl font-black text-gray-900">{{ $porcentajeAvance }}%</span>
-                        <span class="text-[11px] font-medium uppercase tracking-wider text-gray-400">Declarado</span>
+            <div class="mt-6 grid grid-cols-2 gap-6 divide-x divide-gray-100">
+                <div class="min-w-0 pr-1">
+                    <p class="text-sm font-semibold text-gray-900">Obligaciones Mensuales</p>
+                    <p class="mt-0.5 text-xs text-gray-500">SIRE, PDT 621 y PLAME</p>
+                    <div class="relative my-4 flex items-center justify-center">
+                        <div class="relative h-36 w-36 max-w-full">
+                            <canvas id="obligacionesChart"></canvas>
+                            <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                                <span class="text-2xl font-black text-gray-900">{{ $porcentajeAvance }}%</span>
+                                <span class="text-[10px] font-medium uppercase tracking-wider text-gray-400">Declarado</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5 border-t border-gray-100 pt-3">
+                        <div class="flex items-center justify-between rounded-lg bg-emerald-50/50 px-2 py-1">
+                            <span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-700">
+                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Declaradas
+                            </span>
+                            <span class="text-sm font-bold text-emerald-800">{{ $declarados }}</span>
+                        </div>
+                        <div class="flex items-center justify-between rounded-lg bg-amber-50/50 px-2 py-1">
+                            <span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-700">
+                                <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span> En Proceso
+                            </span>
+                            <span class="text-sm font-bold text-amber-800">{{ $procesando }}</span>
+                        </div>
+                        <div class="flex items-center justify-between rounded-lg bg-rose-50/50 px-2 py-1">
+                            <span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-rose-700">
+                                <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span> Pendientes
+                            </span>
+                            <span class="text-sm font-bold text-rose-800">{{ $pendientes }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="min-w-0 pl-5">
+                    <p class="text-sm font-semibold text-gray-900">Avance Balances</p>
+                    <p class="mt-0.5 text-xs text-gray-500">PLE y DJ Anual</p>
+                    <div class="relative my-4 flex items-center justify-center">
+                        <div class="relative h-36 w-36 max-w-full">
+                            <canvas id="balancesChart"></canvas>
+                            <div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                                <span class="text-2xl font-black text-gray-900">{{ $avanceBalances['porcentaje'] }}%</span>
+                                <span class="text-[10px] font-medium uppercase tracking-wider text-gray-400">Declarado</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-1.5 border-t border-gray-100 pt-3">
+                        <div class="flex items-center justify-between rounded-lg bg-emerald-50/50 px-2 py-1">
+                            <span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-700">
+                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Declaradas
+                            </span>
+                            <span class="text-sm font-bold text-emerald-800">{{ $avanceBalances['declarados'] }}</span>
+                        </div>
+                        <div class="flex items-center justify-between rounded-lg bg-amber-50/50 px-2 py-1">
+                            <span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-700">
+                                <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span> En Proceso
+                            </span>
+                            <span class="text-sm font-bold text-amber-800">{{ $avanceBalances['procesando'] }}</span>
+                        </div>
+                        <div class="flex items-center justify-between rounded-lg bg-rose-50/50 px-2 py-1">
+                            <span class="inline-flex items-center gap-1.5 text-[11px] font-medium text-rose-700">
+                                <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span> Pendientes
+                            </span>
+                            <span class="text-sm font-bold text-rose-800">{{ $avanceBalances['pendientes'] }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
-
-            {{-- Desglose y Leyenda --}}
-            <div class="grid grid-cols-3 gap-2 border-t border-gray-100 pt-4 text-center">
-                <div class="rounded-lg bg-emerald-50/50 p-2.5">
-                    <span class="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-                        <span class="h-2 w-2 rounded-full bg-emerald-500"></span> Declaradas
-                    </span>
-                    <p class="mt-1 text-lg font-bold text-emerald-800">{{ $declarados }}</p>
-                </div>
-
-                <div class="rounded-lg bg-amber-50/50 p-2.5">
-                    <span class="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700">
-                        <span class="h-2 w-2 rounded-full bg-amber-500"></span> En Proceso
-                    </span>
-                    <p class="mt-1 text-lg font-bold text-amber-800">{{ $procesando }}</p>
-                </div>
-
-                <div class="rounded-lg bg-rose-50/50 p-2.5">
-                    <span class="inline-flex items-center gap-1.5 text-xs font-medium text-rose-700">
-                        <span class="h-2 w-2 rounded-full bg-rose-500"></span> Pendientes
-                    </span>
-                    <p class="mt-1 text-lg font-bold text-rose-800">{{ $pendientes }}</p>
-                </div>
-            </div>
-
-            <p class="mt-4 text-center text-xs text-gray-400">
-                Total: {{ $totalObligaciones }} obligaciones controladas en este periodo
-            </p>
         </div>
 
         <div class="flex flex-1 flex-col rounded-xl border border-gray-200 bg-white p-6 shadow-xs">
@@ -344,7 +368,7 @@
                     </div>
                     <h4 class="text-base font-bold text-gray-900">¡Todo al día!</h4>
                     <p class="mt-1 text-sm text-gray-500 max-w-sm">
-                        Todos los clientes activos han completado sus declaraciones de SIRE, PDT 621 y PLE correspondientes a este mes.
+                        Todos los clientes activos han completado sus declaraciones de SIRE, PDT 621 y PLAME correspondientes a este mes.
                     </p>
                 </div>
             @else
@@ -534,15 +558,10 @@
     {{-- ═══════════════════════════════ SCRIPTS: CHART.JS ═══════════════════════════════ --}}
     {{-- Chart.js se carga aparte y solo en esta pagina. Ver resources/js/app.js. --}}
     <script>
-        function renderObligacionesChart() {
-            const ctx = document.getElementById('obligacionesChart');
+        function renderDoughnut(canvasId, declarados, procesando, pendientes, total) {
+            const ctx = document.getElementById(canvasId);
             if (!ctx || !window.Chart || ctx.dataset.rendered === '1') return;
             ctx.dataset.rendered = '1';
-
-            const declarados = {{ $declarados }};
-            const procesando = {{ $procesando }};
-            const pendientes = {{ $pendientes }};
-            const total = {{ $totalObligaciones }};
 
             const data = (total === 0)
                 ? [0, 0, 1]
@@ -571,9 +590,7 @@
                     maintainAspectRatio: false,
                     cutout: '72%',
                     plugins: {
-                        legend: {
-                            display: false
-                        },
+                        legend: { display: false },
                         tooltip: {
                             enabled: total > 0,
                             callbacks: {
@@ -589,10 +606,15 @@
             });
         }
 
+        function renderDashboardCharts() {
+            renderDoughnut('obligacionesChart', {{ $declarados }}, {{ $procesando }}, {{ $pendientes }}, {{ $totalObligaciones }});
+            renderDoughnut('balancesChart', {{ $avanceBalances['declarados'] }}, {{ $avanceBalances['procesando'] }}, {{ $avanceBalances['pendientes'] }}, {{ $avanceBalances['total'] }});
+        }
+
         if (window.Chart) {
-            renderObligacionesChart();
+            renderDashboardCharts();
         } else {
-            document.addEventListener('crm:chart-ready', renderObligacionesChart, { once: true });
+            document.addEventListener('crm:chart-ready', renderDashboardCharts, { once: true });
         }
 
         (function () {

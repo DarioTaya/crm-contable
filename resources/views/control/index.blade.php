@@ -168,7 +168,7 @@
                         <th class="w-[6.5%] px-0.5 py-1.5 border-r border-b border-gray-300 text-center whitespace-nowrap bg-gray-100 text-gray-800 select-none">
                             <span class="block text-[11px] font-black tracking-tight">{{ $mInfo['corto'] }}-{{ substr($anio, -2) }}</span>
                             <div class="flex items-center justify-center gap-1 text-[8px] font-black text-gray-500 uppercase tracking-tighter leading-none mt-0.5">
-                                <span title="Declaración Jurada Mensual (SIRE / PDT / PLE)">DJ</span>
+                                <span title="Declaración Jurada Mensual (SIRE / PDT 621 / PLAME)">DJ</span>
                                 <span class="text-gray-300 font-normal">|</span>
                                 <span title="Recibo por Honorarios">RH</span>
                             </div>
@@ -224,8 +224,12 @@
                                 </div>
 
                                 {{-- Porcentaje de avance anual calculado reactivamente --}}
-                                <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-extrabold"
-                                      :class="calcAvance() === 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'"
+                                <span @class([
+                                        'shrink-0 rounded px-1.5 py-0.5 text-[10px] font-extrabold',
+                                        'bg-emerald-100 text-emerald-800' => (int) $item['porcentaje'] === 100,
+                                        'bg-gray-100 text-gray-700' => (int) $item['porcentaje'] !== 100,
+                                    ])
+                                      x-effect="pintarAvance($el)"
                                       x-text="calcAvance() + '%'">
                                     {{ $item['porcentaje'] }}%
                                 </span>
@@ -234,8 +238,14 @@
 
                         {{-- COLUMNAS 2 A 13: UNA CELDA MAESTRA POR MES (DJ + RH + NOTA) --}}
                         @foreach ($item['meses'] as $idx => $m)
-                            <td class="w-[6.5%] p-0.5 border-r border-b border-gray-300 text-center transition-colors relative align-middle h-11"
-                                :class="bgClass(meses[{{ $idx }}].estado)">
+                            <td @class([
+                                    'w-[6.5%] p-0.5 border-r border-b border-gray-300 text-center transition-colors relative align-middle h-11',
+                                    'bg-gray-100/80 text-gray-400' => ! empty($m['es_baja']) || ($m['estado'] ?? '') === 'Baja',
+                                    'bg-emerald-100/70 hover:bg-emerald-100' => empty($m['es_baja']) && ($m['estado'] ?? '') === 'Declarado',
+                                    'bg-amber-100/70 hover:bg-amber-100' => empty($m['es_baja']) && in_array($m['estado'] ?? '', ['Procesando', 'Proceso'], true),
+                                    'bg-white hover:bg-slate-100/60' => empty($m['es_baja']) && ! in_array($m['estado'] ?? 'Pendiente', ['Declarado', 'Procesando', 'Proceso', 'Baja'], true),
+                                ])
+                                x-effect="pintarFondo($el, meses[{{ $idx }}].estado)">
 
                                 @if (!empty($m['es_baja']))
                                     <div class="flex items-center justify-center w-full h-full text-center py-1 select-none"
@@ -462,6 +472,9 @@
                 anio: config.anio,
                 meses: config.meses,
 
+                fondosCelda: ['bg-gray-100/80', 'text-gray-400', 'bg-emerald-100/70', 'hover:bg-emerald-100', 'bg-amber-100/70', 'hover:bg-amber-100', 'bg-white', 'hover:bg-slate-100/60'],
+                fondosAvance: ['bg-emerald-100', 'text-emerald-800', 'bg-gray-100', 'text-gray-700'],
+
                 bgClass(estado) {
                     if (estado === 'Baja') {
                         return 'bg-gray-100/80 text-gray-400';
@@ -473,6 +486,19 @@
                         return 'bg-amber-100/70 hover:bg-amber-100';
                     }
                     return 'bg-white hover:bg-slate-100/60';
+                },
+
+                pintarFondo(el, estado) {
+                    this.fondosCelda.forEach((clase) => el.classList.remove(clase));
+                    this.bgClass(estado).split(' ').forEach((clase) => el.classList.add(clase));
+                },
+
+                pintarAvance(el) {
+                    this.fondosAvance.forEach((clase) => el.classList.remove(clase));
+                    const clases = this.calcAvance() === 100
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-gray-100 text-gray-700';
+                    clases.split(' ').forEach((clase) => el.classList.add(clase));
                 },
 
                 calcAvance() {

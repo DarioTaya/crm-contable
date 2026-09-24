@@ -248,8 +248,12 @@
                                 </div>
 
                                 {{-- Porcentaje de balance anual calculado reactivamente --}}
-                                <span class="shrink-0 rounded px-1.5 py-0.5 text-[10px] font-extrabold"
-                                      :class="calcAvance() === 100 ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'"
+                                <span @class([
+                                        'shrink-0 rounded px-1.5 py-0.5 text-[10px] font-extrabold',
+                                        'bg-emerald-100 text-emerald-800' => (int) $item['porcentaje'] === 100,
+                                        'bg-gray-100 text-gray-700' => (int) $item['porcentaje'] !== 100,
+                                    ])
+                                      x-effect="pintarAvance($el)"
                                       x-text="calcAvance() + '%'">
                                     {{ $item['porcentaje'] }}%
                                 </span>
@@ -258,8 +262,14 @@
 
                         {{-- COLUMNAS 2 A 13: 12 MESES LIMPIOS CON SELECTOR DE BALANCE Y NOTA --}}
                         @foreach ($item['meses'] as $idx => $m)
-                            <td class="w-[6%] p-0.5 border-r border-b border-gray-300 text-center transition-colors relative align-middle h-11"
-                                :class="bgClass(meses[{{ $idx }}].estado)">
+                            <td @class([
+                                    'w-[6%] p-0.5 border-r border-b border-gray-300 text-center transition-colors relative align-middle h-11',
+                                    'bg-gray-100/80 text-gray-400' => ! empty($m['es_baja']) || ($m['estado'] ?? '') === 'Baja',
+                                    'bg-emerald-100/70 hover:bg-emerald-100' => empty($m['es_baja']) && ($m['estado'] ?? '') === 'Declarado',
+                                    'bg-amber-100/70 hover:bg-amber-100' => empty($m['es_baja']) && in_array($m['estado'] ?? '', ['Procesando', 'Proceso'], true),
+                                    'bg-white hover:bg-slate-100/60' => empty($m['es_baja']) && ! in_array($m['estado'] ?? 'Pendiente', ['Declarado', 'Procesando', 'Proceso', 'Baja'], true),
+                                ])
+                                x-effect="pintarFondo($el, meses[{{ $idx }}].estado)">
 
                                 @if (!empty($m['es_baja']))
                                     <div class="flex items-center justify-center w-full h-full text-center py-1 select-none"
@@ -410,20 +420,27 @@
                         @endforeach
 
                         {{-- COLUMNA 14: DJ ANUAL {{ $anio - 1 }} (COLUMNA DESTACADA) --}}
-                        <td class="w-[8%] p-0.5 border-b border-indigo-200 text-center transition-colors relative align-middle h-11 bg-indigo-50/50 hover:bg-indigo-50"
-                            :class="bgClass(djAnual)">
+                        <td @class([
+                                'w-[8%] p-0.5 border-b border-indigo-200 text-center transition-colors relative align-middle h-11',
+                                'bg-gray-100/80 text-gray-400' => ($item['dj_anual'] ?? '') === 'Baja',
+                                'bg-emerald-100/70 hover:bg-emerald-100' => ($item['dj_anual'] ?? '') === 'Declarado',
+                                'bg-amber-100/70 hover:bg-amber-100' => in_array($item['dj_anual'] ?? '', ['Procesando', 'Proceso'], true),
+                                'bg-white hover:bg-slate-100/60' => ! in_array($item['dj_anual'] ?? 'Pendiente', ['Declarado', 'Procesando', 'Proceso', 'Baja'], true),
+                            ])
+                            x-effect="pintarFondo($el, djAnual)">
 
                             <div x-data="{ openDJAnual: false }" class="relative flex items-center justify-center w-full h-full">
                                 <button
                                     type="button"
                                     @click="openDJAnual = !openDJAnual; if (openDJAnual) $nextTick(() => window.ubicarMenuFlotante($refs.menuDJAnual, $el))"
                                     :title="'DJ Anual {{ $anio - 1 }}: ' + djAnual"
-                                    class="inline-flex items-center justify-center gap-1 px-2 py-1 text-xs font-bold rounded-lg border transition shadow-xs hover:scale-105 active:scale-95 focus:outline-none"
-                                    :class="{
-                                        'border-emerald-300 bg-emerald-100/90 text-emerald-900': djAnual === 'Declarado',
-                                        'border-amber-300 bg-amber-100/90 text-amber-900': djAnual === 'Procesando' || djAnual === 'Proceso',
-                                        'border-slate-300 bg-white text-slate-700': djAnual === 'Pendiente' || !djAnual
-                                    }"
+                                    @class([
+                                        'inline-flex items-center justify-center gap-1 px-2 py-1 text-xs font-bold rounded-lg border transition shadow-xs hover:scale-105 active:scale-95 focus:outline-none',
+                                        'border-emerald-300 bg-emerald-100/90 text-emerald-900' => ($item['dj_anual'] ?? '') === 'Declarado',
+                                        'border-amber-300 bg-amber-100/90 text-amber-900' => in_array($item['dj_anual'] ?? '', ['Procesando', 'Proceso'], true),
+                                        'border-slate-300 bg-white text-slate-700' => ! in_array($item['dj_anual'] ?? 'Pendiente', ['Declarado', 'Procesando', 'Proceso'], true),
+                                    ])
+                                    x-effect="pintarDjAnual($el)"
                                 >
                                     <span x-text="djAnual === 'Declarado' ? '🟢' : ((djAnual === 'Proceso' || djAnual === 'Procesando') ? '🟡' : '⚪')">{{ match ($item['dj_anual'] ?? 'Pendiente') { 'Declarado' => '🟢', 'Proceso', 'Procesando' => '🟡', default => '⚪' } }}</span>
                                     <span class="text-[10px]" x-text="djAnual === 'Declarado' ? 'Declarado' : (djAnual === 'Procesando' || djAnual === 'Proceso' ? 'Proceso' : 'Pendiente')">{{ match ($item['dj_anual'] ?? 'Pendiente') { 'Declarado' => 'Declarado', 'Proceso', 'Procesando' => 'Proceso', default => 'Pendiente' } }}</span>
@@ -503,6 +520,10 @@
                 meses: config.meses,
                 djAnual: config.djAnual,
 
+                fondosCelda: ['bg-gray-100/80', 'text-gray-400', 'bg-emerald-100/70', 'hover:bg-emerald-100', 'bg-amber-100/70', 'hover:bg-amber-100', 'bg-white', 'hover:bg-slate-100/60', 'bg-indigo-50/50', 'hover:bg-indigo-50'],
+                fondosAvance: ['bg-emerald-100', 'text-emerald-800', 'bg-gray-100', 'text-gray-700'],
+                fondosDj: ['border-emerald-300', 'bg-emerald-100/90', 'text-emerald-900', 'border-amber-300', 'bg-amber-100/90', 'text-amber-900', 'border-slate-300', 'bg-white', 'text-slate-700'],
+
                 bgClass(estado) {
                     if (estado === 'Baja') {
                         return 'bg-gray-100/80 text-gray-400';
@@ -514,6 +535,29 @@
                         return 'bg-amber-100/70 hover:bg-amber-100';
                     }
                     return 'bg-white hover:bg-slate-100/60';
+                },
+
+                pintarFondo(el, estado) {
+                    this.fondosCelda.forEach((clase) => el.classList.remove(clase));
+                    this.bgClass(estado).split(' ').forEach((clase) => el.classList.add(clase));
+                },
+
+                pintarDjAnual(el) {
+                    this.fondosDj.forEach((clase) => el.classList.remove(clase));
+                    const clases = this.djAnual === 'Declarado'
+                        ? 'border-emerald-300 bg-emerald-100/90 text-emerald-900'
+                        : (this.djAnual === 'Procesando' || this.djAnual === 'Proceso'
+                            ? 'border-amber-300 bg-amber-100/90 text-amber-900'
+                            : 'border-slate-300 bg-white text-slate-700');
+                    clases.split(' ').forEach((clase) => el.classList.add(clase));
+                },
+
+                pintarAvance(el) {
+                    this.fondosAvance.forEach((clase) => el.classList.remove(clase));
+                    const clases = this.calcAvance() === 100
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-gray-100 text-gray-700';
+                    clases.split(' ').forEach((clase) => el.classList.add(clase));
                 },
 
                 calcAvance() {
