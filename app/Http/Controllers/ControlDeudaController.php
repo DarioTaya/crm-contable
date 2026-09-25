@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DeudaTributaria;
 use App\Models\Operacion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class ControlDeudaController extends Controller
@@ -21,34 +23,17 @@ class ControlDeudaController extends Controller
             $clienteIds = array_map('intval', array_filter($clienteIds));
         }
 
-        $query = Operacion::where('tiene_deuda', true)
-            ->with(['cliente', 'abonosDeuda'])
-            ->orderBy('vencimiento_deuda');
+        $todasDeudas = $this->filasDeuda($clienteIds);
+        $deudas = $todasDeudas->filter(fn (DeudaTributaria|Operacion $fila) => (float) $fila->saldo_pendiente > 0)->values();
 
-        if (! empty($clienteIds)) {
-            $query->whereIn('cliente_id', $clienteIds);
-        }
+        $totalDeudaHistorica = (float) $todasDeudas->sum(fn (DeudaTributaria|Operacion $fila) => (float) $fila->monto_deuda_inicial);
+        $totalRecaudado = (float) $todasDeudas->sum(fn (DeudaTributaria|Operacion $fila) => (float) $fila->total_abonado);
+        $totalSaldoPorCobrar = (float) $todasDeudas->sum(fn (DeudaTributaria|Operacion $fila) => (float) $fila->saldo_pendiente);
 
-        $deudas = $query->get()
-            ->filter(fn (Operacion $op) => $op->saldo_pendiente > 0)
-            ->values();
+        $todasLasDeudasSinFiltro = $this->filasDeuda(null)
+            ->filter(fn (DeudaTributaria|Operacion $fila) => (float) $fila->saldo_pendiente > 0);
 
-        $todasDeudas = Operacion::where('tiene_deuda', true)
-            ->with('abonosDeuda')
-            ->when(! empty($clienteIds), fn ($q) => $q->whereIn('cliente_id', $clienteIds))
-            ->get();
-
-        $totalDeudaHistorica = (float) $todasDeudas->sum('monto_deuda_inicial');
-        $totalRecaudado = (float) $todasDeudas->sum(fn (Operacion $op) => $op->total_abonado);
-        $totalSaldoPorCobrar = (float) $todasDeudas->sum(fn (Operacion $op) => $op->saldo_pendiente);
-
-        // Lista de clientes únicos con deudas activas para el selector multi-cliente
-        $todasLasDeudasSinFiltro = Operacion::where('tiene_deuda', true)
-            ->with('cliente')
-            ->get()
-            ->filter(fn (Operacion $op) => $op->saldo_pendiente > 0);
-
-        $clientesConDeuda = $todasLasDeudasSinFiltro->pluck('cliente')
+        $clientesConDeuda = $todasLasDeudasSinFiltro->map(fn (DeudaTributaria|Operacion $fila) => $fila->cliente)
             ->filter()
             ->unique('id')
             ->map(function ($cli) use ($todasLasDeudasSinFiltro) {
@@ -58,15 +43,20 @@ class ControlDeudaController extends Controller
                     'numero_formateado' => (string) ($cli->numero ?? $cli->id),
                     'razon_social' => $cli->razon_social,
                     'ruc' => $cli->ruc,
-                    'total_deudas' => $todasLasDeudasSinFiltro->where('cliente_id', $cli->id)->count(),
+                    'total_deudas' => $todasLasDeudasSinFiltro->filter(function (DeudaTributaria|Operacion $fila) use ($cli) {
+                        $clienteId = $fila instanceof Operacion ? $fila->cliente_id : $fila->operacion?->cliente_id;
+
+                        return (int) $clienteId === (int) $cli->id;
+                    })->count(),
                 ];
             })
             ->sortBy('razon_social')
             ->values();
 
         // Mapeo detallado para reactividad en Alpine.js
-        $deudasData = $deudas->map(function (Operacion $op) {
+        $deudasData = $deudas->map(function (DeudaTributaria|Operacion $op) {
             $numCliente = $op->cliente ? ($op->cliente->numero ?? $op->cliente->id) : 0;
+            $clienteId = $op instanceof Operacion ? $op->cliente_id : $op->operacion?->cliente_id;
             $vence = $op->vencimiento_deuda;
             $urgencia = 'normal';
             if ($vence) {
@@ -79,7 +69,9 @@ class ControlDeudaController extends Controller
 
             return [
                 'id' => $op->id,
-                'cliente_id' => $op->cliente_id,
+                'deuda_id' => $op instanceof DeudaTributaria ? $op->id : null,
+                'operacion_id' => $op instanceof Operacion ? $op->id : $op->operacion_id,
+                'cliente_id' => $clienteId,
                 'cliente_codigo' => (string) $numCliente,
                 'cliente_razon' => $op->cliente->razon_social ?? 'Empresa sin nombre',
                 'cliente_ruc' => $op->cliente->ruc ?? '',
@@ -131,5 +123,35 @@ class ControlDeudaController extends Controller
             'totalRecaudado',
             'totalSaldoPorCobrar',
         ));
+    }
+
+    /**
+     * Cada tributo es una fila. Las deudas antiguas sin detalle siguen saliendo de la operación.
+     *
+     * @param  array<int, int>|null  $clienteIds
+     * @return Collection<int, DeudaTributaria|Operacion>
+     */
+    private function filasDeuda(?array $clienteIds): Collection
+    {
+        $hijas = DeudaTributaria::query()
+            ->with(['operacion.cliente', 'abonos'])
+            ->whereHas('operacion', function ($query) use ($clienteIds) {
+                $query->where('tiene_deuda', true);
+                if (! empty($clienteIds)) {
+                    $query->whereIn('cliente_id', $clienteIds);
+                }
+            })
+            ->get();
+
+        $legacy = Operacion::query()
+            ->where('tiene_deuda', true)
+            ->whereDoesntHave('deudasTributarias')
+            ->with(['cliente', 'abonosDeuda'])
+            ->when(! empty($clienteIds), fn ($query) => $query->whereIn('cliente_id', $clienteIds))
+            ->get();
+
+        return $hijas->concat($legacy)->sortBy(function (DeudaTributaria|Operacion $fila) {
+            return $fila->vencimiento_deuda?->timestamp ?? PHP_INT_MAX;
+        })->values();
     }
 }

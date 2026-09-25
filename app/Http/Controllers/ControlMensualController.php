@@ -3,13 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TipoTributoSunat;
+use App\Models\AbonoDeuda;
 use App\Models\Cliente;
 use App\Models\CronogramaSunat;
+use App\Models\DeudaTributaria;
 use App\Models\Operacion;
 use App\Services\CronogramaSunatService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ControlMensualController extends Controller
@@ -57,7 +60,7 @@ class ControlMensualController extends Controller
                         ->where('mes_baja', '>=', "{$anio}-01");
                 });
         })
-            ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $this->periodosDelAnio($anio))->with('abonosDeuda')])
+            ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $this->periodosDelAnio($anio))->with(['abonosDeuda', 'deudasTributarias.abonos'])])
             ->orderBy('numero')
             ->get();
 
@@ -150,16 +153,18 @@ class ControlMensualController extends Controller
                     'tributo_nombre_corto' => $op?->tributo_nombre_corto ?? 'IGV 18%',
                     'tributo_etiqueta' => $op?->tributo_etiqueta ?? '1011 - IGV Cuenta Propia 18%',
                     'es_igv_justo' => (bool) ($op?->es_igv_justo ?? false),
-                    'monto_deuda_inicial' => (float) ($op->monto_deuda_inicial ?? 0),
+                    'monto_deuda_inicial' => $op ? $this->montoDeudaMes($op) : 0,
                     'vencimiento_deuda' => $op?->vencimiento_deuda ? $op->vencimiento_deuda->format('Y-m-d') : ($op?->es_igv_justo ? '' : $vencimientoOficialPdt),
                     'vencimiento_deuda_dmy' => $op?->vencimiento_deuda ? $op->vencimiento_deuda->format('d/m/Y') : ($op?->es_igv_justo ? '' : $vencimientoOficialPdtDmy),
                     'vencimiento_oficial_pdt' => $vencimientoOficialPdt,
                     'vencimiento_oficial_pdt_dmy' => $vencimientoOficialPdtDmy,
-                    'saldo_pendiente' => (float) ($op?->saldo_pendiente ?? 0),
-                    'total_abonado' => (float) ($op?->total_abonado ?? 0),
+                    'saldo_pendiente' => $op ? $this->saldoDeudaMes($op) : 0,
+                    'total_abonado' => $op ? $this->abonadoDeudaMes($op) : 0,
                     'operacion_id' => $op?->id,
+                    'deudas' => $op ? $this->arregloDeudas($op, $vencimientoOficialPdt, $vencimientoOficialPdtDmy) : [],
                     'abonos' => $op?->abonosDeuda ? $op->abonosDeuda->sortByDesc('fecha_pago')->map(fn ($abono) => [
                         'id' => $abono->id,
+                        'deuda_tributaria_id' => $abono->deuda_tributaria_id,
                         'monto' => (float) $abono->monto,
                         'monto_formateado' => $abono->monto_formateado,
                         'fecha_pago' => $abono->fecha_pago?->format('d/m/Y') ?? '',
@@ -359,6 +364,9 @@ class ControlMensualController extends Controller
                 'estado_pago_honorarios' => ['nullable', 'string', 'in:Pendiente,Pagado'],
                 'tiene_deuda' => ['nullable', 'boolean'],
                 'descartar_deuda' => ['nullable', 'boolean'],
+                'guardar_tributo' => ['nullable', 'boolean'],
+                'deuda_id' => ['nullable', 'integer'],
+                'eliminar_deuda_id' => ['nullable', 'integer'],
                 'tributo_codigo' => ['nullable', 'string', 'max:20'],
                 'es_igv_justo' => ['nullable', 'boolean'],
                 'monto_deuda_inicial' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
@@ -398,9 +406,29 @@ class ControlMensualController extends Controller
                 $operacion->notas = $validated['notas'];
             }
 
-            if ($request->has('tiene_deuda')) {
+            if ($request->filled('eliminar_deuda_id')) {
+                if (! $operacion->exists) {
+                    $operacion->save();
+                }
+                $deuda = $operacion->deudasTributarias()->whereKey($validated['eliminar_deuda_id'])->first();
+                if ($deuda) {
+                    $deuda->abonos()->delete();
+                    $deuda->delete();
+                }
+                $operacion->refrescarResumenDeudas();
+                $operacion->tiene_deuda = $operacion->deudasTributarias()->exists()
+                    ? true
+                    : (bool) ($validated['tiene_deuda'] ?? false);
+            } elseif ($request->boolean('guardar_tributo')) {
+                if (! $operacion->exists) {
+                    $operacion->tiene_deuda = true;
+                    $operacion->save();
+                }
+                $this->upsertDeudaTributaria($operacion, $validated);
+            } elseif ($request->has('tiene_deuda')) {
                 $operacion->tiene_deuda = $validated['tiene_deuda'];
-                if ($validated['tiene_deuda']) {
+                $conservarDetalle = $operacion->exists && $operacion->deudasTributarias()->exists();
+                if ($validated['tiene_deuda'] && ! $conservarDetalle) {
                     $operacion->tributo_codigo = $validated['tributo_codigo'] ?? ($operacion->tributo_codigo ?: '1011');
                     $operacion->es_igv_justo = $request->boolean('es_igv_justo');
                     if (array_key_exists('monto_deuda_inicial', $validated) && $validated['monto_deuda_inicial'] !== null) {
@@ -410,9 +438,11 @@ class ControlMensualController extends Controller
                         $operacion->vencimiento_deuda = $validated['vencimiento_deuda'];
                     }
                 }
-                // Apagar el interruptor conserva monto y abonos mientras el panel sigue abierto.
-                // Al cerrarlo con el interruptor apagado, descartar_deuda borra esa deuda para siempre.
                 if (! $validated['tiene_deuda'] && $request->boolean('descartar_deuda')) {
+                    $operacion->deudasTributarias()->get()->each(function (DeudaTributaria $deuda): void {
+                        $deuda->abonos()->delete();
+                        $deuda->delete();
+                    });
                     $operacion->tributo_codigo = null;
                     $operacion->es_igv_justo = false;
                     $operacion->monto_deuda_inicial = null;
@@ -424,7 +454,7 @@ class ControlMensualController extends Controller
             }
 
             $operacion->save();
-            $operacion->load('abonosDeuda');
+            $operacion->load(['abonosDeuda', 'deudasTributarias.abonos']);
 
             $cliente = $operacion->cliente ?? Cliente::find($validated['cliente_id']);
             $cronogramaService = app(CronogramaSunatService::class);
@@ -452,8 +482,9 @@ class ControlMensualController extends Controller
                 'vencimiento_oficial_pdt_dmy' => $vencimientoOficialPdtDmy,
                 'total_abonado' => $operacion->total_abonado,
                 'total_abonado_formateado' => $operacion->total_abonado_formateado,
-                'saldo_pendiente' => $operacion->saldo_pendiente,
-                'saldo_pendiente_formateado' => $operacion->saldo_pendiente_formateado,
+                'saldo_pendiente' => $this->saldoDeudaMes($operacion),
+                'saldo_pendiente_formateado' => 'S/ '.number_format($this->saldoDeudaMes($operacion), 2),
+                'deudas' => $this->arregloDeudas($operacion, $vencimientoOficialPdt, $vencimientoOficialPdtDmy),
                 'abonos' => $operacion->abonosDeuda->sortByDesc('fecha_pago')->map(fn ($abono) => [
                     'id' => $abono->id,
                     'monto' => (float) $abono->monto,
@@ -575,7 +606,7 @@ class ControlMensualController extends Controller
         $operacion = Operacion::where([
             'cliente_id' => $validated['cliente_id'],
             'periodo' => $validated['periodo'],
-        ])->with('abonosDeuda')->first();
+        ])->with(['abonosDeuda', 'deudasTributarias.abonos'])->first();
 
         if (! $operacion) {
             return response()->json([
@@ -592,6 +623,7 @@ class ControlMensualController extends Controller
                 'vencimiento_oficial_pdt' => $oficialPdtStr,
                 'vencimiento_oficial_pdt_dmy' => $oficialPdtDmy,
                 'abonos' => [],
+                'deudas' => [],
                 'total_abonado' => 0,
                 'saldo_pendiente' => 0,
                 'tributos_disponibles' => TipoTributoSunat::opciones(),
@@ -621,9 +653,180 @@ class ControlMensualController extends Controller
             ])->values(),
             'total_abonado' => $operacion->total_abonado,
             'total_abonado_formateado' => $operacion->total_abonado_formateado,
-            'saldo_pendiente' => $operacion->saldo_pendiente,
-            'saldo_pendiente_formateado' => $operacion->saldo_pendiente_formateado,
+            'saldo_pendiente' => $this->saldoDeudaMes($operacion),
+            'saldo_pendiente_formateado' => 'S/ '.number_format($this->saldoDeudaMes($operacion), 2),
+            'deudas' => $this->arregloDeudas($operacion, $oficialPdtStr, $oficialPdtDmy),
             'tributos_disponibles' => TipoTributoSunat::opciones(),
         ]);
+    }
+
+    private function upsertDeudaTributaria(Operacion $operacion, array $validated): void
+    {
+        $codigo = (string) ($validated['tributo_codigo'] ?? '');
+        if (TipoTributoSunat::tryFrom($codigo) === null) {
+            throw ValidationException::withMessages([
+                'tributo_codigo' => 'Seleccione un tributo SUNAT válido.',
+            ]);
+        }
+
+        $monto = array_key_exists('monto_deuda_inicial', $validated) ? $validated['monto_deuda_inicial'] : null;
+        if ($monto === null || (float) $monto <= 0) {
+            throw ValidationException::withMessages([
+                'monto_deuda_inicial' => 'Ingrese el monto de la deuda de este tributo.',
+            ]);
+        }
+
+        $deuda = null;
+        if (! empty($validated['deuda_id'])) {
+            $deuda = $operacion->deudasTributarias()->whereKey($validated['deuda_id'])->first();
+            if (! $deuda) {
+                throw ValidationException::withMessages([
+                    'deuda_id' => 'El tributo indicado no pertenece a este periodo.',
+                ]);
+            }
+        }
+
+        $duplicado = $operacion->deudasTributarias()
+            ->where('tributo_codigo', $codigo)
+            ->when($deuda, fn ($query) => $query->whereKeyNot($deuda->id))
+            ->exists();
+
+        if ($duplicado) {
+            throw ValidationException::withMessages([
+                'tributo_codigo' => 'Ese tributo ya está registrado en este mes.',
+            ]);
+        }
+
+        $abonado = $deuda ? (float) $deuda->abonos()->sum('monto') : 0;
+        if ((float) $monto + 0.001 < $abonado) {
+            throw ValidationException::withMessages([
+                'monto_deuda_inicial' => 'El monto no puede ser menor que los pagos ya registrados de este tributo.',
+            ]);
+        }
+
+        $esPrimera = $operacion->deudasTributarias()->doesntExist();
+        if (! $deuda) {
+            $deuda = new DeudaTributaria([
+                'operacion_id' => $operacion->id,
+                'estudio_id' => $operacion->estudio_id,
+            ]);
+        }
+
+        $deuda->fill([
+            'tributo_codigo' => $codigo,
+            'es_igv_justo' => $codigo === TipoTributoSunat::Igv18->value && (bool) ($validated['es_igv_justo'] ?? false),
+            'monto_deuda_inicial' => $monto,
+            'vencimiento_deuda' => $validated['vencimiento_deuda'] ?? null,
+        ]);
+        $deuda->save();
+
+        if ($esPrimera) {
+            $operacion->abonosDeuda()->whereNull('deuda_tributaria_id')->update([
+                'deuda_tributaria_id' => $deuda->id,
+            ]);
+        }
+
+        $operacion->refrescarResumenDeudas();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function arregloDeudas(Operacion $operacion, string $vencimientoOficial = '', string $vencimientoOficialDmy = ''): array
+    {
+        $deudas = $operacion->relationLoaded('deudasTributarias')
+            ? $operacion->deudasTributarias
+            : $operacion->deudasTributarias()->with('abonos')->get();
+
+        if ($deudas->isNotEmpty()) {
+            return $deudas->map(fn (DeudaTributaria $deuda) => $this->serializarDeuda($deuda))->values()->all();
+        }
+
+        if (! $operacion->tiene_deuda && ! $operacion->monto_deuda_inicial && $operacion->abonosDeuda->isEmpty()) {
+            return [];
+        }
+
+        $codigo = $operacion->tributo_codigo ?: '1011';
+
+        return [[
+            'id' => null,
+            'operacion_id' => $operacion->id,
+            'tributo_codigo' => $codigo,
+            'tributo_nombre' => TipoTributoSunat::obtenerNombre($codigo, 'IGV Cuenta Propia 18%'),
+            'tributo_nombre_corto' => TipoTributoSunat::obtenerNombreCorto($codigo, 'IGV 18%'),
+            'tributo_etiqueta' => TipoTributoSunat::tryFrom($codigo)?->etiquetaCompleta() ?? $codigo,
+            'es_igv_justo' => (bool) $operacion->es_igv_justo,
+            'monto_deuda_inicial' => (float) ($operacion->monto_deuda_inicial ?? 0),
+            'vencimiento_deuda' => $operacion->vencimiento_deuda?->format('Y-m-d') ?: ($operacion->es_igv_justo ? '' : $vencimientoOficial),
+            'vencimiento_deuda_dmy' => $operacion->vencimiento_deuda?->format('d/m/Y') ?: ($operacion->es_igv_justo ? '' : $vencimientoOficialDmy),
+            'total_abonado' => (float) $operacion->total_abonado,
+            'saldo_pendiente' => (float) $operacion->saldo_pendiente,
+            'abonos' => $this->serializarAbonos($operacion->abonosDeuda),
+        ]];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializarDeuda(DeudaTributaria $deuda): array
+    {
+        $deuda->loadMissing('abonos');
+
+        return [
+            'id' => $deuda->id,
+            'operacion_id' => $deuda->operacion_id,
+            'tributo_codigo' => $deuda->tributo_codigo,
+            'tributo_nombre' => $deuda->tributo_nombre,
+            'tributo_nombre_corto' => $deuda->tributo_nombre_corto,
+            'tributo_etiqueta' => $deuda->tributo_etiqueta,
+            'es_igv_justo' => (bool) $deuda->es_igv_justo,
+            'monto_deuda_inicial' => (float) $deuda->monto_deuda_inicial,
+            'vencimiento_deuda' => $deuda->vencimiento_deuda?->format('Y-m-d') ?? '',
+            'vencimiento_deuda_dmy' => $deuda->vencimiento_deuda?->format('d/m/Y') ?? '',
+            'total_abonado' => (float) $deuda->total_abonado,
+            'saldo_pendiente' => (float) $deuda->saldo_pendiente,
+            'abonos' => $this->serializarAbonos($deuda->abonos),
+        ];
+    }
+
+    /**
+     * @param  iterable<int, AbonoDeuda>  $abonos
+     * @return array<int, array<string, mixed>>
+     */
+    private function serializarAbonos(iterable $abonos): array
+    {
+        return collect($abonos)->sortByDesc(fn ($abono) => $abono->fecha_pago?->timestamp ?? 0)->map(fn ($abono) => [
+            'id' => $abono->id,
+            'deuda_tributaria_id' => $abono->deuda_tributaria_id,
+            'monto' => (float) $abono->monto,
+            'monto_formateado' => $abono->monto_formateado,
+            'fecha_pago' => $abono->fecha_pago?->format('d/m/Y') ?? '',
+            'observacion' => $abono->observacion ?? '',
+        ])->values()->all();
+    }
+
+    private function montoDeudaMes(Operacion $operacion): float
+    {
+        $deudas = $operacion->relationLoaded('deudasTributarias') ? $operacion->deudasTributarias : collect();
+        if ($deudas->isNotEmpty()) {
+            return round((float) $deudas->sum(fn (DeudaTributaria $deuda) => (float) $deuda->monto_deuda_inicial), 2);
+        }
+
+        return (float) ($operacion->monto_deuda_inicial ?? 0);
+    }
+
+    private function abonadoDeudaMes(Operacion $operacion): float
+    {
+        $deudas = $operacion->relationLoaded('deudasTributarias') ? $operacion->deudasTributarias : collect();
+        if ($deudas->isNotEmpty()) {
+            return round((float) $deudas->sum(fn (DeudaTributaria $deuda) => (float) $deuda->total_abonado), 2);
+        }
+
+        return (float) $operacion->total_abonado;
+    }
+
+    private function saldoDeudaMes(Operacion $operacion): float
+    {
+        return max(0, round($this->montoDeudaMes($operacion) - $this->abonadoDeudaMes($operacion), 2));
     }
 }

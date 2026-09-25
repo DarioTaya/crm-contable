@@ -85,6 +85,39 @@ class Operacion extends Model
     }
 
     /**
+     * Tributos adeudados en este periodo. Cada uno lleva sus propios abonos.
+     */
+    public function deudasTributarias(): HasMany
+    {
+        return $this->hasMany(DeudaTributaria::class, 'operacion_id');
+    }
+
+    /**
+     * Copia en la operación el resumen del mes para el anillo de la matriz.
+     * El detalle por tributo vive en deuda_tributarias.
+     */
+    public function refrescarResumenDeudas(): void
+    {
+        $deudas = $this->deudasTributarias()->get();
+
+        if ($deudas->isEmpty()) {
+            $this->monto_deuda_inicial = 0;
+            $this->tributo_codigo = null;
+            $this->es_igv_justo = false;
+            $this->vencimiento_deuda = null;
+
+            return;
+        }
+
+        $this->monto_deuda_inicial = round((float) $deudas->sum(fn (DeudaTributaria $deuda) => (float) $deuda->monto_deuda_inicial), 2);
+        $referencia = $deudas->sortBy(fn (DeudaTributaria $deuda) => $deuda->vencimiento_deuda?->timestamp ?? PHP_INT_MAX)->first();
+        $this->tributo_codigo = $referencia->tributo_codigo;
+        $this->es_igv_justo = (bool) $referencia->es_igv_justo;
+        $this->vencimiento_deuda = $referencia->vencimiento_deuda;
+        $this->tiene_deuda = true;
+    }
+
+    /**
      * Instancia del enum del tributo SUNAT si fue seleccionado.
      */
     public function tributoEnum(): ?TipoTributoSunat

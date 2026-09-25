@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AbonoDeuda;
 use App\Models\Cliente;
+use App\Models\DeudaTributaria;
 use App\Models\Estudio;
 use App\Models\Operacion;
 use App\Models\User;
@@ -353,5 +354,73 @@ class ControlDeudasTest extends TestCase
         $this->assertNull($operacion->monto_deuda_inicial);
         $this->assertNull($operacion->vencimiento_deuda);
         $this->assertDatabaseMissing('abonos_deudas', ['id' => $abono->id]);
+    }
+
+    public function test_un_mes_puede_registrar_varios_tributos_con_pagos_independientes(): void
+    {
+        $this->postJson(route('control.update'), [
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'guardar_tributo' => true,
+            'tributo_codigo' => '1011',
+            'monto_deuda_inicial' => 800,
+            'vencimiento_deuda' => '2026-09-18',
+        ])->assertOk();
+
+        $this->postJson(route('control.update'), [
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'guardar_tributo' => true,
+            'tributo_codigo' => '3121',
+            'monto_deuda_inicial' => 200,
+            'vencimiento_deuda' => '2026-09-18',
+        ])->assertOk();
+
+        $this->postJson(route('control.update'), [
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'guardar_tributo' => true,
+            'tributo_codigo' => '5210',
+            'monto_deuda_inicial' => 150,
+            'vencimiento_deuda' => '2026-09-18',
+        ])->assertOk()
+            ->assertJsonPath('saldo_pendiente', 1150);
+
+        $duplicado = $this->postJson(route('control.update'), [
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'guardar_tributo' => true,
+            'tributo_codigo' => '1011',
+            'monto_deuda_inicial' => 50,
+            'vencimiento_deuda' => '2026-09-18',
+        ]);
+        $duplicado->assertStatus(422);
+
+        $igv = DeudaTributaria::where('tributo_codigo', '1011')->first();
+        $renta = DeudaTributaria::where('tributo_codigo', '3121')->first();
+
+        $this->postJson(route('abonos_deudas.store'), [
+            'operacion_id' => $igv->operacion_id,
+            'deuda_tributaria_id' => $igv->id,
+            'monto' => 300,
+            'fecha_pago' => '2026-09-20',
+        ])->assertOk()
+            ->assertJsonPath('saldo_pendiente', 500);
+
+        $renta->refresh();
+        $this->assertEquals(200.0, (float) $renta->saldo_pendiente);
+
+        $response = $this->get(route('control_deudas.index'));
+        $response->assertOk();
+        $response->assertSee('IGV 18%');
+        $response->assertSee('Renta MYPE 1%');
+        $response->assertSee('EsSalud');
+        $response->assertSee('800.00');
+        $response->assertSee('200.00');
+        $response->assertSee('150.00');
     }
 }

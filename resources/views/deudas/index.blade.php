@@ -1068,7 +1068,8 @@ function controlDeudas(initialDeudas, clientesList, totalDeudaHistorica, totalRe
                         'Accept': 'application/json',
                     },
                     body: JSON.stringify({
-                        operacion_id: this.modalDeudaId,
+                        operacion_id: this.getDeudaLive(this.modalDeudaId)?.operacion_id || this.modalDeudaId,
+                        deuda_tributaria_id: this.getDeudaLive(this.modalDeudaId)?.deuda_id || null,
                         monto: montoLimpio,
                         fecha_pago: this.abonoFecha,
                         observacion: this.abonoObs || null,

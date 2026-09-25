@@ -22,6 +22,7 @@ class AbonoDeuda extends Model
     protected $fillable = [
         'estudio_id',
         'operacion_id',
+        'deuda_tributaria_id',
         'monto',
         'fecha_pago',
         'observacion',
@@ -73,6 +74,11 @@ class AbonoDeuda extends Model
     public function operacion(): BelongsTo
     {
         return $this->belongsTo(Operacion::class, 'operacion_id');
+    }
+
+    public function deudaTributaria(): BelongsTo
+    {
+        return $this->belongsTo(DeudaTributaria::class, 'deuda_tributaria_id');
     }
 
     /**
