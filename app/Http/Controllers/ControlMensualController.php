@@ -184,7 +184,7 @@ class ControlMensualController extends Controller
             ];
         }
 
-        $tributosDisponibles = TipoTributoSunat::opciones();
+        $tributosDisponibles = TipoTributoSunat::listaSelector();
 
         return view('control.index', array_merge(compact(
             'anio',

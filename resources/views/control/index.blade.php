@@ -278,12 +278,12 @@
                                                     {{ match ($m['estado'] ?? 'Pendiente') { 'Declarado' => '🟢', 'Procesando' => '🟡', default => '⚪' } }}
                                                 </span>
                                                 <svg
-                                                    x-show="tieneDeudaDeclarada()"
+                                                    x-show="tieneDeudaDeclarada() || deudaPagadaDeclarada()"
                                                     x-cloak
                                                     class="absolute inset-0 h-6 w-6 pointer-events-none"
                                                     viewBox="0 0 24 24"
                                                 >
-                                                    <circle cx="12" cy="12" r="6.8" fill="none" stroke="#ef4444" stroke-width="2.4" />
+                                                    <circle cx="12" cy="12" r="6.8" fill="none" stroke-width="2.4" :stroke="tieneDeudaDeclarada() ? '#ef4444' : '#7c3aed'" />
                                                 </svg>
                                             </button>
 
@@ -494,8 +494,8 @@
                                                                     <div>
                                                                         <label class="block text-[10px] font-bold text-gray-600 uppercase mb-1">Tipo de Impuesto / Tributo SUNAT</label>
                                                                         <select x-model="deuda.tributo_codigo" class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 bg-white shadow-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-medium">
-                                                                            <template x-for="(label, code) in tributosDisponibles" :key="code">
-                                                                                <option :value="code" x-text="label" :disabled="tributoUsadoPorOtra(code, deuda)"></option>
+                                                                            <template x-for="tributo in tributosDisponibles" :key="tributo.codigo">
+                                                                                <option :value="tributo.codigo" x-text="tributo.etiqueta" :disabled="tributoUsadoPorOtra(tributo.codigo, deuda)"></option>
                                                                             </template>
                                                                         </select>
                                                                     </div>
@@ -927,6 +927,14 @@
                     return m.estado === 'Declarado' && this.tieneDeudaConSaldo();
                 },
 
+                deudaPagadaDeclarada() {
+                    const m = this.meses[this.mesIdx];
+                    if (m.estado !== 'Declarado' || !m.tiene_deuda || this.tieneDeudaConSaldo()) {
+                        return false;
+                    }
+                    return parseFloat(m.total_abonado ?? 0) > 0;
+                },
+
                 mostrarHoverDeuda(el) {
                     if (!this.tieneDeudaConSaldo() || this.openDJ) {
                         return;
@@ -1228,19 +1236,18 @@
                 },
 
                 nombreTributo(codigo) {
-                    const etiqueta = this.tributosDisponibles[codigo] || '';
-                    const partes = String(etiqueta).split(' - ');
-                    return partes.length > 1 ? partes.slice(1).join(' - ') : (etiqueta || 'Tributo');
+                    const tributo = (this.tributosDisponibles || []).find(item => item.codigo === codigo);
+                    return tributo?.nombre || 'Tributo';
                 },
 
                 primerCodigoLibre() {
                     const usados = this.deudas.map(d => d.tributo_codigo);
-                    const libre = Object.keys(this.tributosDisponibles).find(code => !usados.includes(code));
-                    return libre || '1011';
+                    const libre = (this.tributosDisponibles || []).find(item => !usados.includes(item.codigo));
+                    return libre ? libre.codigo : '1011';
                 },
 
                 puedeAgregarTributo() {
-                    return Object.keys(this.tributosDisponibles).some(code => !this.deudas.some(d => d.tributo_codigo === code));
+                    return (this.tributosDisponibles || []).some(item => !this.deudas.some(d => d.tributo_codigo === item.codigo));
                 },
 
                 tributoUsadoPorOtra(codigo, deuda) {

@@ -423,4 +423,111 @@ class ControlDeudasTest extends TestCase
         $response->assertSee('200.00');
         $response->assertSee('150.00');
     }
+
+    public function test_historial_archivado_agrupa_por_anio_solo_los_tributos_pagados(): void
+    {
+        $archivada = Cliente::create([
+            'estudio_id' => $this->estudio->id,
+            'razon_social' => 'ARCHIVADA SUNAT SAC',
+            'ruc' => '20999111001',
+            'regimen_tributario' => 'MYPE',
+            'estado' => 'activo',
+        ]);
+        $pendiente = Cliente::create([
+            'estudio_id' => $this->estudio->id,
+            'razon_social' => 'PENDIENTE DEUDA SAC',
+            'ruc' => '20999111002',
+            'regimen_tributario' => 'MYPE',
+            'estado' => 'activo',
+        ]);
+        $parcial = Cliente::create([
+            'estudio_id' => $this->estudio->id,
+            'razon_social' => 'PARCIAL DEUDA SAC',
+            'ruc' => '20999111003',
+            'regimen_tributario' => 'MYPE',
+            'estado' => 'activo',
+        ]);
+
+        $this->guardarTributo($archivada->id, '08-2026', '1011', 800);
+        $igv = DeudaTributaria::where('tributo_codigo', '1011')->whereHas('operacion', fn ($q) => $q->where('cliente_id', $archivada->id))->first();
+        $this->postJson(route('abonos_deudas.store'), [
+            'operacion_id' => $igv->operacion_id,
+            'deuda_tributaria_id' => $igv->id,
+            'monto' => 800,
+            'fecha_pago' => '2026-09-20',
+        ])->assertOk();
+
+        $this->guardarTributo($archivada->id, '03-2025', '5210', 120);
+        $essalud = DeudaTributaria::where('tributo_codigo', '5210')->first();
+        $this->postJson(route('abonos_deudas.store'), [
+            'operacion_id' => $essalud->operacion_id,
+            'deuda_tributaria_id' => $essalud->id,
+            'monto' => 120,
+            'fecha_pago' => '2025-04-10',
+        ])->assertOk();
+
+        $this->guardarTributo($pendiente->id, '09-2026', '3121', 450);
+        $this->guardarTributo($parcial->id, '07-2026', '3031', 300);
+        $renta = DeudaTributaria::where('tributo_codigo', '3031')->first();
+        $this->postJson(route('abonos_deudas.store'), [
+            'operacion_id' => $renta->operacion_id,
+            'deuda_tributaria_id' => $renta->id,
+            'monto' => 100,
+            'fecha_pago' => '2026-08-01',
+        ])->assertOk();
+
+        $vigentes = $this->get(route('control_deudas.index'));
+        $vigentes->assertOk();
+        $vigentes->assertSee('Historial archivado');
+        $vigentes->assertSee('PENDIENTE DEUDA SAC');
+        $vigentes->assertSee('PARCIAL DEUDA SAC');
+        $vigentes->assertDontSee('ARCHIVADA SUNAT SAC');
+
+        $archivo = $this->get(route('control_deudas.archivadas'));
+        $archivo->assertOk();
+        $archivo->assertSee('Historial archivado');
+        $archivo->assertSee('2026');
+        $archivo->assertSee('2025');
+        $archivo->assertSee('Agosto');
+        $archivo->assertSee('Marzo');
+        $archivo->assertSee('ARCHIVADA SUNAT SAC');
+        $archivo->assertSee('IGV 18%');
+        $archivo->assertSee('EsSalud');
+        $archivo->assertDontSee('PENDIENTE DEUDA SAC');
+        $archivo->assertDontSee('PARCIAL DEUDA SAC');
+        $archivo->assertSee('Deudas pendientes');
+        $archivo->assertSee('Todos los ejercicios');
+        $archivo->assertSee('Todos los meses');
+        $archivo->assertSee('Todos los clientes');
+        $archivo->assertSee('Todos los tributos');
+        $archivo->assertSee('Deuda original');
+        $archivo->assertSee('Vencimiento');
+        $archivo->assertSee('08-2026');
+        $archivo->assertSee('03-2025');
+        $archivo->assertSee('18/09/2026');
+        $archivo->assertSee('20/09/2026');
+        $archivo->assertSee('10/04/2025');
+        $archivo->assertSee('800.00');
+        $archivo->assertSee('120.00');
+        $archivo->assertSee('S/ 0.00');
+        $archivo->assertSee('20999111001');
+        $archivo->assertSee('IGV - OPER. INT. - CTA. PROPIA');
+        $archivo->assertSee('ESSALUD SEG REGULAR TRABAJADOR');
+        $archivo->assertSee('Ver pagos');
+        $archivo->assertDontSee('20999111002');
+        $archivo->assertDontSee('20999111003');
+    }
+
+    private function guardarTributo(int $clienteId, string $periodo, string $codigo, float $monto): void
+    {
+        $this->postJson(route('control.update'), [
+            'cliente_id' => $clienteId,
+            'periodo' => $periodo,
+            'tiene_deuda' => true,
+            'guardar_tributo' => true,
+            'tributo_codigo' => $codigo,
+            'monto_deuda_inicial' => $monto,
+            'vencimiento_deuda' => '2026-09-18',
+        ])->assertOk();
+    }
 }

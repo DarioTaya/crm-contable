@@ -167,87 +167,13 @@
 
         {{-- Botonera Superior --}}
         <div class="flex items-center flex-wrap gap-2">
-            {{-- Botón: Filtrar por Cliente (Multi-Select Popover) --}}
-            <div class="relative z-50" @click.away="filterOpen = false">
-                <button
-                    @click="filterOpen = !filterOpen"
-                    type="button"
-                    class="inline-flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs font-bold text-gray-700 shadow-xs transition hover:bg-gray-50 hover:border-gray-400 active:scale-95"
-                    :class="{'ring-2 ring-brand-500/20 border-brand-500 text-brand-700': isFilteringClients}">
-                    <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.539.092.917.56.917 1.107v2.304a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.785c0-.547.378-1.015.917-1.107a48.51 48.51 0 0 1 8.083-.678Z" />
-                    </svg>
-                    <span>Filtrar Clientes</span>
-                    <span class="rounded-full px-1.5 py-0.2 text-[10px] font-black"
-                          :class="isFilteringClients ? 'bg-brand-100 text-brand-800' : 'bg-gray-100 text-gray-600'"
-                          x-text="filterLabel">
-                        Todos ({{ count($clientesConDeuda) }})
-                    </span>
-                    <svg class="h-3.5 w-3.5 text-gray-400 transition-transform duration-200" :class="{'rotate-180': filterOpen}" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                    </svg>
-                </button>
-
-                {{-- Panel Desplegable del Filtro Multi-Cliente --}}
-                <div x-show="filterOpen" x-cloak
-                     x-transition:enter="transition ease-out duration-150"
-                     x-transition:enter-start="opacity-0 translate-y-1 scale-95"
-                     x-transition:enter-end="opacity-100 translate-y-0 scale-100"
-                     x-transition:leave="transition ease-in duration-100"
-                     x-transition:leave-start="opacity-100 translate-y-0 scale-100"
-                     x-transition:leave-end="opacity-0 translate-y-1 scale-95"
-                     class="filter-panel absolute right-0 mt-2 z-50 w-80 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-xl ring-1 ring-black/5">
-                    <div class="flex items-center justify-between pb-2.5 border-b border-gray-100">
-                        <p class="text-xs font-bold text-gray-900">Seleccionar Clientes</p>
-                        <div class="flex items-center gap-2">
-                            <button @click="seleccionarTodos()" type="button" class="text-[11px] font-bold text-brand-600 hover:text-brand-700">Todos</button>
-                            <span class="text-gray-300">|</span>
-                            <button @click="deseleccionarTodos()" type="button" class="text-[11px] font-bold text-gray-500 hover:text-gray-700">Limpiar</button>
-                        </div>
-                    </div>
-
-                    {{-- Buscador rápido de clientes dentro del desplegable --}}
-                    <div class="mt-2.5 relative">
-                        <input type="text"
-                               x-model="searchClientFilter"
-                               placeholder="Buscar por razón social o RUC..."
-                               class="w-full rounded-lg border border-gray-200 bg-gray-50/70 px-2.5 py-1.5 pl-8 text-xs text-gray-800 placeholder-gray-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">
-                        <svg class="absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                        </svg>
-                    </div>
-
-                    {{-- Lista de clientes con checkbox y contador de deudas --}}
-                    <div class="mt-2 max-h-56 overflow-y-auto space-y-1 divide-y divide-gray-50 pr-1">
-                        <template x-for="cli in clientesFiltradosEnDropdown" :key="cli.id">
-                            <label class="flex items-center justify-between gap-2 rounded-lg p-1.5 hover:bg-gray-50 cursor-pointer select-none transition">
-                                <div class="flex items-center gap-2 min-w-0">
-                                    <input type="checkbox"
-                                           :value="String(cli.id)"
-                                           x-model="selectedClientes"
-                                           class="h-3.5 w-3.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500">
-                                    <span class="font-mono text-[10px] font-bold text-gray-500 shrink-0" x-text="cli.numero_formateado"></span>
-                                    <span class="truncate text-xs font-semibold text-gray-800" x-text="cli.razon_social"></span>
-                                </div>
-                                <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-gray-600 shrink-0"
-                                      x-text="cli.total_deudas"></span>
-                            </label>
-                        </template>
-                        <div x-show="clientesFiltradosEnDropdown.length === 0" class="p-3 text-center text-xs text-gray-400">
-                            No se encontraron clientes
-                        </div>
-                    </div>
-
-                    <div class="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between">
-                        <span class="text-[11px] text-gray-500" x-text="selectedClientes.length + ' de ' + clientes.length + ' seleccionados'"></span>
-                        <button @click="filterOpen = false"
-                                type="button"
-                                class="rounded-lg bg-gray-900 px-3 py-1 text-xs font-bold text-white hover:bg-black transition">
-                            Listo
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <a href="{{ route('control_deudas.archivadas') }}"
+               class="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-bold text-violet-800 shadow-xs transition hover:bg-violet-100 hover:border-violet-300 active:scale-95">
+                <svg class="h-4 w-4 text-violet-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+                </svg>
+                Historial archivado
+            </a>
 
             {{-- Botón: Exportar a PDF --}}
             <button
@@ -389,16 +315,99 @@
     </div>
 
     {{-- ═══════════════════════════════ TABLA DE CONTROL DE DEUDAS (Enterprise Grade) ═══════════════════════════════ --}}
-    <div class="rounded-2xl border border-gray-200 bg-white shadow-xs overflow-hidden">
+    <div class="rounded-2xl border border-gray-200 bg-white shadow-xs">
         {{-- Barra de Herramientas de la Tabla --}}
-        <div class="no-print px-5 py-3.5 border-b border-gray-200 bg-gray-50/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div class="flex items-center gap-2">
-                <span class="flex h-2.5 w-2.5 rounded-full bg-rose-500"></span>
-                <h3 class="text-sm font-black text-gray-800 tracking-tight">Obligaciones Tributarias y Pagos Parciales</h3>
+        <div class="no-print relative z-20 rounded-t-2xl px-5 py-3.5 border-b border-gray-200 bg-gray-50/70 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="flex min-w-0 items-center gap-2">
+                <span class="flex h-2.5 w-2.5 shrink-0 rounded-full bg-rose-500"></span>
+                <h3 class="truncate text-sm font-black text-gray-800 tracking-tight">Obligaciones Tributarias y Pagos Parciales</h3>
+            </div>
+
+            <div class="ml-auto flex shrink-0 items-center justify-end gap-2">
+            {{-- Botón: Filtrar por Cliente (Multi-Select Popover) --}}
+            <div class="relative z-50 shrink-0" @click.away="filterOpen = false">
+                <button
+                    @click="filterOpen = !filterOpen"
+                    type="button"
+                    class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-bold text-gray-700 shadow-xs transition hover:bg-gray-50 hover:border-gray-400 active:scale-95"
+                    :class="{'ring-2 ring-brand-500/20 border-brand-500 text-brand-700': isFilteringClients}">
+                    <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.539.092.917.56.917 1.107v2.304a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.785c0-.547.378-1.015.917-1.107a48.51 48.51 0 0 1 8.083-.678Z" />
+                    </svg>
+                    <span>Filtrar Clientes</span>
+                    <span class="rounded-full px-1.5 py-0.2 text-[10px] font-black"
+                          :class="isFilteringClients ? 'bg-brand-100 text-brand-800' : 'bg-gray-100 text-gray-600'"
+                          x-text="filterLabel">
+                        Todos ({{ count($clientesConDeuda) }})
+                    </span>
+                    <svg class="h-3.5 w-3.5 text-gray-400 transition-transform duration-200" :class="{'rotate-180': filterOpen}" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                </button>
+
+                {{-- Panel Desplegable del Filtro Multi-Cliente --}}
+                <div x-show="filterOpen" x-cloak
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 translate-y-1 scale-95"
+                     x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-1 scale-95"
+                     class="filter-panel absolute right-0 mt-2 z-50 w-80 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-xl ring-1 ring-black/5">
+                    <div class="flex items-center justify-between pb-2.5 border-b border-gray-100">
+                        <p class="text-xs font-bold text-gray-900">Seleccionar Clientes</p>
+                        <div class="flex items-center gap-2">
+                            <button @click="seleccionarTodos()" type="button" class="text-[11px] font-bold text-brand-600 hover:text-brand-700">Todos</button>
+                            <span class="text-gray-300">|</span>
+                            <button @click="deseleccionarTodos()" type="button" class="text-[11px] font-bold text-gray-500 hover:text-gray-700">Limpiar</button>
+                        </div>
+                    </div>
+
+                    {{-- Buscador rápido de clientes dentro del desplegable --}}
+                    <div class="mt-2.5 relative">
+                        <input type="text"
+                               x-model="searchClientFilter"
+                               placeholder="Buscar por razón social o RUC..."
+                               class="w-full rounded-lg border border-gray-200 bg-gray-50/70 px-2.5 py-1.5 pl-8 text-xs text-gray-800 placeholder-gray-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">
+                        <svg class="absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                        </svg>
+                    </div>
+
+                    {{-- Lista de clientes con checkbox y contador de deudas --}}
+                    <div class="mt-2 max-h-56 overflow-y-auto space-y-1 divide-y divide-gray-50 pr-1">
+                        <template x-for="cli in clientesFiltradosEnDropdown" :key="cli.id">
+                            <label class="flex items-center justify-between gap-2 rounded-lg p-1.5 hover:bg-gray-50 cursor-pointer select-none transition">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <input type="checkbox"
+                                           :value="String(cli.id)"
+                                           x-model="selectedClientes"
+                                           class="h-3.5 w-3.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+                                    <span class="font-mono text-[10px] font-bold text-gray-500 shrink-0" x-text="cli.numero_formateado"></span>
+                                    <span class="truncate text-xs font-semibold text-gray-800" x-text="cli.razon_social"></span>
+                                </div>
+                                <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-gray-600 shrink-0"
+                                      x-text="cli.total_deudas"></span>
+                            </label>
+                        </template>
+                        <div x-show="clientesFiltradosEnDropdown.length === 0" class="p-3 text-center text-xs text-gray-400">
+                            No se encontraron clientes
+                        </div>
+                    </div>
+
+                    <div class="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between">
+                        <span class="text-[11px] text-gray-500" x-text="selectedClientes.length + ' de ' + clientes.length + ' seleccionados'"></span>
+                        <button @click="filterOpen = false"
+                                type="button"
+                                class="rounded-lg bg-gray-900 px-3 py-1 text-xs font-bold text-white hover:bg-black transition">
+                            Listo
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {{-- Buscador en tiempo real dentro de la tabla --}}
-            <div class="relative w-full sm:w-72">
+            <div class="relative shrink-0 sm:w-72">
                 <input type="text"
                        x-model="searchTable"
                        placeholder="Buscar por cliente, RUC, periodo o tributo..."
@@ -411,6 +420,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                     </svg>
                 </button>
+            </div>
             </div>
         </div>
 
@@ -425,7 +435,7 @@
                 <p class="text-gray-500 text-xs mt-1">Todas las obligaciones tributarias con SUNAT se encuentran debidamente canceladas.</p>
             </div>
         @else
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto rounded-b-2xl">
                 <table class="w-full text-left print-table">
                     <thead>
                         <tr class="bg-gray-50/90 border-b border-gray-200 text-gray-600 text-[11px] font-bold uppercase tracking-wider">

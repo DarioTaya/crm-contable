@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
 
     // Control de Deudas (Dashboard)
     Route::get('/control-deudas', [ControlDeudaController::class, 'index'])->name('control_deudas.index');
+    Route::get('/control-deudas/archivadas', [ControlDeudaController::class, 'archivadas'])->name('control_deudas.archivadas');
 
     // Abonos de Deudas
     Route::post('/abonos-deudas', [AbonoDeudaController::class, 'store'])->name('abonos_deudas.store');

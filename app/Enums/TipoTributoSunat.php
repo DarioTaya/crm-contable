@@ -8,15 +8,16 @@ namespace App\Enums;
 enum TipoTributoSunat: string
 {
     case Igv18 = '1011';
-    case Igv105 = '1016';
-    case RentaMype = '3121';
     case RentaEspecial = '3111';
+    case RentaMype = '3121';
     case RentaGeneral = '3031';
+    case RentaRegularizacion = '3081';
+    case RentaCuarta = '3042';
+    case RentaQuinta = '3052';
     case EsSalud = '5210';
     case Onp = '5310';
-    case RentaCuarta = '3041';
-    case RentaQuinta = '3051';
     case Afp = 'AFP';
+    case Igv105 = '1016';
 
     /**
      * Denominación oficial del tributo SUNAT.
@@ -24,16 +25,17 @@ enum TipoTributoSunat: string
     public function descripcion(): string
     {
         return match ($this) {
-            self::Igv18 => 'IGV Cuenta Propia 18%',
+            self::Igv18 => 'IGV - OPER. INT. - CTA. PROPIA',
             self::Igv105 => 'IGV Restaurantes y Hoteles 10.5% (Ley 31556)',
-            self::RentaMype => 'Renta Régimen MYPE Tributario 1%',
-            self::RentaEspecial => 'Renta Régimen Especial (RER) 1.5%',
-            self::RentaGeneral => 'Renta Régimen General / Coeficiente',
-            self::EsSalud => 'EsSalud Seguro Regular (Ley 26790)',
-            self::Onp => 'ONP Sistema Nacional de Pensiones (Ley 19990)',
-            self::RentaCuarta => 'Renta 4ta Categoría (Trabajadores Independientes)',
-            self::RentaQuinta => 'Renta 5ta Categoría (Planilla)',
-            self::Afp => 'Aportes Previsionales AFP (Prima / Fondo / Comisión)',
+            self::RentaEspecial => 'RENTA - REGIMEN ESPECIAL',
+            self::RentaMype => 'RENTA - REGIMEN MYPE TRIBUTARIO',
+            self::RentaGeneral => 'RENTA-3RA. CATEGOR.-CTA. PROPIA',
+            self::RentaRegularizacion => 'RENTA - REGULARIZ. - PERS. JUR.',
+            self::RentaCuarta => 'RENTA 4TA. CATEG. RETENCIONES',
+            self::RentaQuinta => 'RENTA 5TA. CATEG. RETENCIONES',
+            self::EsSalud => 'ESSALUD SEG REGULAR TRABAJADOR',
+            self::Onp => 'SNP - LEY 19990',
+            self::Afp => 'APORTES AFP (PRIMA / FONDO / COMISIÓN)',
         };
     }
 
@@ -45,13 +47,14 @@ enum TipoTributoSunat: string
         return match ($this) {
             self::Igv18 => 'IGV 18%',
             self::Igv105 => 'IGV 10.5%',
-            self::RentaMype => 'Renta MYPE 1%',
             self::RentaEspecial => 'Renta RER 1.5%',
+            self::RentaMype => 'Renta MYPE 1%',
             self::RentaGeneral => 'Renta General',
-            self::EsSalud => 'EsSalud',
-            self::Onp => 'ONP',
+            self::RentaRegularizacion => 'Renta Regularización',
             self::RentaCuarta => 'Renta 4ta',
             self::RentaQuinta => 'Renta 5ta',
+            self::EsSalud => 'EsSalud',
+            self::Onp => 'ONP',
             self::Afp => 'AFP',
         };
     }
@@ -62,6 +65,18 @@ enum TipoTributoSunat: string
     public function etiquetaCompleta(): string
     {
         return "{$this->value} - {$this->descripcion()}";
+    }
+
+    /**
+     * Texto exacto del selector de Control de Deuda y Pagos.
+     */
+    public function etiquetaSelector(): string
+    {
+        if ($this === self::Afp) {
+            return 'AFP - APORTES AFP (PRIMA / FONDO / COMISIÓN)';
+        }
+
+        return "{$this->value} {$this->descripcion()}";
     }
 
     /**
@@ -80,6 +95,44 @@ enum TipoTributoSunat: string
     }
 
     /**
+     * Tributos del selector, en el orden fijo de la caja de deuda.
+     *
+     * @return list<array{codigo: string, etiqueta: string, nombre: string}>
+     */
+    public static function listaSelector(): array
+    {
+        $lista = [];
+        foreach (self::cases() as $caso) {
+            if ($caso === self::Igv105) {
+                continue;
+            }
+            $lista[] = [
+                'codigo' => $caso->value,
+                'etiqueta' => $caso->etiquetaSelector(),
+                'nombre' => $caso->descripcion(),
+            ];
+        }
+
+        return $lista;
+    }
+
+    /**
+     * Resuelve códigos vigentes y los anteriores 3041/3051.
+     */
+    public static function resolver(?string $codigo): ?self
+    {
+        if ($codigo === null || $codigo === '') {
+            return null;
+        }
+
+        return match ($codigo) {
+            '3041' => self::RentaCuarta,
+            '3051' => self::RentaQuinta,
+            default => self::tryFrom($codigo),
+        };
+    }
+
+    /**
      * Resuelve el nombre del tributo dado un código o devuelve un valor por defecto.
      */
     public static function obtenerNombre(?string $codigo, string $default = 'Tributo SUNAT'): string
@@ -88,7 +141,7 @@ enum TipoTributoSunat: string
             return $default;
         }
 
-        return self::tryFrom($codigo)?->descripcion() ?? $codigo;
+        return self::resolver($codigo)?->descripcion() ?? $codigo;
     }
 
     /**
@@ -100,6 +153,6 @@ enum TipoTributoSunat: string
             return $default;
         }
 
-        return self::tryFrom($codigo)?->nombreCorto() ?? $codigo;
+        return self::resolver($codigo)?->nombreCorto() ?? $codigo;
     }
 }
