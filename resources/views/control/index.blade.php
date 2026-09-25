@@ -266,11 +266,6 @@
                                         {{-- CONTROL 1: DJ (Declaración Jurada + Control de Deudas) --}}
                                         <div x-data="controlCeldaDJ({{ $item['cliente']->id }}, {{ $idx }}, meses, @js($tributosDisponibles))"
                                              class="relative flex-1 flex items-center justify-center">
-                                            @php
-                                                $estadoInicial = $m['estado'] ?? 'Pendiente';
-                                                $tieneDeudaInicial = !empty($m['tiene_deuda']) && floatval($m['saldo_pendiente'] ?? $m['monto_deuda_inicial'] ?? 0) > 0;
-                                                $tieneDeudaDeclaradaInicial = ($estadoInicial === 'Declarado') && $tieneDeudaInicial;
-                                            @endphp
                                             <button
                                                 type="button"
                                                 @click="abrirMenuDJ($el)"
@@ -285,7 +280,7 @@
                                                 <svg
                                                     x-show="tieneDeudaDeclarada()"
                                                     x-cloak
-                                                    class="absolute inset-0 h-6 w-6 pointer-events-none {{ $tieneDeudaDeclaradaInicial ? '' : 'hidden' }}"
+                                                    class="absolute inset-0 h-6 w-6 pointer-events-none"
                                                     viewBox="0 0 24 24"
                                                 >
                                                     <circle cx="12" cy="12" r="6.8" fill="none" stroke="#ef4444" stroke-width="2.4" />
