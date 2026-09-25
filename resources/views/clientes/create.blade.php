@@ -9,8 +9,15 @@
               action="{{ route('clientes.store') }}"
               x-ref="form"
               @submit.prevent="handleSubmit()"
+              autocomplete="off"
               class="space-y-8">
             @csrf
+
+            {{-- El navegador vuelca aquí el usuario y la clave guardados, y no en Clave SOL ni Client ID. --}}
+            <div aria-hidden="true">
+                <input type="text" tabindex="-1" autocomplete="username" style="position:fixed;left:-10000px;top:0;width:200px;height:40px;" aria-hidden="true">
+                <input type="password" tabindex="-1" autocomplete="current-password" style="position:fixed;left:-10000px;top:0;width:200px;height:40px;" aria-hidden="true">
+            </div>
 
             {{-- ═══════════════════════════ SECCIÓN 1: DATOS FISCALES ═══════════════════════════ --}}
             <div class="rounded-xl border border-gray-200 bg-white shadow-xs">
@@ -61,8 +68,8 @@
                                 id="ruc"
                                 name="ruc"
                                 x-model="ruc"
-                                @input="onRucInput()"
-                                @blur="verificarRucEnServidor()"
+                                @input="onRucInput($event)"
+                                @blur="buscarRucSiEstaCompleto()"
                                 maxlength="11"
                                 placeholder="20601234567"
                                 required
@@ -430,7 +437,16 @@
                                         id="clave_sol"
                                         name="clave_sol"
                                         x-model="claveSol"
-                                        @input="onSolChange()"
+                                        autocomplete="new-password"
+                                        autocapitalize="off"
+                                        spellcheck="false"
+                                        data-1p-ignore
+                                        data-lpignore="true"
+                                        data-valor-inicial=""
+                                        readonly
+                                        @focus="prepararCampoManual($event)"
+                                        @input="registrarEdicionManual($event, 'clave')"
+                                        @blur="revertirCampoSiNoFueEditado('clave_sol', false)"
                                         placeholder="••••••••"
                                         class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 pr-10 text-sm font-mono text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                     >
@@ -501,11 +517,16 @@
                                     id="sunat_client_id"
                                     name="sunat_client_id"
                                     value="{{ old('sunat_client_id') }}"
+                                    data-valor-inicial="{{ old('sunat_client_id') }}"
                                     autocomplete="off"
                                     autocapitalize="off"
                                     spellcheck="false"
                                     data-1p-ignore
                                     data-lpignore="true"
+                                    readonly
+                                    @focus="prepararCampoManual($event)"
+                                    @input="registrarEdicionManual($event, 'clientId')"
+                                    @blur="revertirCampoSiNoFueEditado('sunat_client_id', false)"
                                     placeholder="Solo si ya lo tienes"
                                     class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm font-mono text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                 >
@@ -1096,6 +1117,12 @@
                 departamento: '{{ old('departamento', '') }}',
                 usuarioSol: '{{ old('usuario_sol', '') }}',
                 claveSol: '',
+                claveSolTocada: false,
+                clientIdTocado: false,
+                rucConsultaSeq: 0,
+                rucEnConsulta: '',
+                rucSincronizado: '',
+                ultimoRucProcesado: '{{ old('ruc', '') }}',
 
                 mostrarClaveSol: false,
                 mostrarClaveApi: false,
@@ -1125,17 +1152,90 @@
 
                 init() {
                     if (this.ruc.length === 11) {
+                        this.rucEnConsulta = this.ruc;
                         this.validarRucCompleto();
                     }
+
+                    this.$nextTick(() => this.vigilarAutocompletado());
+                },
+
+                vigilarAutocompletado() {
+                    [80, 400, 1200].forEach((espera) => {
+                        setTimeout(() => this.revertirAutocompletado(), espera);
+                    });
+                },
+
+                prepararCampoManual(event) {
+                    const el = event.target;
+                    window.setTimeout(() => {
+                        if (document.activeElement === el) {
+                            el.removeAttribute('readonly');
+                        }
+                    }, 0);
+                },
+
+                registrarEdicionManual(event, campo) {
+                    if (event?.inputType === 'insertReplacementText') {
+                        return;
+                    }
+
+                    if (campo === 'clave') {
+                        this.claveSolTocada = true;
+                        this.onSolChange();
+                        return;
+                    }
+
+                    this.clientIdTocado = true;
+                },
+
+                revertirAutocompletado() {
+                    this.revertirCampoSiNoFueEditado('clave_sol', true);
+                    this.revertirCampoSiNoFueEditado('sunat_client_id', true);
+                },
+
+                revertirCampoSiNoFueEditado(id, desdeTimer = false) {
+                    const el = document.getElementById(id);
+                    if (!el || (desdeTimer && document.activeElement === el)) {
+                        return;
+                    }
+
+                    const tocado = id === 'clave_sol' ? this.claveSolTocada : this.clientIdTocado;
+                    if (tocado) {
+                        return;
+                    }
+
+                    const inicial = el.dataset.valorInicial || '';
+                    if (el.value !== inicial) {
+                        el.value = inicial;
+                        if (id === 'clave_sol') {
+                            this.claveSol = inicial;
+                        }
+                    }
+
+                    el.setAttribute('readonly', 'readonly');
                 },
 
                 // ─── LÓGICA DE VALIDACIÓN RUC (MÓDULO 11 OFICIAL SUNAT) ───────
-                onRucInput() {
-                    // Filtrar sólo números
-                    this.ruc = this.ruc.replace(/\D/g, '').slice(0, 11);
+                onRucInput(event) {
+                    const crudo = event?.target?.value ?? this.ruc;
+                    const limpio = String(crudo).replace(/\D/g, '').slice(0, 11);
+                    if (event?.target && event.target.value !== limpio) {
+                        event.target.value = limpio;
+                    }
+
+                    this.ruc = limpio;
+
+                    if (limpio === this.ultimoRucProcesado) {
+                        return;
+                    }
+
+                    this.ultimoRucProcesado = limpio;
                     this.solValidado = false;
+                    this.rucConsultaSeq++;
 
                     if (this.ruc.length === 0) {
+                        this.rucEnConsulta = '';
+                        this.rucSincronizado = '';
                         this.rucInfo = {
                             status: 'idle',
                             message: '',
@@ -1156,17 +1256,27 @@
 
                     if (this.ruc.length < 11) {
                         this.rucInfo = {
-                            status: 'validating',
-                            message: `Ingrese los 11 dígitos (${this.ruc.length}/11)`,
-                            badgeText: 'Escribiendo...',
+                            status: 'idle',
+                            message: '',
+                            badgeText: 'Esperando RUC',
                             tipo: ''
                         };
                         return;
                     }
 
-                    if (this.ruc.length === 11) {
-                        this.validarRucCompleto();
+                    this.rucEnConsulta = this.ruc;
+                    this.validarRucCompleto();
+                },
+
+                buscarRucSiEstaCompleto() {
+                    if (this.ruc.length !== 11 || this.ruc === this.rucEnConsulta) {
+                        return;
                     }
+
+                    this.ultimoRucProcesado = this.ruc;
+                    this.rucEnConsulta = this.ruc;
+                    this.rucConsultaSeq++;
+                    this.validarRucCompleto();
                 },
 
                 validarRucChecksum(ruc) {
@@ -1229,6 +1339,9 @@
                 async verificarRucEnServidor() {
                     if (this.ruc.length !== 11 || this.rucInfo.status === 'invalid') return;
 
+                    const seq = this.rucConsultaSeq;
+                    const rucConsultado = this.ruc;
+
                     this.rucInfo.status = 'validating';
                     this.rucInfo.badgeText = 'Consultando...';
 
@@ -1241,10 +1354,14 @@
                                 'X-CSRF-TOKEN': token,
                                 'Accept': 'application/json'
                             },
-                            body: JSON.stringify({ ruc: this.ruc })
+                            body: JSON.stringify({ ruc: rucConsultado })
                         });
 
                         const data = await res.json();
+                        if (seq !== this.rucConsultaSeq || this.ruc !== rucConsultado) {
+                            return;
+                        }
+
                         if (data.duplicate) {
                             this.rucInfo = {
                                 status: 'duplicate',
@@ -1257,36 +1374,71 @@
                             this.rucInfo.badgeText = '✓ RUC Válido';
                             this.rucInfo.message = data.message;
 
-                            // Auto-completar Razón Social / Denominación de SUNAT si no ha sido ingresada
-                            if (data.razon_social && (!this.razonSocial || this.razonSocial.trim() === '')) {
-                                this.razonSocial = data.razon_social;
-                                this.razonSocialAuto = true;
+                            const reemplazar = this.rucSincronizado !== '' && this.rucSincronizado !== rucConsultado && Boolean(data.razon_social);
+                            this.aplicarDatosSunat(data, reemplazar);
+                            if (data.razon_social) {
+                                this.rucSincronizado = rucConsultado;
                             }
-                            if (data.estado_sunat) {
-                                this.estadoContribuyente = data.estado_sunat;
-                            }
-                            if (data.condicion_sunat) {
-                                this.condicionDomicilio = data.condicion_sunat;
-                            }
-                            if (data.tipo_persona) {
-                                this.tipoContribuyente = data.tipo_persona;
-                            }
-                            if (data.direccion_sunat && (!this.direccionFiscal || this.direccionFiscal.trim() === '')) {
-                                this.direccionFiscal = data.direccion_sunat;
-                                this.direccionFiscalAuto = true;
-                            }
-                            if (data.ubigeo) this.ubigeo = data.ubigeo;
-                            if (data.distrito) this.distrito = data.distrito;
-                            if (data.provincia) this.provincia = data.provincia;
-                            if (data.departamento) this.departamento = data.departamento;
                         } else if (data.message) {
                             this.rucInfo.status = 'invalid';
                             this.rucInfo.badgeText = 'RUC Inválido';
                             this.rucInfo.message = data.message;
                         }
                     } catch (_) {
+                        if (seq !== this.rucConsultaSeq || this.ruc !== rucConsultado) {
+                            return;
+                        }
                         this.rucInfo.status = 'valid';
                         this.rucInfo.badgeText = '✓ RUC Válido';
+                    }
+                },
+
+                aplicarDatosSunat(data, reemplazar) {
+                    if (data.razon_social && (reemplazar || !this.razonSocial || this.razonSocial.trim() === '')) {
+                        this.razonSocial = data.razon_social;
+                        this.razonSocialAuto = true;
+                    }
+                    if (data.estado_sunat) {
+                        this.estadoContribuyente = data.estado_sunat;
+                    } else if (reemplazar) {
+                        this.estadoContribuyente = '';
+                    }
+                    if (data.condicion_sunat) {
+                        this.condicionDomicilio = data.condicion_sunat;
+                    } else if (reemplazar) {
+                        this.condicionDomicilio = '';
+                    }
+                    if (data.tipo_persona) {
+                        this.tipoContribuyente = data.tipo_persona;
+                    } else if (reemplazar) {
+                        this.tipoContribuyente = '';
+                    }
+                    if (data.direccion_sunat && (reemplazar || !this.direccionFiscal || this.direccionFiscal.trim() === '')) {
+                        this.direccionFiscal = data.direccion_sunat;
+                        this.direccionFiscalAuto = true;
+                    } else if (reemplazar) {
+                        this.direccionFiscal = '';
+                        this.direccionFiscalAuto = false;
+                    }
+                    if (data.ubigeo) {
+                        this.ubigeo = data.ubigeo;
+                    } else if (reemplazar) {
+                        this.ubigeo = '';
+                    }
+                    if (data.distrito) {
+                        this.distrito = data.distrito;
+                    } else if (reemplazar) {
+                        this.distrito = '';
+                    }
+                    if (data.provincia) {
+                        this.provincia = data.provincia;
+                    } else if (reemplazar) {
+                        this.provincia = '';
+                    }
+                    if (data.departamento) {
+                        this.departamento = data.departamento;
+                    } else if (reemplazar) {
+                        this.departamento = '';
                     }
                 },
 
