@@ -16,7 +16,7 @@
 
         // Posicionamiento inteligente y sin parpadeo para menús y popovers flotantes
         window.ubicarMenuFlotante = function (panel, ancla, intento) {
-            if (!panel || !ancla) {
+            if (!panel || !ancla || panel._reposicionPendiente) {
                 return;
             }
 
@@ -75,6 +75,9 @@
             // Escuchar cambios de tamaño dinámicos (ej: al activar switches o abrir acordeones) para reajustar posición de inmediato
             if (!panel._menuResizeObserver && typeof ResizeObserver !== 'undefined') {
                 panel._menuResizeObserver = new ResizeObserver(function () {
+                    if (panel._reposicionPendiente) {
+                        return;
+                    }
                     if (panel._anclaMenu && panel.style.display !== 'none' && panel.offsetParent !== null) {
                         window.ubicarMenuFlotante(panel, panel._anclaMenu);
                     }

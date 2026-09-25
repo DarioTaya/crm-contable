@@ -340,7 +340,7 @@
                                                 data-menu-flotante
                                                 @click.outside="openDJ = false"
                                                 class="fixed z-50 max-w-[95vw] rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl text-left max-h-[calc(100vh-24px)] overflow-y-auto"
-                                                style="width: 490px;"
+                                                style="width: 460px;"
                                             >
                                                 {{-- Encabezado con Tabs en una sola línea --}}
                                                 <div class="border-b border-gray-100 pb-2.5 mb-3">
@@ -490,7 +490,7 @@
                                                                     </div>
                                                                 </button>
 
-                                                                <div x-show="deudaAbierta === dIdx" class="border-t border-slate-100 p-3 space-y-2.5 bg-slate-50">
+                                                                <div x-show="deudaAbierta === dIdx" data-deuda-formulario class="border-t border-slate-100 p-3 space-y-2.5 bg-slate-50">
                                                                     <div>
                                                                         <label class="block text-[10px] font-bold text-gray-600 uppercase mb-1">Tipo de Impuesto / Tributo SUNAT</label>
                                                                         <select x-model="deuda.tributo_codigo" class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 bg-white shadow-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-medium">
@@ -853,16 +853,16 @@
                     }
                     this.$watch('openDJ', (abierto) => {
                         if (!abierto) {
-                            this.descartarDeudaAlCerrar();
+                            const apagadoAProposito = !this.tieneDeuda;
+                            this.revertirDeudaNoGuardada();
+                            if (apagadoAProposito) {
+                                this.descartarDeudaAlCerrar();
+                            }
                         }
                     });
                     window.addEventListener('pagehide', () => this.descartarDeudaAlCerrar(true));
                     this.$watch('tieneDeuda', () => {
-                        this.$nextTick(() => {
-                            if (this.$refs.menuDJ && this.$refs.menuDJ._anclaMenu) {
-                                window.ubicarMenuFlotante(this.$refs.menuDJ, this.$refs.menuDJ._anclaMenu);
-                            }
-                        });
+                        this.reubicarMenuDeudaCompleto();
                     });
                     this.$watch('activeTab', () => {
                         this.$nextTick(() => {
@@ -1004,18 +1004,60 @@
                     this.openDJ = false;
                 },
 
-                async toggleTieneDeuda() {
-                    this.tieneDeuda = !this.tieneDeuda;
-                    this.meses[this.mesIdx].tiene_deuda = this.tieneDeuda;
+                hayTributoGuardado() {
+                    const locales = (this.deudas || []).some((deuda) => !!deuda.id);
+                    const delMes = (this.meses[this.mesIdx].deudas || []).some((deuda) => !!deuda.id);
+                    return locales || delMes;
+                },
 
-                    this.$nextTick(() => {
-                        if (this.$refs.menuDJ && this.$refs.menuDJ._anclaMenu) {
-                            window.ubicarMenuFlotante(this.$refs.menuDJ, this.$refs.menuDJ._anclaMenu);
+                reubicarMenuDeudaCompleto() {
+                    const menu = this.$refs.menuDJ;
+                    if (!menu || !menu._anclaMenu) {
+                        return;
+                    }
+                    menu._reposicionPendiente = true;
+                    menu.style.visibility = 'hidden';
+                    let intentos = 0;
+                    const mostrar = () => {
+                        const formulario = menu.querySelector('[data-deuda-formulario]');
+                        const formularioVisible = formulario && getComputedStyle(formulario).display !== 'none';
+                        const listo = !this.tieneDeuda || formularioVisible;
+                        if (!listo && intentos < 8) {
+                            intentos += 1;
+                            requestAnimationFrame(mostrar);
+                            return;
                         }
-                    });
+                        requestAnimationFrame(() => {
+                            menu._reposicionPendiente = false;
+                            window.ubicarMenuFlotante(menu, menu._anclaMenu);
+                        });
+                    };
+                    this.$nextTick(() => requestAnimationFrame(mostrar));
+                },
 
-                    if (!this.tieneDeuda) {
-                        // Guardar en cache local antes de apagar el switch
+                revertirDeudaNoGuardada() {
+                    if (this.hayTributoGuardado()) {
+                        this.deudas = this.deudas.filter((deuda) => !!deuda.id);
+                        return;
+                    }
+
+                    const persistido = !!this.meses[this.mesIdx].tiene_deuda;
+                    this.tieneDeuda = false;
+                    this.meses[this.mesIdx].tiene_deuda = false;
+                    this.deudas = [];
+                    this.deudaAbierta = -1;
+                    if (persistido) {
+                        this.sincronizarToggleDeuda(false);
+                    }
+                },
+
+                async toggleTieneDeuda() {
+                    const activar = !this.tieneDeuda;
+
+                    if (!activar) {
+                        this.tieneDeuda = false;
+                        this.meses[this.mesIdx].tiene_deuda = false;
+
                         const montoLimpio = this.limpiarMoneda(this.montoDeuda);
                         if (montoLimpio > 0 || this.vencimientoDeuda || (this.abonos && this.abonos.length > 0)) {
                             this.cacheDeuda = {
@@ -1033,47 +1075,47 @@
                             };
                         }
 
-                        // Sincronizar en BD desactivación sin borrar datos existentes
                         await this.sincronizarToggleDeuda(false);
-                    } else {
-                        this.deudaDescartada = false;
-                        // El usuario reactivó el switch: restaurar datos desde caché inmediatamente
-                        if (this.cacheDeuda) {
-                            this.montoDeuda = this.cacheDeuda.montoDeuda || '';
-                            this.vencimientoDeuda = this.cacheDeuda.vencimientoDeuda || '';
-                            this.tributoCodigo = this.cacheDeuda.tributoCodigo || '1011';
-                            this.esIgvJusto = !!this.cacheDeuda.esIgvJusto;
-                            this.editandoFechaManual = !!this.cacheDeuda.editandoFechaManual;
-                            this.abonos = [...(this.cacheDeuda.abonos || [])];
-                            this.meses[this.mesIdx].abonos = this.abonos;
-                            this.meses[this.mesIdx].monto_deuda_inicial = this.cacheDeuda.monto_deuda_inicial;
-                            this.meses[this.mesIdx].vencimiento_deuda = this.cacheDeuda.vencimientoDeuda;
-                            this.meses[this.mesIdx].vencimiento_deuda_dmy = this.cacheDeuda.vencimiento_deuda_dmy;
-                            this.meses[this.mesIdx].total_abonado = this.cacheDeuda.total_abonado;
-                            this.meses[this.mesIdx].saldo_pendiente = this.cacheDeuda.saldo_pendiente;
-                            this.meses[this.mesIdx].tributo_codigo = this.tributoCodigo;
-                            this.meses[this.mesIdx].es_igv_justo = this.esIgvJusto;
-                        }
+                        return;
+                    }
 
-                        if (!this.vencimientoDeuda && !this.esIgvJusto && this.vencimientoOficialPdt) {
-                            this.vencimientoDeuda = this.vencimientoOficialPdt;
-                        }
+                    this.deudaDescartada = false;
+                    if (this.cacheDeuda) {
+                        this.montoDeuda = this.cacheDeuda.montoDeuda || '';
+                        this.vencimientoDeuda = this.cacheDeuda.vencimientoDeuda || '';
+                        this.tributoCodigo = this.cacheDeuda.tributoCodigo || '1011';
+                        this.esIgvJusto = !!this.cacheDeuda.esIgvJusto;
+                        this.editandoFechaManual = !!this.cacheDeuda.editandoFechaManual;
+                        this.abonos = [...(this.cacheDeuda.abonos || [])];
+                        this.meses[this.mesIdx].abonos = this.abonos;
+                        this.meses[this.mesIdx].monto_deuda_inicial = this.cacheDeuda.monto_deuda_inicial;
+                        this.meses[this.mesIdx].vencimiento_deuda = this.cacheDeuda.vencimientoDeuda;
+                        this.meses[this.mesIdx].vencimiento_deuda_dmy = this.cacheDeuda.vencimiento_deuda_dmy;
+                        this.meses[this.mesIdx].total_abonado = this.cacheDeuda.total_abonado;
+                        this.meses[this.mesIdx].saldo_pendiente = this.cacheDeuda.saldo_pendiente;
+                        this.meses[this.mesIdx].tributo_codigo = this.tributoCodigo;
+                        this.meses[this.mesIdx].es_igv_justo = this.esIgvJusto;
+                    }
 
-                        if (!this.cacheDeuda && !this.deudaCargada) {
-                            await this.cargarDeuda();
-                        }
+                    if (!this.vencimientoDeuda && !this.esIgvJusto && this.vencimientoOficialPdt) {
+                        this.vencimientoDeuda = this.vencimientoOficialPdt;
+                    }
 
-                        // Sincronizar en BD reactivación
+                    if (this.deudas.length === 0) {
+                        this.agregarTributo();
+                    }
+
+                    this.tieneDeuda = true;
+                    if (this.hayTributoGuardado()) {
+                        this.meses[this.mesIdx].tiene_deuda = true;
                         await this.sincronizarToggleDeuda(true);
+                    }
+
+                    if (!this.cacheDeuda && !this.deudaCargada) {
+                        await this.cargarDeuda();
                         if (this.deudas.length === 0) {
                             this.agregarTributo();
                         }
-
-                        this.$nextTick(() => {
-                            if (this.$refs.menuDJ && this.$refs.menuDJ._anclaMenu) {
-                                window.ubicarMenuFlotante(this.$refs.menuDJ, this.$refs.menuDJ._anclaMenu);
-                            }
-                        });
                     }
                 },
 
