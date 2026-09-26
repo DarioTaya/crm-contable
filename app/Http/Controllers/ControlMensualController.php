@@ -184,14 +184,14 @@ class ControlMensualController extends Controller
             ];
         }
 
-        $tributosDisponibles = TipoTributoSunat::listaSelector();
+        $catalogoTributos = TipoTributoSunat::catalogoFormulario();
 
         return view('control.index', array_merge(compact(
             'anio',
             'aniosDisponibles',
             'mesesEncabezado',
             'matrizClientes',
-            'tributosDisponibles'
+            'catalogoTributos'
         ), $kpis));
     }
 
@@ -672,7 +672,7 @@ class ControlMensualController extends Controller
         $monto = array_key_exists('monto_deuda_inicial', $validated) ? $validated['monto_deuda_inicial'] : null;
         if ($monto === null || (float) $monto <= 0) {
             throw ValidationException::withMessages([
-                'monto_deuda_inicial' => 'Ingrese el monto de la deuda de este tributo.',
+                'monto_deuda_inicial' => 'Ingrese el monto a pagar de este tributo.',
             ]);
         }
 
@@ -752,6 +752,7 @@ class ControlMensualController extends Controller
             'id' => null,
             'operacion_id' => $operacion->id,
             'tributo_codigo' => $codigo,
+            'declaracion' => TipoTributoSunat::declaracionDe($codigo),
             'tributo_nombre' => TipoTributoSunat::obtenerNombre($codigo, 'IGV Cuenta Propia 18%'),
             'tributo_nombre_corto' => TipoTributoSunat::obtenerNombreCorto($codigo, 'IGV 18%'),
             'tributo_etiqueta' => TipoTributoSunat::tryFrom($codigo)?->etiquetaCompleta() ?? $codigo,
@@ -776,6 +777,7 @@ class ControlMensualController extends Controller
             'id' => $deuda->id,
             'operacion_id' => $deuda->operacion_id,
             'tributo_codigo' => $deuda->tributo_codigo,
+            'declaracion' => TipoTributoSunat::declaracionDe($deuda->tributo_codigo),
             'tributo_nombre' => $deuda->tributo_nombre,
             'tributo_nombre_corto' => $deuda->tributo_nombre_corto,
             'tributo_etiqueta' => $deuda->tributo_etiqueta,

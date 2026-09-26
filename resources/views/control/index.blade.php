@@ -264,7 +264,7 @@
                                     <div class="flex items-center justify-between gap-1 px-1 w-full h-full relative">
 
                                         {{-- CONTROL 1: DJ (Declaración Jurada + Control de Deudas) --}}
-                                        <div x-data="controlCeldaDJ({{ $item['cliente']->id }}, {{ $idx }}, meses, @js($tributosDisponibles))"
+                                        <div x-data="controlCeldaDJ({{ $item['cliente']->id }}, {{ $idx }}, meses, @js($catalogoTributos), @js($item['cliente']->regimen_tributario?->value), @js(\App\Enums\TipoTributoSunat::rentaDelRegimen($item['cliente']->regimen_tributario)?->value))"
                                              class="relative flex-1 flex items-center justify-center">
                                             <button
                                                 type="button"
@@ -306,7 +306,7 @@
                                                 </div>
 
                                                 <div class="space-y-1.5 text-xs leading-normal">
-                                                    <template x-for="deudaTip in (meses[{{ $idx }}].deudas || [])" :key="deudaTip.localKey || deudaTip.id || deudaTip.tributo_codigo">
+                                                    <template x-for="deudaTip in deudasPorPagar()" :key="deudaTip.localKey || deudaTip.id || deudaTip.tributo_codigo">
                                                         <div class="rounded-lg border border-gray-100 bg-gray-50/80 px-2.5 py-1.5">
                                                             <div class="flex items-center justify-between gap-2">
                                                                 <span class="font-bold text-gray-900 truncate" x-text="deudaTip.tributo_nombre_corto || deudaTip.tributo_nombre || 'Tributo'"></span>
@@ -332,7 +332,7 @@
                                                 </div>
                                             </div>
 
-                                            {{-- Miniventana Flotante Optimizada de 455px para DJ y Deudas --}}
+                                            {{-- Miniventana flotante de DJ y tributos. El ancho deja aire entre la leyenda IGV Justo y su interruptor. --}}
                                             <div
                                                 x-ref="menuDJ"
                                                 x-show="openDJ"
@@ -340,7 +340,7 @@
                                                 data-menu-flotante
                                                 @click.outside="openDJ = false"
                                                 class="fixed z-50 max-w-[95vw] rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl text-left max-h-[calc(100vh-24px)] overflow-y-auto"
-                                                style="width: 460px;"
+                                                style="width: 476px;"
                                             >
                                                 {{-- Encabezado con Tabs en una sola línea --}}
                                                 <div class="border-b border-gray-100 pb-2.5 mb-3">
@@ -373,7 +373,7 @@
                                                             :class="activeTab === 'deuda' ? 'border-b-2 border-brand-600 text-brand-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
                                                             class="flex-1 pb-2 text-center transition relative flex items-center justify-center gap-1.5 whitespace-nowrap"
                                                         >
-                                                            <span>Control de Deuda y Pagos</span>
+                                                            <span>Tributos y Pagos</span>
                                                             <template x-if="meses[mesIdx].tiene_deuda && meses[mesIdx].saldo_pendiente > 0">
                                                                 <span class="inline-flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
                                                             </template>
@@ -426,81 +426,87 @@
                                                     </button>
                                                 </div>
 
-                                                {{-- TAB 2: CONTROL DE DEUDA Y PAGOS --}}
+                                                {{-- TAB 2: TRIBUTOS Y PAGOS (PDT 621 + PDT 601) --}}
                                                 <div x-show="activeTab === 'deuda'" class="space-y-3 py-1">
-                                                    {{-- Switch: ¿Quedó deuda con SUNAT? --}}
-                                                    <div class="flex items-center justify-between rounded-xl bg-gray-50 p-3 border border-gray-200">
-                                                        <div>
-                                                            <span class="block text-xs font-bold text-gray-900">¿Quedó deuda con SUNAT en este mes?</span>
-                                                            <span class="block text-[11px] text-gray-500">IGV Justo, Fraccionamientos, multas o tributos pendientes.</span>
+                                                    <p class="text-[11px] leading-snug text-gray-500">
+                                                        Digite lo que salió a pagar en cada declaración. Los pagos siguen aquí. Solo el saldo por pagar entra a Control de Deudas.
+                                                    </p>
+
+                                                    <div class="grid grid-cols-3 gap-2">
+                                                        <div class="rounded-xl bg-gray-50 border border-gray-200 p-2 text-center">
+                                                            <p class="text-[9px] font-bold uppercase text-gray-500 tracking-wider">A pagar</p>
+                                                            <p class="text-xs font-black text-gray-800 mt-0.5" x-text="formatearMoneda(meses[mesIdx].monto_deuda_inicial)"></p>
                                                         </div>
-                                                        <button
-                                                            type="button"
-                                                            @click="toggleTieneDeuda()"
-                                                            :class="tieneDeuda ? 'bg-brand-600' : 'bg-gray-300'"
-                                                            class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
-                                                        >
-                                                            <span
-                                                                :class="tieneDeuda ? 'translate-x-5' : 'translate-x-0'"
-                                                                class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
-                                                            ></span>
-                                                        </button>
+                                                        <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-2 text-center">
+                                                            <p class="text-[9px] font-bold uppercase text-emerald-600 tracking-wider">Pagado</p>
+                                                            <p class="text-xs font-black text-emerald-600 mt-0.5" x-text="formatearMoneda(meses[mesIdx].total_abonado)"></p>
+                                                        </div>
+                                                        <div class="rounded-xl p-2 text-center border"
+                                                             :class="meses[mesIdx].saldo_pendiente > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'">
+                                                            <p class="text-[9px] font-bold uppercase tracking-wider"
+                                                               :class="meses[mesIdx].saldo_pendiente > 0 ? 'text-red-600' : 'text-gray-500'">Por pagar</p>
+                                                            <p class="text-xs font-black mt-0.5"
+                                                               :class="meses[mesIdx].saldo_pendiente > 0 ? 'text-red-600' : 'text-gray-600'"
+                                                               x-text="formatearMoneda(meses[mesIdx].saldo_pendiente)"></p>
+                                                        </div>
                                                     </div>
 
-                                                    {{-- Varios tributos del mismo mes, cada uno con sus pagos --}}
-                                                    <div x-show="tieneDeuda" class="space-y-3">
-                                                        <div class="grid grid-cols-3 gap-2">
-                                                            <div class="rounded-xl bg-gray-50 border border-gray-200 p-2 text-center">
-                                                                <p class="text-[9px] font-bold uppercase text-gray-500 tracking-wider">Deuda del mes</p>
-                                                                <p class="text-xs font-black text-gray-800 mt-0.5" x-text="formatearMoneda(meses[mesIdx].monto_deuda_inicial)"></p>
+                                                    <template x-for="bloque in declaraciones" :key="bloque.id">
+                                                        <section class="rounded-xl border border-slate-200 overflow-hidden bg-white">
+                                                            <div class="flex items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
+                                                                <p class="text-[11px] font-black tracking-wide text-gray-900">
+                                                                    <span x-text="bloque.titulo"></span>
+                                                                    <span class="font-semibold text-gray-400"> · </span>
+                                                                    <span class="font-semibold text-gray-600" x-text="bloque.detalle"></span>
+                                                                </p>
+                                                                <span class="text-[10px] font-mono font-bold shrink-0"
+                                                                      x-show="resumenBloque(bloque.id).hay"
+                                                                      :class="resumenBloque(bloque.id).saldo > 0 ? 'text-rose-600' : 'text-emerald-600'"
+                                                                      x-text="formatearMoneda(resumenBloque(bloque.id).saldo)"></span>
                                                             </div>
-                                                            <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-2 text-center">
-                                                                <p class="text-[9px] font-bold uppercase text-emerald-600 tracking-wider">Pagado</p>
-                                                                <p class="text-xs font-black text-emerald-600 mt-0.5" x-text="formatearMoneda(meses[mesIdx].total_abonado)"></p>
-                                                            </div>
-                                                            <div class="rounded-xl p-2 text-center border"
-                                                                 :class="meses[mesIdx].saldo_pendiente > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'">
-                                                                <p class="text-[9px] font-bold uppercase tracking-wider"
-                                                                   :class="meses[mesIdx].saldo_pendiente > 0 ? 'text-red-600' : 'text-gray-500'">Saldo del mes</p>
-                                                                <p class="text-xs font-black mt-0.5"
-                                                                   :class="meses[mesIdx].saldo_pendiente > 0 ? 'text-red-600' : 'text-gray-600'"
-                                                                   x-text="formatearMoneda(meses[mesIdx].saldo_pendiente)"></p>
-                                                            </div>
-                                                        </div>
 
-                                                        <p x-show="deudas.length === 0" class="text-[11px] text-gray-500 px-1">
-                                                            Agregue cada tributo que quedó pendiente en este periodo. Cada uno lleva su propio monto, vencimiento y pagos.
-                                                        </p>
+                                                            <div class="space-y-2 p-2">
+                                                                <p x-show="bloque.id === 'pdt_621' && regimen === 'RUS'" class="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] leading-snug text-amber-900">
+                                                                    NRUS no presenta PDT 621. Use esta sección solo si el régimen del cliente no corresponde.
+                                                                </p>
 
-                                                        <template x-for="(deuda, dIdx) in deudas" :key="deuda.localKey">
-                                                            <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
-                                                                <button type="button" @click="deudaAbierta = deudaAbierta === dIdx ? -1 : dIdx"
-                                                                        class="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-slate-50">
-                                                                    <div class="min-w-0">
-                                                                        <p class="text-xs font-bold text-gray-900 truncate" x-text="(deuda.id || deuda.monto_deuda_inicial) ? (deuda.tributo_nombre_corto || nombreTributo(deuda.tributo_codigo) || 'Tributo') : 'Nuevo tributo'"></p>
-                                                                        <p class="text-[10px] text-gray-500" x-show="deuda.id" x-text="deuda.vencimiento_deuda_dmy || deuda.vencimiento || 'Sin vencimiento'"></p>
-                                                                    </div>
-                                                                    <div class="flex items-center gap-2 shrink-0">
-                                                                        <span class="text-[11px] font-mono font-bold"
-                                                                              :class="deuda.saldo_pendiente > 0 ? 'text-rose-600' : 'text-emerald-600'"
-                                                                              x-text="(deuda.id || deuda.monto_deuda_inicial) ? formatearMoneda(deuda.saldo_pendiente) : 'Sin guardar'"></span>
-                                                                        <svg class="h-4 w-4 text-gray-400 transition" :class="deudaAbierta === dIdx ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                                                                        </svg>
-                                                                    </div>
+                                                                <button type="button"
+                                                                        x-show="tributosLibres(bloque).length && !borradorSinTributo(bloque.id)"
+                                                                        @click="agregarTributo('', bloque.id)"
+                                                                        class="flex w-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-600 transition hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700">
+                                                                    + Nuevo tributo
                                                                 </button>
 
-                                                                <div x-show="deudaAbierta === dIdx" data-deuda-formulario class="border-t border-slate-100 p-3 space-y-2.5 bg-slate-50">
-                                                                    <div>
-                                                                        <label class="block text-[10px] font-bold text-gray-600 uppercase mb-1">Tipo de Impuesto / Tributo SUNAT</label>
-                                                                        <select x-model="deuda.tributo_codigo" class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 bg-white shadow-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-medium">
-                                                                            <template x-for="tributo in tributosDisponibles" :key="tributo.codigo">
-                                                                                <option :value="tributo.codigo" x-text="tributo.etiqueta" :disabled="tributoUsadoPorOtra(tributo.codigo, deuda)"></option>
-                                                                            </template>
-                                                                        </select>
-                                                                    </div>
+                                                                <template x-for="deuda in deudasDelBloque(bloque.id)" :key="deuda.localKey">
+                                                                    <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                                                                        <button type="button" @click="deudaAbiertaKey = deudaAbiertaKey === deuda.localKey ? null : deuda.localKey"
+                                                                                class="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-slate-50">
+                                                                            <div class="min-w-0">
+                                                                                <p class="text-xs font-bold text-gray-900 truncate" x-text="deuda.tributo_nombre_corto || nombreTributo(deuda.tributo_codigo) || 'Tributo'"></p>
+                                                                                <p class="text-[10px] text-gray-500" x-show="deuda.id" x-text="deuda.vencimiento_deuda_dmy || deuda.vencimiento || 'Sin vencimiento'"></p>
+                                                                            </div>
+                                                                            <div class="flex items-center gap-2 shrink-0">
+                                                                                <span class="text-[11px] font-mono font-bold"
+                                                                                      :class="!(deuda.id || deuda.monto_deuda_inicial) ? 'text-gray-400' : (deuda.saldo_pendiente > 0 ? 'text-rose-600' : 'text-emerald-600')"
+                                                                                      x-text="(deuda.id || deuda.monto_deuda_inicial) ? formatearMoneda(deuda.saldo_pendiente) : 'Sin guardar'"></span>
+                                                                                <svg class="h-4 w-4 text-gray-400 transition" :class="deudaAbiertaKey === deuda.localKey ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                                                                </svg>
+                                                                            </div>
+                                                                        </button>
 
-                                                                    <div x-show="deuda.tributo_codigo === '1011'" class="rounded-xl border border-indigo-200 bg-indigo-50/70 p-2.5">
+                                                                        <div x-show="deudaAbiertaKey === deuda.localKey" data-deuda-formulario class="border-t border-slate-100 p-3 space-y-2.5 bg-slate-50">
+                                                                            <div>
+                                                                                <label class="block text-[10px] font-bold text-gray-600 uppercase mb-1">Tributo SUNAT</label>
+                                                                                <select x-model="deuda.borrador_codigo" @change="alCambiarTributo(deuda)" class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 bg-white shadow-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-medium">
+                                                                                    <option value="" disabled>Seleccione el tributo</option>
+                                                                                    <template x-for="opcion in bloque.tributos" :key="opcion.codigo">
+                                                                                        <option :value="opcion.codigo" x-text="etiquetaTributo(opcion)" :disabled="tributoUsadoPorOtra(opcion.codigo, deuda)"></option>
+                                                                                    </template>
+                                                                                </select>
+                                                                            </div>
+
+                                                                    <div x-show="deuda.borrador_codigo === '1011'" class="rounded-xl border border-indigo-200 bg-indigo-50/70 p-2.5">
                                                                         <div class="flex items-center justify-between gap-2.5">
                                                                             <p class="text-xs font-bold text-indigo-950 flex items-center gap-1.5 whitespace-nowrap min-w-0">
                                                                                 <span class="whitespace-nowrap">¿Acoger a Ley IGV Justo (prórroga de 3 meses)?</span>
@@ -508,29 +514,29 @@
                                                                             </p>
                                                                             <button type="button" @click="toggleIgvJusto(deuda)" :disabled="deuda.calculandoIgv"
                                                                                     class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors"
-                                                                                    :class="deuda.es_igv_justo ? 'bg-indigo-600' : 'bg-gray-300'">
-                                                                                <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition" :class="deuda.es_igv_justo ? 'translate-x-4' : 'translate-x-0'"></span>
+                                                                                    :class="deuda.borrador_igv ? 'bg-indigo-600' : 'bg-gray-300'">
+                                                                                <span class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow transition" :class="deuda.borrador_igv ? 'translate-x-4' : 'translate-x-0'"></span>
                                                                             </button>
                                                                         </div>
                                                                     </div>
 
                                                                     <div class="grid grid-cols-2 gap-2.5">
                                                                         <div>
-                                                                            <label class="block text-[10px] font-bold text-gray-600 uppercase mb-1">Monto Deuda Inicial (S/)</label>
-                                                                            <input type="text" inputmode="decimal" x-model="deuda.monto" @input="deuda.monto = formatearMilesInput($event)"
+                                                                            <label class="block text-[10px] font-bold text-gray-600 uppercase mb-1">Importe a pagar (S/)</label>
+                                                                            <input type="text" inputmode="decimal" x-model="deuda.borrador_monto" @input="deuda.borrador_monto = formatearMilesInput($event)"
                                                                                    class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs font-semibold font-mono text-gray-800 bg-white" placeholder="0.00">
                                                                         </div>
                                                                         <div>
                                                                             <label class="mb-1 flex items-center justify-between gap-2 text-[10px] font-bold uppercase text-gray-600">
                                                                                 <span>Vencimiento</span>
-                                                                                <span x-show="deuda.es_igv_justo && deuda.tributo_codigo === '1011'" x-cloak class="text-[9px] font-bold uppercase text-indigo-700">🔒 IGV JUSTO</span>
+                                                                                <span x-show="igvJustoEnEdicion(deuda)" x-cloak class="text-[9px] font-bold uppercase text-indigo-700">🔒 IGV JUSTO</span>
                                                                             </label>
-                                                                            <input type="date" x-model="deuda.vencimiento"
-                                                                                   :readonly="deuda.es_igv_justo && deuda.tributo_codigo === '1011'"
-                                                                                   @mousedown="if (deuda.es_igv_justo && deuda.tributo_codigo === '1011') $event.preventDefault()"
-                                                                                   @keydown="if (deuda.es_igv_justo && deuda.tributo_codigo === '1011') $event.preventDefault()"
+                                                                            <input type="date" x-model="deuda.borrador_vencimiento"
+                                                                                   :readonly="igvJustoEnEdicion(deuda)"
+                                                                                   @mousedown="if (igvJustoEnEdicion(deuda)) $event.preventDefault()"
+                                                                                   @keydown="if (igvJustoEnEdicion(deuda)) $event.preventDefault()"
                                                                                    class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs bg-white"
-                                                                                   :class="deuda.es_igv_justo && deuda.tributo_codigo === '1011' ? 'bg-indigo-50 border-indigo-200 text-indigo-900 cursor-not-allowed font-bold' : ''">
+                                                                                   :class="igvJustoEnEdicion(deuda) ? 'bg-indigo-50 border-indigo-200 text-indigo-900 cursor-not-allowed font-bold' : ''">
                                                                         </div>
                                                                     </div>
 
@@ -577,16 +583,12 @@
                                                                         </div>
                                                                     </div>
                                                                     <p x-show="!deuda.id" class="text-[10px] text-gray-500">Guarde el tributo para registrar sus pagos.</p>
-                                                                </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </template>
                                                             </div>
-                                                        </template>
-
-                                                        <button type="button" @click="agregarTributo()" x-show="puedeAgregarTributo()"
-                                                                class="w-full rounded-xl border border-dashed border-brand-300 bg-brand-50/40 py-2 text-xs font-bold text-brand-700 hover:bg-brand-50">
-                                                            + Agregar otro tributo
-                                                        </button>
-                                                    </div>
-
+                                                        </section>
+                                                    </template>
                                                 </div>
                                             </div>
                                         </div>
@@ -788,18 +790,20 @@
             };
         }
 
-        function controlCeldaDJ(clienteId, mesIdx, meses, tributosDisponibles) {
+        function controlCeldaDJ(clienteId, mesIdx, meses, declaraciones, regimen, rentaSugerida) {
             return {
                 clienteId: clienteId,
                 mesIdx: mesIdx,
                 meses: meses,
-                tributosDisponibles: tributosDisponibles || {},
+                declaraciones: declaraciones || [],
+                regimen: regimen || '',
+                rentaSugerida: rentaSugerida || '',
                 openDJ: false,
                 hoverDeuda: false,
                 activeTab: 'declaracion',
                 tieneDeuda: !!meses[mesIdx].tiene_deuda,
                 deudas: [],
-                deudaAbierta: 0,
+                deudaAbiertaKey: null,
                 tributoCodigo: meses[mesIdx].tributo_codigo || '1011',
                 montoDeuda: '',
                 vencimientoDeuda: meses[mesIdx].vencimiento_deuda || '',
@@ -853,14 +857,19 @@
                     }
                     this.$watch('openDJ', (abierto) => {
                         if (!abierto) {
-                            const apagadoAProposito = !this.tieneDeuda;
-                            this.revertirDeudaNoGuardada();
-                            if (apagadoAProposito) {
-                                this.descartarDeudaAlCerrar();
-                            }
+                            this.deudas.forEach((deuda) => this.revertirCampos(deuda));
+                            this.deudas = this.deudas.filter((deuda) => this.deudaPersistida(deuda));
                         }
                     });
-                    window.addEventListener('pagehide', () => this.descartarDeudaAlCerrar(true));
+                    this.$watch('deudaAbiertaKey', (nueva, anterior) => {
+                        if (!anterior || anterior === nueva) {
+                            return;
+                        }
+                        const previa = this.deudas.find((deuda) => deuda.localKey === anterior);
+                        if (previa) {
+                            this.revertirCampos(previa);
+                        }
+                    });
                     this.$watch('tieneDeuda', () => {
                         this.reubicarMenuDeudaCompleto();
                     });
@@ -1235,32 +1244,120 @@
                     }
                 },
 
+                deudasPorPagar() {
+                    return (this.meses[this.mesIdx].deudas || []).filter((deuda) => parseFloat(deuda.saldo_pendiente || 0) > 0);
+                },
+
+                declaracionDeCodigo(codigo) {
+                    for (const bloque of this.declaraciones || []) {
+                        if ((bloque.tributos || []).some((tributo) => tributo.codigo === codigo)) {
+                            return bloque.id;
+                        }
+                    }
+                    if (codigo === '3041' || codigo === '3051') {
+                        return 'pdt_601';
+                    }
+                    return 'pdt_621';
+                },
+
+                declaracionDe(deuda) {
+                    if (deuda && deuda.declaracion) {
+                        return deuda.declaracion;
+                    }
+                    return this.declaracionDeCodigo(deuda?.tributo_codigo);
+                },
+
+                deudasDelBloque(id) {
+                    return this.deudas.filter((deuda) => this.declaracionDe(deuda) === id);
+                },
+
+                resumenBloque(id) {
+                    const filas = this.deudasDelBloque(id).filter((deuda) => !!deuda.id);
+                    const saldo = filas.reduce((suma, deuda) => suma + (parseFloat(deuda.saldo_pendiente) || 0), 0);
+                    return { hay: filas.length > 0, saldo: Math.round(saldo * 100) / 100 };
+                },
+
+                tributosLibres(bloque) {
+                    return (bloque.tributos || []).filter((tributo) => !this.codigoUsado(tributo.codigo));
+                },
+
+                borradorSinTributo(declaracionId) {
+                    return this.deudas.some((deuda) => !deuda.tributo_codigo && this.declaracionDe(deuda) === declaracionId);
+                },
+
+                etiquetaTributo(opcion) {
+                    if (!opcion) {
+                        return '';
+                    }
+                    if (opcion.codigo === this.rentaSugerida) {
+                        return opcion.etiqueta + ' · régimen';
+                    }
+                    return opcion.etiqueta;
+                },
+
+                codigoUsado(codigo) {
+                    return this.deudas.some((deuda) => {
+                        if (this.deudaPersistida(deuda)) {
+                            return deuda.tributo_codigo === codigo;
+                        }
+                        return deuda.borrador_codigo === codigo;
+                    });
+                },
+
+                deudaPersistida(deuda) {
+                    return !!deuda.id || parseFloat(deuda.monto_deuda_inicial || 0) > 0 || (deuda.abonos || []).length > 0;
+                },
+
                 nombreTributo(codigo) {
-                    const tributo = (this.tributosDisponibles || []).find(item => item.codigo === codigo);
-                    return tributo?.nombre || 'Tributo';
-                },
-
-                primerCodigoLibre() {
-                    const usados = this.deudas.map(d => d.tributo_codigo);
-                    const libre = (this.tributosDisponibles || []).find(item => !usados.includes(item.codigo));
-                    return libre ? libre.codigo : '1011';
-                },
-
-                puedeAgregarTributo() {
-                    return (this.tributosDisponibles || []).some(item => !this.deudas.some(d => d.tributo_codigo === item.codigo));
+                    for (const bloque of this.declaraciones || []) {
+                        const tributo = (bloque.tributos || []).find((item) => item.codigo === codigo);
+                        if (tributo) {
+                            return tributo.nombre_corto || tributo.nombre;
+                        }
+                    }
+                    return 'Tributo';
                 },
 
                 tributoUsadoPorOtra(codigo, deuda) {
-                    return this.deudas.some(d => d !== deuda && d.tributo_codigo === codigo);
+                    return this.deudas.some((otra) => {
+                        if (otra === deuda || !codigo) {
+                            return false;
+                        }
+                        if (this.deudaPersistida(otra)) {
+                            return otra.tributo_codigo === codigo;
+                        }
+                        return otra.borrador_codigo === codigo;
+                    });
+                },
+
+                igvJustoEnEdicion(deuda) {
+                    return !!deuda.borrador_igv && deuda.borrador_codigo === '1011';
+                },
+
+                prepararBorrador(deuda) {
+                    deuda.borrador_codigo = deuda.tributo_codigo || '';
+                    deuda.borrador_monto = deuda.monto || '';
+                    deuda.borrador_vencimiento = deuda.vencimiento || '';
+                    deuda.borrador_igv = !!deuda.es_igv_justo;
+                },
+
+                revertirCampos(deuda) {
+                    if (!this.deudaPersistida(deuda)) {
+                        return;
+                    }
+                    this.prepararBorrador(deuda);
                 },
 
                 normalizarDeuda(raw) {
-                    const codigo = raw?.tributo_codigo || this.primerCodigoLibre();
-                    return {
+                    const codigo = raw && Object.prototype.hasOwnProperty.call(raw, 'tributo_codigo')
+                        ? (raw.tributo_codigo || '')
+                        : '1011';
+                    const deuda = {
                         id: raw?.id || null,
                         localKey: raw?.localKey || ('t-' + (raw?.id || (Date.now() + Math.random()))),
                         tributo_codigo: codigo,
-                        tributo_nombre_corto: raw?.tributo_nombre_corto || '',
+                        declaracion: raw?.declaracion || this.declaracionDeCodigo(codigo),
+                        tributo_nombre_corto: raw?.tributo_nombre_corto || (codigo ? this.nombreTributo(codigo) : 'Nuevo tributo'),
                         es_igv_justo: !!raw?.es_igv_justo,
                         monto: raw?.monto_deuda_inicial ? this.formatearNumeroConComas(raw.monto_deuda_inicial) : (raw?.monto || ''),
                         vencimiento: raw?.vencimiento_deuda || raw?.vencimiento || this.vencimientoOficialPdt || this.meses[this.mesIdx].vencimiento_oficial_pdt || '',
@@ -1278,16 +1375,18 @@
                         abonoGuardado: false,
                         calculandoIgv: false,
                     };
+                    this.prepararBorrador(deuda);
+                    return deuda;
                 },
 
                 hidratarDeudas(lista) {
                     const codigos = new Set((lista || []).map(d => d.tributo_codigo));
-                    const borradores = (this.deudas || []).filter(d => !d.id && !codigos.has(d.tributo_codigo));
+                    const borradores = (this.deudas || []).filter((deuda) => !deuda.id && !codigos.has(deuda.tributo_codigo) && !codigos.has(deuda.borrador_codigo));
                     const guardadas = (lista || []).filter(d => d && (d.id || d.monto_deuda_inicial || d.tributo_codigo)).map(d => this.normalizarDeuda(d));
                     this.deudas = guardadas.concat(borradores);
                     this.meses[this.mesIdx].deudas = guardadas;
-                    if (this.deudas.length && (this.deudaAbierta === undefined || this.deudaAbierta < 0)) {
-                        this.deudaAbierta = 0;
+                    if (!this.deudas.some((deuda) => deuda.localKey === this.deudaAbiertaKey)) {
+                        this.deudaAbiertaKey = this.deudas[0]?.localKey || null;
                     }
                 },
 
@@ -1297,6 +1396,7 @@
                         mes.operacion_id = data.operacion_id;
                     }
                     mes.tiene_deuda = !!data.tiene_deuda;
+                    this.tieneDeuda = !!data.tiene_deuda;
                     if (data.monto_deuda_inicial !== undefined && data.monto_deuda_inicial !== null) {
                         mes.monto_deuda_inicial = parseFloat(data.monto_deuda_inicial || 0);
                     }
@@ -1307,24 +1407,78 @@
                         mes.saldo_pendiente = parseFloat(data.saldo_pendiente || 0);
                     }
                     if (Array.isArray(data.deudas)) {
-                        const abierta = this.deudas[this.deudaAbierta];
+                        const abierta = this.deudas.find((deuda) => deuda.localKey === this.deudaAbiertaKey);
+                        const codigo = abierta ? (abierta.borrador_codigo || abierta.tributo_codigo) : null;
                         const abiertaId = abierta ? abierta.id : null;
-                        const abiertaKey = abierta ? abierta.localKey : null;
                         this.hidratarDeudas(data.deudas);
-                        const idx = this.deudas.findIndex(d => (abiertaId && d.id === abiertaId) || (abiertaKey && d.localKey === abiertaKey));
-                        if (idx >= 0) {
-                            this.deudaAbierta = idx;
+                        const nueva = this.deudas.find((deuda) => (abiertaId && deuda.id === abiertaId) || (codigo && deuda.tributo_codigo === codigo));
+                        if (nueva) {
+                            this.deudaAbiertaKey = nueva.localKey;
                         }
                     }
                 },
 
-                agregarTributo() {
-                    if (!this.puedeAgregarTributo() && this.deudas.length > 0) {
+                alCambiarTributo(deuda) {
+                    if (!deuda.borrador_codigo) {
+                        if (!this.deudaPersistida(deuda)) {
+                            deuda.tributo_nombre_corto = 'Nuevo tributo';
+                        }
+                        deuda.borrador_igv = false;
                         return;
                     }
-                    const deuda = this.normalizarDeuda({ tributo_codigo: this.primerCodigoLibre() });
+                    if (!this.deudaPersistida(deuda)) {
+                        deuda.tributo_nombre_corto = this.nombreTributo(deuda.borrador_codigo);
+                        deuda.declaracion = this.declaracionDeCodigo(deuda.borrador_codigo);
+                    }
+                    if (deuda.borrador_codigo !== '1011') {
+                        deuda.borrador_igv = false;
+                    }
+                },
+
+                agregarTributo(codigo, declaracionId) {
+                    if (!codigo) {
+                        if (!declaracionId) {
+                            return;
+                        }
+                        const borrador = this.deudas.find((deuda) => !deuda.tributo_codigo && this.declaracionDe(deuda) === declaracionId);
+                        if (borrador) {
+                            this.deudaAbiertaKey = borrador.localKey;
+                            return;
+                        }
+                        const bloque = (this.declaraciones || []).find((item) => item.id === declaracionId);
+                        if (!bloque || this.tributosLibres(bloque).length === 0) {
+                            return;
+                        }
+                        const deuda = this.normalizarDeuda({
+                            tributo_codigo: '',
+                            declaracion: declaracionId,
+                            tributo_nombre_corto: 'Nuevo tributo',
+                        });
+                        this.deudas.push(deuda);
+                        this.deudaAbiertaKey = deuda.localKey;
+                        this.$nextTick(() => {
+                            const paneles = this.$root.querySelectorAll('[data-deuda-formulario]');
+                            for (const panel of paneles) {
+                                if (panel.offsetParent !== null) {
+                                    panel.querySelector('select')?.focus();
+                                    break;
+                                }
+                            }
+                        });
+                        return;
+                    }
+                    const existente = this.deudas.find((deuda) => deuda.tributo_codigo === codigo);
+                    if (existente) {
+                        this.deudaAbiertaKey = existente.localKey;
+                        return;
+                    }
+                    const deuda = this.normalizarDeuda({
+                        tributo_codigo: codigo,
+                        declaracion: this.declaracionDeCodigo(codigo),
+                        tributo_nombre_corto: this.nombreTributo(codigo),
+                    });
                     this.deudas.push(deuda);
-                    this.deudaAbierta = this.deudas.length - 1;
+                    this.deudaAbiertaKey = deuda.localKey;
                 },
 
                 async guardarTributo(deuda) {
@@ -1346,10 +1500,10 @@
                                 tiene_deuda: true,
                                 guardar_tributo: true,
                                 deuda_id: deuda.id,
-                                tributo_codigo: deuda.tributo_codigo,
-                                es_igv_justo: deuda.tributo_codigo === '1011' && !!deuda.es_igv_justo,
-                                monto_deuda_inicial: this.limpiarMoneda(deuda.monto),
-                                vencimiento_deuda: deuda.vencimiento || null,
+                                tributo_codigo: deuda.borrador_codigo,
+                                es_igv_justo: deuda.borrador_codigo === '1011' && !!deuda.borrador_igv,
+                                monto_deuda_inicial: this.limpiarMoneda(deuda.borrador_monto),
+                                vencimiento_deuda: deuda.borrador_vencimiento || null,
                             }),
                         });
                         const data = await response.json();
@@ -1357,8 +1511,9 @@
                             const detalle = data.errors ? Object.values(data.errors).flat()[0] : null;
                             throw new Error(detalle || data.message || 'Error al guardar el tributo.');
                         }
+                        const codigoEnviado = deuda.borrador_codigo;
                         this.aplicarRespuestaDeuda(data);
-                        const guardada = this.deudas.find(d => d.tributo_codigo === deuda.tributo_codigo && d.id);
+                        const guardada = this.deudas.find(d => d.tributo_codigo === codigoEnviado && d.id);
                         if (guardada) {
                             guardada.guardado = true;
                             setTimeout(() => { guardada.guardado = false; }, 2200);
@@ -1410,12 +1565,13 @@
                     if (!deuda) {
                         return;
                     }
-                    deuda.es_igv_justo = !deuda.es_igv_justo;
-                    if (!deuda.es_igv_justo) {
-                        deuda.vencimiento = this.vencimientoOficialPdt || this.meses[this.mesIdx].vencimiento_oficial_pdt || '';
+                    deuda.borrador_igv = !deuda.borrador_igv;
+                    if (!deuda.borrador_igv) {
+                        deuda.borrador_vencimiento = this.vencimientoOficialPdt || this.meses[this.mesIdx].vencimiento_oficial_pdt || '';
                         return;
                     }
                     deuda.calculandoIgv = true;
+                    const clave = deuda.localKey;
                     try {
                         const tokenEl = document.querySelector('meta[name="csrf-token"]');
                         const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
@@ -1432,9 +1588,9 @@
                             }),
                         });
                         const data = await response.json();
-                        if (response.ok && data.fecha_vencimiento) {
-                            deuda.vencimiento = data.fecha_vencimiento;
-                        } else {
+                        if (this.deudaAbiertaKey === clave && deuda.borrador_igv && response.ok && data.fecha_vencimiento) {
+                            deuda.borrador_vencimiento = data.fecha_vencimiento;
+                        } else if (!(response.ok && data.fecha_vencimiento)) {
                             alert(data.message || 'No se pudo calcular el cronograma de IGV Justo.');
                         }
                     } catch (err) {

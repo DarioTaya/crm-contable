@@ -518,6 +518,113 @@ class ControlDeudasTest extends TestCase
         $archivo->assertDontSee('20999111003');
     }
 
+    public function test_control_de_impuestos_organiza_los_tributos_por_pdt_621_y_plame(): void
+    {
+        $response = $this->get(route('control.index'));
+
+        $response->assertOk();
+        $response->assertSee('Tributos y Pagos');
+        $response->assertSee('PDT 621');
+        $response->assertSee('IGV y Renta');
+        $response->assertSee('PDT 601');
+        $response->assertSee('PLAME');
+        $response->assertSee('Importe a pagar');
+        $response->assertSee('Solo el saldo por pagar entra a Control de Deudas.');
+        $response->assertSee('+ Nuevo tributo');
+        $response->assertSee('deuda.borrador_codigo');
+        $response->assertDontSee('¿Quedó deuda con SUNAT');
+    }
+
+    public function test_guardar_tributo_sin_importe_rechaza_la_solicitud(): void
+    {
+        $response = $this->postJson(route('control.update'), [
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'guardar_tributo' => true,
+            'tributo_codigo' => '1011',
+            'monto_deuda_inicial' => 0,
+            'vencimiento_deuda' => '2026-09-18',
+        ]);
+
+        $response->assertUnprocessable();
+        $response->assertJsonPath('errors.monto_deuda_inicial.0', 'Ingrese el monto a pagar de este tributo.');
+    }
+
+    public function test_solo_el_saldo_por_pagar_de_pdt_621_y_plame_entra_a_control_de_deudas(): void
+    {
+        $this->postJson(route('control.update'), [
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'guardar_tributo' => true,
+            'tributo_codigo' => '1011',
+            'monto_deuda_inicial' => 1000,
+            'vencimiento_deuda' => '2026-09-18',
+        ])->assertOk()
+            ->assertJsonFragment([
+                'tributo_codigo' => '1011',
+                'declaracion' => 'pdt_621',
+            ]);
+
+        $igv = DeudaTributaria::where('tributo_codigo', '1011')->first();
+
+        $this->postJson(route('abonos_deudas.store'), [
+            'operacion_id' => $igv->operacion_id,
+            'deuda_tributaria_id' => $igv->id,
+            'monto' => 1000,
+            'fecha_pago' => '2026-09-20',
+        ])->assertOk();
+
+        $this->postJson(route('control.update'), [
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'guardar_tributo' => true,
+            'tributo_codigo' => '3121',
+            'monto_deuda_inicial' => 200,
+            'vencimiento_deuda' => '2026-09-18',
+        ])->assertOk()
+            ->assertJsonFragment([
+                'tributo_codigo' => '3121',
+                'declaracion' => 'pdt_621',
+            ]);
+
+        $this->postJson(route('control.update'), [
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'guardar_tributo' => true,
+            'tributo_codigo' => '5210',
+            'monto_deuda_inicial' => 80,
+            'vencimiento_deuda' => '2026-09-18',
+        ])->assertOk()
+            ->assertJsonFragment([
+                'tributo_codigo' => '5210',
+                'declaracion' => 'pdt_601',
+            ]);
+
+        $pendientes = $this->getJson(route('control_deudas.index', ['ajax' => 1]));
+        $pendientes->assertOk();
+        $codigos = collect($pendientes->json('deudas'))->pluck('tributo_codigo')->all();
+
+        $this->assertNotContains('1011', $codigos);
+        $this->assertContains('3121', $codigos);
+        $this->assertContains('5210', $codigos);
+
+        $tablero = $this->get(route('control_deudas.index'));
+        $tablero->assertOk();
+        $tablero->assertSee('Renta MYPE 1%');
+        $tablero->assertSee('EsSalud');
+        $tablero->assertDontSee('IGV 18%');
+
+        $archivo = $this->get(route('control_deudas.archivadas'));
+        $archivo->assertOk();
+        $archivo->assertSee('IGV 18%');
+        $archivo->assertDontSee('Renta MYPE 1%');
+        $archivo->assertDontSee('EsSalud');
+    }
+
     private function guardarTributo(int $clienteId, string $periodo, string $codigo, float $monto): void
     {
         $this->postJson(route('control.update'), [

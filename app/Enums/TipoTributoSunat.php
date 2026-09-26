@@ -68,7 +68,43 @@ enum TipoTributoSunat: string
     }
 
     /**
-     * Texto exacto del selector de Control de Deuda y Pagos.
+     * PDT en el que se determina el tributo.
+     * 621 es IGV y renta; 601 es PLAME (planilla y retenciones).
+     */
+    public function declaracion(): string
+    {
+        return match ($this) {
+            self::Igv18, self::Igv105, self::RentaEspecial, self::RentaMype, self::RentaGeneral, self::RentaRegularizacion => 'pdt_621',
+            self::RentaCuarta, self::RentaQuinta, self::EsSalud, self::Onp, self::Afp => 'pdt_601',
+        };
+    }
+
+    /**
+     * Renta mensual que corresponde al régimen del cliente en el PDT 621.
+     * NRUS no determina renta por ese formulario.
+     */
+    public static function rentaDelRegimen(RegimenTributario|string|null $regimen): ?self
+    {
+        $valor = $regimen instanceof RegimenTributario ? $regimen->value : $regimen;
+
+        return match ($valor) {
+            RegimenTributario::Mype->value => self::RentaMype,
+            RegimenTributario::Rer->value => self::RentaEspecial,
+            RegimenTributario::General->value => self::RentaGeneral,
+            default => null,
+        };
+    }
+
+    /**
+     * Declaración del código, incluidos los códigos anteriores 3041 y 3051.
+     */
+    public static function declaracionDe(?string $codigo): ?string
+    {
+        return self::resolver($codigo)?->declaracion();
+    }
+
+    /**
+     * Texto exacto del selector de Tributos y Pagos.
      */
     public function etiquetaSelector(): string
     {
@@ -114,6 +150,57 @@ enum TipoTributoSunat: string
         }
 
         return $lista;
+    }
+
+    /**
+     * Catálogo del formulario, agrupado por declaración.
+     * El orden es el de trabajo del contador: IGV, renta del PDT 621 y luego PLAME.
+     *
+     * @return list<array{id: string, titulo: string, detalle: string, tributos: list<array{codigo: string, etiqueta: string, nombre: string, nombre_corto: string}>}>
+     */
+    public static function catalogoFormulario(): array
+    {
+        $bloques = [
+            [
+                'id' => 'pdt_621',
+                'titulo' => 'PDT 621',
+                'detalle' => 'IGV y Renta',
+                'orden' => [
+                    self::Igv18,
+                    self::Igv105,
+                    self::RentaEspecial,
+                    self::RentaMype,
+                    self::RentaGeneral,
+                    self::RentaRegularizacion,
+                ],
+            ],
+            [
+                'id' => 'pdt_601',
+                'titulo' => 'PDT 601',
+                'detalle' => 'PLAME',
+                'orden' => [
+                    self::EsSalud,
+                    self::Onp,
+                    self::Afp,
+                    self::RentaQuinta,
+                    self::RentaCuarta,
+                ],
+            ],
+        ];
+
+        return array_map(function (array $bloque): array {
+            return [
+                'id' => $bloque['id'],
+                'titulo' => $bloque['titulo'],
+                'detalle' => $bloque['detalle'],
+                'tributos' => array_map(fn (self $caso): array => [
+                    'codigo' => $caso->value,
+                    'etiqueta' => $caso->etiquetaSelector(),
+                    'nombre' => $caso->descripcion(),
+                    'nombre_corto' => $caso->nombreCorto(),
+                ], $bloque['orden']),
+            ];
+        }, $bloques);
     }
 
     /**
