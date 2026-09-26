@@ -4,13 +4,16 @@
 @section('header', 'Expediente Digital')
 
 @section('content')
-<div x-data="expedienteCliente({
-    initialTab: '{{ request('tab', session('tab', 'datos')) === 'api_credentials' ? 'datos' : request('tab', session('tab', 'datos')) }}',
-    clienteId: {{ $cliente->id }},
-    alertasPendientes: {{ $cliente->alertas->where('estado', 'Pendiente')->count() }},
-    importarUrl: '{{ route('comprobantes.importar') }}',
-    showUrl: '{{ route('clientes.show', $cliente) }}'
-})">
+<div
+    data-seccion="{{ $seccion->value }}"
+    x-data="expedienteCliente(@js([
+        'initialTab' => $seccion->value,
+        'clienteId' => $cliente->id,
+        'alertasPendientes' => $cliente->alertas->where('estado', 'Pendiente')->count(),
+        'importarUrl' => route('comprobantes.importar'),
+        'secciones' => $urlsSeccion,
+    ]))"
+>
     {{-- ═══════════════════════════ ENCABEZADO DEL EXPEDIENTE ═══════════════════════════ --}}
     <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex items-center gap-4">
@@ -230,11 +233,13 @@
         {{-- Tab headers --}}
         <div class="border-b border-gray-200">
             <nav class="-mb-px flex gap-6" role="tablist">
-                <button
-                    @click="tab = 'datos'"
+                <a
+                    href="{{ $urlsSeccion['datos'] }}"
+                    @click="abrirSeccion('datos', $event)"
                     :class="tab === 'datos'
                         ? 'border-brand-500 text-brand-600'
                         : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
+                    :aria-selected="tab === 'datos'"
                     class="flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition"
                     role="tab"
                 >
@@ -242,12 +247,14 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z" />
                     </svg>
                     Datos y Accesos
-                </button>
-                <button
-                    @click="tab = 'notificaciones'"
+                </a>
+                <a
+                    href="{{ $urlsSeccion['notificaciones'] }}"
+                    @click="abrirSeccion('notificaciones', $event)"
                     :class="tab === 'notificaciones'
                         ? 'border-brand-500 text-brand-600'
                         : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
+                    :aria-selected="tab === 'notificaciones'"
                     class="flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition"
                     role="tab"
                 >
@@ -263,12 +270,14 @@
                           class="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white shadow-xs">
                         {{ $alertasPendientesCount }}
                     </span>
-                </button>
-                <button
-                    @click="tab = 'operaciones'"
+                </a>
+                <a
+                    href="{{ $urlsSeccion['operaciones'] }}"
+                    @click="abrirSeccion('operaciones', $event)"
                     :class="tab === 'operaciones'
                         ? 'border-brand-500 text-brand-600'
                         : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
+                    :aria-selected="tab === 'operaciones'"
                     class="flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition"
                     role="tab"
                 >
@@ -276,12 +285,14 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
                     </svg>
                     Operaciones
-                </button>
-                <button
-                    @click="tab = 'sire'"
+                </a>
+                <a
+                    href="{{ route('clientes.sire', array_merge(['cliente' => $cliente], $consultaSire)) }}"
+                    @click="abrirSeccion('sire', $event)"
                     :class="tab === 'sire'
                         ? 'border-brand-500 text-brand-600'
                         : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
+                    :aria-selected="tab === 'sire'"
                     class="flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition"
                     role="tab"
                 >
@@ -294,7 +305,7 @@
                             {{ $sireTotalRegistros }}
                         </span>
                     @endif
-                </button>
+                </a>
             </nav>
         </div>
 
@@ -2492,8 +2503,7 @@
 
             {{-- Filtros Rápidos Locales --}}
             <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-xs">
-                <form method="GET" action="{{ route('clientes.show', $cliente) }}" class="flex flex-wrap items-end gap-3">
-                    <input type="hidden" name="tab" value="sire">
+                <form method="GET" action="{{ route('clientes.sire', $cliente) }}" class="flex flex-wrap items-end gap-3">
 
                     {{-- Filtro Registro --}}
                     <div class="space-y-1">
@@ -2530,7 +2540,7 @@
 
                     @if (request()->hasAny(['sire_tipo', 'sire_periodo']))
                         <a
-                            href="{{ route('clientes.show', ['cliente' => $cliente, 'tab' => 'sire']) }}"
+                            href="{{ route('clientes.sire', $cliente) }}"
                             class="inline-flex items-center rounded-lg border border-gray-300 bg-white p-2 text-xs font-semibold text-gray-600 shadow-xs hover:bg-gray-50 active:scale-95 transition"
                             title="Limpiar filtros"
                         >
@@ -3008,6 +3018,8 @@
         function expedienteCliente(config) {
             return {
                 tab: config.initialTab || 'datos',
+                destinoPendiente: null,
+                _sincronizandoHistorial: false,
                 alertasPendientesCount: config.alertasPendientes ?? 0,
                 modalEditarDatos: false,
                 modalEditarCredenciales: false,
@@ -3173,17 +3185,63 @@
                 },
                 init() {
                     window.expedienteClienteInstancia = this;
-                    // Sincronizar pestaña activa con la URL para no perder el estado al recargar
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const urlTab = urlParams.get('tab');
-                    if (urlTab) {
-                        this.tab = urlTab;
-                    }
-                    this.$watch('tab', (val) => {
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('tab', val);
-                        window.history.replaceState({}, '', url.toString());
+                    window.addEventListener('popstate', () => {
+                        const seccion = this.seccionDesdeRuta(window.location.pathname);
+                        if (this.tab === seccion) {
+                            return;
+                        }
+                        this._sincronizandoHistorial = true;
+                        this.tab = seccion;
+                        this._sincronizandoHistorial = false;
                     });
+                    this.$watch('tab', (val) => {
+                        if (this._sincronizandoHistorial) {
+                            return;
+                        }
+                        const destino = this.destinoPendiente || this.urlDe(val);
+                        this.destinoPendiente = null;
+                        const local = this.rutaLocal(destino);
+                        const actual = window.location.pathname + window.location.search;
+                        if (actual !== local) {
+                            window.history.pushState({ seccion: val }, '', local);
+                        }
+                    });
+                },
+                abrirSeccion(seccion, event) {
+                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+                        return;
+                    }
+                    event.preventDefault();
+                    if (this.tab === seccion) {
+                        return;
+                    }
+                    this.destinoPendiente = event.currentTarget.getAttribute('href');
+                    this.tab = seccion;
+                },
+                urlDe(seccion) {
+                    return this.rutaLocal(config.secciones[seccion] || config.secciones.datos);
+                },
+                rutaLocal(direccion) {
+                    const url = new URL(direccion, window.location.origin);
+                    return url.pathname + url.search;
+                },
+                seccionDesdeRuta(pathname) {
+                    const segmentos = pathname.split('/').filter(Boolean);
+                    const ultimo = segmentos[segmentos.length - 1] || '';
+                    if (ultimo !== 'datos' && Object.prototype.hasOwnProperty.call(config.secciones, ultimo)) {
+                        return ultimo;
+                    }
+                    return 'datos';
+                },
+                irASire(registro, periodo) {
+                    const destino = new URL(config.secciones.sire, window.location.origin);
+                    if (registro) {
+                        destino.searchParams.set('sire_tipo', registro);
+                    }
+                    if (periodo) {
+                        destino.searchParams.set('sire_periodo', periodo);
+                    }
+                    window.location.assign(destino.toString());
                 },
                 lanzarSireToast(titulo, mensaje, tipo = 'info') {
                     this.sireToast.titulo = titulo;
@@ -3252,7 +3310,7 @@
 
                         if (data.recarga) {
                             setTimeout(() => {
-                                window.location.href = config.showUrl + '?tab=sire&sire_tipo=' + encodeURIComponent(registro) + '&sire_periodo=' + encodeURIComponent(periodo);
+                                this.irASire(registro, periodo);
                             }, 1200);
                         }
                     } catch (err) {
@@ -3309,7 +3367,7 @@
                                 this.lanzarSireToast('¡Importación Exitosa!', data.message || 'Comprobantes importados exitosamente.', 'success');
                                 if (data.recarga) {
                                     setTimeout(() => {
-                                        window.location.href = config.showUrl + '?tab=sire&sire_tipo=' + encodeURIComponent(registro) + '&sire_periodo=' + encodeURIComponent(periodo);
+                                        this.irASire(registro, periodo);
                                     }, 1200);
                                 }
                             }
@@ -3514,9 +3572,7 @@
                             throw new Error(data.message || 'Error al sincronizar con SUNAT');
                         }
 
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('tab', 'notificaciones');
-                        window.location.href = url.toString();
+                        window.location.assign(@js(route('clientes.notificaciones', $cliente)));
                     } catch (err) {
                         console.error('Error al sincronizar SUNAT:', err);
                         alert('No se pudo completar la sincronización SUNAT: ' + err.message);
@@ -3546,9 +3602,7 @@
                             throw new Error(data.message || 'Error al sincronizar con SUNAFIL');
                         }
 
-                        const url = new URL(window.location.href);
-                        url.searchParams.set('tab', 'notificaciones');
-                        window.location.href = url.toString();
+                        window.location.assign(@js(route('clientes.notificaciones', $cliente)));
                     } catch (err) {
                         console.error('Error al sincronizar SUNAFIL:', err);
                         alert('No se pudo completar la sincronización SUNAFIL: ' + err.message);

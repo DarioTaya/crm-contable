@@ -96,6 +96,12 @@ Route::middleware('auth')->group(function () {
     // que la protege: el asistente solo alcanza su cartera asignada y el
     // administrador gobierna todo el estudio. El aislamiento entre estudios lo
     // resuelve antes EstudioScope, en el enlace del modelo.
+    // Secciones del expediente. La ficha permanece en /clientes/{cliente}.
+    // Notificaciones, operaciones y SIRE tienen ruta propia; ?tab= solo
+    // redirige a esa ruta para no romper enlaces ya guardados.
+    Route::get('/clientes/{cliente}/notificaciones', [ClienteController::class, 'show'])->name('clientes.notificaciones')->can('view', 'cliente');
+    Route::get('/clientes/{cliente}/operaciones', [ClienteController::class, 'show'])->name('clientes.operaciones')->can('view', 'cliente');
+    Route::get('/clientes/{cliente}/sire', [ClienteController::class, 'show'])->name('clientes.sire')->can('view', 'cliente');
     Route::get('/clientes/{cliente}', [ClienteController::class, 'show'])->name('clientes.show')->can('view', 'cliente');
     Route::put('/clientes/{cliente}/datos-fiscales', [ClienteController::class, 'updateDatosFiscales'])->name('clientes.datos-fiscales.update')->can('update', 'cliente');
     Route::put('/clientes/{cliente}/estado-estudio', [ClienteController::class, 'updateEstadoEstudio'])->name('clientes.estado-estudio.update')->can('update', 'cliente');

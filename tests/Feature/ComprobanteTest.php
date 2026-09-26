@@ -302,7 +302,7 @@ class ComprobanteTest extends TestCase
             'estado_sire' => 'Propuesta',
         ]);
 
-        $response = $this->get(route('clientes.show', ['cliente' => $cliente, 'tab' => 'sire']));
+        $response = $this->get(route('clientes.sire', $cliente));
         $response->assertStatus(200);
         $response->assertSee('SIRE / Comprobantes');
         $response->assertSee('Bóveda SIRE — Expediente Digital');

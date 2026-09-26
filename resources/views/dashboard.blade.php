@@ -446,7 +446,7 @@
 
                             {{-- Botón de Acción Rápida (Directo a Operaciones) --}}
                             <div class="shrink-0 flex items-center justify-end sm:self-center">
-                                <a href="{{ route('clientes.show', ['cliente' => $item['cliente']->id, 'tab' => 'operaciones']) }}"
+                                <a href="{{ route('clientes.operaciones', $item['cliente']) }}"
                                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-xs transition hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     <span>Declarar</span>
                                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

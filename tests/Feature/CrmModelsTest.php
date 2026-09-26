@@ -294,7 +294,7 @@ class CrmModelsTest extends TestCase
             'estado_ple' => 'Pendiente',
         ]);
 
-        $response->assertRedirect(route('clientes.show', ['cliente' => $cliente, 'tab' => 'operaciones']));
+        $response->assertRedirect(route('clientes.operaciones', $cliente));
         $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('operaciones', [
@@ -313,7 +313,7 @@ class CrmModelsTest extends TestCase
             'estado_ple' => 'Declarado',
         ]);
 
-        $response2->assertRedirect(route('clientes.show', ['cliente' => $cliente, 'tab' => 'operaciones']));
+        $response2->assertRedirect(route('clientes.operaciones', $cliente));
 
         // No debe duplicar registros por periodo
         $this->assertDatabaseCount('operaciones', 1);

@@ -49,7 +49,7 @@ class ClienteCredencialesBancosTest extends TestCase
             'banco_2_notas' => 'Solo para descarga de extractos bancarios mensuales',
         ]);
 
-        $response->assertRedirect(route('clientes.show', ['cliente' => $cliente, 'tab' => 'datos']));
+        $response->assertRedirect(route('clientes.show', $cliente));
         $response->assertSessionHas('success', 'Credenciales de acceso actualizadas correctamente.');
 
         $credencial = Credencial::where('cliente_id', $cliente->id)->first();

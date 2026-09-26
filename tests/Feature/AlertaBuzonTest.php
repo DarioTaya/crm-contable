@@ -161,7 +161,7 @@ class AlertaBuzonTest extends TestCase
             'prioridad' => 'Alta',
         ]);
 
-        $response = $this->get(route('clientes.show', ['cliente' => $cliente, 'tab' => 'notificaciones']));
+        $response = $this->get(route('clientes.notificaciones', $cliente));
 
         $response->assertStatus(200);
         $response->assertSee('Buzón Electrónico SUNAT / SUNAFIL');

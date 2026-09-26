@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\EstadoCliente;
 use App\Enums\RegimenTributario;
+use App\Enums\SeccionExpediente;
 use App\Models\Cliente;
 use App\Services\SunafilBuzonSyncService;
 use App\Services\SunatBuzonSyncService;
@@ -390,8 +391,14 @@ class ClienteController extends Controller
     /**
      * Muestra el expediente digital del cliente con todas sus relaciones y la malla de 12 meses de operaciones.
      */
-    public function show(Cliente $cliente): View
+    public function show(Request $request, Cliente $cliente): View|RedirectResponse
     {
+        if ($redireccion = $this->redirigirSeccionAntigua($request, $cliente)) {
+            return $redireccion;
+        }
+
+        $seccion = SeccionExpediente::actual($request->route()?->getName());
+
         $cliente->load(['credencial', 'notificaciones', 'operaciones', 'alertas']);
 
         $anioActual = now()->year;
@@ -476,8 +483,24 @@ class ClienteController extends Controller
 
         $comprobantesCliente = $sireQuery->orderBy('periodo', 'desc')->orderBy('id', 'desc')->get();
 
+        $urlsSeccion = [];
+        foreach (SeccionExpediente::cases() as $caso) {
+            $urlsSeccion[$caso->value] = route($caso->ruta(), $cliente);
+        }
+
+        $consultaSire = [];
+        foreach (['sire_tipo', 'sire_periodo'] as $filtro) {
+            $valor = $request->query($filtro);
+            if (is_string($valor) && $valor !== '') {
+                $consultaSire[$filtro] = $valor;
+            }
+        }
+
         return view('clientes.show', compact(
             'cliente',
+            'seccion',
+            'urlsSeccion',
+            'consultaSire',
             'mesesOperaciones',
             'mesesBalances',
             'djAnualBalance',
@@ -489,6 +512,27 @@ class ClienteController extends Controller
             'sireTotalFacturado',
             'sireTotalRegistros'
         ));
+    }
+
+    /**
+     * Los marcadores ?tab= apuntan a la ruta de la sección y conservan los filtros de SIRE.
+     */
+    private function redirigirSeccionAntigua(Request $request, Cliente $cliente): ?RedirectResponse
+    {
+        if (! $request->exists('tab')) {
+            return null;
+        }
+
+        $seccion = SeccionExpediente::desde($request->query('tab'));
+        $consulta = collect($request->except('tab'))
+            ->filter(fn (mixed $valor): bool => is_scalar($valor) && $valor !== '')
+            ->all();
+
+        return redirect()->route(
+            $seccion->ruta(),
+            array_merge($consulta, ['cliente' => $cliente]),
+            301,
+        );
     }
 
     /**
@@ -596,7 +640,7 @@ class ClienteController extends Controller
             'es_buen_contribuyente' => $request->boolean('es_buen_contribuyente'),
         ]);
 
-        return redirect()->route('clientes.show', ['cliente' => $cliente, 'tab' => 'datos'])
+        return redirect()->route('clientes.show', $cliente)
             ->with('success', 'Datos fiscales actualizados correctamente.');
     }
 
@@ -675,7 +719,7 @@ class ClienteController extends Controller
                 ]);
             }
 
-            return redirect()->route('clientes.show', ['cliente' => $cliente, 'tab' => 'datos'])
+            return redirect()->route('clientes.show', $cliente)
                 ->with('success', $mensaje);
         } catch (Throwable $e) {
             Log::warning("Error al sincronizar estado SUNAT para cliente {$cliente->id}: {$e->getMessage()}");
@@ -740,7 +784,7 @@ class ClienteController extends Controller
             );
         });
 
-        return redirect()->route('clientes.show', ['cliente' => $cliente, 'tab' => 'datos'])
+        return redirect()->route('clientes.show', $cliente)
             ->with('success', 'Credenciales de acceso actualizadas correctamente.');
     }
 
@@ -1094,7 +1138,7 @@ class ClienteController extends Controller
             $msg .= " Se despacharon {$despachadas} alertas a WhatsApp.";
         }
 
-        return redirect()->route('clientes.show', ['cliente' => $cliente, 'tab' => 'notificaciones'])
+        return redirect()->route('clientes.notificaciones', $cliente)
             ->with('success', $msg);
     }
 
@@ -1126,7 +1170,7 @@ class ClienteController extends Controller
             $msg .= " Se despacharon {$despachadas} alertas a WhatsApp.";
         }
 
-        return redirect()->route('clientes.show', ['cliente' => $cliente, 'tab' => 'notificaciones'])
+        return redirect()->route('clientes.notificaciones', $cliente)
             ->with('success', $msg);
     }
 

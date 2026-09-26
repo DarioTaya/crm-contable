@@ -344,7 +344,7 @@
                             {{-- Cliente del Estudio --}}
                             <td class="px-4 py-3">
                                 @if ($comp->cliente)
-                                    <a href="{{ route('clientes.show', ['cliente' => $comp->cliente_id, 'tab' => 'sire']) }}" class="font-medium text-brand-600 hover:text-brand-800 hover:underline">
+                                    <a href="{{ route('clientes.sire', $comp->cliente_id) }}" class="font-medium text-brand-600 hover:text-brand-800 hover:underline">
                                         {{ $comp->cliente->razon_social }}
                                     </a>
                                     <div class="font-mono text-[11px] text-gray-400">RUC: {{ $comp->cliente->ruc }}</div>

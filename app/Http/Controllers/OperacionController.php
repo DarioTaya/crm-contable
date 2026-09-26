@@ -37,7 +37,7 @@ class OperacionController extends Controller
             ]
         );
 
-        return redirect()->route('clientes.show', ['cliente' => $cliente, 'tab' => 'operaciones'])
+        return redirect()->route('clientes.operaciones', $cliente)
             ->with('success', "✅ Periodo {$validated['periodo']} actualizado correctamente.");
     }
 }

@@ -69,6 +69,15 @@ class AislamientoEntreEstudiosTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_las_secciones_del_expediente_de_otro_estudio_no_existen(): void
+    {
+        $this->actingAs($this->adminPropio);
+
+        $this->get(route('clientes.notificaciones', $this->clienteAjeno))->assertNotFound();
+        $this->get(route('clientes.operaciones', $this->clienteAjeno))->assertNotFound();
+        $this->get(route('clientes.sire', $this->clienteAjeno))->assertNotFound();
+    }
+
     public function test_un_comprobante_de_otro_estudio_no_se_puede_descargar(): void
     {
         $comprobante = $this->comprobanteDe($this->clienteAjeno);

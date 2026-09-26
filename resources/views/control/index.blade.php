@@ -213,7 +213,7 @@
                                     </span>
 
                                     <div class="min-w-0 flex-1 truncate">
-                                        <a href="{{ route('clientes.show', ['cliente' => $item['cliente'], 'tab' => 'operaciones']) }}"
+                                        <a href="{{ route('clientes.operaciones', $item['cliente']) }}"
                                            title="Ver expediente: {{ $item['cliente']->razon_social }}"
                                            class="block truncate text-xs font-bold text-gray-900 hover:text-brand-600 transition">
                                             {{ $item['cliente']->razon_social }}

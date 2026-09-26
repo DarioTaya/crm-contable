@@ -296,7 +296,7 @@ XML;
         $resBoveda->assertDontSee('Cargar Originales (ZIP / XML)');
 
         // Expediente SIRE del cliente
-        $resCliente = $this->get(route('clientes.show', ['cliente' => $cliente, 'tab' => 'sire']));
+        $resCliente = $this->get(route('clientes.sire', $cliente));
         $resCliente->assertStatus(200);
         $resCliente->assertDontSee('Cargar Originales');
     }

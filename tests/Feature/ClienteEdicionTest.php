@@ -30,7 +30,7 @@ class ClienteEdicionTest extends TestCase
             'telefono' => '911222333',
         ]);
 
-        $response->assertRedirect(route('clientes.show', ['cliente' => $cliente, 'tab' => 'datos']));
+        $response->assertRedirect(route('clientes.show', $cliente));
         $response->assertSessionHas('success', 'Datos fiscales actualizados correctamente.');
 
         $cliente->refresh();
@@ -101,7 +101,7 @@ class ClienteEdicionTest extends TestCase
             'clave_detracciones' => 'BnClave5544!',
         ]);
 
-        $response->assertRedirect(route('clientes.show', ['cliente' => $cliente, 'tab' => 'datos']));
+        $response->assertRedirect(route('clientes.show', $cliente));
         $response->assertSessionHas('success', 'Credenciales de acceso actualizadas correctamente.');
 
         $credencial = Credencial::where('cliente_id', $cliente->id)->first();

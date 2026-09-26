@@ -195,18 +195,18 @@ class ControlBalanceTest extends TestCase
         ]);
 
         // MYPE debe mostrar la sección de Control de Balances
-        $responseMype = $this->get(route('clientes.show', ['cliente' => $mype, 'tab' => 'operaciones']));
+        $responseMype = $this->get(route('clientes.operaciones', $mype));
         $responseMype->assertStatus(200);
         $responseMype->assertSee('Control de Balances y Estados Financieros');
         $responseMype->assertSee('DJ ANUAL '.(now()->year - 1));
 
         // RUS NO debe mostrar la sección de Control de Balances
-        $responseRus = $this->get(route('clientes.show', ['cliente' => $rus, 'tab' => 'operaciones']));
+        $responseRus = $this->get(route('clientes.operaciones', $rus));
         $responseRus->assertStatus(200);
         $responseRus->assertDontSee('Control de Balances y Estados Financieros');
 
         // RER NO debe mostrar la sección de Control de Balances
-        $responseRer = $this->get(route('clientes.show', ['cliente' => $rer, 'tab' => 'operaciones']));
+        $responseRer = $this->get(route('clientes.operaciones', $rer));
         $responseRer->assertStatus(200);
         $responseRer->assertDontSee('Control de Balances y Estados Financieros');
     }
@@ -228,7 +228,7 @@ class ControlBalanceTest extends TestCase
         $resControl->assertSee($textoEsperado, false);
 
         // 2. En clientes/show.blade.php
-        $resShow = $this->get(route('clientes.show', ['cliente' => $cliente, 'tab' => 'operaciones']));
+        $resShow = $this->get(route('clientes.operaciones', $cliente));
         $resShow->assertStatus(200);
         $resShow->assertSee($textoEsperado, false);
     }

@@ -193,7 +193,7 @@ class ApiCredentialsTest extends TestCase
             'estado' => true,
         ]);
 
-        $response = $this->get(route('clientes.show', ['cliente' => $cliente, 'tab' => 'sire']));
+        $response = $this->get(route('clientes.sire', $cliente));
 
         $response->assertOk();
         $response->assertSee('SIRE / Comprobantes');

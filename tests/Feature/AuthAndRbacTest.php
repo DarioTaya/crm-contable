@@ -279,6 +279,24 @@ class AuthAndRbacTest extends TestCase
         $response->assertDontSee('Eliminar Cliente');
     }
 
+    public function test_assistant_cannot_open_unassigned_client_sections(): void
+    {
+        $this->actingAs($this->asistente);
+
+        $this->get(route('clientes.notificaciones', $this->clienteNoAsignado))->assertForbidden();
+        $this->get(route('clientes.operaciones', $this->clienteNoAsignado))->assertForbidden();
+        $this->get(route('clientes.sire', $this->clienteNoAsignado))->assertForbidden();
+    }
+
+    public function test_assistant_can_open_assigned_client_sections(): void
+    {
+        $this->actingAs($this->asistente);
+
+        $this->get(route('clientes.notificaciones', $this->clienteAsignado))->assertOk();
+        $this->get(route('clientes.operaciones', $this->clienteAsignado))->assertOk();
+        $this->get(route('clientes.sire', $this->clienteAsignado))->assertOk();
+    }
+
     public function test_admin_creates_assistant_and_assigns_clients(): void
     {
         $response = $this->actingAs($this->admin)->post(route('usuarios.store'), [
