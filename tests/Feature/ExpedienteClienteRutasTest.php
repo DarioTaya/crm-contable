@@ -19,7 +19,8 @@ class ExpedienteClienteRutasTest extends TestCase
             ->assertOk()
             ->assertSee('data-seccion="datos"', false)
             ->assertSee('/clientes/'.$cliente->id.'/notificaciones', false)
-            ->assertSee('/clientes/'.$cliente->id.'/operaciones', false)
+            ->assertSee('/clientes/'.$cliente->id.'/impuestos', false)
+            ->assertDontSee('/clientes/'.$cliente->id.'/operaciones', false)
             ->assertSee('/clientes/'.$cliente->id.'/sire', false);
 
         $this->get(route('clientes.notificaciones', $cliente))
@@ -33,6 +34,23 @@ class ExpedienteClienteRutasTest extends TestCase
         $this->get(route('clientes.sire', $cliente))
             ->assertOk()
             ->assertSee('data-seccion="sire"', false);
+    }
+
+    public function test_la_url_antigua_de_operaciones_abre_impuestos(): void
+    {
+        $cliente = $this->cliente();
+
+        $this->assertSame(
+            url('/clientes/'.$cliente->id.'/impuestos'),
+            route('clientes.operaciones', $cliente),
+        );
+
+        $this->get('/clientes/'.$cliente->id.'/operaciones?anio=2025')
+            ->assertMovedPermanently()
+            ->assertRedirectToRoute('clientes.operaciones', [
+                'cliente' => $cliente,
+                'anio' => '2025',
+            ]);
     }
 
     #[TestWith(['notificaciones', 'clientes.notificaciones'])]

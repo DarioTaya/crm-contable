@@ -369,7 +369,7 @@
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            @click="activeTab = 'deuda'; if (!deudaCargada) cargarDeuda()"
+                                                            @click="activeTab = 'deuda'; deudaAbiertaKey = null; if (!deudaCargada) cargarDeuda()"
                                                             :class="activeTab === 'deuda' ? 'border-b-2 border-brand-600 text-brand-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
                                                             class="flex-1 pb-2 text-center transition relative flex items-center justify-center gap-1.5 whitespace-nowrap"
                                                         >
@@ -453,7 +453,8 @@
 
                                                     <template x-for="bloque in declaraciones" :key="bloque.id">
                                                         <section class="rounded-xl border border-slate-200 overflow-hidden bg-white">
-                                                            <div class="flex items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
+                                                            <div class="flex items-center justify-between gap-2 border-b px-3 py-2"
+                                                                 :class="bloque.id === 'pdt_601' ? 'border-indigo-200 bg-indigo-100' : 'border-slate-300 bg-slate-200'">
                                                                 <p class="text-[11px] font-black tracking-wide text-gray-900">
                                                                     <span x-text="bloque.titulo"></span>
                                                                     <span class="font-semibold text-gray-400"> · </span>
@@ -469,13 +470,6 @@
                                                                 <p x-show="bloque.id === 'pdt_621' && regimen === 'RUS'" class="rounded-lg border border-amber-200 bg-amber-50 px-2 py-1.5 text-[10px] leading-snug text-amber-900">
                                                                     NRUS no presenta PDT 621. Use esta sección solo si el régimen del cliente no corresponde.
                                                                 </p>
-
-                                                                <button type="button"
-                                                                        x-show="tributosLibres(bloque).length && !borradorSinTributo(bloque.id)"
-                                                                        @click="agregarTributo('', bloque.id)"
-                                                                        class="flex w-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-600 transition hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700">
-                                                                    + Nuevo tributo
-                                                                </button>
 
                                                                 <template x-for="deuda in deudasDelBloque(bloque.id)" :key="deuda.localKey">
                                                                     <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
@@ -597,6 +591,13 @@
                                                                         </div>
                                                                     </div>
                                                                 </template>
+
+                                                                <button type="button"
+                                                                        x-show="tributosLibres(bloque).length && !borradorSinTributo(bloque.id)"
+                                                                        @click="agregarTributo('', bloque.id)"
+                                                                        class="flex w-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-600 transition hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700">
+                                                                    + Nuevo tributo
+                                                                </button>
                                                             </div>
                                                         </section>
                                                     </template>
@@ -870,6 +871,7 @@
                         if (!abierto) {
                             this.deudas.forEach((deuda) => this.revertirCampos(deuda));
                             this.deudas = this.deudas.filter((deuda) => this.deudaPersistida(deuda));
+                            this.deudaAbiertaKey = null;
                         }
                     });
                     this.$watch('deudaAbiertaKey', (nueva, anterior) => {
@@ -1300,9 +1302,6 @@
                     if (!opcion) {
                         return '';
                     }
-                    if (opcion.codigo === this.rentaSugerida) {
-                        return opcion.etiqueta + ' · régimen';
-                    }
                     return opcion.etiqueta;
                 },
 
@@ -1398,7 +1397,7 @@
                     this.deudas = guardadas.concat(borradores);
                     this.meses[this.mesIdx].deudas = guardadas;
                     if (!this.deudas.some((deuda) => deuda.localKey === this.deudaAbiertaKey)) {
-                        this.deudaAbiertaKey = this.deudas[0]?.localKey || null;
+                        this.deudaAbiertaKey = null;
                     }
                 },
 

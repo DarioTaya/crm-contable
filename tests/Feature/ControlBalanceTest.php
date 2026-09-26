@@ -171,7 +171,7 @@ class ControlBalanceTest extends TestCase
         $this->assertEquals('Depreciación y cierre anual pendiente', $balance->getNotaMes(8));
     }
 
-    public function test_expediente_digital_renders_balances_only_for_mype_and_general(): void
+    public function test_el_expediente_de_impuestos_no_muestra_balances(): void
     {
         $mype = Cliente::create([
             'razon_social' => 'EXPEDIENTE MYPE SAC',
@@ -194,21 +194,21 @@ class ControlBalanceTest extends TestCase
             'estado' => true,
         ]);
 
-        // MYPE debe mostrar la sección de Control de Balances
-        $responseMype = $this->get(route('clientes.operaciones', $mype));
-        $responseMype->assertStatus(200);
-        $responseMype->assertSee('Control de Balances y Estados Financieros');
-        $responseMype->assertSee('DJ ANUAL '.(now()->year - 1));
+        $general = Cliente::create([
+            'razon_social' => 'EXPEDIENTE GENERAL SAC',
+            'ruc' => '20123456784',
+            'regimen_tributario' => 'General',
+            'estado' => true,
+        ]);
 
-        // RUS NO debe mostrar la sección de Control de Balances
-        $responseRus = $this->get(route('clientes.operaciones', $rus));
-        $responseRus->assertStatus(200);
-        $responseRus->assertDontSee('Control de Balances y Estados Financieros');
-
-        // RER NO debe mostrar la sección de Control de Balances
-        $responseRer = $this->get(route('clientes.operaciones', $rer));
-        $responseRer->assertStatus(200);
-        $responseRer->assertDontSee('Control de Balances y Estados Financieros');
+        foreach ([$mype, $rus, $rer, $general] as $cliente) {
+            $this->get(route('clientes.operaciones', $cliente))
+                ->assertOk()
+                ->assertSee('Impuestos del ejercicio')
+                ->assertDontSee('Control de Balances y Estados Financieros')
+                ->assertDontSee('Estado de Balance')
+                ->assertDontSee('DJ ANUAL');
+        }
     }
 
     public function test_ui_text_refinements_match_requirements(): void

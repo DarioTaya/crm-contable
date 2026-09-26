@@ -532,8 +532,15 @@ class ControlDeudasTest extends TestCase
         $response->assertSee('Medio de pago');
         $response->assertSee('Solo el saldo por pagar entra a Control de Deudas.');
         $response->assertSee('+ Nuevo tributo');
+        $response->assertSee("activeTab = 'deuda'; deudaAbiertaKey = null", false);
         $response->assertSee('deuda.borrador_codigo');
         $response->assertDontSee('¿Quedó deuda con SUNAT');
+        $response->assertDontSee('· régimen', false);
+        $contenido = $response->getContent();
+        $this->assertLessThan(
+            strpos($contenido, '+ Nuevo tributo'),
+            strpos($contenido, 'deudasDelBloque(bloque.id)'),
+        );
     }
 
     public function test_guardar_tributo_sin_importe_rechaza_la_solicitud(): void

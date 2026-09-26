@@ -411,41 +411,6 @@ class ClienteController extends Controller
         }
         $reporteImpuestos = $reporteImpuestosCliente->armar($cliente, $anioReporte);
 
-        $nombresMeses = [
-            1 => 'Enero',
-            2 => 'Febrero',
-            3 => 'Marzo',
-            4 => 'Abril',
-            5 => 'Mayo',
-            6 => 'Junio',
-            7 => 'Julio',
-            8 => 'Agosto',
-            9 => 'Setiembre',
-            10 => 'Octubre',
-            11 => 'Noviembre',
-            12 => 'Diciembre',
-        ];
-
-        $mesesBalances = [];
-        $djAnualBalance = 'Pendiente';
-        $tieneBalances = $cliente->llevaBalances();
-
-        if ($tieneBalances) {
-            $cliente->load(['controlBalances' => fn ($q) => $q->where('anio', $anioActual)]);
-            $controlBalance = $cliente->controlBalances->first();
-            $djAnualBalance = $controlBalance?->dj_anual ?? 'Pendiente';
-
-            for ($mes = 1; $mes <= 12; $mes++) {
-                $mesesBalances[] = [
-                    'numero_mes' => $mes,
-                    'nombre_mes' => $nombresMeses[$mes],
-                    'anio' => $anioActual,
-                    'estado' => $controlBalance?->getEstadoMes($mes) ?? 'Pendiente',
-                    'nota' => $controlBalance?->getNotaMes($mes) ?? '',
-                ];
-            }
-        }
-
         // Bóveda SIRE: Comprobantes y Métricas pre-filtradas exclusivamente para este cliente
         $sireQuery = $cliente->comprobantes();
 
@@ -483,16 +448,23 @@ class ClienteController extends Controller
             'urlsSeccion',
             'consultaSire',
             'reporteImpuestos',
-            'mesesBalances',
-            'djAnualBalance',
-            'tieneBalances',
-            'anioActual',
             'comprobantesCliente',
             'sireTotalBase',
             'sireTotalIgv',
             'sireTotalFacturado',
             'sireTotalRegistros'
         ));
+    }
+
+    /**
+     * La pestaña pasó de /operaciones a /impuestos. Conserva el ejercicio pedido.
+     */
+    public function redirigirOperaciones(Request $request, Cliente $cliente): RedirectResponse
+    {
+        return redirect()->route('clientes.operaciones', array_merge(
+            $request->query(),
+            ['cliente' => $cliente],
+        ), 301);
     }
 
     /**
