@@ -875,12 +875,14 @@
                         }
                     });
                     this.$watch('deudaAbiertaKey', (nueva, anterior) => {
-                        if (!anterior || anterior === nueva) {
-                            return;
+                        if (anterior && anterior !== nueva) {
+                            const previa = this.deudas.find((deuda) => deuda.localKey === anterior);
+                            if (previa) {
+                                this.revertirCampos(previa);
+                            }
                         }
-                        const previa = this.deudas.find((deuda) => deuda.localKey === anterior);
-                        if (previa) {
-                            this.revertirCampos(previa);
+                        if (nueva !== anterior) {
+                            this.encuadrarMenuDJ();
                         }
                     });
                     this.$watch('tieneDeuda', () => {
@@ -1038,6 +1040,19 @@
                     const locales = (this.deudas || []).some((deuda) => !!deuda.id);
                     const delMes = (this.meses[this.mesIdx].deudas || []).some((deuda) => !!deuda.id);
                     return locales || delMes;
+                },
+
+                encuadrarMenuDJ() {
+                    const menu = this.$refs.menuDJ;
+                    if (!menu || !menu._anclaMenu || typeof window.ubicarMenuFlotante !== 'function') {
+                        return;
+                    }
+                    this.$nextTick(() => {
+                        if (!this.openDJ || !menu._anclaMenu) {
+                            return;
+                        }
+                        window.ubicarMenuFlotante(menu, menu._anclaMenu);
+                    });
                 },
 
                 reubicarMenuDeudaCompleto() {
@@ -1435,6 +1450,7 @@
                             deuda.tributo_nombre_corto = 'Nuevo tributo';
                         }
                         deuda.borrador_igv = false;
+                        this.encuadrarMenuDJ();
                         return;
                     }
                     if (!this.deudaPersistida(deuda)) {
@@ -1444,6 +1460,7 @@
                     if (deuda.borrador_codigo !== '1011') {
                         deuda.borrador_igv = false;
                     }
+                    this.encuadrarMenuDJ();
                 },
 
                 agregarTributo(codigo, declaracionId) {
@@ -1524,6 +1541,7 @@
                         }
                         const codigoEnviado = deuda.borrador_codigo;
                         this.aplicarRespuestaDeuda(data);
+                        this.encuadrarMenuDJ();
                         const guardada = this.deudas.find(d => d.tributo_codigo === codigoEnviado && d.id);
                         if (guardada) {
                             guardada.guardado = true;
@@ -1567,6 +1585,7 @@
                         }
                         this.deudas = this.deudas.filter(d => d.localKey !== deuda.localKey);
                         this.aplicarRespuestaDeuda(data);
+                        this.encuadrarMenuDJ();
                     } catch (err) {
                         alert(err.message || 'No se pudo eliminar el tributo.');
                     }

@@ -14,21 +14,28 @@
             }
         } catch (e) {}
 
-        // Posicionamiento inteligente y sin parpadeo para menús y popovers flotantes
+        // Posicionamiento inteligente y sin parpadeo para menús y popovers flotantes.
+        // El reencuadre por cambio de alto no puede depender de offsetParent: en un
+        // position:fixed ese valor es null, y el aviso del ResizeObserver se quedaba
+        // sin aplicar hasta el siguiente movimiento del mouse.
         window.ubicarMenuFlotante = function (panel, ancla, intento) {
             if (!panel || !ancla || panel._reposicionPendiente) {
                 return;
             }
 
+            const soloEncuadre = panel._soloEncuadre === true;
             const margen = 16;
             const separacion = 6;
             const rect = ancla.getBoundingClientRect();
-            
-            // Garantizar que la altura máxima nunca exceda el alto visible de la ventana
             const maxAlto = window.innerHeight - (margen * 2);
-            panel.style.maxHeight = maxAlto + 'px';
 
-            // Si el elemento aún no tiene dimensiones en el DOM, esperar un frame sin parpadeo
+            if (!soloEncuadre) {
+                const maxCss = maxAlto + 'px';
+                if (panel.style.maxHeight !== maxCss) {
+                    panel.style.maxHeight = maxCss;
+                }
+            }
+
             const ancho = panel.offsetWidth || 455;
             const alto = panel.offsetHeight || 380;
 
@@ -43,23 +50,19 @@
             const cabeAbajo = window.innerHeight - rect.bottom >= alto + margen;
             const cabeArriba = rect.top >= alto + margen;
             const abrirArriba = !cabeAbajo && cabeArriba;
-            
+
             let top = abrirArriba ? rect.top - alto - separacion : rect.bottom + separacion;
             let left = rect.left;
 
-            // Ajustar horizontalmente si se desborda hacia la derecha
             if (left + ancho > window.innerWidth - margen) {
                 left = rect.right - ancho;
             }
-            // Asegurar que no quede pegado ni sobrepase el margen derecho de la pantalla
             if (left + ancho > window.innerWidth - margen) {
                 left = window.innerWidth - ancho - margen;
             }
-            // Asegurar que no quede por fuera de la izquierda
             if (left < margen) {
                 left = margen;
             }
-            // Asegurar que no quede por fuera arriba o abajo
             if (top < margen) {
                 top = margen;
             }
@@ -67,20 +70,30 @@
                 top = Math.max(margen, window.innerHeight - alto - margen);
             }
 
-            panel.style.top = Math.round(top) + 'px';
-            panel.style.left = Math.round(left) + 'px';
-            panel.style.visibility = 'visible';
+            const topCss = Math.round(top) + 'px';
+            const leftCss = Math.round(left) + 'px';
+            if (panel.style.top !== topCss) {
+                panel.style.top = topCss;
+            }
+            if (panel.style.left !== leftCss) {
+                panel.style.left = leftCss;
+            }
+            if (panel.style.visibility !== 'visible') {
+                panel.style.visibility = 'visible';
+            }
             panel._anclaMenu = ancla;
 
-            // Escuchar cambios de tamaño dinámicos (ej: al activar switches o abrir acordeones) para reajustar posición de inmediato
             if (!panel._menuResizeObserver && typeof ResizeObserver !== 'undefined') {
                 panel._menuResizeObserver = new ResizeObserver(function () {
-                    if (panel._reposicionPendiente) {
+                    if (panel._reposicionPendiente || panel._soloEncuadre || !panel._anclaMenu) {
                         return;
                     }
-                    if (panel._anclaMenu && panel.style.display !== 'none' && panel.offsetParent !== null) {
-                        window.ubicarMenuFlotante(panel, panel._anclaMenu);
+                    if (panel.style.display === 'none' || panel.getClientRects().length === 0) {
+                        return;
                     }
+                    panel._soloEncuadre = true;
+                    window.ubicarMenuFlotante(panel, panel._anclaMenu);
+                    panel._soloEncuadre = false;
                 });
                 panel._menuResizeObserver.observe(panel);
             }
