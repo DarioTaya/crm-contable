@@ -1,4 +1,5 @@
 import Alpine from 'alpinejs';
+import * as FiltrosControlDeudas from './filtros-control-deudas.js';
 
 /**
  * Alpine se sirve desde el bundle, no desde un CDN: la aplicacion debe
@@ -8,6 +9,7 @@ import Alpine from 'alpinejs';
  * unicamente cuando la pagina trae un grafico, para que el resto de pantallas
  * no paguen ese parseo en cada navegacion.
  */
+window.FiltrosControlDeudas = FiltrosControlDeudas;
 window.Alpine = Alpine;
 
 Alpine.start();

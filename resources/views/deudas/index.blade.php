@@ -277,40 +277,30 @@
     </div>
 
     {{-- ═══════════════════════════════ BARRA DE CHIPS / TAGS MULTI-SELECT (Vercel / Stripe Style) ═══════════════════════════════ --}}
-    <div x-show="isFilteringClients" x-cloak
+    <div x-show="hayFiltrosAvanzados" x-cloak
          class="no-print mb-5 flex flex-wrap items-center gap-2 p-3 rounded-2xl bg-slate-50 border border-slate-200/90 text-xs shadow-2xs">
-        <span class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mr-1 flex items-center gap-1.5 shrink-0">
-            <svg class="h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.539.092.917.56.917 1.107v2.304a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.785c0-.547.378-1.015.917-1.107a48.51 48.51 0 0 1 8.083-.678Z" />
-            </svg>
-            Filtrando (<span x-text="selectedClientes.length"></span>/<span x-text="clientes.length"></span>):
-        </span>
-
-        <template x-for="cId in selectedClientes" :key="cId">
-            <span class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-white border border-gray-300 text-gray-800 font-semibold shadow-2xs text-[11px] hover:border-gray-400 transition group">
-                <span class="font-mono font-bold text-brand-600 text-[10px]" x-text="getClienteNumero(cId)"></span>
-                <span class="truncate max-w-[170px]" x-text="getClienteNombre(cId)"></span>
+        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 shrink-0">Filtros</span>
+        <template x-for="chip in chipsFiltrosAvanzados" :key="chip.clave">
+            <span class="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-white border border-gray-300 text-gray-800 font-semibold shadow-2xs text-[11px]">
+                <span class="text-[10px] font-bold uppercase tracking-wide text-gray-400" x-text="chip.grupo"></span>
+                <span class="truncate max-w-[170px]" x-text="chip.texto"></span>
                 <button
                     type="button"
-                    @click="removerClienteFiltro(cId)"
+                    @click="quitarChipFiltro(chip)"
                     class="h-4 w-4 rounded-full flex items-center justify-center text-gray-400 hover:bg-rose-50 hover:text-rose-600 transition"
-                    title="Quitar este cliente del filtro">
+                    title="Quitar este filtro">
                     <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                     </svg>
                 </button>
             </span>
         </template>
-
-        <span x-show="selectedClientes.length === 0" class="text-xs text-rose-600 italic">
-            Ningún cliente seleccionado. No se mostrarán deudas.
-        </span>
-
         <button
             type="button"
-            @click="limpiarFiltroClientes()"
-            class="text-[11px] font-bold text-brand-700 hover:text-brand-900 ml-2 hover:underline transition shrink-0">
-            Restablecer todos
+            x-show="hayFiltrosAvanzados"
+            @click="limpiarFiltrosAvanzados()"
+            class="text-[11px] font-bold text-brand-700 hover:text-brand-900 hover:underline transition shrink-0">
+            Limpiar filtros
         </button>
     </div>
 
@@ -324,102 +314,167 @@
             </div>
 
             <div class="ml-auto flex shrink-0 items-center justify-end gap-2">
-            {{-- Botón: Filtrar por Cliente (Multi-Select Popover) --}}
-            <div class="relative z-50 shrink-0" @click.away="filterOpen = false">
+            {{-- Filtros avanzados --}}
+            <div class="relative z-50 shrink-0 sm:w-72" @click.away="filtrosAbiertos = false" @keydown.escape.window="filtrosAbiertos = false">
                 <button
-                    @click="filterOpen = !filterOpen"
                     type="button"
-                    class="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-bold text-gray-700 shadow-xs transition hover:bg-gray-50 hover:border-gray-400 active:scale-95"
-                    :class="{'ring-2 ring-brand-500/20 border-brand-500 text-brand-700': isFilteringClients}">
-                    <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.539.092.917.56.917 1.107v2.304a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.785c0-.547.378-1.015.917-1.107a48.51 48.51 0 0 1 8.083-.678Z" />
-                    </svg>
-                    <span>Filtrar Clientes</span>
-                    <span class="rounded-full px-1.5 py-0.2 text-[10px] font-black"
-                          :class="isFilteringClients ? 'bg-brand-100 text-brand-800' : 'bg-gray-100 text-gray-600'"
-                          x-text="filterLabel">
-                        Todos ({{ count($clientesConDeuda) }})
-                    </span>
-                    <svg class="h-3.5 w-3.5 text-gray-400 transition-transform duration-200" :class="{'rotate-180': filterOpen}" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    @click="filtrosAbiertos = !filtrosAbiertos"
+                    class="inline-flex w-full items-center rounded-xl border bg-white py-1.5 pl-8 text-left text-xs shadow-2xs transition"
+                    :class="hayFiltrosAvanzados ? 'border-brand-500 pr-8 font-semibold text-gray-800 ring-1 ring-brand-500' : 'border-gray-300 pr-3 font-medium text-gray-400 hover:border-gray-400'"
+                    :aria-expanded="filtrosAbiertos"
+                    aria-haspopup="dialog">
+                    <span class="truncate" x-text="resumenFiltrosAvanzados">Denominación, periodo, tributo o vencimiento</span>
+                </button>
+                <svg class="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.094.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.002.917-1.096A48.32 48.32 0 0 1 12 3Z" />
+                </svg>
+                <button
+                    type="button"
+                    x-show="hayFiltrosAvanzados"
+                    x-cloak
+                    @click.stop="limpiarFiltrosAvanzados()"
+                    class="absolute right-2.5 top-2 text-gray-400 hover:text-gray-600"
+                    title="Limpiar filtros">
+                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                     </svg>
                 </button>
 
-                {{-- Panel Desplegable del Filtro Multi-Cliente --}}
-                <div x-show="filterOpen" x-cloak
+                <div x-show="filtrosAbiertos"
+                     x-cloak
                      x-transition:enter="transition ease-out duration-150"
                      x-transition:enter-start="opacity-0 translate-y-1 scale-95"
                      x-transition:enter-end="opacity-100 translate-y-0 scale-100"
                      x-transition:leave="transition ease-in duration-100"
                      x-transition:leave-start="opacity-100 translate-y-0 scale-100"
                      x-transition:leave-end="opacity-0 translate-y-1 scale-95"
-                     class="filter-panel absolute right-0 mt-2 z-50 w-80 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-xl ring-1 ring-black/5">
-                    <div class="flex items-center justify-between pb-2.5 border-b border-gray-100">
-                        <p class="text-xs font-bold text-gray-900">Seleccionar Clientes</p>
-                        <div class="flex items-center gap-2">
-                            <button @click="seleccionarTodos()" type="button" class="text-[11px] font-bold text-brand-600 hover:text-brand-700">Todos</button>
-                            <span class="text-gray-300">|</span>
-                            <button @click="deseleccionarTodos()" type="button" class="text-[11px] font-bold text-gray-500 hover:text-gray-700">Limpiar</button>
+                     data-filtros-avanzados
+                     role="dialog"
+                     aria-label="Filtros avanzados"
+                     class="filter-panel absolute right-0 z-50 mt-2 max-h-[min(36rem,70vh)] w-[min(26rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3.5 shadow-xl ring-1 ring-black/5">
+                    <div class="flex items-center justify-between border-b border-gray-100 pb-2.5">
+                        <p class="text-xs font-bold text-gray-900">Filtros avanzados</p>
+                        <button type="button" x-show="hayFiltrosAvanzados" @click="limpiarFiltrosAvanzados()" class="text-[11px] font-bold text-gray-500 hover:text-gray-700">Limpiar</button>
+                    </div>
+                    <p class="mt-2 text-[11px] leading-4 text-gray-500">Se combinan todos. Dentro de cada uno puedes marcar varias opciones.</p>
+
+                    <div class="mt-3" data-filtro="denominacion">
+                        <div class="mb-1.5 flex items-center justify-between">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Denominación</p>
+                            <button type="button" x-show="denominaciones.length" @click="vaciarFaceta('denominaciones')" class="text-[11px] font-bold text-gray-500 hover:text-gray-700">Quitar</button>
+                        </div>
+                        <div class="relative">
+                            <input type="text"
+                                   x-model="busquedaDenominacion"
+                                   autocomplete="off"
+                                   placeholder="Buscar empresa..."
+                                   class="w-full rounded-lg border border-gray-200 bg-gray-50/70 py-1.5 pl-8 pr-2.5 text-xs text-gray-800 placeholder-gray-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">
+                            <svg class="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                            </svg>
+                        </div>
+                        <div class="mt-1.5 max-h-36 space-y-0.5 overflow-y-auto pr-1">
+                            <template x-for="opcion in opcionesDenominacionVisibles" :key="'den-' + opcion.valor">
+                                <label class="flex cursor-pointer items-center justify-between gap-2 rounded-lg p-1.5 hover:bg-gray-50" :class="denominaciones.includes(opcion.valor) ? 'bg-brand-50/70' : ''">
+                                    <span class="flex min-w-0 items-center gap-2">
+                                        <input type="checkbox"
+                                               class="h-3.5 w-3.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                                               :checked="denominaciones.includes(opcion.valor)"
+                                               @change="alternarSeleccion('denominaciones', opcion.valor)">
+                                        <span class="min-w-0">
+                                            <span class="block truncate text-xs font-semibold text-gray-800" x-text="opcion.etiqueta"></span>
+                                            <span class="block truncate font-mono text-[10px] text-gray-400" x-text="opcion.detalle"></span>
+                                        </span>
+                                    </span>
+                                    <span class="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-gray-600" x-text="opcion.cantidad"></span>
+                                </label>
+                            </template>
+                            <p x-show="opcionesDenominacionVisibles.length === 0" class="px-1 py-2 text-center text-[11px] text-gray-400">Ninguna empresa con los otros filtros</p>
                         </div>
                     </div>
 
-                    {{-- Buscador rápido de clientes dentro del desplegable --}}
-                    <div class="mt-2.5 relative">
-                        <input type="text"
-                               x-model="searchClientFilter"
-                               placeholder="Buscar por razón social o RUC..."
-                               class="w-full rounded-lg border border-gray-200 bg-gray-50/70 px-2.5 py-1.5 pl-8 text-xs text-gray-800 placeholder-gray-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">
-                        <svg class="absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                        </svg>
+                    <div class="mt-3 border-t border-gray-100 pt-3" data-filtro="periodo">
+                        <div class="mb-1.5 flex items-center justify-between">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Periodo</p>
+                            <button type="button" x-show="periodos.length" @click="vaciarFaceta('periodos')" class="text-[11px] font-bold text-gray-500 hover:text-gray-700">Quitar</button>
+                        </div>
+                        <div class="max-h-28 space-y-0.5 overflow-y-auto pr-1">
+                            <template x-for="opcion in opcionesPeriodo" :key="'per-' + opcion.valor">
+                                <label class="flex cursor-pointer items-center justify-between gap-2 rounded-lg p-1.5 hover:bg-gray-50" :class="periodos.includes(opcion.valor) ? 'bg-brand-50/70' : ''">
+                                    <span class="flex items-center gap-2">
+                                        <input type="checkbox"
+                                               class="h-3.5 w-3.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                                               :checked="periodos.includes(opcion.valor)"
+                                               @change="alternarSeleccion('periodos', opcion.valor)">
+                                        <span class="font-mono text-xs font-semibold text-gray-800" x-text="opcion.etiqueta"></span>
+                                    </span>
+                                    <span class="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-gray-600" x-text="opcion.cantidad"></span>
+                                </label>
+                            </template>
+                            <p x-show="opcionesPeriodo.length === 0" class="px-1 py-2 text-center text-[11px] text-gray-400">Ningún periodo con los otros filtros</p>
+                        </div>
                     </div>
 
-                    {{-- Lista de clientes con checkbox y contador de deudas --}}
-                    <div class="mt-2 max-h-56 overflow-y-auto space-y-1 divide-y divide-gray-50 pr-1">
-                        <template x-for="cli in clientesFiltradosEnDropdown" :key="cli.id">
-                            <label class="flex items-center justify-between gap-2 rounded-lg p-1.5 hover:bg-gray-50 cursor-pointer select-none transition">
-                                <div class="flex items-center gap-2 min-w-0">
-                                    <input type="checkbox"
-                                           :value="String(cli.id)"
-                                           x-model="selectedClientes"
-                                           class="h-3.5 w-3.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500">
-                                    <span class="font-mono text-[10px] font-bold text-gray-500 shrink-0" x-text="cli.numero_formateado"></span>
-                                    <span class="truncate text-xs font-semibold text-gray-800" x-text="cli.razon_social"></span>
-                                </div>
-                                <span class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-gray-600 shrink-0"
-                                      x-text="cli.total_deudas"></span>
+                    <div class="mt-3 border-t border-gray-100 pt-3" data-filtro="tributo">
+                        <div class="mb-1.5 flex items-center justify-between">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Tributo</p>
+                            <button type="button" x-show="tributos.length" @click="vaciarFaceta('tributos')" class="text-[11px] font-bold text-gray-500 hover:text-gray-700">Quitar</button>
+                        </div>
+                        <div class="relative">
+                            <input type="text"
+                                   x-model="busquedaTributo"
+                                   autocomplete="off"
+                                   placeholder="Buscar código o tributo..."
+                                   class="w-full rounded-lg border border-gray-200 bg-gray-50/70 py-1.5 pl-8 pr-2.5 text-xs text-gray-800 placeholder-gray-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-brand-500">
+                            <svg class="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                            </svg>
+                        </div>
+                        <div class="mt-1.5 max-h-32 space-y-0.5 overflow-y-auto pr-1">
+                            <template x-for="opcion in opcionesTributoVisibles" :key="'trib-' + opcion.valor">
+                                <label class="flex cursor-pointer items-center justify-between gap-2 rounded-lg p-1.5 hover:bg-gray-50" :class="tributos.includes(opcion.valor) ? 'bg-brand-50/70' : ''">
+                                    <span class="min-w-0 truncate text-xs font-semibold text-gray-800">
+                                        <input type="checkbox"
+                                               class="mr-2 h-3.5 w-3.5 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                                               :checked="tributos.includes(opcion.valor)"
+                                               @change="alternarSeleccion('tributos', opcion.valor)">
+                                        <span x-text="opcion.etiqueta"></span>
+                                    </span>
+                                    <span class="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] font-bold text-gray-600" x-text="opcion.cantidad"></span>
+                                </label>
+                            </template>
+                            <p x-show="opcionesTributoVisibles.length === 0" class="px-1 py-2 text-center text-[11px] text-gray-400">Ningún tributo con los otros filtros</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 border-t border-gray-100 pt-3" data-filtro="vencimiento">
+                        <div class="mb-1.5 flex items-center justify-between">
+                            <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500">Vencimiento</p>
+                            <button type="button" x-show="venceDesde || venceHasta" @click="vaciarVencimiento()" class="text-[11px] font-bold text-gray-500 hover:text-gray-700">Quitar</button>
+                        </div>
+                        <div class="mb-2 flex flex-wrap gap-1.5">
+                            <button type="button" @click="aplicarPreset('vencidas')" class="rounded-lg border px-2 py-1 text-[10px] font-bold" :class="presetActivo('vencidas') ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'">Vencidas</button>
+                            <button type="button" @click="aplicarPreset('proximos_7')" class="rounded-lg border px-2 py-1 text-[10px] font-bold" :class="presetActivo('proximos_7') ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'">Próximos 7 días</button>
+                            <button type="button" @click="aplicarPreset('mes')" class="rounded-lg border px-2 py-1 text-[10px] font-bold" :class="presetActivo('mes') ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300'">Este mes</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <label class="block">
+                                <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gray-400">Desde</span>
+                                <input type="date" :value="venceDesde" @change="fijarFecha('venceDesde', $event.target.value)" class="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-800 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                             </label>
-                        </template>
-                        <div x-show="clientesFiltradosEnDropdown.length === 0" class="p-3 text-center text-xs text-gray-400">
-                            No se encontraron clientes
+                            <label class="block">
+                                <span class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gray-400">Hasta</span>
+                                <input type="date" :value="venceHasta" @change="fijarFecha('venceHasta', $event.target.value)" class="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-800 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                            </label>
                         </div>
+                        <p x-show="rangoVencimientoInvertido" x-cloak class="mt-1.5 text-[11px] font-semibold text-rose-600">La fecha inicial es posterior a la final.</p>
                     </div>
 
-                    <div class="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between">
-                        <span class="text-[11px] text-gray-500" x-text="selectedClientes.length + ' de ' + clientes.length + ' seleccionados'"></span>
-                        <button @click="filterOpen = false"
-                                type="button"
-                                class="rounded-lg bg-gray-900 px-3 py-1 text-xs font-bold text-white hover:bg-black transition">
-                            Listo
-                        </button>
+                    <div class="mt-3 flex items-center justify-between border-t border-gray-100 pt-2.5">
+                        <span class="text-[11px] text-gray-500" x-text="textoDeudasVisibles"></span>
+                        <button type="button" @click="filtrosAbiertos = false" class="rounded-lg bg-gray-900 px-3 py-1 text-xs font-bold text-white hover:bg-black">Listo</button>
                     </div>
                 </div>
-            </div>
-
-            {{-- Buscador en tiempo real dentro de la tabla --}}
-            <div class="relative shrink-0 sm:w-72">
-                <input type="text"
-                       x-model="searchTable"
-                       placeholder="Buscar por cliente, RUC, periodo o tributo..."
-                       class="w-full rounded-xl border border-gray-300 bg-white px-3 py-1.5 pl-8 text-xs text-gray-800 placeholder-gray-400 shadow-2xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
-                <svg class="absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                </svg>
-                <button x-show="searchTable" @click="searchTable = ''" class="absolute right-2.5 top-2 text-gray-400 hover:text-gray-600">
-                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                    </svg>
-                </button>
             </div>
             </div>
         </div>
@@ -450,6 +505,13 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 text-xs text-gray-700">
+                        <tr x-show="deudasVisiblesCount === 0 && hayFiltrosAvanzados" x-cloak class="no-print">
+                            <td colspan="8" class="px-6 py-12 text-center">
+                                <p class="text-sm font-bold text-gray-900">Ninguna deuda coincide con los filtros</p>
+                                <p class="mx-auto mt-1 max-w-sm text-xs text-gray-500">Prueba otra denominación, periodo, tributo o fecha. Los abonos siguen disponibles al volver a ver la fila.</p>
+                                <button type="button" @click="limpiarFiltrosAvanzados()" class="mt-3 inline-flex items-center rounded-xl bg-gray-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-black">Limpiar filtros</button>
+                            </td>
+                        </tr>
                         @foreach($deudas as $deuda)
                         @php
                             $numCli = $deuda->cliente?->numero ?? $deuda->cliente?->id ?? 0;
@@ -847,15 +909,19 @@
 
 {{-- ═══════════════════════════════ SCRIPT REACTIVO ALPINE.JS (Enterprise UX) ═══════════════════════════════ --}}
 <script>
-function controlDeudas(initialDeudas, clientesList, totalDeudaHistorica, totalRecaudado, totalSaldoPorCobrar) {
+function controlDeudas(initialDeudas, clientesConDeuda, totalDeudaHistorica, totalRecaudado, totalSaldoPorCobrar) {
+    void clientesConDeuda;
+
     return {
-        // Datos reactivos de deudas y clientes
         deudas: initialDeudas || [],
-        clientes: clientesList || [],
-        selectedClientes: (clientesList || []).map(c => String(c.id)),
-        searchClientFilter: '',
-        searchTable: '',
-        filterOpen: false,
+        filtrosAbiertos: false,
+        busquedaDenominacion: '',
+        busquedaTributo: '',
+        denominaciones: [],
+        periodos: [],
+        tributos: [],
+        venceDesde: '',
+        venceHasta: '',
         expandedRows: [],
 
         // Estado del Modal de Abonos
@@ -871,6 +937,21 @@ function controlDeudas(initialDeudas, clientesList, totalDeudaHistorica, totalRe
         abonoMonto: '',
         abonoFecha: new Date().toISOString().split('T')[0],
         abonoObs: '',
+
+        init() {
+            const motor = window.FiltrosControlDeudas;
+            if (!motor) {
+                return;
+            }
+
+            const restaurados = motor.filtrosDesdeParametros(new URLSearchParams(window.location.search), this.deudas);
+            this.denominaciones = restaurados.denominaciones;
+            this.periodos = restaurados.periodos;
+            this.tributos = restaurados.tributos;
+            this.venceDesde = restaurados.venceDesde;
+            this.venceHasta = restaurados.venceHasta;
+            this.sincronizarFiltrosEnUrl();
+        },
 
         // Formateador de moneda en Soles (PEN) con 2 decimales estándar peruano
         formatoSoles(valor) {
@@ -917,52 +998,34 @@ function controlDeudas(initialDeudas, clientesList, totalDeudaHistorica, totalRe
             return formatted;
         },
 
-        getClienteNumero(cId) {
-            const c = this.clientes.find(cli => String(cli.id) === String(cId));
-            return c ? c.numero_formateado : String(cId);
-        },
-
-        getClienteNombre(cId) {
-            const c = this.clientes.find(cli => String(cli.id) === String(cId));
-            return c ? c.razon_social : 'Cliente ' + cId;
-        },
-
-        removerClienteFiltro(cId) {
-            this.selectedClientes = this.selectedClientes.filter(id => String(id) !== String(cId));
-        },
-
-        limpiarFiltroClientes() {
-            this.seleccionarTodos();
-        },
-
         // Helper para obtener la deuda live
         getDeudaLive(id) {
             return this.deudas.find(d => d.id === id);
         },
 
-        // Determina si una deuda cumple los filtros de cliente y texto
+        filtrosAplicados() {
+            return {
+                clienteIds: null,
+                denominaciones: this.denominaciones,
+                periodos: this.periodos,
+                tributos: this.tributos,
+                venceDesde: this.venceDesde,
+                venceHasta: this.venceHasta,
+            };
+        },
+
         esDeudaVisible(deudaId) {
             const deuda = this.getDeudaLive(deudaId);
-            if (!deuda) return false;
-
-            // Filtro por selección de clientes (comparación segura de IDs sin error de tipo string vs integer)
-            if (!this.selectedClientes.map(String).includes(String(deuda.cliente_id))) {
+            if (!deuda) {
                 return false;
             }
 
-            // Filtro por búsqueda de texto
-            if (this.searchTable.trim() !== '') {
-                const q = this.searchTable.toLowerCase().trim();
-                const matchCliente = (deuda.cliente_razon || '').toLowerCase().includes(q);
-                const matchRuc = (deuda.cliente_ruc || '').toLowerCase().includes(q);
-                const matchCodigo = (deuda.cliente_codigo || '').toLowerCase().includes(q);
-                const matchPeriodo = (deuda.periodo || '').toLowerCase().includes(q);
-                const matchTributo = (deuda.tributo_nombre || '').toLowerCase().includes(q) || (deuda.tributo_codigo || '').toLowerCase().includes(q);
-
-                return matchCliente || matchRuc || matchCodigo || matchPeriodo || matchTributo;
+            const motor = window.FiltrosControlDeudas;
+            if (!motor) {
+                return true;
             }
 
-            return true;
+            return motor.cumpleFiltros(deuda, this.filtrosAplicados());
         },
 
         // Lista de deudas actualmente visibles
@@ -992,35 +1055,262 @@ function controlDeudas(initialDeudas, clientesList, totalDeudaHistorica, totalRe
             return Math.min(100, Math.round((this.totalRecaudadoFiltrado / this.totalDeudaFiltrada) * 100));
         },
 
-        get isFilteringClients() {
-            return this.selectedClientes.length < this.clientes.length;
-        },
-
-        get filterLabel() {
-            if (this.selectedClientes.length === this.clientes.length) {
-                return 'Todos (' + this.clientes.length + ')';
+        opcionesDe(faceta) {
+            const motor = window.FiltrosControlDeudas;
+            if (!motor) {
+                return [];
             }
-            return this.selectedClientes.length + ' de ' + this.clientes.length;
+
+            return motor.opcionesFaceta(this.deudas, this.filtrosAplicados(), faceta);
         },
 
-        get clientesFiltradosEnDropdown() {
-            if (!this.searchClientFilter.trim()) {
-                return this.clientes;
+        get opcionesDenominacionVisibles() {
+            const motor = window.FiltrosControlDeudas;
+            const opciones = this.opcionesDe('denominacion');
+            if (!motor) {
+                return opciones;
             }
-            const q = this.searchClientFilter.toLowerCase().trim();
-            return this.clientes.filter(c =>
-                (c.razon_social || '').toLowerCase().includes(q) ||
-                (c.ruc || '').includes(q) ||
-                (c.numero_formateado || '').includes(q)
-            );
+
+            return opciones.filter(opcion => motor.opcionCoincideBusqueda(opcion, this.busquedaDenominacion));
         },
 
-        seleccionarTodos() {
-            this.selectedClientes = this.clientes.map(c => String(c.id));
+        get opcionesPeriodo() {
+            return this.opcionesDe('periodo');
         },
 
-        deseleccionarTodos() {
-            this.selectedClientes = [];
+        get opcionesTributoVisibles() {
+            const motor = window.FiltrosControlDeudas;
+            const opciones = this.opcionesDe('tributo');
+            if (!motor) {
+                return opciones;
+            }
+
+            return opciones.filter(opcion => motor.opcionCoincideBusqueda(opcion, this.busquedaTributo));
+        },
+
+        get hayFiltrosAvanzados() {
+            return this.denominaciones.length > 0
+                || this.periodos.length > 0
+                || this.tributos.length > 0
+                || this.venceDesde !== ''
+                || this.venceHasta !== '';
+        },
+
+        get rangoVencimientoInvertido() {
+            const motor = window.FiltrosControlDeudas;
+            return motor ? motor.rangoInvertido(this.venceDesde, this.venceHasta) : false;
+        },
+
+        get resumenFiltrosAvanzados() {
+            if (!this.hayFiltrosAvanzados) {
+                return 'Denominación, periodo, tributo o vencimiento';
+            }
+
+            const partes = [];
+            if (this.denominaciones.length === 1) {
+                partes.push(this.etiquetaDenominacion(this.denominaciones[0]));
+            } else if (this.denominaciones.length > 1) {
+                partes.push(this.denominaciones.length + ' empresas');
+            }
+            if (this.periodos.length === 1) {
+                partes.push(this.periodos[0]);
+            } else if (this.periodos.length > 1) {
+                partes.push(this.periodos.length + ' periodos');
+            }
+            if (this.tributos.length === 1) {
+                partes.push(this.etiquetaTributo(this.tributos[0]));
+            } else if (this.tributos.length > 1) {
+                partes.push(this.tributos.length + ' tributos');
+            }
+            if (this.venceDesde || this.venceHasta) {
+                partes.push('vencimiento');
+            }
+
+            return partes.join(' · ');
+        },
+
+        get chipsFiltrosAvanzados() {
+            const chips = [];
+            this.denominaciones.forEach(id => {
+                chips.push({
+                    clave: 'denominacion-' + id,
+                    tipo: 'denominacion',
+                    valor: id,
+                    grupo: 'Denominación',
+                    texto: this.etiquetaDenominacion(id),
+                });
+            });
+            this.periodos.forEach(periodo => {
+                chips.push({
+                    clave: 'periodo-' + periodo,
+                    tipo: 'periodo',
+                    valor: periodo,
+                    grupo: 'Periodo',
+                    texto: periodo,
+                });
+            });
+            this.tributos.forEach(codigo => {
+                chips.push({
+                    clave: 'tributo-' + codigo,
+                    tipo: 'tributo',
+                    valor: codigo,
+                    grupo: 'Tributo',
+                    texto: this.etiquetaTributo(codigo),
+                });
+            });
+            if (this.venceDesde) {
+                chips.push({
+                    clave: 'desde',
+                    tipo: 'desde',
+                    valor: this.venceDesde,
+                    grupo: 'Desde',
+                    texto: this.fechaLegible(this.venceDesde),
+                });
+            }
+            if (this.venceHasta) {
+                chips.push({
+                    clave: 'hasta',
+                    tipo: 'hasta',
+                    valor: this.venceHasta,
+                    grupo: 'Hasta',
+                    texto: this.fechaLegible(this.venceHasta),
+                });
+            }
+
+            return chips;
+        },
+
+        get textoDeudasVisibles() {
+            const cantidad = this.deudasVisiblesCount;
+            return cantidad + (cantidad === 1 ? ' deuda visible' : ' deudas visibles');
+        },
+
+        etiquetaDenominacion(id) {
+            const deuda = this.deudas.find(item => String(item.cliente_id) === String(id));
+            return deuda && deuda.cliente_razon ? deuda.cliente_razon : 'Empresa';
+        },
+
+        etiquetaTributo(codigo) {
+            const deuda = this.deudas.find(item => String(item.tributo_codigo || '') === String(codigo));
+            if (!deuda) {
+                return String(codigo);
+            }
+            const corto = deuda.tributo_nombre_corto || deuda.tributo_nombre || 'Tributo';
+            return codigo + ' - ' + corto;
+        },
+
+        fechaLegible(iso) {
+            const motor = window.FiltrosControlDeudas;
+            return motor ? motor.fechaLegible(iso) : iso;
+        },
+
+        hoyLocalIso() {
+            const ahora = new Date();
+            const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+            const dia = String(ahora.getDate()).padStart(2, '0');
+            return ahora.getFullYear() + '-' + mes + '-' + dia;
+        },
+
+        alternarSeleccion(campo, valor) {
+            const clave = String(valor);
+            const actual = this[campo] || [];
+            this[campo] = actual.includes(clave)
+                ? actual.filter(item => item !== clave)
+                : actual.concat([clave]);
+            this.sincronizarFiltrosEnUrl();
+        },
+
+        vaciarFaceta(campo) {
+            this[campo] = [];
+            this.sincronizarFiltrosEnUrl();
+        },
+
+        vaciarVencimiento() {
+            this.venceDesde = '';
+            this.venceHasta = '';
+            this.sincronizarFiltrosEnUrl();
+        },
+
+        fijarFecha(campo, valor) {
+            const motor = window.FiltrosControlDeudas;
+            this[campo] = motor ? motor.fechaIso(valor) : '';
+            this.sincronizarFiltrosEnUrl();
+        },
+
+        aplicarPreset(preset) {
+            const motor = window.FiltrosControlDeudas;
+            if (!motor) {
+                return;
+            }
+            const rango = motor.rangoPreset(preset, this.hoyLocalIso());
+            if (!rango) {
+                return;
+            }
+            this.venceDesde = rango.venceDesde;
+            this.venceHasta = rango.venceHasta;
+            this.sincronizarFiltrosEnUrl();
+        },
+
+        presetActivo(preset) {
+            const motor = window.FiltrosControlDeudas;
+            if (!motor) {
+                return false;
+            }
+            const rango = motor.rangoPreset(preset, this.hoyLocalIso());
+            if (!rango) {
+                return false;
+            }
+            return this.venceDesde === rango.venceDesde && this.venceHasta === rango.venceHasta;
+        },
+
+        quitarChipFiltro(chip) {
+            if (chip.tipo === 'denominacion') {
+                this.denominaciones = this.denominaciones.filter(id => id !== chip.valor);
+            } else if (chip.tipo === 'periodo') {
+                this.periodos = this.periodos.filter(periodo => periodo !== chip.valor);
+            } else if (chip.tipo === 'tributo') {
+                this.tributos = this.tributos.filter(codigo => codigo !== chip.valor);
+            } else if (chip.tipo === 'desde') {
+                this.venceDesde = '';
+            } else if (chip.tipo === 'hasta') {
+                this.venceHasta = '';
+            }
+            this.sincronizarFiltrosEnUrl();
+        },
+
+        limpiarFiltrosAvanzados() {
+            this.denominaciones = [];
+            this.periodos = [];
+            this.tributos = [];
+            this.venceDesde = '';
+            this.venceHasta = '';
+            this.busquedaDenominacion = '';
+            this.busquedaTributo = '';
+            this.sincronizarFiltrosEnUrl();
+        },
+
+        sincronizarFiltrosEnUrl() {
+            const motor = window.FiltrosControlDeudas;
+            if (!motor) {
+                return;
+            }
+
+            const url = new URL(window.location.href);
+            const params = motor.parametrosDesdeFiltros(this.filtrosAplicados());
+            ['denominacion', 'periodo', 'tributo', 'vence_desde', 'vence_hasta'].forEach(clave => {
+                const valor = params.get(clave);
+                if (valor) {
+                    url.searchParams.set(clave, valor);
+                } else {
+                    url.searchParams.delete(clave);
+                }
+            });
+
+            const siguiente = url.pathname + url.search + url.hash;
+            const actual = window.location.pathname + window.location.search + window.location.hash;
+            if (siguiente !== actual) {
+                history.replaceState(history.state, '', siguiente);
+            }
         },
 
         // Toggle para expandir / contraer el acordeón de historial

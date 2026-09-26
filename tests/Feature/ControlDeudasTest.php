@@ -9,6 +9,7 @@ use App\Models\Estudio;
 use App\Models\Operacion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 class ControlDeudasTest extends TestCase
@@ -219,7 +220,7 @@ class ControlDeudasTest extends TestCase
         $response->assertSee('IGV 18%');
         $response->assertSee('Exportar a PDF');
         $response->assertSee('Imprimir Reporte');
-        $response->assertSee('Filtrar Clientes');
+        $response->assertDontSee('Filtrar Clientes');
         $response->assertViewHas('clientesConDeuda');
         $response->assertViewHas('deudasData');
     }
@@ -631,6 +632,125 @@ class ControlDeudasTest extends TestCase
         $archivo->assertSee('IGV 18%');
         $archivo->assertDontSee('Renta MYPE 1%');
         $archivo->assertDontSee('EsSalud');
+    }
+
+    public function test_control_de_deudas_ofrece_filtros_de_denominacion_periodo_tributo_y_vencimiento(): void
+    {
+        Operacion::create([
+            'estudio_id' => $this->estudio->id,
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'monto_deuda_inicial' => 900,
+            'vencimiento_deuda' => '2026-11-27',
+            'tributo_codigo' => '1011',
+        ]);
+
+        $response = $this->get(route('control_deudas.index'));
+
+        $response->assertOk();
+        $response->assertSee('Denominación, periodo, tributo o vencimiento');
+        $response->assertSee('data-filtro="denominacion"', false);
+        $response->assertSee('data-filtro="periodo"', false);
+        $response->assertSee('data-filtro="tributo"', false);
+        $response->assertSee('data-filtro="vencimiento"', false);
+        $response->assertSee('FiltrosControlDeudas', false);
+        $response->assertDontSee('Filtrar Clientes');
+        $response->assertDontSee('Seleccionar Clientes');
+        $response->assertSee('Abonar');
+        $response->assertSee('Obligaciones Tributarias y Pagos Parciales');
+        $response->assertDontSee('Buscar por cliente, RUC, periodo o tributo');
+    }
+
+    public function test_la_url_de_filtros_no_recorta_las_deudas_que_el_tablero_ya_cargo(): void
+    {
+        $otro = Cliente::create([
+            'estudio_id' => $this->estudio->id,
+            'numero' => 82,
+            'razon_social' => 'BETA FILTRO SAC',
+            'ruc' => '20999888777',
+            'regimen_tributario' => 'MYPE',
+            'estado' => 'activo',
+        ]);
+
+        $this->cliente->update([
+            'razon_social' => 'ALPHA FILTRO SAC',
+            'numero' => 81,
+        ]);
+
+        Operacion::create([
+            'estudio_id' => $this->estudio->id,
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'monto_deuda_inicial' => 400,
+            'vencimiento_deuda' => '2026-09-18',
+            'tributo_codigo' => '1011',
+        ]);
+
+        Operacion::create([
+            'estudio_id' => $this->estudio->id,
+            'cliente_id' => $otro->id,
+            'periodo' => '09-2026',
+            'tiene_deuda' => true,
+            'monto_deuda_inicial' => 250,
+            'vencimiento_deuda' => '2026-10-20',
+            'tributo_codigo' => '3121',
+        ]);
+
+        $response = $this->get(route('control_deudas.index', [
+            'denominacion' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tributo' => '1011',
+            'vence_desde' => '2026-09-01',
+            'vence_hasta' => '2026-09-30',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('ALPHA FILTRO SAC');
+        $response->assertSee('BETA FILTRO SAC');
+        $response->assertSee('08-2026');
+        $response->assertSee('09-2026');
+        $response->assertSee('2026-09-18', false);
+        $response->assertSee('2026-10-20', false);
+    }
+
+    public function test_el_motor_de_filtros_compone_denominacion_periodo_tributo_y_vencimiento(): void
+    {
+        $proceso = new Process(
+            [$this->rutaNode(), '--test', base_path('tests/js/filtros-control-deudas.test.js')],
+            base_path(),
+        );
+        $proceso->setTimeout(60);
+        $proceso->run();
+
+        $this->assertSame(
+            0,
+            $proceso->getExitCode(),
+            $proceso->getOutput().$proceso->getErrorOutput(),
+        );
+    }
+
+    private function rutaNode(): string
+    {
+        $rutas = array_filter([
+            getenv('NODE_BINARY') ?: null,
+        ]);
+
+        foreach ($rutas as $ruta) {
+            if (is_file($ruta)) {
+                return $ruta;
+            }
+        }
+
+        $laragon = glob('C:\\laragon\\bin\\nodejs\\node-v*\\node.exe') ?: [];
+        if ($laragon !== []) {
+            rsort($laragon);
+
+            return $laragon[0];
+        }
+
+        return 'node';
     }
 
     private function guardarTributo(int $clienteId, string $periodo, string $codigo, float $monto): void
