@@ -561,7 +561,12 @@
                                                                                         <tr>
                                                                                             <td class="py-1 px-2 font-mono text-gray-600" x-text="abono.fecha_pago"></td>
                                                                                             <td class="py-1 px-2 text-right font-bold text-emerald-600" x-text="abono.monto_formateado || formatearMoneda(abono.monto)"></td>
-                                                                                            <td class="py-1 px-2 text-gray-500 truncate max-w-[120px]" x-text="abono.observacion || '—'"></td>
+                                                                                            <td class="py-1 px-2 text-gray-500 truncate max-w-[140px]">
+                                                                                                <span class="font-semibold text-gray-700" x-show="abono.medio_etiqueta" x-text="abono.medio_etiqueta"></span>
+                                                                                                <span x-show="abono.medio_etiqueta && abono.observacion"> · </span>
+                                                                                                <span x-text="abono.observacion" x-show="abono.observacion"></span>
+                                                                                                <span x-show="!abono.medio_etiqueta && !abono.observacion">—</span>
+                                                                                            </td>
                                                                                             <td class="py-1 px-1 text-center"><button type="button" @click="eliminarAbono(deuda, abono.id)" class="text-gray-300 hover:text-red-600 font-bold">&times;</button></td>
                                                                                         </tr>
                                                                                     </template>
@@ -576,8 +581,14 @@
                                                                                 <input type="text" inputmode="decimal" x-model="deuda.nuevoMonto" @input="deuda.nuevoMonto = formatearMilesInput($event)" placeholder="Monto del pago" class="rounded-lg border-gray-300 py-1.5 px-2 text-xs font-mono bg-white">
                                                                                 <input type="date" x-model="deuda.nuevaFecha" class="rounded-lg border-gray-300 py-1.5 px-2 text-xs bg-white">
                                                                             </div>
+                                                                            <select x-model="deuda.nuevoMedio" class="w-full rounded-lg border-gray-300 py-1.5 px-2 text-xs bg-white">
+                                                                                <option value="">Medio de pago</option>
+                                                                                @foreach (\App\Enums\MedioPagoTributo::cases() as $medioPago)
+                                                                                    <option value="{{ $medioPago->value }}">{{ $medioPago->etiqueta() }}</option>
+                                                                                @endforeach
+                                                                            </select>
                                                                             <input type="text" x-model="deuda.nuevaObs" placeholder="N° operación o nota" class="w-full rounded-lg border-gray-300 py-1.5 px-2 text-xs bg-white">
-                                                                            <button type="button" @click="registrarAbono(deuda)" :disabled="deuda.savingAbono || limpiarMoneda(deuda.nuevoMonto) <= 0"
+                                                                            <button type="button" @click="registrarAbono(deuda)" :disabled="deuda.savingAbono || limpiarMoneda(deuda.nuevoMonto) <= 0 || !deuda.nuevoMedio"
                                                                                     class="w-full py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs disabled:opacity-50"
                                                                                     x-text="deuda.savingAbono ? 'Registrando...' : (deuda.abonoGuardado ? '¡Pago registrado!' : '+ Registrar pago')"></button>
                                                                         </div>
@@ -1368,6 +1379,7 @@
                         abonos: raw?.abonos || [],
                         nuevoMonto: '',
                         nuevaFecha: new Date().toISOString().split('T')[0],
+                        nuevoMedio: '',
                         nuevaObs: '',
                         saving: false,
                         guardado: false,
@@ -1840,6 +1852,10 @@
                         alert('Ingrese un monto válido para el pago.');
                         return;
                     }
+                    if (!deuda.nuevoMedio) {
+                        alert('Seleccione el medio de pago: detracciones, caja, bancos, compensación de renta anual o ITAN.');
+                        return;
+                    }
 
                     deuda.savingAbono = true;
                     deuda.abonoGuardado = false;
@@ -1859,6 +1875,7 @@
                                 deuda_tributaria_id: deuda.id,
                                 monto: montoLimpio,
                                 fecha_pago: deuda.nuevaFecha,
+                                medio_pago: deuda.nuevoMedio,
                                 observacion: deuda.nuevaObs || null,
                             }),
                         });
@@ -1880,6 +1897,7 @@
                             enMes.total_abonado = deuda.total_abonado;
                         }
                         deuda.nuevoMonto = '';
+                        deuda.nuevoMedio = '';
                         deuda.nuevaObs = '';
                         deuda.abonoGuardado = true;
                         setTimeout(() => { deuda.abonoGuardado = false; }, 2200);

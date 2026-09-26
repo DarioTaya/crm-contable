@@ -804,6 +804,8 @@ class ControlMensualController extends Controller
             'monto_formateado' => $abono->monto_formateado,
             'fecha_pago' => $abono->fecha_pago?->format('d/m/Y') ?? '',
             'observacion' => $abono->observacion ?? '',
+            'medio_pago' => $abono->medio_pago?->value,
+            'medio_etiqueta' => $abono->medio_pago?->etiqueta() ?? '',
         ])->values()->all();
     }
 

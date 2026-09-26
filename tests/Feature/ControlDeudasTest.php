@@ -529,6 +529,7 @@ class ControlDeudasTest extends TestCase
         $response->assertSee('PDT 601');
         $response->assertSee('PLAME');
         $response->assertSee('Importe a pagar');
+        $response->assertSee('Medio de pago');
         $response->assertSee('Solo el saldo por pagar entra a Control de Deudas.');
         $response->assertSee('+ Nuevo tributo');
         $response->assertSee('deuda.borrador_codigo');

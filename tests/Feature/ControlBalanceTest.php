@@ -227,9 +227,9 @@ class ControlBalanceTest extends TestCase
         $resControl->assertStatus(200);
         $resControl->assertSee($textoEsperado, false);
 
-        // 2. En clientes/show.blade.php
+        // 2. El expediente del cliente muestra el libro de impuestos, no la matriz de declaraciones.
         $resShow = $this->get(route('clientes.operaciones', $cliente));
-        $resShow->assertStatus(200);
-        $resShow->assertSee($textoEsperado, false);
+        $resShow->assertSee('Impuestos del ejercicio', false);
+        $resShow->assertDontSee($textoEsperado, false);
     }
 }

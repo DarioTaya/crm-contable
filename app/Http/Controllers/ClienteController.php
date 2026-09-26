@@ -6,6 +6,7 @@ use App\Enums\EstadoCliente;
 use App\Enums\RegimenTributario;
 use App\Enums\SeccionExpediente;
 use App\Models\Cliente;
+use App\Services\Impuestos\ReporteImpuestosCliente;
 use App\Services\SunafilBuzonSyncService;
 use App\Services\SunatBuzonSyncService;
 use App\Services\WhatsAppService;
@@ -389,9 +390,10 @@ class ClienteController extends Controller
     }
 
     /**
-     * Muestra el expediente digital del cliente con todas sus relaciones y la malla de 12 meses de operaciones.
+     * Muestra el expediente digital del cliente.
+     * La sección de impuestos proyecta los tributos y pagos ya registrados en Control de Impuestos.
      */
-    public function show(Request $request, Cliente $cliente): View|RedirectResponse
+    public function show(Request $request, Cliente $cliente, ReporteImpuestosCliente $reporteImpuestosCliente): View|RedirectResponse
     {
         if ($redireccion = $this->redirigirSeccionAntigua($request, $cliente)) {
             return $redireccion;
@@ -399,9 +401,15 @@ class ClienteController extends Controller
 
         $seccion = SeccionExpediente::actual($request->route()?->getName());
 
-        $cliente->load(['credencial', 'notificaciones', 'operaciones', 'alertas']);
+        $cliente->load(['credencial', 'notificaciones', 'alertas']);
 
-        $anioActual = now()->year;
+        $anioActual = (int) now()->year;
+        $anioPedido = $request->query('anio', $anioActual);
+        $anioReporte = is_numeric($anioPedido) ? (int) $anioPedido : $anioActual;
+        if ($anioReporte < 2000 || $anioReporte > 2100) {
+            $anioReporte = $anioActual;
+        }
+        $reporteImpuestos = $reporteImpuestosCliente->armar($cliente, $anioReporte);
 
         $nombresMeses = [
             1 => 'Enero',
@@ -417,33 +425,6 @@ class ClienteController extends Controller
             11 => 'Noviembre',
             12 => 'Diciembre',
         ];
-
-        $operacionesRegistradas = $cliente->operaciones->keyBy('periodo');
-
-        $mesesOperaciones = [];
-        for ($mes = 1; $mes <= 12; $mes++) {
-            $periodo = sprintf('%02d-%d', $mes, $anioActual);
-            $operacion = $operacionesRegistradas->get($periodo);
-
-            $mesesOperaciones[] = [
-                'numero_mes' => $mes,
-                'nombre_mes' => $nombresMeses[$mes],
-                'anio' => $anioActual,
-                'periodo' => $periodo,
-                'id' => $operacion?->id,
-                'estado_compras_ventas' => $operacion->estado_compras_ventas ?? 'Pendiente',
-                'estado_pdt621' => $operacion->estado_pdt621 ?? 'Pendiente',
-                'estado_ple' => $operacion->estado_ple ?? 'Pendiente',
-                'estado_maestro' => $this->determinarEstadoMaestro(
-                    $operacion->estado_compras_ventas ?? 'Pendiente',
-                    $operacion->estado_pdt621 ?? 'Pendiente',
-                    $operacion->estado_ple ?? 'Pendiente',
-                ),
-                'notas' => $operacion->notas ?? '',
-                'estado_pago_honorarios' => $operacion->estado_pago_honorarios ?? 'Pendiente',
-                'existe' => (bool) $operacion,
-            ];
-        }
 
         $mesesBalances = [];
         $djAnualBalance = 'Pendiente';
@@ -501,7 +482,7 @@ class ClienteController extends Controller
             'seccion',
             'urlsSeccion',
             'consultaSire',
-            'mesesOperaciones',
+            'reporteImpuestos',
             'mesesBalances',
             'djAnualBalance',
             'tieneBalances',
@@ -1219,23 +1200,6 @@ class ClienteController extends Controller
             'success' => true,
             'message' => 'Credenciales API SUNAT actualizadas correctamente.',
         ]);
-    }
-
-    /**
-     * Determina el estado maestro unificado de un mes a partir de sus 3 sub-estados.
-     */
-    private function determinarEstadoMaestro(string $sire, string $pdt, string $ple): string
-    {
-        if ($sire === 'Declarado' && $pdt === 'Declarado' && $ple === 'Declarado') {
-            return 'Declarado';
-        }
-
-        if ($sire === 'Procesando' || $pdt === 'Procesando' || $ple === 'Procesando'
-            || $sire === 'Declarado' || $pdt === 'Declarado' || $ple === 'Declarado') {
-            return 'Procesando';
-        }
-
-        return 'Pendiente';
     }
 
     /**

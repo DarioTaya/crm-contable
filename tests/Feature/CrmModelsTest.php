@@ -336,10 +336,12 @@ class CrmModelsTest extends TestCase
         $response = $this->get(route('clientes.show', $cliente));
 
         $response->assertOk();
-        $response->assertViewHas('mesesOperaciones', function ($meses) {
-            return count($meses) === 12
-                && $meses[0]['nombre_mes'] === 'Enero'
-                && $meses[11]['nombre_mes'] === 'Diciembre';
+        $response->assertViewHas('reporteImpuestos', function (array $reporte): bool {
+            $periodos = $reporte['bloques'][0]['tributos'][0]['periodos'] ?? [];
+
+            return count($periodos) === 12
+                && $periodos[0]['mes'] === 'Enero'
+                && $periodos[11]['mes'] === 'Diciembre';
         });
     }
 

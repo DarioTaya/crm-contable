@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MedioPagoTributo;
 use App\Models\AbonoDeuda;
 use App\Models\DeudaTributaria;
 use App\Models\Operacion;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AbonoDeudaController extends Controller
 {
@@ -21,12 +23,19 @@ class AbonoDeudaController extends Controller
             ]);
         }
 
+        if ($request->input('medio_pago') === '') {
+            $request->merge(['medio_pago' => null]);
+        }
+
         $validated = $request->validate([
             'operacion_id' => 'required|exists:operaciones,id',
             'deuda_tributaria_id' => 'nullable|integer|exists:deuda_tributarias,id',
             'monto' => 'required|numeric|min:0.01|max:99999999.99',
             'fecha_pago' => 'required|date',
+            'medio_pago' => ['nullable', Rule::enum(MedioPagoTributo::class)],
             'observacion' => 'nullable|string|max:500',
+        ], [
+            'medio_pago.enum' => 'Seleccione un medio de pago válido.',
         ]);
 
         $operacion = Operacion::findOrFail($validated['operacion_id']);
@@ -51,6 +60,8 @@ class AbonoDeudaController extends Controller
                 'monto_formateado' => $abono->monto_formateado,
                 'fecha_pago' => $abono->fecha_pago->format('d/m/Y'),
                 'observacion' => $abono->observacion,
+                'medio_pago' => $abono->medio_pago?->value,
+                'medio_etiqueta' => $abono->medio_pago?->etiqueta() ?? '',
             ],
             'deuda_tributaria_id' => $deuda?->id,
             'total_abonado' => $totales['total_abonado'],
