@@ -4,6 +4,7 @@ use App\Http\Controllers\AbonoDeudaController;
 use App\Http\Controllers\AjusteSistemaController;
 use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CargaMasivaControlController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ComprobanteController;
 use App\Http\Controllers\ControlBalanceController;
@@ -43,6 +44,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/control/update', [ControlMensualController::class, 'update'])->name('control.update');
     Route::post('/control/deuda', [ControlMensualController::class, 'getDeuda'])->name('control.deuda');
     Route::post('/control/calcular-igv-justo', [ControlMensualController::class, 'calcularIgvJusto'])->name('control.calcular_igv_justo');
+    Route::get('/control/carga-masiva/plantilla', [CargaMasivaControlController::class, 'plantilla'])->name('control.carga_masiva.plantilla');
+    Route::post('/control/carga-masiva/previsualizar', [CargaMasivaControlController::class, 'previsualizar'])->name('control.carga_masiva.previsualizar');
+    Route::post('/control/carga-masiva/aplicar', [CargaMasivaControlController::class, 'aplicar'])->name('control.carga_masiva.aplicar');
 
     // Control de Deudas (Dashboard)
     Route::get('/control-deudas', [ControlDeudaController::class, 'index'])->name('control_deudas.index');

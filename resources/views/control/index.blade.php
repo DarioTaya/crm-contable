@@ -55,6 +55,16 @@
                 <span class="font-bold text-gray-700">DJ: Declaración &bull; RH: Honorarios</span>
             </div>
 
+            <button type="button"
+                    onclick="window.dispatchEvent(new CustomEvent('abrir-carga-masiva'))"
+                    title="Cargar declaraciones y montos de varios meses. El llenado manual no cambia."
+                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 shadow-xs transition hover:bg-gray-50">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                </svg>
+                <span>Carga masiva</span>
+            </button>
+
             {{-- Enlace Directo a Cronograma SUNAT --}}
             <a href="{{ route('cronogramas.index', ['anio' => $anio, 'tipo' => 'pdt_621']) }}"
                title="Ver Cronograma Oficial SUNAT"
@@ -1986,4 +1996,6 @@
             };
         }
     </script>
+
+    @include('control.partials.carga-masiva')
 @endsection

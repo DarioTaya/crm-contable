@@ -8,15 +8,17 @@ use App\Models\Cliente;
 use App\Models\CronogramaSunat;
 use App\Models\DeudaTributaria;
 use App\Models\Operacion;
+use App\Services\ControlImpuestos\RegistrarTributoPeriodo;
 use App\Services\CronogramaSunatService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ControlMensualController extends Controller
 {
+    public function __construct(private RegistrarTributoPeriodo $registroTributo) {}
+
     /**
      * Muestra la Matriz Anual estilo Spreadsheet (Sábana de datos Excel).
      */
@@ -51,15 +53,8 @@ class ControlMensualController extends Controller
 
         // Cargar clientes vigentes en el año seleccionado ordenados por número.
         // Se excluyen clientes que se retiraron ANTES del año en consulta.
-        $clientes = Cliente::where(function ($query) use ($anio) {
-            $query->where('estado', 'activo')
-                ->orWhere('estado', 'suspendido')
-                ->orWhere(function ($q) use ($anio) {
-                    $q->where('estado', 'retirado')
-                        ->whereNotNull('mes_baja')
-                        ->where('mes_baja', '>=', "{$anio}-01");
-                });
-        })
+        $clientes = Cliente::query()
+            ->vigentesEnEjercicio($anio)
             ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $this->periodosDelAnio($anio))->with(['abonosDeuda', 'deudasTributarias.abonos'])])
             ->orderBy('numero')
             ->get();
@@ -79,15 +74,8 @@ class ControlMensualController extends Controller
             $cDeclaradas = 0;
             $cExigibles = 0;
 
-            // Determinar mes de baja efectivo si el cliente está retirado
-            $mesBaja = null;
-            if ($cliente->isRetirado()) {
-                $mesBaja = $cliente->mes_baja ?: ($cliente->fecha_baja ? $cliente->fecha_baja->format('Y-m') : null);
-            }
-
             for ($m = 1; $m <= 12; $m++) {
                 $periodo = sprintf('%02d-%d', $m, $anio);
-                $periodoComparable = sprintf('%04d-%02d', $anio, $m);
                 $op = $opsMap->get($periodo);
 
                 $cronogramaPdt = $cronogramasPdt->get($periodo);
@@ -97,7 +85,7 @@ class ControlMensualController extends Controller
                 $vencimientoOficialPdt = $fechaOficialPdt?->format('Y-m-d') ?? '';
                 $vencimientoOficialPdtDmy = $fechaOficialPdt?->format('d/m/Y') ?? '';
 
-                $esBajaMes = ($mesBaja !== null && $periodoComparable >= $mesBaja);
+                $esBajaMes = ! $cliente->rindeEnPeriodo($periodo);
 
                 if ($esBajaMes) {
                     $meses[] = [
@@ -185,14 +173,50 @@ class ControlMensualController extends Controller
         }
 
         $catalogoTributos = TipoTributoSunat::catalogoFormulario();
+        $cargaMasiva = $this->configuracionCargaMasiva($anio, $mesesEncabezado);
 
         return view('control.index', array_merge(compact(
             'anio',
             'aniosDisponibles',
             'mesesEncabezado',
             'matrizClientes',
-            'catalogoTributos'
+            'catalogoTributos',
+            'cargaMasiva',
         ), $kpis));
+    }
+
+    /**
+     * Datos del panel opcional de carga masiva. No interviene en el llenado manual.
+     *
+     * @param  array<int, array{corto: string, nombre: string}>  $mesesEncabezado
+     * @return array<string, mixed>
+     */
+    private function configuracionCargaMasiva(int $anio, array $mesesEncabezado): array
+    {
+        $mesHasta = $anio === (int) now()->year ? max(1, (int) now()->month - 1) : 12;
+
+        return [
+            'anio' => $anio,
+            'mesHastaSugerido' => $mesHasta,
+            'meses' => collect($mesesEncabezado)->map(fn (array $meta, int $numero): array => [
+                'numero' => $numero,
+                'nombre' => $meta['nombre'],
+            ])->values()->all(),
+            'clientes' => Cliente::query()
+                ->paraUsuario()
+                ->vigentesEnEjercicio($anio)
+                ->orderBy('numero')
+                ->get(['id', 'numero', 'razon_social', 'ruc'])
+                ->map(fn (Cliente $cliente): array => [
+                    'id' => $cliente->id,
+                    'numero' => $cliente->numero,
+                    'razon_social' => $cliente->razon_social,
+                    'ruc' => $cliente->ruc,
+                ])->values()->all(),
+            'plantillaUrl' => route('control.carga_masiva.plantilla', ['anio' => $anio]),
+            'previsualizarUrl' => route('control.carga_masiva.previsualizar'),
+            'aplicarUrl' => route('control.carga_masiva.aplicar'),
+        ];
     }
 
     /**
@@ -200,15 +224,8 @@ class ControlMensualController extends Controller
      */
     public function calcularKpis(int $anio): array
     {
-        $clientes = Cliente::where(function ($query) use ($anio) {
-            $query->where('estado', 'activo')
-                ->orWhere('estado', 'suspendido')
-                ->orWhere(function ($q) use ($anio) {
-                    $q->where('estado', 'retirado')
-                        ->whereNotNull('mes_baja')
-                        ->where('mes_baja', '>=', "{$anio}-01");
-                });
-        })
+        $clientes = Cliente::query()
+            ->vigentesEnEjercicio($anio)
             ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $this->periodosDelAnio($anio))])
             ->get();
 
@@ -223,22 +240,14 @@ class ControlMensualController extends Controller
         foreach ($clientes as $cliente) {
             $opsMap = $cliente->operaciones->keyBy('periodo');
 
-            $mesBaja = null;
-            if ($cliente->isRetirado()) {
-                $mesBaja = $cliente->mes_baja ?: ($cliente->fecha_baja ? $cliente->fecha_baja->format('Y-m') : null);
-            }
-
             for ($m = 1; $m <= 12; $m++) {
-                $periodoComparable = sprintf('%04d-%02d', $anio, $m);
+                $periodo = sprintf('%02d-%d', $m, $anio);
 
-                // Si el cliente se retiró en o antes de este periodo, este mes ya no es exigible para el estudio
-                if ($mesBaja !== null && $periodoComparable >= $mesBaja) {
+                if (! $cliente->rindeEnPeriodo($periodo)) {
                     continue;
                 }
 
                 $totalObligacionesAnio++;
-
-                $periodo = sprintf('%02d-%d', $m, $anio);
                 $op = $opsMap->get($periodo);
 
                 $sire = $op->estado_compras_ventas ?? 'Pendiente';
@@ -424,7 +433,7 @@ class ControlMensualController extends Controller
                     $operacion->tiene_deuda = true;
                     $operacion->save();
                 }
-                $this->upsertDeudaTributaria($operacion, $validated);
+                $this->registroTributo->registrar($operacion, $validated);
             } elseif ($request->has('tiene_deuda')) {
                 $operacion->tiene_deuda = $validated['tiene_deuda'];
                 $conservarDetalle = $operacion->exists && $operacion->deudasTributarias()->exists();
@@ -658,75 +667,6 @@ class ControlMensualController extends Controller
             'deudas' => $this->arregloDeudas($operacion, $oficialPdtStr, $oficialPdtDmy),
             'tributos_disponibles' => TipoTributoSunat::opciones(),
         ]);
-    }
-
-    private function upsertDeudaTributaria(Operacion $operacion, array $validated): void
-    {
-        $codigo = (string) ($validated['tributo_codigo'] ?? '');
-        if (TipoTributoSunat::tryFrom($codigo) === null) {
-            throw ValidationException::withMessages([
-                'tributo_codigo' => 'Seleccione un tributo SUNAT válido.',
-            ]);
-        }
-
-        $monto = array_key_exists('monto_deuda_inicial', $validated) ? $validated['monto_deuda_inicial'] : null;
-        if ($monto === null || (float) $monto <= 0) {
-            throw ValidationException::withMessages([
-                'monto_deuda_inicial' => 'Ingrese el monto a pagar de este tributo.',
-            ]);
-        }
-
-        $deuda = null;
-        if (! empty($validated['deuda_id'])) {
-            $deuda = $operacion->deudasTributarias()->whereKey($validated['deuda_id'])->first();
-            if (! $deuda) {
-                throw ValidationException::withMessages([
-                    'deuda_id' => 'El tributo indicado no pertenece a este periodo.',
-                ]);
-            }
-        }
-
-        $duplicado = $operacion->deudasTributarias()
-            ->where('tributo_codigo', $codigo)
-            ->when($deuda, fn ($query) => $query->whereKeyNot($deuda->id))
-            ->exists();
-
-        if ($duplicado) {
-            throw ValidationException::withMessages([
-                'tributo_codigo' => 'Ese tributo ya está registrado en este mes.',
-            ]);
-        }
-
-        $abonado = $deuda ? (float) $deuda->abonos()->sum('monto') : 0;
-        if ((float) $monto + 0.001 < $abonado) {
-            throw ValidationException::withMessages([
-                'monto_deuda_inicial' => 'El monto no puede ser menor que los pagos ya registrados de este tributo.',
-            ]);
-        }
-
-        $esPrimera = $operacion->deudasTributarias()->doesntExist();
-        if (! $deuda) {
-            $deuda = new DeudaTributaria([
-                'operacion_id' => $operacion->id,
-                'estudio_id' => $operacion->estudio_id,
-            ]);
-        }
-
-        $deuda->fill([
-            'tributo_codigo' => $codigo,
-            'es_igv_justo' => $codigo === TipoTributoSunat::Igv18->value && (bool) ($validated['es_igv_justo'] ?? false),
-            'monto_deuda_inicial' => $monto,
-            'vencimiento_deuda' => $validated['vencimiento_deuda'] ?? null,
-        ]);
-        $deuda->save();
-
-        if ($esPrimera) {
-            $operacion->abonosDeuda()->whereNull('deuda_tributaria_id')->update([
-                'deuda_tributaria_id' => $deuda->id,
-            ]);
-        }
-
-        $operacion->refrescarResumenDeudas();
     }
 
     /**

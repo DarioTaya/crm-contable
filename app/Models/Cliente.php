@@ -114,6 +114,25 @@ class Cliente extends Model
     }
 
     /**
+     * Clientes que el estudio todavía atiende durante el ejercicio.
+     * Incluye activos, suspendidos y retirados cuyo cese cae dentro del año.
+     */
+    public function scopeVigentesEnEjercicio(Builder $query, int $anio): Builder
+    {
+        $inicio = sprintf('%04d-01', $anio);
+
+        return $query->where(function (Builder $query) use ($inicio): void {
+            $query->where('estado', EstadoCliente::Activo)
+                ->orWhere('estado', EstadoCliente::Suspendido)
+                ->orWhere(function (Builder $retirados) use ($inicio): void {
+                    $retirados->where('estado', EstadoCliente::Retirado)
+                        ->whereNotNull('mes_baja')
+                        ->where('mes_baja', '>=', $inicio);
+                });
+        });
+    }
+
+    /**
      * Determina si el cliente está activo en el estudio contable.
      */
     public function isActivo(): bool
@@ -135,6 +154,40 @@ class Cliente extends Model
     public function isRetirado(): bool
     {
         return $this->estado === EstadoCliente::Retirado;
+    }
+
+    /**
+     * Periodo YYYY-MM desde el cual el cliente ya no se declara en el estudio.
+     */
+    public function mesDeCese(): ?string
+    {
+        if (! $this->isRetirado()) {
+            return null;
+        }
+
+        if ($this->mes_baja) {
+            return $this->mes_baja;
+        }
+
+        return $this->fecha_baja?->format('Y-m');
+    }
+
+    /**
+     * Indica si el periodo MM-AAAA sigue siendo exigible para el estudio.
+     */
+    public function rindeEnPeriodo(string $periodo): bool
+    {
+        $cese = $this->mesDeCese();
+
+        if ($cese === null) {
+            return true;
+        }
+
+        if (preg_match('/^(\d{2})-(\d{4})$/', $periodo, $coincidencia) !== 1) {
+            return false;
+        }
+
+        return ($coincidencia[2].'-'.$coincidencia[1]) < $cese;
     }
 
     /**
