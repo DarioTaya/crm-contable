@@ -22,19 +22,37 @@
         <div class="flex flex-wrap items-center gap-2 sm:gap-3">
             {{-- Leyenda Rápida de Estados --}}
             <div class="hidden lg:flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-[11px] font-medium text-gray-600 shadow-xs">
-                <span>⚪ Pendiente / Debe</span>
+                <span>⚪ Pendiente</span>
                 <span class="text-gray-300">|</span>
                 <span>🟡 En Proceso</span>
                 <span class="text-gray-300">|</span>
-                <span>🟢 Declarado / Pagado</span>
-                <span class="text-gray-300">|</span>
-                <span class="font-bold text-gray-700">DJ: Declaración &bull; RH: Honorarios</span>
-                <span class="text-gray-300">|</span>
-                <span class="text-gray-500">💬 Nota</span>
+                <span>🟢 Declarado</span>
                 <span class="text-gray-300">|</span>
                 <span class="flex items-center gap-1 font-semibold text-gray-700">
-                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-500 border border-white"></span> Deuda SUNAT
+                    <span class="relative inline-block shrink-0" style="width:15px;height:15px" aria-hidden="true">
+                        <span class="absolute left-0 top-0 inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-full text-xs" style="transform:scale(0.625);transform-origin:top left">
+                            <span>🟢</span>
+                            <svg class="absolute inset-0 h-6 w-6 pointer-events-none" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="6.8" fill="none" stroke="#ef4444" stroke-width="2.4" />
+                            </svg>
+                        </span>
+                    </span>
+                    Deuda SUNAT
                 </span>
+                <span class="text-gray-300">|</span>
+                <span class="flex items-center gap-1 font-semibold text-gray-700">
+                    <span class="relative inline-block shrink-0" style="width:15px;height:15px" aria-hidden="true">
+                        <span class="absolute left-0 top-0 inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-full text-xs" style="transform:scale(0.625);transform-origin:top left">
+                            <span>🟢</span>
+                            <svg class="absolute inset-0 h-6 w-6 pointer-events-none" viewBox="0 0 24 24">
+                                <circle cx="12" cy="12" r="6.8" fill="none" stroke="#7c3aed" stroke-width="2.4" />
+                            </svg>
+                        </span>
+                    </span>
+                    Declarado / Pagado
+                </span>
+                <span class="text-gray-300">|</span>
+                <span class="font-bold text-gray-700">DJ: Declaración &bull; RH: Honorarios</span>
             </div>
 
             {{-- Enlace Directo a Cronograma SUNAT --}}
