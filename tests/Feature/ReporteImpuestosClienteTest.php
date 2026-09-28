@@ -61,6 +61,7 @@ class ReporteImpuestosClienteTest extends TestCase
         $response->assertSee('1,500.00');
         $response->assertSee('18/05/2026');
         $response->assertSee('1 pago');
+        $response->assertSee('pagosAbiertos: null', false);
         $response->assertSee('Detracciones');
         $response->assertSee('OP 8841');
         $response->assertSee('IGV Justo');
@@ -169,8 +170,54 @@ class ReporteImpuestosClienteTest extends TestCase
         $reporte = $response->viewData('reporteImpuestos');
         $pdt = collect($reporte['bloques'])->firstWhere('id', 'pdt_621');
         $plame = collect($reporte['bloques'])->firstWhere('id', 'pdt_601');
-        $this->assertSame(['1011', '3031'], array_column($pdt['tributos'], 'codigo'));
-        $this->assertSame(['5210'], array_column($plame['tributos'], 'codigo'));
+        $this->assertSame(['1011', '1016', '3111', '3121', '3031', '3081'], array_column($pdt['tributos'], 'codigo'));
+        $this->assertSame(['5210', '5310', 'AFP', '3052', '3042'], array_column($plame['tributos'], 'codigo'));
+        $html = $response->getContent();
+        $fila = function (string $codigo) use ($html): string {
+            $inicio = strpos($html, 'data-tributo="'.$codigo.'"');
+            $this->assertNotFalse($inicio, 'Falta la fila del tributo '.$codigo);
+
+            return substr($html, $inicio, 80);
+        };
+        $this->assertStringContainsString('data-sin-monto', $fila('1011'));
+        $this->assertStringContainsString('data-sin-monto', $fila('5310'));
+        $this->assertStringNotContainsString('data-sin-monto', $fila('3031'));
+        $this->assertStringNotContainsString('data-sin-monto', $fila('5210'));
+        $response->assertSee('5 sin monto', false);
+        $response->assertSee('4 sin monto', false);
+        $response->assertDontSee('data-malla-oculta', false);
+    }
+
+    public function test_sin_importes_la_malla_muestra_todos_los_tributos_en_cero(): void
+    {
+        $cliente = $this->cliente('MYPE', 'LIBRO EN CERO SAC', '20111000121');
+
+        $response = $this->get(route('clientes.operaciones', $cliente));
+
+        $response->assertSee('tributosCompletos: {}', false);
+        $response->assertSee('6 sin monto', false);
+        $response->assertSee('5 sin monto', false);
+        $response->assertSee('data-malla-oculta', false);
+        $response->assertSee('A pagar · según PDT');
+        $response->assertSee('Sin registrar');
+        $response->assertSee('Sin pagos');
+        $response->assertSee('IGV 18%');
+        $response->assertSee('Renta MYPE 1%');
+        $response->assertSee('EsSalud');
+        $response->assertSee('ONP');
+        $response->assertSee('Renta 4ta');
+        $response->assertDontSee('Este ejercicio no tiene tributos de PLAME');
+
+        $reporte = $response->viewData('reporteImpuestos');
+        $pdt = collect($reporte['bloques'])->firstWhere('id', 'pdt_621');
+        $plame = collect($reporte['bloques'])->firstWhere('id', 'pdt_601');
+        $this->assertCount(6, $pdt['tributos']);
+        $this->assertCount(5, $plame['tributos']);
+        $this->assertSame('S/ 0.00', $pdt['tributos'][0]['periodos'][0]['determinado']);
+        $this->assertSame('S/ 0.00', $pdt['tributos'][0]['periodos'][0]['saldo']);
+        $this->assertSame('S/ 0.00', $plame['tributos'][0]['periodos'][0]['determinado']);
+        $this->assertSame('S/ 0.00', $reporte['resumen']['determinado_621']);
+        $this->assertSame('S/ 0.00', $reporte['resumen']['determinado_601']);
     }
 
     public function test_nrus_no_arma_malla_de_pdt_621_sin_importes(): void

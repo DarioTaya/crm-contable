@@ -14,9 +14,8 @@ use Illuminate\Support\Collection;
 /**
  * Libro anual de tributos de un cliente.
  *
- * Lee las mismas deudas y abonos de Control de Impuestos. No recalcula vencimientos
- * ni completa importes que el contador no registró: un periodo sin tributo queda
- * como "Sin determinar", no como S/ 0.00.
+ * Lee las mismas deudas y abonos de Control de Impuestos. No recalcula vencimientos.
+ * Un tributo del PDT 621 o del PDT 601 sin importe cargado se muestra en S/ 0.00.
  */
 class ReporteImpuestosCliente
 {
@@ -85,16 +84,14 @@ class ReporteImpuestosCliente
             ];
         }
 
-        $hayImportes = ($resumen['determinado_621'] + $resumen['determinado_601']) > 0;
-
         return [
             'anio' => $anio,
             'anios' => $this->aniosDisponibles($cliente, $anio),
             'resumen' => [
-                'determinado_621' => $resumen['determinado_621'] > 0 ? $this->soles($resumen['determinado_621']) : '—',
-                'determinado_601' => $resumen['determinado_601'] > 0 ? $this->soles($resumen['determinado_601']) : '—',
-                'pagado' => $hayImportes ? $this->soles($resumen['pagado']) : '—',
-                'saldo' => $hayImportes ? $this->soles($resumen['saldo']) : '—',
+                'determinado_621' => $this->soles($resumen['determinado_621']),
+                'determinado_601' => $this->soles($resumen['determinado_601']),
+                'pagado' => $this->soles($resumen['pagado']),
+                'saldo' => $this->soles($resumen['saldo']),
                 'fuera_de_fecha' => $resumen['fuera_de_fecha'],
                 'con_deuda' => $resumen['con_deuda'],
             ],
@@ -236,22 +233,16 @@ class ReporteImpuestosCliente
     {
         $catalogo = collect(TipoTributoSunat::catalogoFormulario())->firstWhere('id', $declaracion);
         $orden = array_column($catalogo['tributos'] ?? [], 'codigo');
-        $fijos = [];
-
-        if ($declaracion === 'pdt_621' && $cliente->regimen_tributario !== RegimenTributario::Rus) {
-            $fijos[] = TipoTributoSunat::Igv18->value;
-            $renta = TipoTributoSunat::rentaDelRegimen($cliente->regimen_tributario);
-            if ($renta instanceof TipoTributoSunat) {
-                $fijos[] = $renta->value;
-            }
-        }
 
         $conDatos = array_values(array_filter(
             $codigosConDatos,
             fn (string $codigo): bool => TipoTributoSunat::declaracionDe($codigo) === $declaracion,
         ));
 
-        $codigos = array_values(array_unique([...$fijos, ...$conDatos]));
+        $nrusSinPdt = $declaracion === 'pdt_621' && $cliente->regimen_tributario === RegimenTributario::Rus;
+        $codigos = $nrusSinPdt
+            ? $conDatos
+            : array_values(array_unique([...$orden, ...$conDatos]));
 
         usort($codigos, function (string $a, string $b) use ($orden): int {
             $indiceA = array_search($a, $orden, true);
@@ -348,9 +339,9 @@ class ReporteImpuestosCliente
                 'periodos' => $periodos,
                 'tiene_importes' => $registrados > 0,
                 'totales' => [
-                    'determinado' => $registrados > 0 ? $this->soles($determinado) : null,
-                    'pagado' => $registrados > 0 ? $this->soles($pagado) : null,
-                    'saldo' => $registrados > 0 ? $this->soles($saldo) : null,
+                    'determinado' => $this->soles($determinado),
+                    'pagado' => $this->soles($pagado),
+                    'saldo' => $this->soles($saldo),
                     'pagos' => $cantidadPagos,
                     'fuera_de_fecha' => $fuera,
                     'con_deuda' => $conDeuda,
@@ -374,6 +365,7 @@ class ReporteImpuestosCliente
     {
         $tienePagos = $pagos !== [];
         $marcarBaja = $esBaja && ! $tienePagos;
+        $pagadoCentavos = array_sum(array_map(fn (array $pago): int => $this->centavos($pago['monto']), $pagos));
 
         return [
             'periodo' => $periodo,
@@ -381,10 +373,10 @@ class ReporteImpuestosCliente
             'mes' => self::MESES[$mes]['nombre'],
             'registrado' => false,
             'situacion' => $marcarBaja ? 'baja' : EvaluadorPagoTributo::SIN_DETERMINAR,
-            'situacion_etiqueta' => $marcarBaja ? 'Baja' : 'Sin determinar',
+            'situacion_etiqueta' => $marcarBaja ? 'Baja' : 'Sin registrar',
             'debe' => false,
             'es_igv_justo' => false,
-            'determinado' => null,
+            'determinado' => $marcarBaja ? null : $this->soles(0),
             'vencimiento' => null,
             'cantidad_pagos' => count($pagos),
             'pagos' => array_map(fn (array $pago): array => [
@@ -394,8 +386,8 @@ class ReporteImpuestosCliente
                 'observacion' => $pago['observacion'],
             ], $pagos),
             'fecha_cancelacion' => null,
-            'saldo' => null,
-            'pagado' => $tienePagos ? $this->soles(array_sum(array_map(fn (array $pago): int => $this->centavos($pago['monto']), $pagos))) : null,
+            'saldo' => $marcarBaja ? null : $this->soles(0),
+            'pagado' => $marcarBaja ? null : $this->soles($pagadoCentavos),
         ];
     }
 

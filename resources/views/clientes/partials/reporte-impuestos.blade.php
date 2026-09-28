@@ -9,6 +9,16 @@
             default => 'bg-white text-gray-400',
         };
     };
+    $tonoEstado = function (string $situacion): string {
+        return match ($situacion) {
+            'pagado_a_tiempo', 'pagado_sin_vencimiento', 'pagado_sin_fecha' => 'bg-emerald-100 text-emerald-800',
+            'pagado_fuera_de_fecha', 'debe_parcial' => 'bg-amber-100 text-amber-900',
+            'debe_vencido', 'debe_parcial_vencido', 'debe_sin_vencimiento' => 'bg-rose-100 text-rose-800',
+            'debe_en_plazo' => 'bg-sky-100 text-sky-900',
+            'baja' => 'bg-gray-200 text-gray-600',
+            default => 'bg-gray-100 text-gray-600',
+        };
+    };
     $lineaCelda = function (array $fila): string {
         if ($fila['situacion'] === 'baja') {
             return 'Baja';
@@ -40,21 +50,62 @@
     $resumen = $reporteImpuestos['resumen'];
     $hayDeuda = ($resumen['con_deuda'] ?? 0) > 0;
     $hayAtraso = ($resumen['fuera_de_fecha'] ?? 0) > 0;
+    $tributoTieneDatos = function (array $tributo): bool {
+        if ($tributo['tiene_importes'] ?? false) {
+            return true;
+        }
+
+        foreach ($tributo['periodos'] as $fila) {
+            if (($fila['cantidad_pagos'] ?? 0) > 0) {
+                return true;
+            }
+        }
+
+        return false;
+    };
     $iniciales = [];
+    $conMonto = [];
     foreach ($reporteImpuestos['bloques'] as $bloqueInicial) {
         $iniciales[$bloqueInicial['id']] = null;
+        $conMonto[$bloqueInicial['id']] = [];
         foreach ($bloqueInicial['tributos'] as $tributoInicial) {
+            if ($tributoTieneDatos($tributoInicial)) {
+                $conMonto[$bloqueInicial['id']][] = $tributoInicial['codigo'];
+            }
+            if ($iniciales[$bloqueInicial['id']] !== null) {
+                continue;
+            }
             foreach ($tributoInicial['periodos'] as $filaInicial) {
                 if ($filaInicial['registrado'] || $filaInicial['cantidad_pagos'] > 0) {
                     $iniciales[$bloqueInicial['id']] = $bloqueInicial['id'].'|'.$tributoInicial['codigo'].'|'.$filaInicial['periodo'];
-                    break 2;
+                    break;
                 }
             }
         }
     }
 @endphp
 
-<div class="flex flex-col gap-3" x-data='{ seleccionado: @json($iniciales) }'>
+<div class="flex flex-col gap-3" x-data='{
+    seleccionado: @json($iniciales),
+    pagosAbiertos: null,
+    tributosCompletos: {},
+    conMonto: @json($conMonto),
+    alternarTributos(bloque) {
+        this.tributosCompletos[bloque] = !this.tributosCompletos[bloque];
+        if (this.tributosCompletos[bloque]) {
+            return;
+        }
+        const clave = this.seleccionado[bloque];
+        const codigo = clave ? clave.split("|")[1] : null;
+        if (codigo && !(this.conMonto[bloque] || []).includes(codigo)) {
+            this.seleccionado[bloque] = null;
+            this.pagosAbiertos = null;
+        }
+    },
+    tributoVisible(bloque, codigo) {
+        return !!this.tributosCompletos[bloque] || (this.conMonto[bloque] || []).includes(codigo);
+    }
+}'>
     <div class="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-xs">
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div class="flex flex-wrap items-center gap-2">
@@ -67,7 +118,7 @@
                         </a>
                     @endforeach
                 </div>
-                <p class="text-[11px] text-gray-500">Un mes en blanco no es saldo cero.</p>
+                <p class="text-[11px] text-gray-500">Un cero es un mes sin importe en Control de Impuestos.</p>
             </div>
             <a href="{{ route('control.index', ['anio' => $reporteImpuestos['anio']]) }}"
                class="inline-flex shrink-0 items-center justify-center rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 shadow-xs hover:bg-gray-50">
@@ -104,6 +155,16 @@
             $esPlame = $bloque['id'] === 'pdt_601';
             $encabezado = $esPlame ? 'border-indigo-100 bg-indigo-50 text-indigo-950' : 'border-slate-200 bg-slate-50 text-slate-900';
             $meses = $bloque['tributos'][0]['periodos'] ?? [];
+            $tributosConDatos = 0;
+            $tributosSinDatos = 0;
+            foreach ($bloque['tributos'] as $tributoConteo) {
+                if ($tributoTieneDatos($tributoConteo)) {
+                    $tributosConDatos++;
+                } else {
+                    $tributosSinDatos++;
+                }
+            }
+            $mallaOculta = $tributosConDatos === 0 && $bloque['tributos'] !== [];
         @endphp
         <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs">
             <div class="flex items-center justify-between gap-3 border-b px-3 py-2 {{ $encabezado }}">
@@ -111,11 +172,22 @@
                     {{ $bloque['titulo'] }}
                     <span class="font-medium opacity-70">· {{ $bloque['detalle'] }}</span>
                 </h4>
+                @if ($tributosSinDatos > 0)
+                    <button type="button"
+                            @click="alternarTributos('{{ $bloque['id'] }}')"
+                            :aria-expanded="!!tributosCompletos['{{ $bloque['id'] }}']"
+                            class="shrink-0 text-[10px] font-medium opacity-50 hover:opacity-100"
+                            title="Tributos sin importe en Control de Impuestos">
+                        <span x-show="!tributosCompletos['{{ $bloque['id'] }}']">{{ $tributosSinDatos }} sin monto</span>
+                        <span x-show="tributosCompletos['{{ $bloque['id'] }}']" x-cloak>ocultar</span>
+                    </button>
+                @endif
             </div>
 
             @if ($bloque['tributos'] === [])
                 <p class="px-3 py-2 text-sm text-gray-500">{{ $bloque['mensaje'] }}</p>
             @else
+                <div @if ($mallaOculta) data-malla-oculta x-show="tributosCompletos['{{ $bloque['id'] }}']" x-cloak @endif>
                 <div class="overflow-x-auto">
                     <table class="w-full table-fixed border-collapse text-center">
                         <thead>
@@ -129,7 +201,7 @@
                         </thead>
                         <tbody>
                             @foreach ($bloque['tributos'] as $tributo)
-                                <tr class="border-t border-gray-100">
+                                <tr class="border-t border-gray-100" data-tributo="{{ $tributo['codigo'] }}" @unless ($tributoTieneDatos($tributo)) data-sin-monto x-cloak @endunless x-show="tributoVisible('{{ $bloque['id'] }}', '{{ $tributo['codigo'] }}')">
                                     <th class="sticky left-0 z-10 bg-white px-2 py-1 text-left align-middle" title="{{ $tributo['codigo'] }} {{ $tributo['descripcion'] }}">
                                         <span class="block text-xs font-bold leading-tight text-gray-900">{{ $tributo['nombre'] }}</span>
                                         <span class="block font-mono text-[10px] font-medium text-gray-400">{{ $tributo['codigo'] }}</span>
@@ -170,39 +242,93 @@
                     </table>
                 </div>
 
-                <div class="min-h-12 border-t border-gray-100 px-3 py-2">
-                    <p x-show="seleccionado['{{ $bloque['id'] }}'] === null" class="text-[11px] text-gray-500">Elija un mes para ver vencimiento, situación y pagos.</p>
+                <div class="border-t border-gray-100 bg-slate-50/70 px-3 py-3">
+                    <p x-show="seleccionado['{{ $bloque['id'] }}'] === null" class="text-[11px] text-gray-500">Elija un mes para ver el importe según PDT, el vencimiento y los pagos.</p>
                     @foreach ($bloque['tributos'] as $tributo)
                         @foreach ($tributo['periodos'] as $fila)
-                            @php $clave = $bloque['id'].'|'.$tributo['codigo'].'|'.$fila['periodo']; @endphp
-                            <div x-show="seleccionado['{{ $bloque['id'] }}'] === '{{ $clave }}'" x-cloak class="flex flex-wrap items-baseline gap-x-4 gap-y-0.5 text-[11px] leading-5 text-gray-700">
-                                <p class="text-xs font-bold text-gray-900">{{ $fila['etiqueta'] }} · {{ $tributo['nombre'] }}</p>
-                                <span class="text-gray-400">{{ $bloque['titulo'] }} · {{ $tributo['codigo'] }}</span>
-                                <span>A pagar <strong class="font-mono">{{ $fila['determinado'] ?? '—' }}</strong></span>
-                                <span>Vence <strong class="font-mono">{{ $fila['vencimiento'] ?? '—' }}</strong></span>
-                                @if ($fila['es_igv_justo'])
-                                    <span class="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-indigo-700">IGV Justo</span>
-                                @endif
-                                <span class="font-bold text-gray-900">{{ $fila['situacion_etiqueta'] }}</span>
-                                @if ($fila['saldo'])
-                                    <span>Saldo <strong class="font-mono">{{ $fila['saldo'] }}</strong></span>
-                                @endif
-                                @if ($fila['cantidad_pagos'] === 0)
-                                    <span class="text-gray-400">Sin pagos</span>
-                                @else
-                                    <span>
-                                        <strong>{{ $fila['cantidad_pagos'] }} {{ $fila['cantidad_pagos'] === 1 ? 'pago' : 'pagos' }}</strong>
-                                        @if ($fila['fecha_cancelacion'])
-                                            · canceló {{ $fila['fecha_cancelacion'] }}
+                            @php
+                                $clave = $bloque['id'].'|'.$tributo['codigo'].'|'.$fila['periodo'];
+                                $saldoPendiente = $fila['debe'] && $fila['saldo'];
+                            @endphp
+                            <div x-show="seleccionado['{{ $bloque['id'] }}'] === '{{ $clave }}' && tributoVisible('{{ $bloque['id'] }}', '{{ $tributo['codigo'] }}')" x-cloak class="w-full max-w-xl rounded-xl border border-gray-200 bg-white p-3 shadow-xs">
+                                <div class="flex flex-wrap items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <p class="text-sm font-bold text-gray-900">{{ $fila['etiqueta'] }} · {{ $tributo['nombre'] }}</p>
+                                        <p class="mt-0.5 text-[11px] font-semibold text-gray-500">{{ $bloque['titulo'] }} · {{ $bloque['detalle'] }} · {{ $tributo['codigo'] }}</p>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        <span class="rounded-full px-2 py-0.5 text-[10px] font-bold {{ $tonoEstado($fila['situacion']) }}">{{ $fila['situacion_etiqueta'] }}</span>
+                                        @if ($fila['es_igv_justo'])
+                                            <span class="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase text-indigo-800">IGV Justo</span>
                                         @endif
-                                        @foreach ($fila['pagos'] as $pago)
-                                            · {{ $pago['fecha'] }} {{ $pago['monto'] }} {{ $pago['medio'] }}@if ($pago['observacion'] !== '') · {{ $pago['observacion'] }}@endif
-                                        @endforeach
-                                    </span>
-                                @endif
+                                    </div>
+                                </div>
+
+                                <dl class="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">
+                                    <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                        <dt class="text-[10px] font-bold uppercase tracking-wide text-slate-500">A pagar · según PDT</dt>
+                                        <dd class="mt-0.5 font-mono text-sm font-bold tabular-nums text-slate-950">{{ $fila['determinado'] ?? '—' }}</dd>
+                                    </div>
+                                    <div class="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                                        <dt class="text-[10px] font-bold uppercase tracking-wide text-gray-500">Vence</dt>
+                                        <dd class="mt-0.5 font-mono text-sm font-bold tabular-nums text-gray-900">{{ $fila['vencimiento'] ?? '—' }}</dd>
+                                    </div>
+                                    <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+                                        <dt class="text-[10px] font-bold uppercase tracking-wide text-emerald-700">Pagado</dt>
+                                        <dd class="mt-0.5 font-mono text-sm font-bold tabular-nums text-emerald-950">{{ $fila['pagado'] ?? '—' }}</dd>
+                                    </div>
+                                    <div class="rounded-lg border px-3 py-2 {{ $saldoPendiente ? 'border-rose-200 bg-rose-50' : 'border-gray-200 bg-white' }}">
+                                        <dt class="text-[10px] font-bold uppercase tracking-wide {{ $saldoPendiente ? 'text-rose-700' : 'text-gray-500' }}">Saldo</dt>
+                                        <dd class="mt-0.5 font-mono text-sm font-bold tabular-nums {{ $saldoPendiente ? 'text-rose-950' : 'text-gray-900' }}">{{ $fila['saldo'] ?? '—' }}</dd>
+                                    </div>
+                                </dl>
+
+                                <div class="mt-3 border-t border-gray-100 pt-2.5">
+                                    @if ($fila['cantidad_pagos'] === 0)
+                                        <p class="text-[11px] font-semibold text-gray-500">Sin pagos</p>
+                                    @else
+                                        <button type="button"
+                                                @click="pagosAbiertos = pagosAbiertos === '{{ $clave }}' ? null : '{{ $clave }}'"
+                                                :aria-expanded="pagosAbiertos === '{{ $clave }}'"
+                                                class="flex w-full items-center justify-between gap-2 rounded-lg py-1 text-left hover:bg-gray-50">
+                                            <span class="text-[11px] font-bold text-gray-800">
+                                                {{ $fila['cantidad_pagos'] }} {{ $fila['cantidad_pagos'] === 1 ? 'pago' : 'pagos' }}
+                                                @if ($fila['fecha_cancelacion'])
+                                                    <span class="font-semibold text-gray-500">· canceló {{ $fila['fecha_cancelacion'] }}</span>
+                                                @endif
+                                            </span>
+                                            <svg class="h-3.5 w-3.5 shrink-0 text-gray-400 transition" :class="pagosAbiertos === '{{ $clave }}' ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                            </svg>
+                                        </button>
+                                        <div x-show="pagosAbiertos === '{{ $clave }}'" x-cloak class="mt-2 overflow-hidden rounded-lg border border-gray-200">
+                                            <table class="w-full text-left text-[11px]">
+                                                <thead class="bg-gray-50 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                                                    <tr>
+                                                        <th class="px-2.5 py-1.5">Fecha</th>
+                                                        <th class="px-2.5 py-1.5 text-right">Importe</th>
+                                                        <th class="px-2.5 py-1.5">Medio</th>
+                                                        <th class="px-2.5 py-1.5">Nota</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-gray-100">
+                                                    @foreach ($fila['pagos'] as $pago)
+                                                        <tr>
+                                                            <td class="px-2.5 py-1.5 font-mono font-semibold text-gray-800">{{ $pago['fecha'] }}</td>
+                                                            <td class="px-2.5 py-1.5 text-right font-mono font-bold tabular-nums text-gray-900">{{ $pago['monto'] }}</td>
+                                                            <td class="px-2.5 py-1.5 font-semibold text-gray-700">{{ $pago['medio'] }}</td>
+                                                            <td class="px-2.5 py-1.5 text-gray-500">{{ $pago['observacion'] !== '' ? $pago['observacion'] : '—' }}</td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    @endif
+                                </div>
                             </div>
                         @endforeach
                     @endforeach
+                </div>
                 </div>
             @endif
         </section>
