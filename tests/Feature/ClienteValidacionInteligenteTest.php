@@ -170,6 +170,7 @@ class ClienteValidacionInteligenteTest extends TestCase
         $response->assertSee('Onboarding — Nuevo Cliente');
         $response->assertSee('onboardingApp');
         $response->assertSee('Comprobando Acceso con SUNAT');
-        $response->assertSee('Probar conexión Clave SOL');
+        $response->assertSee('Registrar Cliente');
+        $response->assertDontSee('Probar conexión Clave SOL');
     }
 }

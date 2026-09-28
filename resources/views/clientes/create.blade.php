@@ -388,31 +388,9 @@
                 <div class="space-y-6 p-6">
                     {{-- Clave SOL con comprobación silenciosa --}}
                     <div class="rounded-xl border border-gray-100 bg-gray-50/50 p-4">
-                        <div class="mb-3 flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <h3 class="text-sm font-semibold text-gray-800">Clave SOL (SUNAT)</h3>
-                                <span class="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-700">Portal SOL</span>
-                            </div>
-
-                            {{-- Botón discreto para probar conexión --}}
-                            <button
-                                type="button"
-                                @click="probarConexionSol()"
-                                :disabled="!ruc || !usuarioSol || !claveSol || solStatus === 'testing'"
-                                class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-xs transition hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                                <template x-if="solStatus === 'testing'">
-                                    <svg class="h-3.5 w-3.5 animate-spin text-brand-600" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-                                    </svg>
-                                </template>
-                                <template x-if="solStatus !== 'testing'">
-                                    <svg class="h-3.5 w-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
-                                </template>
-                                <span x-text="solStatus === 'testing' ? 'Verificando con SUNAT...' : 'Probar conexión Clave SOL'"></span>
-                            </button>
+                        <div class="mb-3 flex items-center gap-2">
+                            <h3 class="text-sm font-semibold text-gray-800">Clave SOL (SUNAT)</h3>
+                            <span class="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-700">Portal SOL</span>
                         </div>
 
                         <div class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">

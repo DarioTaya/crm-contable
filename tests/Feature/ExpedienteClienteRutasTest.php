@@ -85,6 +85,22 @@ class ExpedienteClienteRutasTest extends TestCase
             ]);
     }
 
+    public function test_el_menu_de_sunat_queda_dentro_del_expediente_en_datos_y_accesos(): void
+    {
+        $cliente = $this->cliente();
+        $cliente->credencial()->create([
+            'usuario_sol' => 'MODDATOS',
+            'clave_sol' => 'ClaveSol123',
+        ]);
+
+        $html = $this->get(route('clientes.show', $cliente))->assertOk()->getContent();
+        $expediente = $this->htmlDelExpediente($html);
+
+        $this->assertStringContainsString('Ingresar a SUNAT (1 Clic)', $expediente);
+        $this->assertStringContainsString('abrirMenuSunat(', $expediente);
+        $this->assertStringContainsString('Accesos SUNAT', $expediente);
+    }
+
     public function test_el_filtro_de_sire_permanece_en_la_ruta_de_la_seccion(): void
     {
         $cliente = $this->cliente();
@@ -97,6 +113,31 @@ class ExpedienteClienteRutasTest extends TestCase
             ->assertSee('data-seccion="sire"', false)
             ->assertSee('value="RCE" selected', false)
             ->assertSee('value="2026-01"', false);
+    }
+
+    private function htmlDelExpediente(string $html): string
+    {
+        $marca = strpos($html, 'x-data="expedienteCliente');
+        $this->assertNotFalse($marca);
+        $inicio = strrpos(substr($html, 0, $marca), '<div');
+        $this->assertNotFalse($inicio);
+
+        $resto = substr($html, $inicio);
+        $profundidad = 0;
+        $cursor = 0;
+
+        while (preg_match('/<div\b|<\/div>/', $resto, $coincidencia, PREG_OFFSET_CAPTURE, $cursor)) {
+            $etiqueta = $coincidencia[0][0];
+            $posicion = $coincidencia[0][1];
+            $profundidad += str_starts_with($etiqueta, '</') ? -1 : 1;
+            $cursor = $posicion + strlen($etiqueta);
+
+            if ($profundidad === 0) {
+                return substr($resto, 0, $cursor);
+            }
+        }
+
+        $this->fail('El expediente no cierra su contenedor.');
     }
 
     private function cliente(): Cliente

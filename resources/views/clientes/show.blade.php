@@ -2515,9 +2515,9 @@
             </div>
         </div>
     </div>
-    </div>
 
     @include('clientes.partials.menu-accesos-sunat')
+    </div>
 
     {{-- ═══════════════════════════ ALPINE.JS + CLIPBOARD ═══════════════════════════ --}}
     <script>
