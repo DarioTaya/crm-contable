@@ -333,7 +333,7 @@
                                             x-show="openMenu"
                                             x-cloak
                                             data-menu-flotante
-                                            @click.outside="openMenu = false"
+                                            @click.outside="if (!$el._clicInicioDentro) openMenu = false"
                                             class="fixed z-50 w-44 rounded-xl border border-gray-200 bg-white p-2 text-left shadow-2xl"
                                         >
                                             <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 mb-1">
@@ -378,7 +378,7 @@
                                          x-show="openNote"
                                          x-cloak
                                          data-menu-flotante
-                                         @click.outside="cerrar()"
+                                         @click.outside="if (!$el._clicInicioDentro) cerrar()"
                                          class="fixed z-50 w-64 rounded-xl border border-amber-300 bg-amber-50 p-3 text-left shadow-2xl">
 
                                         <div class="flex items-center justify-between pb-1.5 border-b border-amber-200 mb-2">
@@ -458,7 +458,7 @@
                                     x-show="openDJAnual"
                                     x-cloak
                                     data-menu-flotante
-                                    @click.outside="openDJAnual = false"
+                                    @click.outside="if (!$el._clicInicioDentro) openDJAnual = false"
                                     class="fixed z-50 w-44 rounded-xl border border-indigo-200 bg-white p-2 text-left shadow-2xl"
                                 >
                                     <div class="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-700 border-b border-indigo-100 mb-1">

@@ -344,7 +344,7 @@
                                                 x-show="openDJ"
                                                 x-cloak
                                                 data-menu-flotante
-                                                @click.outside="openDJ = false"
+                                                @click.outside="if (!$el._clicInicioDentro) openDJ = false"
                                                 class="fixed z-50 max-w-[95vw] rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl text-left max-h-[calc(100vh-24px)] overflow-y-auto"
                                                 style="width: 476px;"
                                             >
@@ -632,7 +632,7 @@
                                                 x-show="openRH"
                                                 x-cloak
                                                 data-menu-flotante
-                                                @click.outside="openRH = false"
+                                                @click.outside="if (!$el._clicInicioDentro) openRH = false"
                                                 class="fixed z-50 w-40 rounded-xl border border-gray-200 bg-white p-2 shadow-2xl text-left"
                                             >
                                                 <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 mb-1">

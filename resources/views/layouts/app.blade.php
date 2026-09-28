@@ -111,6 +111,20 @@
             };
             window.addEventListener('scroll', recolocarMenus, true);
             window.addEventListener('resize', recolocarMenus);
+
+            // Un arrastre que empieza dentro y suelta afuera no es un clic fuera.
+            // El cierre de @click.outside solo procede si el botón se presionó afuera.
+            document.addEventListener('mousedown', function (event) {
+                const paneles = document.querySelectorAll('[data-menu-flotante]');
+                for (let i = 0; i < paneles.length; i++) {
+                    const panel = paneles[i];
+                    if (panel._x_isShown === false || panel.style.display === 'none') {
+                        panel._clicInicioDentro = false;
+                        continue;
+                    }
+                    panel._clicInicioDentro = panel.contains(event.target);
+                }
+            }, true);
         }
     </script>
     <style>
