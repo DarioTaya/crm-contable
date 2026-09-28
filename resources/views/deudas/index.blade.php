@@ -649,35 +649,6 @@
                             class="no-print bg-slate-50/80 border-b border-gray-200 transition-all">
                             <td colspan="8" class="p-0">
                                 <div class="px-6 py-4 border-t border-dashed border-gray-200">
-                                    <div class="flex items-center justify-between pb-3 border-b border-gray-200/80">
-                                        <div class="flex items-center gap-2">
-                                            <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700">
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <h4 class="text-xs font-bold text-gray-900">
-                                                    Historial de Amortizaciones — {{ $deuda->cliente->razon_social }}
-                                                    <span class="text-gray-400 font-mono text-[11px]">({{ $deuda->periodo }} &bull; {{ $deuda->tributo_nombre_corto }})</span>
-                                                </h4>
-                                                <p class="text-[10px] text-gray-500">
-                                                    Registro cronológico de pagos parciales aplicados a esta deuda tributaria.
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            @click="abrirModalAbono({{ $deuda->id }})"
-                                            type="button"
-                                            class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1 text-xs font-bold text-white shadow-2xs hover:bg-emerald-700 active:scale-95 transition">
-                                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                                            </svg>
-                                            <span>Nuevo Abono</span>
-                                        </button>
-                                    </div>
-
                                     {{-- Tabla interna de abonos --}}
                                     <div class="mt-3">
                                         <template x-if="(getDeudaLive({{ $deuda->id }})?.abonos?.length || 0) === 0">
@@ -695,7 +666,7 @@
                                                 <table class="w-full text-left text-xs">
                                                     <thead>
                                                         <tr class="bg-gray-100/80 border-b border-gray-200 text-gray-600 font-bold uppercase text-[10px] tracking-wider">
-                                                            <th class="py-2 px-3 text-center w-12">#</th>
+                                                            <th class="py-2 px-3 text-center w-12">N°</th>
                                                             <th class="py-2 px-3">Fecha de Pago</th>
                                                             <th class="py-2 px-3 text-right">Monto Abonado</th>
                                                             <th class="py-2 px-4">Observación / Referencia</th>
@@ -783,9 +754,10 @@
     {{-- ═══════════════════════════════ MODAL ENTERPRISE: REGISTRAR ABONO ═══════════════════════════════ --}}
     <div x-show="showModal" x-cloak
          class="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-         @keydown.escape.window="cerrarModal()">
-        <div @click.away="cerrarModal()"
-             class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-gray-200"
+         @keydown.escape.window="cerrarModal()"
+         @mousedown.self="marcarCierrePorFondo()"
+         @mouseup.window="soltarPunteroModal($event, $el)">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all border border-gray-200"
              x-transition:enter="ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100">
@@ -808,6 +780,17 @@
                                 <span class="text-xs font-bold text-white drop-shadow-xs truncate max-w-[250px]"
                                       x-text="modalClienteRazon"></span>
                             </div>
+                            <p class="mt-1 flex min-w-0 items-center gap-2 text-[10px] leading-none text-white/70">
+                                <span class="shrink-0 whitespace-nowrap">
+                                    Periodo
+                                    <span class="ml-1 font-mono font-bold text-white" x-text="modalPeriodo"></span>
+                                </span>
+                                <span class="text-white/70">·</span>
+                                <span class="min-w-0 truncate" :title="modalTributoDetalle">
+                                    Tributo
+                                    <span class="ml-1 font-bold text-white" x-text="modalTributo"></span>
+                                </span>
+                            </p>
                         </div>
                     </div>
                     <button @click="cerrarModal()" class="rounded-lg p-1 text-white/70 hover:bg-white/10 hover:text-white transition">
@@ -926,11 +909,14 @@ function controlDeudas(initialDeudas, clientesConDeuda, totalDeudaHistorica, tot
 
         // Estado del Modal de Abonos
         showModal: false,
+        cierrePorFondo: false,
         saving: false,
         modalDeudaId: null,
         modalClienteCodigo: '',
         modalClienteRazon: '',
         modalPeriodo: '',
+        modalTributo: '',
+        modalTributoDetalle: '',
         modalDeuda: 0,
         modalAbonado: 0,
         modalSaldo: 0,
@@ -1335,7 +1321,9 @@ function controlDeudas(initialDeudas, clientesConDeuda, totalDeudaHistorica, tot
             this.modalDeudaId = deuda.id;
             this.modalClienteCodigo = deuda.cliente_codigo;
             this.modalClienteRazon = deuda.cliente_razon;
-            this.modalPeriodo = deuda.periodo;
+            this.modalPeriodo = deuda.periodo || '';
+            this.modalTributo = deuda.tributo_nombre_corto || deuda.tributo_nombre || '';
+            this.modalTributoDetalle = deuda.tributo_nombre || this.modalTributo;
             this.modalDeuda = deuda.monto_deuda_inicial;
             this.modalAbonado = deuda.total_abonado;
             this.modalSaldo = deuda.saldo_pendiente;
@@ -1347,6 +1335,20 @@ function controlDeudas(initialDeudas, clientesConDeuda, totalDeudaHistorica, tot
 
         cerrarModal() {
             this.showModal = false;
+            this.cierrePorFondo = false;
+        },
+
+        marcarCierrePorFondo() {
+            this.cierrePorFondo = true;
+        },
+
+        soltarPunteroModal(evento, fondo) {
+            if (this.showModal && this.cierrePorFondo && evento.target === fondo) {
+                this.cerrarModal();
+                return;
+            }
+
+            this.cierrePorFondo = false;
         },
 
         // Guardar nuevo abono vía AJAX y actualizar el estado sin recargar

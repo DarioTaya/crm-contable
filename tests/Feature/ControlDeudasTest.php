@@ -114,6 +114,10 @@ class ControlDeudasTest extends TestCase
         $response->assertSee('600.00');   // Total abonado
         $response->assertSee('1,400.00'); // Saldo pendiente
         $response->assertSee('Control de Deudas');
+        $response->assertSee('x-text="modalPeriodo"', false);
+        $response->assertSee('x-text="modalTributo"', false);
+        $response->assertSee('soltarPunteroModal($event, $el)', false);
+        $response->assertDontSee('@click.away="cerrarModal()"', false);
     }
 
     public function test_abonos_store_and_destroy_via_ajax(): void
