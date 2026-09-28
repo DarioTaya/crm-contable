@@ -30,7 +30,7 @@
                 <span class="text-gray-300">|</span>
                 <span class="flex items-center gap-1 font-semibold text-gray-700">
                     <span class="relative inline-block shrink-0" style="width:15px;height:15px" aria-hidden="true">
-                        <span class="absolute left-0 top-0 inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-full text-xs" style="transform:scale(0.625);transform-origin:top left">
+                        <span class="absolute inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-full text-xs" style="left:50%;top:50%;transform:translate(-50%,-50%) scale(0.75)">
                             <span>🟢</span>
                             <svg class="absolute inset-0 h-6 w-6 pointer-events-none" viewBox="0 0 24 24">
                                 <circle cx="12" cy="12" r="6.8" fill="none" stroke="#ef4444" stroke-width="2.4" />
@@ -42,7 +42,7 @@
                 <span class="text-gray-300">|</span>
                 <span class="flex items-center gap-1 font-semibold text-gray-700">
                     <span class="relative inline-block shrink-0" style="width:15px;height:15px" aria-hidden="true">
-                        <span class="absolute left-0 top-0 inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-full text-xs" style="transform:scale(0.625);transform-origin:top left">
+                        <span class="absolute inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-full text-xs" style="left:50%;top:50%;transform:translate(-50%,-50%) scale(0.75)">
                             <span>🟢</span>
                             <svg class="absolute inset-0 h-6 w-6 pointer-events-none" viewBox="0 0 24 24">
                                 <circle cx="12" cy="12" r="6.8" fill="none" stroke="#7c3aed" stroke-width="2.4" />
