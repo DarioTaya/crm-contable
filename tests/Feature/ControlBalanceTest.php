@@ -232,4 +232,21 @@ class ControlBalanceTest extends TestCase
         $resShow->assertSee('Impuestos del ejercicio', false);
         $resShow->assertDontSee($textoEsperado, false);
     }
+
+    public function test_la_matriz_de_balances_ofrece_una_marca_para_la_empresa_en_trabajo(): void
+    {
+        $cliente = Cliente::create([
+            'razon_social' => 'BALANCE EN TRABAJO SAC',
+            'ruc' => '20600111333',
+            'regimen_tributario' => 'General',
+            'estado' => true,
+        ]);
+
+        $response = $this->get(route('balances.index'));
+
+        $response->assertOk();
+        $response->assertSee('data-marca-en-trabajo="'.$cliente->id.'"', false);
+        $response->assertSee('crm-cliente-en-trabajo-', false);
+        $response->assertSee('Marcar: estoy trabajando en esta empresa', false);
+    }
 }

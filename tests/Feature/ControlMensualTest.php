@@ -353,4 +353,21 @@ class ControlMensualTest extends TestCase
         $response->assertJsonPath('kpis.pendientesTotal', 11); // 11 remaining months for client B
         $response->assertJsonPath('kpis.procesandoTotal', 0);
     }
+
+    public function test_la_matriz_de_impuestos_ofrece_una_marca_para_la_empresa_en_trabajo(): void
+    {
+        $cliente = Cliente::create([
+            'razon_social' => 'EMPRESA EN TRABAJO SAC',
+            'ruc' => '20600111222',
+            'regimen_tributario' => 'MYPE',
+            'estado' => true,
+        ]);
+
+        $response = $this->get(route('control.index'));
+
+        $response->assertOk();
+        $response->assertSee('data-marca-en-trabajo="'.$cliente->id.'"', false);
+        $response->assertSee('crm-cliente-en-trabajo-', false);
+        $response->assertSee('Marcar: estoy trabajando en esta empresa', false);
+    }
 }

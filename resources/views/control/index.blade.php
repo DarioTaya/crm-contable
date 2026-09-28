@@ -149,6 +149,8 @@
         </div>
     </div>
 
+    @include('partials.marca-cliente-en-trabajo')
+
     {{-- ═══════════════════════════════ TABLA MATRIZ 100% MONITOR (13 COLUMNAS: DJ + RH) ═══════════════════════════════ --}}
     <div class="overflow-x-auto rounded-xl border border-gray-300 bg-white shadow-md min-h-[200px]">
         <table class="w-full table-fixed border-collapse border border-gray-300 text-xs text-left">
@@ -159,6 +161,7 @@
                     {{-- Columna 1: Cliente/RUC (Sticky Left) con N° Correlativo --}}
                     <th class="w-[22%] px-2.5 py-2 text-left border-r border-b border-gray-300 bg-gray-200 sticky left-0 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
                         <div class="flex items-center gap-1.5">
+                            <span class="inline-flex h-5 w-5 shrink-0" title="Marca la empresa en la que estás trabajando" aria-hidden="true"></span>
                             <span class="inline-flex h-5 min-w-[22px] px-1 items-center justify-center rounded bg-gray-300/80 border border-gray-400/60 text-[10px] font-mono font-black text-gray-800 shrink-0">N°</span>
                             <div class="min-w-0 flex-1">
                                 <span class="block text-[11px] font-black uppercase tracking-wider text-gray-800 truncate">CLIENTE / RUC</span>
@@ -200,12 +203,15 @@
                             anio: {{ $anio }},
                             meses: @js($item['meses'])
                         })"
-                        class="hover:bg-blue-50/20 transition-colors">
+                        class="group hover:bg-blue-50/20 transition-colors"
+                        :class="{ 'marca-en-trabajo': Number($store.enTrabajo.id) === {{ $item['cliente']->id }} }"
+                        x-init="if (Number($store.enTrabajo.id) === {{ $item['cliente']->id }}) { $nextTick(() => $el.scrollIntoView({ block: 'nearest' })) }">
 
                         {{-- COLUMNA 1: CLIENTE / RUC (STICKY LEFT) CON N° CORRELATIVO --}}
                         <td class="w-[22%] sticky left-0 bg-white z-10 px-2.5 py-2 border-r border-b border-gray-300 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.12)] whitespace-nowrap overflow-hidden">
                             <div class="flex items-center justify-between gap-2">
-                                <div class="flex items-center gap-2 min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                                    <x-marca-en-trabajo :cliente-id="$item['cliente']->id" />
                                     {{-- N° Correlativo sincronizado con la lista de clientes --}}
                                     <span class="inline-flex h-5 min-w-[24px] px-1 items-center justify-center rounded-md bg-gray-100 border border-gray-300 text-[10px] font-mono font-black text-gray-700 shrink-0 shadow-xs"
                                           title="Cliente N° {{ $item['numero'] }}">
