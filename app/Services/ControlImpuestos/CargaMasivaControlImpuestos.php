@@ -63,6 +63,10 @@ class CargaMasivaControlImpuestos
             }
         }
 
+        $lineas[] = '';
+        $lineas[] = 'PAGOS';
+        $lineas[] = $this->linea($this->encabezadosPagos());
+
         return "\xEF\xBB\xBF".implode("\r\n", $lineas)."\r\n";
     }
 
@@ -102,9 +106,11 @@ class CargaMasivaControlImpuestos
      */
     private function planificar(SolicitudCargaMasiva $solicitud): array
     {
-        return $solicitud->modo === 'plantilla'
-            ? $this->planPlantilla($solicitud)
-            : $this->planEstados($solicitud);
+        return match ($solicitud->modo) {
+            'plantilla' => $this->planPlantilla($solicitud),
+            'honorarios' => $this->planHonorarios($solicitud),
+            default => $this->planEstados($solicitud),
+        };
     }
 
     /**
@@ -131,7 +137,8 @@ class CargaMasivaControlImpuestos
             $periodos[] = sprintf('%02d-%d', $mes, $solicitud->anio);
         }
 
-        $operaciones = $this->operacionesDe($clientes, $periodos, false);
+        $reinicio = $solicitud->estado === 'Pendiente';
+        $operaciones = $this->operacionesDe($clientes, $periodos, $reinicio);
         $cambios = [];
         $bajas = 0;
         $conservados = 0;
@@ -154,7 +161,7 @@ class CargaMasivaControlImpuestos
 
                         continue;
                     }
-                    if ($solicitud->politica === 'conservar' && $actual !== 'Pendiente') {
+                    if (! $reinicio && $solicitud->politica === 'conservar' && $actual !== 'Pendiente') {
                         $conservados++;
 
                         continue;
@@ -162,11 +169,90 @@ class CargaMasivaControlImpuestos
                     $datos[$clave] = $solicitud->estado;
                 }
 
-                if ($datos === []) {
+                if ($datos !== []) {
+                    $cambios[] = $this->cambioEstado($cliente, $periodo, $datos, null);
+                }
+
+                if ($reinicio && $this->tieneTributosOPagos($operacion)) {
+                    $cambios[] = [
+                        'tipo' => 'limpiar',
+                        'cliente_id' => $cliente->id,
+                        'periodo' => $periodo,
+                        'fila' => null,
+                        'resumen' => "{$cliente->razon_social} · {$periodo} · se eliminan tributos y pagos",
+                        'datos' => [],
+                    ];
+                }
+            }
+        }
+
+        return [
+            'cambios' => $cambios,
+            'errores' => [],
+            'omitidos' => $bajas + $conservados + $iguales,
+            'avisos' => $this->avisos($bajas, $conservados + $iguales),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     cambios: list<array<string, mixed>>,
+     *     errores: list<array{fila: int|null, mensaje: string}>,
+     *     omitidos: int,
+     *     avisos: list<string>
+     * }
+     */
+    private function planHonorarios(SolicitudCargaMasiva $solicitud): array
+    {
+        $clientes = $this->clientesObjetivo($solicitud);
+        if ($solicitud->alcance === 'seleccion' && $clientes->count() !== count(array_unique($solicitud->clienteIds))) {
+            return $this->planVacio([[
+                'fila' => null,
+                'mensaje' => 'Alguno de los clientes elegidos no se declara en este ejercicio.',
+            ]]);
+        }
+
+        $periodos = [];
+        for ($mes = (int) $solicitud->mesDesde; $mes <= (int) $solicitud->mesHasta; $mes++) {
+            $periodos[] = sprintf('%02d-%d', $mes, $solicitud->anio);
+        }
+
+        $operaciones = $this->operacionesDe($clientes, $periodos, false);
+        $cambios = [];
+        $bajas = 0;
+        $conservados = 0;
+        $iguales = 0;
+        $etiqueta = $solicitud->estado === 'Pagado' ? 'Pagó' : 'Debe';
+
+        foreach ($clientes as $cliente) {
+            foreach ($periodos as $periodo) {
+                if (! $cliente->rindeEnPeriodo($periodo)) {
+                    $bajas++;
+
                     continue;
                 }
 
-                $cambios[] = $this->cambioEstado($cliente, $periodo, $datos, null);
+                $operacion = $operaciones->get($cliente->id.'|'.$periodo);
+                $actual = $operacion?->estado_pago_honorarios ?? 'Pendiente';
+                if ($actual === $solicitud->estado) {
+                    $iguales++;
+
+                    continue;
+                }
+                if ($solicitud->politica === 'conservar' && $actual !== 'Pendiente') {
+                    $conservados++;
+
+                    continue;
+                }
+
+                $cambios[] = [
+                    'tipo' => 'honorario',
+                    'cliente_id' => $cliente->id,
+                    'periodo' => $periodo,
+                    'fila' => null,
+                    'resumen' => "{$cliente->razon_social} · {$periodo} · RH → {$etiqueta}",
+                    'datos' => ['honorarios' => $solicitud->estado],
+                ];
             }
         }
 
@@ -225,6 +311,11 @@ class CargaMasivaControlImpuestos
         $iguales = 0;
         $avisosPago = [];
         $vistos = [];
+        $importesArchivo = [];
+        $pagosPropios = [];
+        foreach ($lectura['pagos'] ?? [] as $pago) {
+            $pagosPropios[$pago['ruc'].'|'.$pago['periodo'].'|'.$pago['codigo']] = true;
+        }
 
         foreach ($lectura['filas'] as $fila) {
             $numero = (int) $fila['fila'];
@@ -314,6 +405,7 @@ class CargaMasivaControlImpuestos
             $deudas = $operacion?->deudasTributarias?->keyBy('tributo_codigo') ?? collect();
             $erroresDeLaFila = count($errores);
             foreach ($fila['tributos'] as $tributo) {
+                $importesArchivo[$cliente->id.'|'.$periodo.'|'.(string) $tributo['codigo']] = (float) $tributo['monto'];
                 $evaluado = $this->evaluarTributo(
                     $cliente,
                     $periodo,
@@ -342,9 +434,29 @@ class CargaMasivaControlImpuestos
             }
 
             if (($fila['pagado'] ?? null) === true && count($errores) === $erroresDeLaFila) {
-                $this->planPagos($cliente, $periodo, $numero, $fila, $deudas, $solicitud->politica, $cambios, $iguales, $avisosPago, $errores);
+                $filaGeneral = $fila;
+                $filaGeneral['tributos'] = array_values(array_filter(
+                    $fila['tributos'],
+                    fn (array $tributo): bool => ! isset($pagosPropios[$ruc.'|'.$periodo.'|'.$tributo['codigo']]),
+                ));
+                if ($filaGeneral['tributos'] !== []) {
+                    $this->planPagos($cliente, $periodo, $numero, $filaGeneral, $deudas, $solicitud->politica, $cambios, $iguales, $avisosPago, $errores);
+                }
             }
         }
+
+        $this->planPagosDelArchivo(
+            $lectura['pagos'] ?? [],
+            $porRuc,
+            $permitidos,
+            $repetidos,
+            $operaciones,
+            $importesArchivo,
+            $solicitud,
+            $cambios,
+            $errores,
+            $iguales,
+        );
 
         if (count($cambios) > 8000) {
             $errores[] = [
@@ -417,12 +529,22 @@ class CargaMasivaControlImpuestos
             }
 
             $vencimiento = $this->vencimientoDe($cliente, $periodo, $codigo, (bool) $filaDatos['igv_justo'], $deuda);
+            $fechaIndicada = is_string($filaDatos['fecha_pago'] ?? null) ? $filaDatos['fecha_pago'] : '';
             $fechaBase = Carbon::createFromFormat('!m-Y', $periodo);
-            $fecha = $vencimiento ?? ($fechaBase === false ? null : $fechaBase->endOfMonth()->toDateString());
+            $fecha = $fechaIndicada !== ''
+                ? $fechaIndicada
+                : ($vencimiento ?? ($fechaBase === false ? null : $fechaBase->endOfMonth()->toDateString()));
             if ($fecha === null) {
                 $avisosPago[] = "Fila {$fila}: no se pudo fechar el pago de {$codigo} {$nombre}.";
 
                 continue;
+            }
+
+            $medio = is_string($filaDatos['medio_pago'] ?? null) ? $filaDatos['medio_pago'] : '';
+            $numero = trim((string) ($filaDatos['numero_operacion'] ?? ''));
+            $resumen = "{$cliente->razon_social} · {$periodo} · pago {$codigo} {$nombre} → {$this->soles($monto)}";
+            if ($medio !== '') {
+                $resumen .= ' · '.str_replace('_', ' ', $medio);
             }
 
             $cambios[] = [
@@ -430,11 +552,181 @@ class CargaMasivaControlImpuestos
                 'cliente_id' => $cliente->id,
                 'periodo' => $periodo,
                 'fila' => $fila,
-                'resumen' => "{$cliente->razon_social} · {$periodo} · pago {$codigo} {$nombre} → {$this->soles($monto)}",
+                'resumen' => $resumen,
                 'datos' => [
                     'codigo' => $codigo,
                     'monto' => $monto,
                     'fecha' => $fecha,
+                    'medio' => $medio !== '' ? $medio : null,
+                    'numero' => $numero,
+                ],
+            ];
+        }
+    }
+
+    /**
+     * Cada fila de la sección PAGOS es un abono de un tributo. Un mismo código puede repetirse.
+     *
+     * @param  list<array<string, mixed>>  $pagos
+     * @param  array<string, Cliente>  $porRuc
+     * @param  array<int, true>|null  $permitidos
+     * @param  array<string, true>  $repetidos
+     * @param  Collection<string, Operacion>  $operaciones
+     * @param  array<string, float>  $importesArchivo
+     * @param  list<array<string, mixed>>  $cambios
+     * @param  list<array{fila: int|null, mensaje: string}>  $errores
+     */
+    private function planPagosDelArchivo(
+        array $pagos,
+        array $porRuc,
+        ?array $permitidos,
+        array $repetidos,
+        Collection $operaciones,
+        array $importesArchivo,
+        SolicitudCargaMasiva $solicitud,
+        array &$cambios,
+        array &$errores,
+        int &$iguales,
+    ): void {
+        $firmas = [];
+        $acumulado = [];
+
+        foreach ($pagos as $pago) {
+            $numero = (int) $pago['fila'];
+            $ruc = (string) $pago['ruc'];
+            $periodo = (string) $pago['periodo'];
+            $codigo = (string) $pago['codigo'];
+            $monto = (float) $pago['monto'];
+            $fecha = (string) $pago['fecha'];
+            $medio = (string) $pago['medio'];
+            $operacionNumero = trim((string) ($pago['numero'] ?? ''));
+
+            if (isset($repetidos[$ruc])) {
+                $errores[] = [
+                    'fila' => $numero,
+                    'mensaje' => "Fila {$numero}: hay más de un cliente con el RUC {$ruc} en este ejercicio.",
+                ];
+
+                continue;
+            }
+
+            $cliente = $porRuc[$ruc] ?? null;
+            if (! $cliente instanceof Cliente) {
+                $errores[] = [
+                    'fila' => $numero,
+                    'mensaje' => "Fila {$numero}: el RUC {$ruc} no está en su cartera de este ejercicio.",
+                ];
+
+                continue;
+            }
+
+            if ($permitidos !== null && ! isset($permitidos[$cliente->id])) {
+                $errores[] = [
+                    'fila' => $numero,
+                    'mensaje' => "Fila {$numero}: {$cliente->razon_social} no está entre las empresas elegidas para esta carga.",
+                ];
+
+                continue;
+            }
+
+            $anioPeriodo = (int) explode('-', $periodo)[1];
+            if ($anioPeriodo !== $solicitud->anio) {
+                $errores[] = [
+                    'fila' => $numero,
+                    'mensaje' => "Fila {$numero}: el periodo {$periodo} no pertenece al ejercicio {$solicitud->anio}.",
+                ];
+
+                continue;
+            }
+
+            if (! $cliente->rindeEnPeriodo($periodo)) {
+                $errores[] = [
+                    'fila' => $numero,
+                    'mensaje' => "Fila {$numero}: el periodo {$periodo} es de baja y no admite pagos.",
+                ];
+
+                continue;
+            }
+
+            $clave = $cliente->id.'|'.$periodo;
+            $claveImporte = $clave.'|'.$codigo;
+            $operacion = $operaciones->get($clave);
+            $deuda = $operacion?->deudasTributarias?->first(
+                fn (DeudaTributaria $candidata): bool => (string) $candidata->tributo_codigo === $codigo,
+            );
+            $enArchivo = $importesArchivo[$claveImporte] ?? null;
+            if ($deuda instanceof DeudaTributaria && $solicitud->politica === 'conservar' && $enArchivo !== null && ! $this->mismoMonto((float) $deuda->monto_deuda_inicial, $enArchivo)) {
+                $montoTributo = (float) $deuda->monto_deuda_inicial;
+            } elseif ($enArchivo !== null) {
+                $montoTributo = $enArchivo;
+            } elseif ($deuda instanceof DeudaTributaria) {
+                $montoTributo = (float) $deuda->monto_deuda_inicial;
+            } else {
+                $nombre = TipoTributoSunat::tryFrom($codigo)?->nombreCorto() ?? $codigo;
+                $errores[] = [
+                    'fila' => $numero,
+                    'mensaje' => "Fila {$numero}: no hay importe de {$codigo} {$nombre} en {$periodo}. Escríbalo en la fila del mes.",
+                ];
+
+                continue;
+            }
+
+            $observacion = $operacionNumero !== '' ? $operacionNumero : 'Carga masiva';
+            $firma = $claveImporte.'|'.number_format($monto, 2, '.', '').'|'.$fecha.'|'.$medio.'|'.$observacion;
+            if (isset($firmas[$firma])) {
+                $errores[] = [
+                    'fila' => $numero,
+                    'mensaje' => "Fila {$numero}: ese pago de {$codigo} ya está en el archivo.",
+                ];
+
+                continue;
+            }
+            $firmas[$firma] = true;
+
+            $abonado = $deuda instanceof DeudaTributaria ? round((float) $deuda->abonos->sum('monto'), 2) : 0.0;
+            $yaRegistrado = $deuda instanceof DeudaTributaria && $deuda->abonos->contains(
+                function (AbonoDeuda $abono) use ($monto, $fecha, $medio, $observacion): bool {
+                    return $this->mismoMonto((float) $abono->monto, $monto)
+                        && $abono->fecha_pago?->toDateString() === $fecha
+                        && ($abono->medio_pago?->value ?? '') === $medio
+                        && (string) $abono->observacion === $observacion;
+                },
+            );
+            if ($yaRegistrado) {
+                $iguales++;
+
+                continue;
+            }
+
+            $acumulado[$claveImporte] = round(($acumulado[$claveImporte] ?? 0) + $monto, 2);
+            if ($abonado + $acumulado[$claveImporte] > $montoTributo + 0.001) {
+                $nombre = TipoTributoSunat::tryFrom($codigo)?->nombreCorto() ?? $codigo;
+                $errores[] = [
+                    'fila' => $numero,
+                    'mensaje' => "Fila {$numero}: los pagos de {$codigo} {$nombre} superan el importe de {$this->soles($montoTributo)}.",
+                ];
+
+                continue;
+            }
+
+            $nombre = TipoTributoSunat::tryFrom($codigo)?->nombreCorto() ?? $codigo;
+            $resumen = "{$cliente->razon_social} · {$periodo} · pago {$codigo} {$nombre} → {$this->soles($monto)}";
+            if ($medio !== '') {
+                $resumen .= ' · '.str_replace('_', ' ', $medio);
+            }
+
+            $cambios[] = [
+                'tipo' => 'pago',
+                'cliente_id' => $cliente->id,
+                'periodo' => $periodo,
+                'fila' => $numero,
+                'resumen' => $resumen,
+                'datos' => [
+                    'codigo' => $codigo,
+                    'monto' => $monto,
+                    'fecha' => $fecha,
+                    'medio' => $medio !== '' ? $medio : null,
+                    'numero' => $operacionNumero,
                 ],
             ];
         }
@@ -572,8 +864,21 @@ class CargaMasivaControlImpuestos
         $primero = $grupo->first();
         $operacion = $this->operacionPara((int) $primero['cliente_id'], (string) $primero['periodo']);
         $hayEstados = false;
+        $hayHonorario = false;
+        $limpia = false;
 
         foreach ($grupo as $cambio) {
+            if ($cambio['tipo'] === 'honorario') {
+                $operacion->estado_pago_honorarios = $cambio['datos']['honorarios'];
+                $hayHonorario = true;
+
+                continue;
+            }
+            if ($cambio['tipo'] === 'limpiar') {
+                $limpia = true;
+
+                continue;
+            }
             if ($cambio['tipo'] !== 'estado') {
                 continue;
             }
@@ -585,8 +890,14 @@ class CargaMasivaControlImpuestos
             }
         }
 
+        if ($limpia) {
+            $this->limpiarTributos($operacion);
+
+            return;
+        }
+
         $tributos = $grupo->where('tipo', 'tributo')->values();
-        if ($hayEstados || $tributos->isNotEmpty()) {
+        if ($hayEstados || $hayHonorario || $tributos->isNotEmpty()) {
             if (! $operacion->exists && $tributos->isNotEmpty()) {
                 $operacion->tiene_deuda = true;
             }
@@ -612,8 +923,46 @@ class CargaMasivaControlImpuestos
         }
     }
 
+    private function limpiarTributos(Operacion $operacion): void
+    {
+        if (! $operacion->exists) {
+            $operacion->tiene_deuda = false;
+            $operacion->save();
+
+            return;
+        }
+
+        $operacion->deudasTributarias()->get()->each(function (DeudaTributaria $deuda): void {
+            $deuda->abonos()->delete();
+            $deuda->delete();
+        });
+        $operacion->abonosDeuda()->delete();
+        $operacion->unsetRelation('deudasTributarias');
+        $operacion->unsetRelation('abonosDeuda');
+        $operacion->refrescarResumenDeudas();
+        $operacion->tiene_deuda = false;
+        $operacion->save();
+    }
+
+    private function tieneTributosOPagos(?Operacion $operacion): bool
+    {
+        if (! $operacion instanceof Operacion) {
+            return false;
+        }
+
+        if ($operacion->relationLoaded('deudasTributarias') && $operacion->deudasTributarias->isNotEmpty()) {
+            return true;
+        }
+
+        if ($operacion->relationLoaded('abonosDeuda') && $operacion->abonosDeuda->isNotEmpty()) {
+            return true;
+        }
+
+        return (bool) $operacion->tiene_deuda && (float) $operacion->monto_deuda_inicial > 0;
+    }
+
     /**
-     * @param  array{codigo: string, monto: float, fecha: string}  $datos
+     * @param  array{codigo: string, monto: float, fecha: string, medio?: ?string, numero?: string}  $datos
      */
     private function registrarPago(Operacion $operacion, array $datos): void
     {
@@ -624,23 +973,38 @@ class CargaMasivaControlImpuestos
             ]);
         }
 
-        if ((float) $deuda->abonos()->sum('monto') > 0.001) {
-            return;
+        $monto = round((float) $datos['monto'], 2);
+        $numero = trim((string) ($datos['numero'] ?? ''));
+        $medio = ($datos['medio'] ?? null) !== '' ? ($datos['medio'] ?? null) : null;
+        $abonado = round((float) $deuda->abonos()->sum('monto'), 2);
+        if ($abonado + $monto > (float) $deuda->monto_deuda_inicial + 0.001) {
+            throw ValidationException::withMessages([
+                'pagado' => 'Los pagos superan el importe del tributo.',
+            ]);
         }
 
-        if (! $this->mismoMonto((float) $deuda->monto_deuda_inicial, (float) $datos['monto'])) {
-            throw ValidationException::withMessages([
-                'pagado' => 'El pago no coincide con el importe guardado del tributo.',
-            ]);
+        $yaRegistrado = $deuda->abonos()
+            ->where('monto', $monto)
+            ->whereDate('fecha_pago', $datos['fecha'])
+            ->when(
+                $medio === null,
+                fn ($consulta) => $consulta->whereNull('medio_pago'),
+                fn ($consulta) => $consulta->where('medio_pago', $medio),
+            )
+            ->where('observacion', $numero !== '' ? $numero : 'Carga masiva')
+            ->exists();
+        if ($yaRegistrado) {
+            return;
         }
 
         AbonoDeuda::create([
             'estudio_id' => $operacion->estudio_id,
             'operacion_id' => $operacion->id,
             'deuda_tributaria_id' => $deuda->id,
-            'monto' => $deuda->monto_deuda_inicial,
+            'monto' => $monto,
             'fecha_pago' => $datos['fecha'],
-            'observacion' => 'Carga masiva',
+            'medio_pago' => $medio,
+            'observacion' => $numero !== '' ? $numero : 'Carga masiva',
         ]);
     }
 
@@ -676,7 +1040,7 @@ class CargaMasivaControlImpuestos
             ->whereIn('periodo', $periodos);
 
         if ($conTributos) {
-            $consulta->with('deudasTributarias.abonos');
+            $consulta->with(['deudasTributarias.abonos', 'abonosDeuda']);
         }
 
         return $consulta->get()->keyBy(fn (Operacion $operacion): string => $operacion->cliente_id.'|'.$operacion->periodo);
@@ -764,12 +1128,18 @@ class CargaMasivaControlImpuestos
         $estados = 0;
         $tributos = 0;
         $pagos = 0;
+        $honorarios = 0;
+        $limpiezas = 0;
         $muestra = [];
         foreach ($plan['cambios'] as $cambio) {
             if ($cambio['tipo'] === 'tributo') {
                 $tributos++;
             } elseif ($cambio['tipo'] === 'pago') {
                 $pagos++;
+            } elseif ($cambio['tipo'] === 'honorario') {
+                $honorarios++;
+            } elseif ($cambio['tipo'] === 'limpiar') {
+                $limpiezas++;
             } else {
                 $estados++;
             }
@@ -779,7 +1149,7 @@ class CargaMasivaControlImpuestos
         }
 
         $hayErrores = $plan['errores'] !== [];
-        $puedeAplicar = ! $hayErrores && ($estados + $tributos + $pagos) > 0;
+        $puedeAplicar = ! $hayErrores && ($estados + $tributos + $pagos + $honorarios + $limpiezas) > 0;
         $errores = $this->limitarErrores($plan['errores']);
 
         return new ResultadoCargaMasiva(
@@ -788,8 +1158,10 @@ class CargaMasivaControlImpuestos
             estados: $estados,
             tributos: $tributos,
             pagos: $pagos,
+            honorarios: $honorarios,
+            limpiezas: $limpiezas,
             omitidos: $plan['omitidos'],
-            resumen: $this->resumen($aplicada && $puedeAplicar, $estados, $tributos, $pagos, $hayErrores),
+            resumen: $this->resumen($aplicada && $puedeAplicar, $estados, $tributos, $pagos, $honorarios, $limpiezas, $hayErrores),
             errores: $errores,
             muestra: $hayErrores ? [] : $muestra,
             avisos: $plan['avisos'],
@@ -816,13 +1188,13 @@ class CargaMasivaControlImpuestos
         return $visibles;
     }
 
-    private function resumen(bool $aplicada, int $estados, int $tributos, int $pagos, bool $hayErrores): string
+    private function resumen(bool $aplicada, int $estados, int $tributos, int $pagos, int $honorarios, int $limpiezas, bool $hayErrores): string
     {
         if ($hayErrores) {
             return 'No se guardó nada. Revise los errores antes de continuar.';
         }
 
-        if ($estados + $tributos + $pagos === 0) {
+        if ($estados + $tributos + $pagos + $honorarios + $limpiezas === 0) {
             return 'No hay datos nuevos para guardar. Lo que ya estaba cargado sigue igual.';
         }
 
@@ -830,15 +1202,31 @@ class CargaMasivaControlImpuestos
         if ($estados > 0) {
             $partes[] = $estados === 1 ? '1 declaración' : "{$estados} declaraciones";
         }
+        if ($honorarios > 0) {
+            $partes[] = $honorarios === 1 ? '1 honorario' : "{$honorarios} honorarios";
+        }
         if ($tributos > 0) {
             $partes[] = $tributos === 1 ? '1 tributo' : "{$tributos} tributos";
         }
         if ($pagos > 0) {
             $partes[] = $pagos === 1 ? '1 pago' : "{$pagos} pagos";
         }
-        $lista = $this->enumerar($partes);
+        if ($partes === []) {
+            $texto = $limpiezas === 1
+                ? 'se eliminan tributos y pagos de 1 mes'
+                : "se eliminan tributos y pagos de {$limpiezas} meses";
 
-        return $aplicada ? "Guardado: {$lista}." : "Listo para guardar: {$lista}.";
+            return $aplicada ? "Guardado: {$texto}." : "Listo para guardar: {$texto}.";
+        }
+
+        $lista = $this->enumerar($partes);
+        $cierre = $aplicada ? "Guardado: {$lista}." : "Listo para guardar: {$lista}.";
+        if ($limpiezas > 0) {
+            $meses = $limpiezas === 1 ? '1 mes' : "{$limpiezas} meses";
+            $cierre = rtrim($cierre, '.').". Se eliminan tributos y pagos de {$meses}.";
+        }
+
+        return $cierre;
     }
 
     /**
@@ -897,6 +1285,8 @@ class CargaMasivaControlImpuestos
             estados: 0,
             tributos: 0,
             pagos: 0,
+            honorarios: 0,
+            limpiezas: 0,
             omitidos: 0,
             resumen: 'No se guardó nada. Revise los errores antes de continuar.',
             errores: [['fila' => null, 'mensaje' => $mensaje]],
@@ -945,17 +1335,40 @@ class CargaMasivaControlImpuestos
      */
     private function encabezados(): array
     {
-        $columnas = ['ruc', 'razon_social', 'periodo', 'sire', 'pdt_621', 'pdt_601', 'pagado'];
+        $columnas = [
+            'RUC',
+            'Razon social',
+            'Periodo (MM-AAAA, ejemplo 01-2026)',
+            'Declaracion DJ (Pendiente, En proceso o Declarado; un solo valor para SIRE, PDT 621 y PDT 601; vacio no cambia)',
+        ];
         foreach (TipoTributoSunat::catalogoFormulario() as $bloque) {
+            $grupo = $bloque['titulo'].' '.$bloque['detalle'];
             foreach ($bloque['tributos'] as $tributo) {
-                $columnas[] = $tributo['codigo'].' '.$tributo['nombre_corto'];
+                $columnas[] = $tributo['codigo'].' '.$tributo['nombre_corto'].' (importe a pagar '.$grupo.')';
                 if ($tributo['codigo'] === TipoTributoSunat::Igv18->value) {
-                    $columnas[] = 'igv_justo';
+                    $columnas[] = 'IGV Justo (SI o NO; solo aplica al 1011 y usa prorroga de 3 meses)';
                 }
             }
         }
 
         return $columnas;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function encabezadosPagos(): array
+    {
+        return [
+            'RUC',
+            'Razon social',
+            'Periodo (MM-AAAA)',
+            'Codigo del tributo (el mismo codigo de la fila del mes: 1011, 5210, AFP u otro)',
+            'Monto del pago',
+            'Fecha de pago (DD/MM/AAAA)',
+            'Medio de pago (Detracciones, Caja, Bancos, Compensacion renta anual o Compensacion ITAN)',
+            'Numero de operacion (opcional)',
+        ];
     }
 
     /**

@@ -2,7 +2,9 @@
 
 namespace App\Services\ControlImpuestos;
 
+use App\Enums\MedioPagoTributo;
 use App\Enums\TipoTributoSunat;
+use Carbon\Carbon;
 
 /**
  * Lee la plantilla CSV de Control de impuestos.
@@ -17,6 +19,7 @@ class LectorPlantillaControlImpuestos
     /**
      * @return array{
      *     filas: list<array<string, mixed>>,
+     *     pagos: list<array<string, mixed>>,
      *     errores: list<array{fila: int|null, mensaje: string}>
      * }
      */
@@ -50,12 +53,51 @@ class LectorPlantillaControlImpuestos
 
         $mapa = $this->mapa($tabla[0]['celdas']);
         if ($mapa['errores'] !== []) {
-            return ['filas' => [], 'errores' => $mapa['errores']];
+            return ['filas' => [], 'pagos' => [], 'errores' => $mapa['errores']];
         }
 
         $filas = [];
+        $pagos = [];
         $errores = [];
+        $seccion = 'meses';
+        $mapaPagos = null;
+        $pagosInvalidos = false;
         foreach (array_slice($tabla, 1) as $registro) {
+            if ($this->esMarcaPagos($registro['celdas'])) {
+                $seccion = 'pagos';
+                $mapaPagos = null;
+                $pagosInvalidos = false;
+
+                continue;
+            }
+
+            if ($seccion === 'pagos') {
+                if ($mapaPagos === null) {
+                    $mapaPagos = $this->mapaPagos($registro['celdas'], $registro['numero']);
+                    if ($mapaPagos['errores'] !== []) {
+                        array_push($errores, ...$mapaPagos['errores']);
+                        $pagosInvalidos = true;
+                    }
+
+                    continue;
+                }
+                if ($pagosInvalidos) {
+                    continue;
+                }
+                $leida = $this->filaPago($registro['numero'], $registro['celdas'], $mapaPagos['columnas']);
+                if ($leida === null) {
+                    continue;
+                }
+                if ($leida['errores'] !== []) {
+                    array_push($errores, ...$leida['errores']);
+
+                    continue;
+                }
+                $pagos[] = $leida['pago'];
+
+                continue;
+            }
+
             $leida = $this->fila($registro['numero'], $registro['celdas'], $mapa['columnas']);
             if ($leida === null) {
                 continue;
@@ -68,11 +110,11 @@ class LectorPlantillaControlImpuestos
             $filas[] = $leida['fila'];
         }
 
-        if ($filas === [] && $errores === []) {
+        if ($filas === [] && $pagos === [] && $errores === []) {
             return $this->vacio('La plantilla no tiene filas para cargar.');
         }
 
-        return ['filas' => $filas, 'errores' => $errores];
+        return ['filas' => $filas, 'pagos' => $pagos, 'errores' => $errores];
     }
 
     /**
@@ -142,7 +184,7 @@ class LectorPlantillaControlImpuestos
 
         $tieneDatos = false;
         foreach (array_keys($columnas) as $campo) {
-            if (in_array($campo, ['sire', 'pdt', 'ple', 'pagado'], true) || str_starts_with($campo, 'tributo:')) {
+            if (in_array($campo, ['sire', 'pdt', 'ple', 'dj', 'pagado'], true) || str_starts_with($campo, 'tributo:')) {
                 $tieneDatos = true;
                 break;
             }
@@ -160,6 +202,7 @@ class LectorPlantillaControlImpuestos
     private function campo(string $encabezado): ?string
     {
         $texto = str_replace(['_', '-'], ' ', $this->sinAcentos(mb_strtolower(trim($encabezado))));
+        $texto = trim(preg_replace('/\s*\([^)]*\)\s*/', ' ', $texto) ?? $texto);
         $texto = trim(preg_replace('/\s+/', ' ', $texto) ?? $texto);
 
         $alias = [
@@ -169,23 +212,43 @@ class LectorPlantillaControlImpuestos
             'empresa' => 'razon_social',
             'periodo' => 'periodo',
             'mes' => 'periodo',
+            'declaracion dj' => 'dj',
+            'estado declaracion' => 'dj',
+            'declaracion' => 'dj',
+            'dj' => 'dj',
             'sire' => 'sire',
             'compras y ventas' => 'sire',
-            'pdt' => 'pdt',
             'pdt 621' => 'pdt',
             'pdt621' => 'pdt',
-            'ple' => 'ple',
-            'plame' => 'ple',
+            'pdt 601 plame' => 'ple',
             'pdt 601' => 'ple',
             'pdt601' => 'ple',
+            'ple' => 'ple',
+            'plame' => 'ple',
+            'pdt' => 'pdt',
+            'codigo del tributo' => 'codigo_tributo',
+            'codigo tributo' => 'codigo_tributo',
+            'monto del pago' => 'monto_pago',
+            'monto pago' => 'monto_pago',
             'pagado' => 'pagado',
             'pago' => 'pagado',
+            'fecha de pago' => 'fecha_pago',
+            'fecha pago' => 'fecha_pago',
+            'medio de pago' => 'medio_pago',
+            'medio pago' => 'medio_pago',
+            'numero de operacion' => 'numero_operacion',
+            'numero operacion' => 'numero_operacion',
+            'n de operacion' => 'numero_operacion',
             'igv justo' => 'igv_justo',
             'ley igv justo' => 'igv_justo',
         ];
 
-        if (isset($alias[$texto])) {
-            return $alias[$texto];
+        $nombres = array_keys($alias);
+        usort($nombres, fn (string $izquierda, string $derecha): int => strlen($derecha) <=> strlen($izquierda));
+        foreach ($nombres as $nombre) {
+            if ($texto === $nombre || str_starts_with($texto, $nombre.' ')) {
+                return $alias[$nombre];
+            }
         }
 
         $token = preg_split('/\s+/', $texto)[0] ?? '';
@@ -238,10 +301,47 @@ class LectorPlantillaControlImpuestos
             $estados[$campo] = $estado;
         }
 
+        $djTexto = $this->valor($celdas, $columnas, 'dj');
+        if ($djTexto !== '') {
+            $dj = $this->estado($djTexto);
+            if ($dj === null) {
+                $errores[] = [
+                    'fila' => $numero,
+                    'mensaje' => "Fila {$numero}: el estado «{$djTexto}» de la declaración no es válido. Use Pendiente, En proceso o Declarado.",
+                ];
+            } else {
+                foreach (['sire' => 'SIRE', 'pdt' => 'PDT 621', 'ple' => 'PDT 601'] as $campo => $etiqueta) {
+                    if (is_string($estados[$campo]) && $estados[$campo] !== $dj) {
+                        $errores[] = [
+                            'fila' => $numero,
+                            'mensaje' => "Fila {$numero}: Declaracion DJ dice {$dj} y {$etiqueta} dice {$estados[$campo]}. Deje una sola columna de declaración.",
+                        ];
+                    }
+                    $estados[$campo] = $dj;
+                }
+            }
+        }
+
         $igv = $this->afirmacion($this->valor($celdas, $columnas, 'igv_justo'));
         $pagado = $this->afirmacion($this->valor($celdas, $columnas, 'pagado'));
         if ($pagado['error'] !== null) {
             $errores[] = ['fila' => $numero, 'mensaje' => "Fila {$numero}: pagado debe ser SI o NO."];
+        }
+        $fechaPago = $this->fecha($this->valor($celdas, $columnas, 'fecha_pago'));
+        if ($fechaPago['error'] !== null) {
+            $errores[] = ['fila' => $numero, 'mensaje' => "Fila {$numero}: la fecha de pago no es válida. Use DD/MM/AAAA."];
+        }
+        $medioPago = $this->medio($this->valor($celdas, $columnas, 'medio_pago'));
+        if ($medioPago['error'] !== null) {
+            $errores[] = ['fila' => $numero, 'mensaje' => "Fila {$numero}: el medio de pago no es válido. Use Detracciones, Caja, Bancos, Compensacion renta anual o Compensacion ITAN."];
+        }
+        $numeroOperacion = $this->valor($celdas, $columnas, 'numero_operacion');
+        if (mb_strlen($numeroOperacion) > 500) {
+            $errores[] = ['fila' => $numero, 'mensaje' => "Fila {$numero}: el número de operación admite hasta 500 caracteres."];
+        }
+        $traeDetalleDePago = $fechaPago['valor'] !== null || $medioPago['valor'] !== null || $numeroOperacion !== '';
+        if ($traeDetalleDePago && $pagado['valor'] !== true && $pagado['error'] === null) {
+            $errores[] = ['fila' => $numero, 'mensaje' => "Fila {$numero}: la fecha, el medio y el número de operación solo se usan cuando Pagado es SI."];
         }
         $tributos = [];
         foreach ($columnas as $campo => $indice) {
@@ -273,11 +373,15 @@ class LectorPlantillaControlImpuestos
         }
 
         $hayInstruccion = $tributos !== []
+            || $djTexto !== ''
             || $estados['sire'] !== null
             || $estados['pdt'] !== null
             || $estados['ple'] !== null
             || $pagado['valor'] === true
-            || $pagado['error'] !== null;
+            || $pagado['error'] !== null
+            || $traeDetalleDePago
+            || $fechaPago['error'] !== null
+            || $medioPago['error'] !== null;
 
         if (! $hayInstruccion && $errores === []) {
             return null;
@@ -307,6 +411,9 @@ class LectorPlantillaControlImpuestos
                 'ple' => $estados['ple'],
                 'igv_justo' => $igv['valor'],
                 'pagado' => $pagado['valor'],
+                'fecha_pago' => $fechaPago['valor'],
+                'medio_pago' => $medioPago['valor'],
+                'numero_operacion' => $numeroOperacion,
                 'tributos' => $tributos,
             ],
             'errores' => $errores,
@@ -381,6 +488,58 @@ class LectorPlantillaControlImpuestos
     /**
      * @return array{valor: ?bool, error: ?string}
      */
+    /**
+     * @return array{valor: ?string, error: ?string}
+     */
+    private function fecha(string $texto): array
+    {
+        if ($texto === '') {
+            return ['valor' => null, 'error' => null];
+        }
+
+        foreach (['d/m/Y', 'd-m-Y', 'Y-m-d'] as $formato) {
+            try {
+                $fecha = Carbon::createFromFormat('!'.$formato, $texto);
+            } catch (\Throwable) {
+                continue;
+            }
+            if (! $fecha instanceof Carbon) {
+                continue;
+            }
+            $fallos = Carbon::getLastErrors();
+            if (($fallos['warning_count'] ?? 0) > 0 || ($fallos['error_count'] ?? 0) > 0) {
+                continue;
+            }
+
+            return ['valor' => $fecha->toDateString(), 'error' => null];
+        }
+
+        return ['valor' => null, 'error' => 'invalida'];
+    }
+
+    /**
+     * @return array{valor: ?string, error: ?string}
+     */
+    private function medio(string $texto): array
+    {
+        if ($texto === '') {
+            return ['valor' => null, 'error' => null];
+        }
+
+        $normalizado = str_replace(['_', '-'], ' ', $this->sinAcentos(mb_strtolower(trim($texto))));
+        $normalizado = trim(preg_replace('/\s+/', ' ', $normalizado) ?? $normalizado);
+
+        foreach (MedioPagoTributo::cases() as $caso) {
+            $etiqueta = str_replace(['_', '-'], ' ', $this->sinAcentos(mb_strtolower($caso->etiqueta())));
+            $valor = str_replace('_', ' ', $caso->value);
+            if (in_array($normalizado, [$etiqueta, $valor, $caso->value], true)) {
+                return ['valor' => $caso->value, 'error' => null];
+            }
+        }
+
+        return ['valor' => null, 'error' => 'invalido'];
+    }
+
     /**
      * @return array{valor: ?bool, error: ?string}
      */
@@ -521,7 +680,159 @@ class LectorPlantillaControlImpuestos
     {
         return [
             'filas' => [],
+            'pagos' => [],
             'errores' => [['fila' => null, 'mensaje' => $mensaje]],
         ];
+    }
+
+    /**
+     * @param  list<string|null>  $celdas
+     */
+    private function esMarcaPagos(array $celdas): bool
+    {
+        $marca = $this->sinAcentos(mb_strtolower(trim((string) ($celdas[0] ?? ''))));
+        if ($marca !== 'pagos') {
+            return false;
+        }
+
+        foreach (array_slice($celdas, 1) as $celda) {
+            if (trim((string) $celda) !== '') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  list<string|null>  $celdas
+     * @return array{columnas: array<string, int>, errores: list<array{fila: int|null, mensaje: string}>}
+     */
+    private function mapaPagos(array $celdas, int $fila): array
+    {
+        $columnas = [];
+        $errores = [];
+
+        foreach ($celdas as $indice => $celda) {
+            $texto = trim((string) $celda);
+            if ($texto === '') {
+                continue;
+            }
+            $campo = $this->campo($texto);
+            if ($campo === null) {
+                $errores[] = [
+                    'fila' => $fila,
+                    'mensaje' => "La columna de pagos «{$texto}» no forma parte de la plantilla.",
+                ];
+
+                continue;
+            }
+            if (array_key_exists($campo, $columnas)) {
+                $errores[] = [
+                    'fila' => $fila,
+                    'mensaje' => "La columna de pagos «{$texto}» está repetida.",
+                ];
+
+                continue;
+            }
+            $columnas[$campo] = $indice;
+        }
+
+        foreach ([
+            'ruc' => 'ruc',
+            'periodo' => 'periodo',
+            'codigo_tributo' => 'codigo del tributo',
+            'monto_pago' => 'monto del pago',
+            'fecha_pago' => 'fecha de pago',
+            'medio_pago' => 'medio de pago',
+        ] as $campo => $etiqueta) {
+            if (! isset($columnas[$campo])) {
+                $errores[] = [
+                    'fila' => $fila,
+                    'mensaje' => "La sección PAGOS debe incluir la columna {$etiqueta}.",
+                ];
+            }
+        }
+
+        return ['columnas' => $columnas, 'errores' => $errores];
+    }
+
+    /**
+     * @param  list<string|null>  $celdas
+     * @param  array<string, int>  $columnas
+     * @return array{pago: array<string, mixed>, errores: list<array{fila: int, mensaje: string}>}|null
+     */
+    private function filaPago(int $numero, array $celdas, array $columnas): ?array
+    {
+        if ($this->filaVacia($celdas)) {
+            return null;
+        }
+
+        $errores = [];
+        $ruc = preg_replace('/\D/', '', $this->valor($celdas, $columnas, 'ruc')) ?? '';
+        $periodoTexto = $this->valor($celdas, $columnas, 'periodo');
+        $periodo = $this->periodo($periodoTexto);
+        $codigo = $this->codigoTributo($this->valor($celdas, $columnas, 'codigo_tributo'));
+        $importe = $this->importe($this->valor($celdas, $columnas, 'monto_pago'));
+        $fechaPago = $this->fecha($this->valor($celdas, $columnas, 'fecha_pago'));
+        $medioPago = $this->medio($this->valor($celdas, $columnas, 'medio_pago'));
+        $numeroOperacion = $this->valor($celdas, $columnas, 'numero_operacion');
+
+        if ($codigo === null) {
+            $errores[] = ['fila' => $numero, 'mensaje' => "Fila {$numero}: indique el código del tributo que se paga, por ejemplo 1011 o 5210."];
+        }
+        if ($importe['error'] !== null) {
+            $errores[] = ['fila' => $numero, 'mensaje' => "Fila {$numero}: el monto del pago no es válido. {$importe['error']}"];
+        } elseif ($importe['monto'] === null) {
+            $errores[] = ['fila' => $numero, 'mensaje' => "Fila {$numero}: falta el monto del pago."];
+        }
+        if ($fechaPago['error'] !== null || $fechaPago['valor'] === null) {
+            $errores[] = ['fila' => $numero, 'mensaje' => "Fila {$numero}: la fecha de pago no es válida. Use DD/MM/AAAA."];
+        }
+        if ($medioPago['error'] !== null || $medioPago['valor'] === null) {
+            $errores[] = ['fila' => $numero, 'mensaje' => "Fila {$numero}: el medio de pago no es válido. Use Detracciones, Caja, Bancos, Compensacion renta anual o Compensacion ITAN."];
+        }
+        if (mb_strlen($numeroOperacion) > 500) {
+            $errores[] = ['fila' => $numero, 'mensaje' => "Fila {$numero}: el número de operación admite hasta 500 caracteres."];
+        }
+        if ($ruc === '') {
+            $errores[] = ['fila' => $numero, 'mensaje' => "Fila {$numero}: falta el RUC."];
+        } elseif (strlen($ruc) !== 11) {
+            $errores[] = ['fila' => $numero, 'mensaje' => "Fila {$numero}: el RUC debe tener 11 dígitos."];
+        }
+        if ($periodo === null) {
+            $mostrado = $periodoTexto !== '' ? $periodoTexto : 'vacío';
+            $errores[] = [
+                'fila' => $numero,
+                'mensaje' => "Fila {$numero}: el periodo «{$mostrado}» no se reconoce. Use MM-AAAA, por ejemplo 08-2026.",
+            ];
+        }
+
+        return [
+            'pago' => [
+                'fila' => $numero,
+                'ruc' => $ruc,
+                'periodo' => $periodo,
+                'codigo' => $codigo,
+                'monto' => $importe['monto'],
+                'fecha' => $fechaPago['valor'],
+                'medio' => $medioPago['valor'],
+                'numero' => $numeroOperacion,
+            ],
+            'errores' => $errores,
+        ];
+    }
+
+    private function codigoTributo(string $texto): ?string
+    {
+        $token = preg_split('/\s+/', trim($texto))[0] ?? '';
+        if ($token === '') {
+            return null;
+        }
+        if (strcasecmp($token, 'afp') === 0) {
+            $token = 'AFP';
+        }
+
+        return TipoTributoSunat::resolver($token)?->value;
     }
 }

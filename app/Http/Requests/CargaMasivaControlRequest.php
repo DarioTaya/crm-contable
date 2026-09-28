@@ -9,6 +9,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Validation\Rule;
 
 class CargaMasivaControlRequest extends FormRequest
 {
@@ -58,12 +59,29 @@ class CargaMasivaControlRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'modo' => ['required', 'in:estados,plantilla'],
+            'modo' => ['required', 'in:estados,plantilla,honorarios'],
             'anio' => ['required', 'integer', 'between:2000,2100'],
             'politica' => ['required', 'in:conservar,reemplazar'],
-            'mes_desde' => ['required_if:modo,estados', 'nullable', 'integer', 'between:1,12'],
-            'mes_hasta' => ['required_if:modo,estados', 'nullable', 'integer', 'between:1,12', 'gte:mes_desde'],
-            'estado' => ['required_if:modo,estados', 'nullable', 'in:Pendiente,Procesando,Declarado'],
+            'mes_desde' => [Rule::requiredIf(fn (): bool => $this->esTramo()), 'nullable', 'integer', 'between:1,12'],
+            'mes_hasta' => [Rule::requiredIf(fn (): bool => $this->esTramo()), 'nullable', 'integer', 'between:1,12', 'gte:mes_desde'],
+            'estado' => [
+                Rule::requiredIf(fn (): bool => $this->esTramo()),
+                'nullable',
+                'string',
+                function (string $attribute, mixed $value, Closure $fail): void {
+                    if (! $this->esTramo() || ! is_string($value)) {
+                        return;
+                    }
+                    $permitidos = $this->input('modo') === 'honorarios'
+                        ? ['Pendiente', 'Pagado']
+                        : ['Pendiente', 'Procesando', 'Declarado'];
+                    if (! in_array($value, $permitidos, true)) {
+                        $fail($this->input('modo') === 'honorarios'
+                            ? 'El honorario debe quedar en Debe o Pagó.'
+                            : 'El estado debe ser Pendiente, En proceso o Declarado.');
+                    }
+                },
+            ],
             'obligaciones' => ['required_if:modo,estados', 'nullable', 'array', 'min:1'],
             'obligaciones.*' => ['in:sire,pdt,ple'],
             'alcance' => ['required_if:modo,estados', 'nullable', 'in:todos,seleccion'],
@@ -102,8 +120,7 @@ class CargaMasivaControlRequest extends FormRequest
             'mes_desde.required_if' => 'Indique el mes inicial del tramo.',
             'mes_hasta.required_if' => 'Indique el mes final del tramo.',
             'mes_hasta.gte' => 'El mes final no puede ser anterior al mes inicial.',
-            'estado.required_if' => 'Indique el estado que quiere aplicar.',
-            'estado.in' => 'El estado debe ser Pendiente, Procesando o Declarado.',
+            'estado.required' => 'Indique el estado que quiere aplicar.',
             'obligaciones.required_if' => 'Elija al menos una declaración: SIRE, PDT 621 o PDT 601.',
             'obligaciones.min' => 'Elija al menos una declaración: SIRE, PDT 621 o PDT 601.',
             'alcance.required_if' => 'Indique si la carga es para todos los clientes o solo para algunos.',
@@ -130,6 +147,11 @@ class CargaMasivaControlRequest extends FormRequest
             clienteIds: array_map('intval', $validado['cliente_ids'] ?? []),
             contenido: $validado['contenido'] ?? null,
         );
+    }
+
+    private function esTramo(): bool
+    {
+        return in_array($this->input('modo'), ['estados', 'honorarios'], true);
     }
 
     private function esLibroExcel(UploadedFile $archivo): bool
