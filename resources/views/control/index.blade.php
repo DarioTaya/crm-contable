@@ -418,46 +418,143 @@
                                                     </div>
                                                 </div>
 
-                                                {{-- TAB 1: ESTADO DECLARACIÓN --}}
-                                                <div x-show="activeTab === 'declaracion'" class="space-y-1.5 py-1">
-                                                    <button
-                                                        type="button"
-                                                        @click="cambiarEstado('Pendiente')"
-                                                        class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition hover:bg-slate-100 text-gray-800"
-                                                        :class="meses[mesIdx].estado === 'Pendiente' ? 'bg-slate-100 text-slate-900 ring-1 ring-slate-300' : ''"
-                                                    >
-                                                        <div class="flex items-center gap-2.5">
-                                                            <span class="text-sm">⚪</span>
-                                                            <span>Pendiente</span>
+                                                {{-- TAB 1: ESTADO DECLARACIÓN (CONTROL INDIVIDUAL: SIRE + PDT 621 + PLAME) --}}
+                                                <div x-show="activeTab === 'declaracion'" class="space-y-2.5 py-1">
+                                                    {{-- Resumen del Estado Maestro de la DJ mensual --}}
+                                                    <div class="rounded-xl border p-2.5 flex items-center justify-between gap-2"
+                                                         :class="meses[mesIdx].estado === 'Declarado' ? 'border-emerald-200 bg-emerald-50/70' : (meses[mesIdx].estado === 'Procesando' ? 'border-amber-200 bg-amber-50/70' : 'border-slate-200 bg-slate-50/70')">
+                                                        <div class="min-w-0">
+                                                            <span class="text-[9px] font-bold uppercase tracking-wider text-gray-500 block">Estado General DJ</span>
+                                                            <p class="text-xs font-bold truncate"
+                                                               :class="meses[mesIdx].estado === 'Declarado' ? 'text-emerald-800' : (meses[mesIdx].estado === 'Procesando' ? 'text-amber-800' : 'text-slate-700')"
+                                                               x-text="meses[mesIdx].estado === 'Declarado' ? '🟢 Declarado (3 de 3 listos)' : (meses[mesIdx].estado === 'Procesando' ? '🟡 En Proceso (Incompleto)' : '⚪ Pendiente (Sin iniciar)')">
+                                                            </p>
                                                         </div>
-                                                        <span class="text-[10px] text-gray-400">Sin iniciar</span>
-                                                    </button>
+                                                        <div class="flex items-center gap-1.5 shrink-0">
+                                                            <button type="button" @click="marcarTodoEstado('Declarado')"
+                                                                    title="Marcar SIRE, PDT 621 y PLAME como Declarado"
+                                                                    class="px-2 py-1 rounded-lg text-[10px] font-bold bg-white text-emerald-700 border border-emerald-300 hover:bg-emerald-100 transition shadow-2xs">
+                                                                Todo 🟢
+                                                            </button>
+                                                            <button type="button" @click="marcarTodoEstado('Pendiente')"
+                                                                    title="Marcar todos como Pendiente"
+                                                                    class="px-2 py-1 rounded-lg text-[10px] font-bold bg-white text-slate-600 border border-slate-300 hover:bg-slate-100 transition shadow-2xs">
+                                                                Todo ⚪
+                                                            </button>
+                                                        </div>
+                                                    </div>
 
-                                                    <button
-                                                        type="button"
-                                                        @click="cambiarEstado('Procesando')"
-                                                        class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition hover:bg-amber-50 text-gray-800"
-                                                        :class="meses[mesIdx].estado === 'Procesando' ? 'bg-amber-50 text-amber-900 ring-1 ring-amber-300' : ''"
-                                                    >
-                                                        <div class="flex items-center gap-2.5">
-                                                            <span class="text-sm">🟡</span>
-                                                            <span>En Proceso</span>
+                                                    {{-- OBLIGACIÓN 1: SIRE (Compras y Ventas) --}}
+                                                    <div class="rounded-xl border border-slate-200 bg-white p-2.5 space-y-1.5">
+                                                        <div class="flex items-center gap-1.5">
+                                                            <span class="text-xs font-bold text-gray-900">SIRE</span>
+                                                            <span class="text-[10px] text-gray-500 font-medium">· Compras y Ventas (RCE / RVIE)</span>
                                                         </div>
-                                                        <span class="text-[10px] text-amber-600 font-medium">Revisando libros / SIRE</span>
-                                                    </button>
+                                                        <div class="grid grid-cols-3 gap-1 rounded-lg bg-slate-100 p-0.5 border border-slate-200/80">
+                                                            <button
+                                                                type="button"
+                                                                @click="cambiarEstadoIndividual('sire', 'Pendiente')"
+                                                                class="flex items-center justify-center gap-1 py-1.5 px-2 rounded-md text-[11px] transition"
+                                                                :class="(meses[mesIdx].sire === 'Pendiente' || !meses[mesIdx].sire) ? 'bg-white text-slate-900 shadow-xs border border-slate-300 font-bold' : 'text-slate-500 hover:text-slate-800 hover:bg-white/60 font-medium'"
+                                                            >
+                                                                <span class="text-[10px]">⚪</span>
+                                                                <span>Pendiente</span>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                @click="cambiarEstadoIndividual('sire', 'Procesando')"
+                                                                class="flex items-center justify-center gap-1 py-1.5 px-2 rounded-md text-[11px] transition"
+                                                                :class="meses[mesIdx].sire === 'Procesando' ? 'bg-amber-50 text-amber-900 border border-amber-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800 hover:bg-white/60 font-medium'"
+                                                            >
+                                                                <span class="text-[10px]">🟡</span>
+                                                                <span>En Proceso</span>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                @click="cambiarEstadoIndividual('sire', 'Declarado')"
+                                                                class="flex items-center justify-center gap-1 py-1.5 px-2 rounded-md text-[11px] transition"
+                                                                :class="meses[mesIdx].sire === 'Declarado' ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800 hover:bg-white/60 font-medium'"
+                                                            >
+                                                                <span class="text-[10px]">🟢</span>
+                                                                <span>Declarado</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
 
-                                                    <button
-                                                        type="button"
-                                                        @click="cambiarEstado('Declarado')"
-                                                        class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition hover:bg-emerald-50 text-gray-800"
-                                                        :class="meses[mesIdx].estado === 'Declarado' ? 'bg-emerald-50 text-emerald-900 ring-1 ring-emerald-300' : ''"
-                                                    >
-                                                        <div class="flex items-center gap-2.5">
-                                                            <span class="text-sm">🟢</span>
-                                                            <span>Declarado</span>
+                                                    {{-- OBLIGACIÓN 2: PDT 621 (IGV - Renta Mensual) --}}
+                                                    <div class="rounded-xl border border-slate-200 bg-white p-2.5 space-y-1.5">
+                                                        <div class="flex items-center gap-1.5">
+                                                            <span class="text-xs font-bold text-gray-900">PDT 621</span>
+                                                            <span class="text-[10px] text-gray-500 font-medium">· IGV y Renta Mensual</span>
+                                                            <span x-show="regimen === 'RUS'" class="rounded bg-amber-100 px-1 py-0.2 text-[8px] font-bold text-amber-800 uppercase whitespace-nowrap">NRUS</span>
                                                         </div>
-                                                        <span class="text-[10px] text-emerald-600 font-medium">Constancia generada</span>
-                                                    </button>
+                                                        <div class="grid grid-cols-3 gap-1 rounded-lg bg-slate-100 p-0.5 border border-slate-200/80">
+                                                            <button
+                                                                type="button"
+                                                                @click="cambiarEstadoIndividual('pdt', 'Pendiente')"
+                                                                class="flex items-center justify-center gap-1 py-1.5 px-2 rounded-md text-[11px] transition"
+                                                                :class="(meses[mesIdx].pdt === 'Pendiente' || !meses[mesIdx].pdt) ? 'bg-white text-slate-900 shadow-xs border border-slate-300 font-bold' : 'text-slate-500 hover:text-slate-800 hover:bg-white/60 font-medium'"
+                                                            >
+                                                                <span class="text-[10px]">⚪</span>
+                                                                <span>Pendiente</span>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                @click="cambiarEstadoIndividual('pdt', 'Procesando')"
+                                                                class="flex items-center justify-center gap-1 py-1.5 px-2 rounded-md text-[11px] transition"
+                                                                :class="meses[mesIdx].pdt === 'Procesando' ? 'bg-amber-50 text-amber-900 border border-amber-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800 hover:bg-white/60 font-medium'"
+                                                            >
+                                                                <span class="text-[10px]">🟡</span>
+                                                                <span>En Proceso</span>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                @click="cambiarEstadoIndividual('pdt', 'Declarado')"
+                                                                class="flex items-center justify-center gap-1 py-1.5 px-2 rounded-md text-[11px] transition"
+                                                                :class="meses[mesIdx].pdt === 'Declarado' ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800 hover:bg-white/60 font-medium'"
+                                                            >
+                                                                <span class="text-[10px]">🟢</span>
+                                                                <span>Declarado</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {{-- OBLIGACIÓN 3: PLAME / PDT 601 (Planilla Electrónica) --}}
+                                                    <div class="rounded-xl border border-slate-200 bg-white p-2.5 space-y-1.5">
+                                                        <div class="flex items-center gap-1.5">
+                                                            <span class="text-xs font-bold text-gray-900">PLAME</span>
+                                                            <span class="text-[10px] text-gray-500 font-medium">· PDT 601 (Planilla, EsSalud, ONP, AFP)</span>
+                                                        </div>
+                                                        <div class="grid grid-cols-3 gap-1 rounded-lg bg-slate-100 p-0.5 border border-slate-200/80">
+                                                            <button
+                                                                type="button"
+                                                                @click="cambiarEstadoIndividual('ple', 'Pendiente')"
+                                                                class="flex items-center justify-center gap-1 py-1.5 px-2 rounded-md text-[11px] transition"
+                                                                :class="(meses[mesIdx].ple === 'Pendiente' || !meses[mesIdx].ple) ? 'bg-white text-slate-900 shadow-xs border border-slate-300 font-bold' : 'text-slate-500 hover:text-slate-800 hover:bg-white/60 font-medium'"
+                                                            >
+                                                                <span class="text-[10px]">⚪</span>
+                                                                <span>Pendiente</span>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                @click="cambiarEstadoIndividual('ple', 'Procesando')"
+                                                                class="flex items-center justify-center gap-1 py-1.5 px-2 rounded-md text-[11px] transition"
+                                                                :class="meses[mesIdx].ple === 'Procesando' ? 'bg-amber-50 text-amber-900 border border-amber-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800 hover:bg-white/60 font-medium'"
+                                                            >
+                                                                <span class="text-[10px]">🟡</span>
+                                                                <span>En Proceso</span>
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                @click="cambiarEstadoIndividual('ple', 'Declarado')"
+                                                                class="flex items-center justify-center gap-1 py-1.5 px-2 rounded-md text-[11px] transition"
+                                                                :class="meses[mesIdx].ple === 'Declarado' ? 'bg-emerald-50 text-emerald-900 border border-emerald-300 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800 hover:bg-white/60 font-medium'"
+                                                            >
+                                                                <span class="text-[10px]">🟢</span>
+                                                                <span>Declarado</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 </div>
 
                                                 {{-- TAB 2: TRIBUTOS Y PAGOS (PDT 621 + PDT 601) --}}
@@ -784,13 +881,30 @@
                             body: JSON.stringify({
                                 cliente_id: this.clienteId,
                                 periodo: mes.periodo,
-                                estado: mes.estado
+                                estado_compras_ventas: mes.sire || 'Pendiente',
+                                estado_pdt621: mes.pdt || 'Pendiente',
+                                estado_ple: mes.ple || 'Pendiente',
                             }),
                         });
 
                         const data = await response.json();
                         if (!response.ok) {
                             throw new Error(data.message || 'Error al guardar estado.');
+                        }
+                        if (data.operacion_id) {
+                            mes.operacion_id = data.operacion_id;
+                        }
+                        if (data.estado) {
+                            mes.estado = data.estado;
+                        }
+                        if (data.sire) {
+                            mes.sire = data.sire;
+                        }
+                        if (data.pdt) {
+                            mes.pdt = data.pdt;
+                        }
+                        if (data.ple) {
+                            mes.ple = data.ple;
                         }
                         if (data.kpis) {
                             window.dispatchEvent(new CustomEvent('kpis-actualizados', { detail: data.kpis }));
@@ -982,12 +1096,12 @@
 
                 tieneDeudaDeclarada() {
                     const m = this.meses[this.mesIdx];
-                    return m.estado === 'Declarado' && this.tieneDeudaConSaldo();
+                    return (m.estado === 'Declarado' || m.estado === 'Procesando') && this.tieneDeudaConSaldo();
                 },
 
                 deudaPagadaDeclarada() {
                     const m = this.meses[this.mesIdx];
-                    if (m.estado !== 'Declarado' || !m.tiene_deuda || this.tieneDeudaConSaldo()) {
+                    if ((m.estado !== 'Declarado' && m.estado !== 'Procesando') || !m.tiene_deuda || this.tieneDeudaConSaldo()) {
                         return false;
                     }
                     return parseFloat(m.total_abonado ?? 0) > 0;
@@ -1062,11 +1176,42 @@
                     return 'DJ: ' + (m.estado || 'Pendiente');
                 },
 
-                async cambiarEstado(nuevoEstado) {
-                    this.meses[this.mesIdx].estado = nuevoEstado;
-                    if (typeof this.actualizarEstadoMaestro === 'function') {
-                        this.actualizarEstadoMaestro(this.mesIdx);
+                calcularEstadoMaestro(sire, pdt, ple) {
+                    const s = sire || 'Pendiente';
+                    const p = pdt || 'Pendiente';
+                    const l = ple || 'Pendiente';
+                    if (s === 'Declarado' && p === 'Declarado' && l === 'Declarado') {
+                        return 'Declarado';
                     }
+                    if (s === 'Procesando' || p === 'Procesando' || l === 'Procesando'
+                        || s === 'Declarado' || p === 'Declarado' || l === 'Declarado') {
+                        return 'Procesando';
+                    }
+                    return 'Pendiente';
+                },
+
+                async cambiarEstadoIndividual(campo, nuevoEstado) {
+                    const m = this.meses[this.mesIdx];
+                    m[campo] = nuevoEstado;
+                    m.estado = this.calcularEstadoMaestro(m.sire, m.pdt, m.ple);
+                    if (typeof this.actualizarEstadoMaestro === 'function') {
+                        await this.actualizarEstadoMaestro(this.mesIdx);
+                    }
+                },
+
+                async marcarTodoEstado(nuevoEstado) {
+                    const m = this.meses[this.mesIdx];
+                    m.sire = nuevoEstado;
+                    m.pdt = nuevoEstado;
+                    m.ple = nuevoEstado;
+                    m.estado = nuevoEstado;
+                    if (typeof this.actualizarEstadoMaestro === 'function') {
+                        await this.actualizarEstadoMaestro(this.mesIdx);
+                    }
+                },
+
+                async cambiarEstado(nuevoEstado) {
+                    await this.marcarTodoEstado(nuevoEstado);
                     this.openDJ = false;
                 },
 

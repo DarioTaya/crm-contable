@@ -370,4 +370,85 @@ class ControlMensualTest extends TestCase
         $response->assertSee('crm-cliente-en-trabajo-', false);
         $response->assertSee('Marcar: estoy trabajando en esta empresa', false);
     }
+
+    public function test_control_mensual_individual_declaration_states_derive_master_state(): void
+    {
+        $cliente = Cliente::create([
+            'razon_social' => 'EMPRESA CONTADOR SENIOR SAC',
+            'ruc' => '20700888999',
+            'regimen_tributario' => 'MYPE',
+            'estado' => true,
+        ]);
+
+        // 1. Marcar solo SIRE y PDT 621 en 'Declarado', y PLAME en 'Pendiente' -> Estado Maestro debe ser 'Procesando'
+        $response = $this->postJson(route('control.update'), [
+            'cliente_id' => $cliente->id,
+            'periodo' => '05-2026',
+            'estado_compras_ventas' => 'Declarado',
+            'estado_pdt621' => 'Declarado',
+            'estado_ple' => 'Pendiente',
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'sire' => 'Declarado',
+            'pdt' => 'Declarado',
+            'ple' => 'Pendiente',
+            'estado' => 'Procesando',
+        ]);
+
+        $this->assertDatabaseHas('operaciones', [
+            'cliente_id' => $cliente->id,
+            'periodo' => '05-2026',
+            'estado_compras_ventas' => 'Declarado',
+            'estado_pdt621' => 'Declarado',
+            'estado_ple' => 'Pendiente',
+        ]);
+
+        // 2. Ahora marcar PLAME también en 'Declarado' -> Estado Maestro pasa a ser 'Declarado'
+        $response2 = $this->postJson(route('control.update'), [
+            'cliente_id' => $cliente->id,
+            'periodo' => '05-2026',
+            'estado_compras_ventas' => 'Declarado',
+            'estado_pdt621' => 'Declarado',
+            'estado_ple' => 'Declarado',
+        ]);
+
+        $response2->assertOk();
+        $response2->assertJson([
+            'success' => true,
+            'sire' => 'Declarado',
+            'pdt' => 'Declarado',
+            'ple' => 'Declarado',
+            'estado' => 'Declarado',
+        ]);
+
+        $this->assertDatabaseHas('operaciones', [
+            'cliente_id' => $cliente->id,
+            'periodo' => '05-2026',
+            'estado_compras_ventas' => 'Declarado',
+            'estado_pdt621' => 'Declarado',
+            'estado_ple' => 'Declarado',
+        ]);
+    }
+
+    public function test_la_vista_control_renderiza_controles_individuales_de_sire_pdt621_y_plame(): void
+    {
+        Cliente::create([
+            'razon_social' => 'EMPRESA PRUEBA CONTROLES SAC',
+            'ruc' => '20999888777',
+            'regimen_tributario' => 'MYPE',
+            'estado' => true,
+        ]);
+
+        $response = $this->get(route('control.index'));
+
+        $response->assertOk();
+        $response->assertSee('SIRE', false);
+        $response->assertSee('PDT 621', false);
+        $response->assertSee('PLAME', false);
+        $response->assertSee('cambiarEstadoIndividual', false);
+        $response->assertSee('marcarTodoEstado', false);
+    }
 }

@@ -369,6 +369,9 @@ class ControlMensualController extends Controller
                 'cliente_id' => ['required', 'integer', Cliente::reglaPerteneceACartera()],
                 'periodo' => ['required', 'string', 'regex:/^\d{2}-\d{4}$/'],
                 'estado' => ['nullable', 'string', 'in:Pendiente,Procesando,Declarado'],
+                'estado_compras_ventas' => ['nullable', 'string', 'in:Pendiente,Procesando,Declarado'],
+                'estado_pdt621' => ['nullable', 'string', 'in:Pendiente,Procesando,Declarado'],
+                'estado_ple' => ['nullable', 'string', 'in:Pendiente,Procesando,Declarado'],
                 'honorarios' => ['nullable', 'string', 'in:Pendiente,Pagado'],
                 'estado_pago_honorarios' => ['nullable', 'string', 'in:Pendiente,Pagado'],
                 'tiene_deuda' => ['nullable', 'boolean'],
@@ -399,10 +402,24 @@ class ControlMensualController extends Controller
                 $operacion->estado_compras_ventas = $validated['estado'];
                 $operacion->estado_pdt621 = $validated['estado'];
                 $operacion->estado_ple = $validated['estado'];
-            } elseif (! $operacion->exists) {
-                $operacion->estado_compras_ventas = 'Pendiente';
-                $operacion->estado_pdt621 = 'Pendiente';
-                $operacion->estado_ple = 'Pendiente';
+            } else {
+                if (isset($validated['estado_compras_ventas'])) {
+                    $operacion->estado_compras_ventas = $validated['estado_compras_ventas'];
+                } elseif (! $operacion->exists) {
+                    $operacion->estado_compras_ventas = 'Pendiente';
+                }
+
+                if (isset($validated['estado_pdt621'])) {
+                    $operacion->estado_pdt621 = $validated['estado_pdt621'];
+                } elseif (! $operacion->exists) {
+                    $operacion->estado_pdt621 = 'Pendiente';
+                }
+
+                if (isset($validated['estado_ple'])) {
+                    $operacion->estado_ple = $validated['estado_ple'];
+                } elseif (! $operacion->exists) {
+                    $operacion->estado_ple = 'Pendiente';
+                }
             }
 
             if ($request->has('honorarios')) {
@@ -477,6 +494,14 @@ class ControlMensualController extends Controller
                 'success' => true,
                 'message' => 'Operación actualizada exitosamente.',
                 'operacion_id' => $operacion->id,
+                'sire' => $operacion->estado_compras_ventas ?? 'Pendiente',
+                'pdt' => $operacion->estado_pdt621 ?? 'Pendiente',
+                'ple' => $operacion->estado_ple ?? 'Pendiente',
+                'estado' => $this->determinarEstadoMaestro(
+                    $operacion->estado_compras_ventas ?? 'Pendiente',
+                    $operacion->estado_pdt621 ?? 'Pendiente',
+                    $operacion->estado_ple ?? 'Pendiente',
+                ),
                 'tiene_deuda' => $operacion->tiene_deuda,
                 'tributo_codigo' => $operacion->tributo_codigo,
                 'tributo_nombre' => $operacion->tributo_nombre,
@@ -542,6 +567,15 @@ class ControlMensualController extends Controller
             'success' => true,
             'message' => 'Operación guardada exitosamente.',
             'operacion' => $operacion,
+            'operacion_id' => $operacion->id,
+            'sire' => $operacion->estado_compras_ventas,
+            'pdt' => $operacion->estado_pdt621,
+            'ple' => $operacion->estado_ple,
+            'estado' => $this->determinarEstadoMaestro(
+                $operacion->estado_compras_ventas,
+                $operacion->estado_pdt621,
+                $operacion->estado_ple,
+            ),
             'kpis' => $this->calcularKpis($anio),
         ]);
     }
