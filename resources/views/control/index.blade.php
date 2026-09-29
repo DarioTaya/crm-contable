@@ -372,9 +372,9 @@
                                                 x-show="openDJ"
                                                 x-cloak
                                                 data-menu-flotante
-                                                @click.outside="if (!$el._clicInicioDentro) openDJ = false"
+                                                @click.outside="if (!$el._clicInicioDentro) { openDJ = false; panelLiquidacionAbierto = false; deudaAbiertaKey = null; }"
                                                 class="fixed z-50 max-w-[95vw] rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl text-left max-h-[calc(100vh-24px)] overflow-y-auto"
-                                                style="width: 476px;"
+                                                style="width: 520px;"
                                             >
                                                 {{-- Encabezado con Tabs en una sola línea --}}
                                                 <div class="border-b border-gray-100 pb-2.5 mb-3">
@@ -387,7 +387,7 @@
                                                                 {{ $item['cliente']->razon_social }}
                                                             </span>
                                                         </div>
-                                                        <button type="button" @click="openDJ = false" class="text-gray-400 hover:text-gray-700 text-base font-bold leading-none p-1">&times;</button>
+                                                        <button type="button" @click="openDJ = false; panelLiquidacionAbierto = false; deudaAbiertaKey = null" class="text-gray-400 hover:text-gray-700 text-base font-bold leading-none p-1">&times;</button>
                                                     </div>
 
                                                     {{-- 2 Pestañas perfectamente alineadas en una sola línea --}}
@@ -692,7 +692,7 @@
                                                                                         </label>
                                                                                         <input type="text" inputmode="decimal" x-model="liquidacion.ventas_base"
                                                                                                @input="liquidacion.ventas_base = formatearMilesInput($event); onVentasBaseInput()"
-                                                                                               placeholder="0.00" class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono bg-white">
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                     </div>
                                                                                     <div x-show="!liquidacion.es_zona_selva">
                                                                                         <div class="flex items-center justify-between gap-1 mb-0.5">
@@ -701,7 +701,7 @@
                                                                                         </div>
                                                                                         <input type="text" inputmode="decimal" x-model="liquidacion.ventas_no_gravadas"
                                                                                                @input="liquidacion.ventas_no_gravadas = formatearMilesInput($event); onVentasNoGravadasInput()"
-                                                                                               placeholder="0.00" class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono bg-white">
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                     </div>
                                                                                     <div>
                                                                                         <div class="flex items-center justify-between mb-0.5">
@@ -710,8 +710,8 @@
                                                                                         </div>
                                                                                         <input type="text" inputmode="decimal" x-model="liquidacion.igv_ventas" :readonly="liquidacion.es_zona_selva"
                                                                                                @input="liquidacion.igv_ventas = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono"
-                                                                                               :class="liquidacion.es_zona_selva ? 'bg-slate-100 text-slate-500 font-bold cursor-not-allowed' : 'bg-white'">
+                                                                                               placeholder="0.00" class="w-full rounded border py-1 px-1.5 text-xs font-mono transition"
+                                                                                               :class="liquidacion.es_zona_selva ? 'border-slate-200 bg-slate-100 text-slate-400 font-bold cursor-not-allowed' : 'border-slate-300 bg-white text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none'">
                                                                                     </div>
                                                                                 </div>
 
@@ -724,7 +724,7 @@
                                                                                         </label>
                                                                                         <input type="text" inputmode="decimal" x-model="liquidacion.compras_base"
                                                                                                @input="liquidacion.compras_base = formatearMilesInput($event); onComprasBaseInput()"
-                                                                                               placeholder="0.00" class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono bg-white">
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                     </div>
                                                                                     <div>
                                                                                         <div class="flex items-center justify-between mb-0.5">
@@ -733,8 +733,8 @@
                                                                                         </div>
                                                                                         <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras" :readonly="liquidacion.es_zona_selva"
                                                                                                @input="liquidacion.igv_compras = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono"
-                                                                                               :class="liquidacion.es_zona_selva ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white'">
+                                                                                               placeholder="0.00" class="w-full rounded border py-1 px-1.5 text-xs font-mono transition"
+                                                                                               :class="liquidacion.es_zona_selva ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed' : 'border-slate-300 bg-white text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none'">
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -755,7 +755,7 @@
                                                                                     </div>
                                                                                     <input type="text" inputmode="decimal" x-model="liquidacion.igv_saldo_favor_anterior"
                                                                                            @input="liquidacion.igv_saldo_favor_anterior = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                           placeholder="0.00" class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono bg-white">
+                                                                                           placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                 </div>
 
                                                                                 <div class="grid grid-cols-2 gap-2">
@@ -763,13 +763,13 @@
                                                                                         <label class="text-[9px] text-slate-600 font-medium block">Retenciones (Cas. 179)</label>
                                                                                         <input type="text" inputmode="decimal" x-model="liquidacion.igv_retenciones"
                                                                                                @input="liquidacion.igv_retenciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono bg-white">
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                     </div>
                                                                                     <div>
                                                                                         <label class="text-[9px] text-slate-600 font-medium block">Percepciones (Cas. 171)</label>
                                                                                         <input type="text" inputmode="decimal" x-model="liquidacion.igv_percepciones"
                                                                                                @input="liquidacion.igv_percepciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono bg-white">
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -808,7 +808,7 @@
                                                                                             <span x-text="liquidacion.es_zona_selva ? 'Ventas Selva (Cas. 100)' : 'Ventas Gravadas (Cas. 100)'"></span>
                                                                                         </label>
                                                                                         <input type="text" readonly :value="liquidacion.ventas_base || '0.00'"
-                                                                                               class="w-full rounded border-gray-200 py-1 px-1.5 text-xs font-mono bg-slate-100 text-slate-600">
+                                                                                               class="w-full rounded border border-slate-200 py-1 px-1.5 text-xs font-mono bg-slate-100 text-slate-600 cursor-default">
                                                                                     </div>
                                                                                     <div>
                                                                                         <label class="text-[9px] text-slate-600 font-medium block flex items-center justify-between">
@@ -817,7 +817,7 @@
                                                                                         </label>
                                                                                         <input type="text" inputmode="decimal" x-model="liquidacion.ventas_no_gravadas"
                                                                                                @input="liquidacion.ventas_no_gravadas = formatearMilesInput($event); onVentasNoGravadasInput()"
-                                                                                               placeholder="0.00" class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono bg-white">
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                     </div>
                                                                                 </div>
 
@@ -831,19 +831,19 @@
                                                                                         </div>
                                                                                         <input type="text" inputmode="decimal" x-model="liquidacion.renta_base_ingresos"
                                                                                                @input="liquidacion.renta_base_ingresos = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono bg-white font-bold text-indigo-950">
+                                                                                               placeholder="0.00" class="w-full rounded border border-indigo-200 bg-white py-1 px-1.5 text-xs font-mono bg-white font-bold text-indigo-950 shadow-2xs hover:border-indigo-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none transition">
                                                                                     </div>
                                                                                     <div>
                                                                                         <label class="text-[9px] text-slate-600 font-medium block">Tasa / Coef. %</label>
                                                                                         <input type="number" step="0.01" min="0" max="100" x-model="liquidacion.renta_tasa"
                                                                                                @input="recalcularTotalesLiquidacion()"
-                                                                                               class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono bg-white">
+                                                                                               class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                     </div>
                                                                                 </div>
                                                                                 <div>
                                                                                     <label class="text-[9px] text-slate-500 font-medium block">Pago a Cuenta Calculado (Ingresos &times; Tasa)</label>
                                                                                     <input type="text" readonly x-model="liquidacion.renta_calculada"
-                                                                                           placeholder="0.00" class="w-full rounded border-gray-200 py-1 px-1.5 text-xs font-mono bg-slate-100 text-slate-700">
+                                                                                           placeholder="0.00" class="w-full rounded border border-slate-200 py-1 px-1.5 text-xs font-mono bg-slate-100 text-slate-700 cursor-default">
                                                                                 </div>
                                                                             </div>
 
@@ -854,20 +854,20 @@
                                                                                     <label class="text-[9px] text-slate-600 font-medium block">Saldo Favor Ejercicio Anterior / DJ Anual 710 (Cas. 109)</label>
                                                                                     <input type="text" inputmode="decimal" x-model="liquidacion.renta_saldo_favor_anterior"
                                                                                            @input="liquidacion.renta_saldo_favor_anterior = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                           placeholder="0.00" class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono bg-white">
+                                                                                           placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                 </div>
                                                                                 <div class="grid grid-cols-2 gap-2">
                                                                                     <div>
                                                                                         <label class="text-[9px] text-slate-600 font-medium block">Compensación ITAN (Cas. 111)</label>
                                                                                         <input type="text" inputmode="decimal" x-model="liquidacion.renta_compensacion_itan"
                                                                                                @input="liquidacion.renta_compensacion_itan = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono bg-white">
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                     </div>
                                                                                     <div>
                                                                                         <label class="text-[9px] text-slate-600 font-medium block">Retenciones 3ra Cat. (Cas. 113)</label>
                                                                                         <input type="text" inputmode="decimal" x-model="liquidacion.renta_retenciones"
                                                                                                @input="liquidacion.renta_retenciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border-gray-300 py-1 px-1.5 text-xs font-mono bg-white">
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -896,7 +896,7 @@
                                                                         <div class="pt-1 space-y-2 border-t border-slate-100">
                                                                             <input type="text" x-model="liquidacion.notas_liquidacion"
                                                                                    placeholder="Nota contable interna (ej: Prórroga acogida, saldo compensado, exoneración...)"
-                                                                                   class="w-full rounded-lg border-gray-300 py-1 px-2 text-xs bg-slate-50 text-slate-700 placeholder-slate-400">
+                                                                                   class="w-full rounded-lg border border-slate-300/80 py-1 px-2 text-xs bg-slate-50 text-slate-700 placeholder-slate-400 hover:border-slate-400 focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
 
                                                                             <div class="flex items-center justify-between gap-2">
                                                                                 <div class="flex items-center gap-2 flex-1">
@@ -944,7 +944,7 @@
                                                                         <div x-show="deudaAbiertaKey === deuda.localKey" data-deuda-formulario class="border-t border-slate-100 p-3 space-y-2.5 bg-slate-50">
                                                                             <div>
                                                                                 <label class="block text-[10px] font-bold text-gray-600 uppercase mb-1">Tributo SUNAT</label>
-                                                                                <select x-model="deuda.borrador_codigo" @change="alCambiarTributo(deuda)" class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 bg-white shadow-xs focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-medium">
+                                                                                <select x-model="deuda.borrador_codigo" @change="alCambiarTributo(deuda)" class="w-full rounded-lg border border-gray-300 py-1.5 px-2.5 text-xs text-gray-800 bg-white shadow-xs hover:border-gray-400 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-medium transition">
                                                                                     <option value="" disabled>Seleccione el tributo</option>
                                                                                     <template x-for="opcion in bloque.tributos" :key="opcion.codigo">
                                                                                         <option :value="opcion.codigo" x-text="etiquetaTributo(opcion)" :disabled="tributoUsadoPorOtra(opcion.codigo, deuda)"></option>
@@ -970,7 +970,7 @@
                                                                         <div>
                                                                             <label class="block text-[10px] font-bold text-gray-600 uppercase mb-1">Importe a pagar (S/)</label>
                                                                             <input type="text" inputmode="decimal" x-model="deuda.borrador_monto" @input="deuda.borrador_monto = formatearMilesInput($event)"
-                                                                                   class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs font-semibold font-mono text-gray-800 bg-white" placeholder="0.00">
+                                                                                   class="w-full rounded-lg border border-gray-300 py-1.5 px-2.5 text-xs font-semibold font-mono text-gray-800 bg-white shadow-2xs hover:border-gray-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 focus:outline-none transition" placeholder="0.00">
                                                                         </div>
                                                                         <div>
                                                                             <label class="mb-1 flex items-center justify-between gap-2 text-[10px] font-bold uppercase text-gray-600">
@@ -981,8 +981,8 @@
                                                                                    :readonly="igvJustoEnEdicion(deuda)"
                                                                                    @mousedown="if (igvJustoEnEdicion(deuda)) $event.preventDefault()"
                                                                                    @keydown="if (igvJustoEnEdicion(deuda)) $event.preventDefault()"
-                                                                                   class="w-full rounded-lg border-gray-300 py-1.5 px-2.5 text-xs bg-white"
-                                                                                   :class="igvJustoEnEdicion(deuda) ? 'bg-indigo-50 border-indigo-200 text-indigo-900 cursor-not-allowed font-bold' : ''">
+                                                                                   class="w-full rounded-lg border py-1.5 px-2.5 text-xs transition"
+                                                                                   :class="igvJustoEnEdicion(deuda) ? 'bg-indigo-50 border-indigo-200 text-indigo-900 cursor-not-allowed font-bold' : 'border-gray-300 bg-white shadow-2xs hover:border-gray-400 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 focus:outline-none'">
                                                                         </div>
                                                                     </div>
 
@@ -1024,16 +1024,16 @@
                                                                         </div>
                                                                         <div class="rounded-xl border border-emerald-200 bg-emerald-50/60 p-2.5 space-y-2">
                                                                             <div class="grid grid-cols-2 gap-2">
-                                                                                <input type="text" inputmode="decimal" x-model="deuda.nuevoMonto" @input="deuda.nuevoMonto = formatearMilesInput($event)" placeholder="Monto del pago" class="rounded-lg border-gray-300 py-1.5 px-2 text-xs font-mono bg-white">
-                                                                                <input type="date" x-model="deuda.nuevaFecha" class="rounded-lg border-gray-300 py-1.5 px-2 text-xs bg-white">
+                                                                                <input type="text" inputmode="decimal" x-model="deuda.nuevoMonto" @input="deuda.nuevoMonto = formatearMilesInput($event)" placeholder="Monto del pago" class="rounded-lg border border-gray-300 py-1.5 px-2 text-xs font-mono bg-white shadow-2xs hover:border-gray-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none transition">
+                                                                                <input type="date" x-model="deuda.nuevaFecha" class="rounded-lg border border-gray-300 py-1.5 px-2 text-xs bg-white shadow-2xs hover:border-gray-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none transition">
                                                                             </div>
-                                                                            <select x-model="deuda.nuevoMedio" class="w-full rounded-lg border-gray-300 py-1.5 px-2 text-xs bg-white">
+                                                                            <select x-model="deuda.nuevoMedio" class="w-full rounded-lg border border-gray-300 py-1.5 px-2 text-xs bg-white shadow-2xs hover:border-gray-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none transition">
                                                                                 <option value="">Medio de pago</option>
                                                                                 @foreach (\App\Enums\MedioPagoTributo::cases() as $medioPago)
                                                                                     <option value="{{ $medioPago->value }}">{{ $medioPago->etiqueta() }}</option>
                                                                                 @endforeach
                                                                             </select>
-                                                                            <input type="text" x-model="deuda.nuevaObs" placeholder="N° operación o nota" class="w-full rounded-lg border-gray-300 py-1.5 px-2 text-xs bg-white">
+                                                                            <input type="text" x-model="deuda.nuevaObs" placeholder="N° operación o nota" class="w-full rounded-lg border border-gray-300 py-1.5 px-2 text-xs bg-white shadow-2xs hover:border-gray-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none transition">
                                                                             <button type="button" @click="registrarAbono(deuda)" :disabled="deuda.savingAbono || limpiarMoneda(deuda.nuevoMonto) <= 0 || !deuda.nuevoMedio"
                                                                                     class="w-full py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs disabled:opacity-50"
                                                                                     x-text="deuda.savingAbono ? 'Registrando...' : (deuda.abonoGuardado ? '¡Pago registrado!' : '+ Registrar pago')"></button>
@@ -1368,6 +1368,7 @@
                     }
                     this.$watch('openDJ', (abierto) => {
                         if (!abierto) {
+                            this.panelLiquidacionAbierto = false;
                             this.deudas.forEach((deuda) => this.revertirCampos(deuda));
                             this.deudas = this.deudas.filter((deuda) => this.deudaPersistida(deuda));
                             this.deudaAbiertaKey = null;
@@ -1476,6 +1477,8 @@
 
                 abrirMenuDJ(ancla) {
                     this.hoverDeuda = false;
+                    this.panelLiquidacionAbierto = false;
+                    this.deudaAbiertaKey = null;
                     this.openDJ = !this.openDJ;
                     if (this.openDJ) {
                         this.sincronizarDesdeMes();
@@ -1489,6 +1492,8 @@
                 abrirMenuDJConTab(ancla, tabName) {
                     this.hoverDeuda = false;
                     this.activeTab = tabName;
+                    this.panelLiquidacionAbierto = false;
+                    this.deudaAbiertaKey = null;
                     this.openDJ = true;
                     this.sincronizarDesdeMes();
                     this.$nextTick(() => window.ubicarMenuFlotante(this.$refs.menuDJ, ancla));
@@ -1937,9 +1942,11 @@
                 },
 
                 hidratarDeudas(lista) {
-                    const codigos = new Set((lista || []).map(d => d.tributo_codigo));
-                    const borradores = (this.deudas || []).filter((deuda) => !deuda.id && !codigos.has(deuda.tributo_codigo) && !codigos.has(deuda.borrador_codigo));
-                    const guardadas = (lista || []).filter(d => d && (d.id || d.monto_deuda_inicial || d.tributo_codigo)).map(d => this.normalizarDeuda(d));
+                    const guardadas = (lista || [])
+                        .filter(d => d && (d.id || (parseFloat(d.monto_deuda_inicial) || 0) > 0 || (d.abonos && d.abonos.length > 0)))
+                        .map(d => this.normalizarDeuda(d));
+                    const codigos = new Set(guardadas.map(d => d.tributo_codigo));
+                    const borradores = (this.deudas || []).filter((deuda) => !deuda.id && (parseFloat(deuda.borrador_monto || deuda.monto_deuda_inicial || 0) > 0 || (deuda.abonos && deuda.abonos.length > 0)) && !codigos.has(deuda.tributo_codigo) && !codigos.has(deuda.borrador_codigo));
                     this.deudas = guardadas.concat(borradores);
                     this.meses[this.mesIdx].deudas = guardadas;
                     if (!this.deudas.some((deuda) => deuda.localKey === this.deudaAbiertaKey)) {

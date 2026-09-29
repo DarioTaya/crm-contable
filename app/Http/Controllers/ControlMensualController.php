@@ -1005,7 +1005,8 @@ class ControlMensualController extends Controller
             return $deudas->map(fn (DeudaTributaria $deuda) => $this->serializarDeuda($deuda))->values()->all();
         }
 
-        if (! $operacion->tiene_deuda && ! $operacion->monto_deuda_inicial && $operacion->abonosDeuda->isEmpty()) {
+        $montoInicial = (float) ($operacion->monto_deuda_inicial ?? 0);
+        if ($montoInicial <= 0 && $operacion->abonosDeuda->isEmpty()) {
             return [];
         }
 
