@@ -69,7 +69,7 @@
                                 name="ruc"
                                 x-model="ruc"
                                 @input="onRucInput($event)"
-                                @blur="buscarRucSiEstaCompleto()"
+                                @blur="consultarRucAlSalir()"
                                 maxlength="11"
                                 placeholder="20601234567"
                                 required
@@ -553,17 +553,22 @@
 
                     {{-- AFP --}}
                     <div>
-                        <div class="mb-3 flex items-center justify-between">
-                            <h3 class="text-sm font-semibold text-gray-700">AFPnet</h3>
-                            <a href="https://www.afpnet.com.pe/"
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               class="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 hover:underline"
-                               title="Abrir AFPnet Oficial">
-                                <span>💼 Abrir AFPnet ↗</span>
-                            </a>
-                        </div>
+                        <h3 class="mb-3 text-sm font-semibold text-gray-700">AFPnet</h3>
                         <div class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+                            <div class="sm:col-span-2">
+                                <label for="url_afp" class="mb-1.5 block text-xs font-medium text-gray-600">Enlace</label>
+                                <input
+                                    type="url"
+                                    id="url_afp"
+                                    name="url_afp"
+                                    value="{{ old('url_afp', \App\Models\Credencial::ENLACE_AFP) }}"
+                                    placeholder="https://"
+                                    class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('url_afp') border-red-400 ring-2 ring-red-400/20 @enderror"
+                                >
+                                @error('url_afp')
+                                    <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
+                                @enderror
+                            </div>
                             <div>
                                 <label for="usuario_afp" class="mb-1.5 block text-xs font-medium text-gray-600">Usuario AFP</label>
                                 <input
@@ -611,17 +616,22 @@
 
                     {{-- Detracciones --}}
                     <div>
-                        <div class="mb-3 flex items-center justify-between">
-                            <h3 class="text-sm font-semibold text-gray-700">Detracciones (Banco de la Nación)</h3>
-                            <a href="https://bancaporinternet.bn.com.pe/BNWeb/Inicio"
-                               target="_blank"
-                               rel="noopener noreferrer"
-                               class="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 hover:underline"
-                               title="Abrir Banco de la Nación por Internet">
-                                <span>🏦 Abrir BN por Internet ↗</span>
-                            </a>
-                        </div>
+                        <h3 class="mb-3 text-sm font-semibold text-gray-700">Detracciones (Banco de la Nación)</h3>
                         <div class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
+                            <div class="sm:col-span-3">
+                                <label for="url_bn" class="mb-1.5 block text-xs font-medium text-gray-600">Enlace</label>
+                                <input
+                                    type="url"
+                                    id="url_bn"
+                                    name="url_bn"
+                                    value="{{ old('url_bn', \App\Models\Credencial::ENLACE_BN) }}"
+                                    placeholder="https://"
+                                    class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('url_bn') border-red-400 ring-2 ring-red-400/20 @enderror"
+                                >
+                                @error('url_bn')
+                                    <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
+                                @enderror
+                            </div>
                             <div>
                                 <label for="dni_titular" class="mb-1.5 block text-xs font-medium text-gray-600">DNI Titular</label>
                                 <input
@@ -676,16 +686,29 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <hr class="border-gray-100">
+                    <hr class="border-gray-100">
 
-                        {{-- Acceso Adicional 1 (Libre / Bancos - ej. BCP) --}}
+                    {{-- Acceso Adicional 1 (Libre / Bancos - ej. BCP) --}}
                         <div>
                             <div class="mb-3 flex items-center justify-between">
                                 <h3 class="text-sm font-semibold text-gray-700">
                                     Acceso Adicional 1 (Bancos / Libre - Ej. BCP)
                                 </h3>
-                                <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">Opcional</span>
+                                <div class="flex items-center gap-3">
+                                    <a x-show="enlaceVisible(urlBanco1)"
+                                       x-cloak
+                                       href="{{ old('banco_1_url') ?: '#' }}"
+                                       :href="enlaceVisible(urlBanco1)"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       class="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 hover:underline"
+                                       title="Abrir el enlace de este acceso en una nueva pestaña">
+                                        <span x-text="etiquetaEnlace(nombreBanco1)"></span>
+                                    </a>
+                                    <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">Opcional</span>
+                                </div>
                             </div>
                             <div class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
                                 <div>
@@ -694,6 +717,7 @@
                                         type="text"
                                         id="banco_1_nombre"
                                         name="banco_1_nombre"
+                                        x-model="nombreBanco1"
                                         value="{{ old('banco_1_nombre') }}"
                                         placeholder="Ej: Telecrédito BCP"
                                         class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -750,6 +774,21 @@
                                         class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                     >
                                 </div>
+                                <div class="sm:col-span-3">
+                                    <label for="banco_1_url" class="mb-1.5 block text-xs font-medium text-gray-600">Enlace</label>
+                                    <input
+                                        type="url"
+                                        id="banco_1_url"
+                                        name="banco_1_url"
+                                        x-model="urlBanco1"
+                                        value="{{ old('banco_1_url') }}"
+                                        placeholder="https://"
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('banco_1_url') border-red-400 ring-2 ring-red-400/20 @enderror"
+                                    >
+                                    @error('banco_1_url')
+                                        <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
+                                    @enderror
+                                </div>
                             </div>
                         </div>
 
@@ -761,7 +800,19 @@
                                 <h3 class="text-sm font-semibold text-gray-700">
                                     Acceso Adicional 2 (Bancos / Libre - Ej. BBVA)
                                 </h3>
-                                <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">Opcional</span>
+                                <div class="flex items-center gap-3">
+                                    <a x-show="enlaceVisible(urlBanco2)"
+                                       x-cloak
+                                       href="{{ old('banco_2_url') ?: '#' }}"
+                                       :href="enlaceVisible(urlBanco2)"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       class="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 hover:underline"
+                                       title="Abrir el enlace de este acceso en una nueva pestaña">
+                                        <span x-text="etiquetaEnlace(nombreBanco2)"></span>
+                                    </a>
+                                    <span class="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">Opcional</span>
+                                </div>
                             </div>
                             <div class="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-3">
                                 <div>
@@ -770,6 +821,7 @@
                                         type="text"
                                         id="banco_2_nombre"
                                         name="banco_2_nombre"
+                                        x-model="nombreBanco2"
                                         value="{{ old('banco_2_nombre') }}"
                                         placeholder="Ej: BBVA Net Cash"
                                         class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
@@ -826,9 +878,23 @@
                                         class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                                     >
                                 </div>
+                                <div class="sm:col-span-3">
+                                    <label for="banco_2_url" class="mb-1.5 block text-xs font-medium text-gray-600">Enlace</label>
+                                    <input
+                                        type="url"
+                                        id="banco_2_url"
+                                        name="banco_2_url"
+                                        x-model="urlBanco2"
+                                        value="{{ old('banco_2_url') }}"
+                                        placeholder="https://"
+                                        class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs placeholder-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 @error('banco_2_url') border-red-400 ring-2 ring-red-400/20 @enderror"
+                                    >
+                                    @error('banco_2_url')
+                                        <p class="mt-1.5 text-xs text-red-500">{{ $message }}</p>
+                                    @enderror
+                                </div>
                             </div>
                         </div>
-                    </div>
                 </div>
             </div>
 
@@ -1098,9 +1164,10 @@
                 claveSolTocada: false,
                 clientIdTocado: false,
                 rucConsultaSeq: 0,
-                rucEnConsulta: '',
-                rucSincronizado: '',
-                ultimoRucProcesado: '{{ old('ruc', '') }}',
+                rucConsultaTimer: null,
+                esperaConsultaRucMs: 450,
+                rucNormalizado: '{{ old('ruc', '') }}',
+                rucDeLosDatos: '{{ old('ruc', '') }}',
 
                 mostrarClaveSol: false,
                 mostrarClaveApi: false,
@@ -1108,6 +1175,10 @@
                 mostrarClaveDetracciones: false,
                 mostrarClaveBanco1: false,
                 mostrarClaveBanco2: false,
+                nombreBanco1: @json(old('banco_1_nombre') ?: ''),
+                urlBanco1: @json(old('banco_1_url') ?: ''),
+                nombreBanco2: @json(old('banco_2_nombre') ?: ''),
+                urlBanco2: @json(old('banco_2_url') ?: ''),
 
                 // Estado de validación RUC
                 rucInfo: {
@@ -1128,10 +1199,27 @@
                 modalStatus: 'validating', // validating, success, error
                 modalError: '',
 
+                enlaceVisible(valor, respaldo = '') {
+                    const url = (valor || '').trim();
+
+                    if (/^https?:\/\//i.test(url)) {
+                        return url;
+                    }
+
+                    return respaldo || '';
+                },
+
+                etiquetaEnlace(nombre) {
+                    const titulo = (nombre || '').trim();
+
+                    return 'Abrir ' + (titulo !== '' ? titulo : 'enlace') + ' ↗';
+                },
+
                 init() {
-                    if (this.ruc.length === 11) {
-                        this.rucEnConsulta = this.ruc;
-                        this.validarRucCompleto();
+                    if (this.ruc.length === 11 && this.validarRucChecksum(this.ruc)) {
+                        this.programarConsultaRuc();
+                    } else if (this.ruc.length === 11) {
+                        this.mostrarRucInvalido(this.ruc);
                     }
 
                     this.$nextTick(() => this.vigilarAutocompletado());
@@ -1194,6 +1282,9 @@
                 },
 
                 // ─── LÓGICA DE VALIDACIÓN RUC (MÓDULO 11 OFICIAL SUNAT) ───────
+                // El padrón visible pertenece a un solo RUC. Mientras el número
+                // cambia no se consulta; al quedar completo y quieto se descarta
+                // el padrón anterior y se escribe únicamente el del RUC nuevo.
                 onRucInput(event) {
                     const crudo = event?.target?.value ?? this.ruc;
                     const limpio = String(crudo).replace(/\D/g, '').slice(0, 11);
@@ -1203,58 +1294,112 @@
 
                     this.ruc = limpio;
 
-                    if (limpio === this.ultimoRucProcesado) {
+                    if (limpio === this.rucNormalizado) {
                         return;
                     }
 
-                    this.ultimoRucProcesado = limpio;
+                    this.rucNormalizado = limpio;
                     this.solValidado = false;
-                    this.rucConsultaSeq++;
+                    this.cancelarConsultaRuc();
 
-                    if (this.ruc.length === 0) {
-                        this.rucEnConsulta = '';
-                        this.rucSincronizado = '';
-                        this.rucInfo = {
-                            status: 'idle',
-                            message: '',
-                            badgeText: 'Esperando RUC',
-                            tipo: ''
-                        };
-                        this.estadoContribuyente = '';
-                        this.condicionDomicilio = '';
-                        this.tipoContribuyente = '';
-                        this.direccionFiscal = '';
-                        this.direccionFiscalAuto = false;
-                        this.ubigeo = '';
-                        this.distrito = '';
-                        this.provincia = '';
-                        this.departamento = '';
+                    if (limpio !== this.rucDeLosDatos) {
+                        this.vaciarDatosFiscalesSunat();
+                    }
+
+                    if (limpio.length !== 11) {
+                        this.rucInfo = this.estadoRucEnEspera();
                         return;
                     }
 
-                    if (this.ruc.length < 11) {
-                        this.rucInfo = {
-                            status: 'idle',
-                            message: '',
-                            badgeText: 'Esperando RUC',
-                            tipo: ''
-                        };
+                    if (!this.validarRucChecksum(limpio)) {
+                        this.mostrarRucInvalido(limpio);
                         return;
                     }
 
-                    this.rucEnConsulta = this.ruc;
-                    this.validarRucCompleto();
+                    this.rucInfo = this.estadoRucEnEspera();
+                    this.programarConsultaRuc();
                 },
 
-                buscarRucSiEstaCompleto() {
-                    if (this.ruc.length !== 11 || this.ruc === this.rucEnConsulta) {
+                estadoRucEnEspera() {
+                    return {
+                        status: 'idle',
+                        message: '',
+                        badgeText: 'Esperando RUC',
+                        tipo: ''
+                    };
+                },
+
+                cancelarConsultaRuc() {
+                    if (this.rucConsultaTimer) {
+                        clearTimeout(this.rucConsultaTimer);
+                        this.rucConsultaTimer = null;
+                    }
+
+                    this.rucConsultaSeq += 1;
+                },
+
+                programarConsultaRuc() {
+                    const ruc = this.ruc;
+                    this.rucConsultaTimer = setTimeout(() => {
+                        this.rucConsultaTimer = null;
+                        if (this.ruc !== ruc) {
+                            return;
+                        }
+
+                        this.consultarPadronDelRuc();
+                    }, this.esperaConsultaRucMs);
+                },
+
+                consultarRucAlSalir() {
+                    if (this.ruc.length !== 11 || !this.validarRucChecksum(this.ruc)) {
                         return;
                     }
 
-                    this.ultimoRucProcesado = this.ruc;
-                    this.rucEnConsulta = this.ruc;
-                    this.rucConsultaSeq++;
-                    this.validarRucCompleto();
+                    if (this.rucConsultaTimer) {
+                        clearTimeout(this.rucConsultaTimer);
+                        this.rucConsultaTimer = null;
+                        this.consultarPadronDelRuc();
+                        return;
+                    }
+
+                    if (this.rucDeLosDatos !== this.ruc && this.rucInfo.status !== 'validating') {
+                        this.consultarPadronDelRuc();
+                    }
+                },
+
+                vaciarDatosFiscalesSunat() {
+                    this.razonSocial = '';
+                    this.razonSocialAuto = false;
+                    this.estadoContribuyente = '';
+                    this.condicionDomicilio = '';
+                    this.tipoContribuyente = '';
+                    this.direccionFiscal = '';
+                    this.direccionFiscalAuto = false;
+                    this.ubigeo = '';
+                    this.distrito = '';
+                    this.provincia = '';
+                    this.departamento = '';
+                    this.rucDeLosDatos = '';
+                },
+
+                mostrarRucInvalido(ruc) {
+                    const prefijo = ruc.slice(0, 2);
+                    if (!['10', '15', '16', '17', '20'].includes(prefijo)) {
+                        this.rucInfo = {
+                            status: 'invalid',
+                            message: 'El RUC debe comenzar con 10, 20, 15, 16 o 17.',
+                            badgeText: 'Prefijo no válido',
+                            tipo: ''
+                        };
+                        return;
+                    }
+
+                    this.rucInfo = {
+                        status: 'invalid',
+                        message: 'El número no supera la validación matemática oficial de SUNAT (dígito verificador incorrecto).',
+                        badgeText: 'RUC Inválido',
+                        tipo: ''
+                    };
                 },
 
                 validarRucChecksum(ruc) {
@@ -1274,54 +1419,83 @@
                     return parseInt(ruc[10], 10) === dv;
                 },
 
-                validarRucCompleto() {
-                    const ruc = this.ruc;
-                    const prefijo = ruc.slice(0, 2);
-
-                    if (!['10', '15', '16', '17', '20'].includes(prefijo)) {
-                        this.rucInfo = {
-                            status: 'invalid',
-                            message: 'El RUC debe comenzar con 10, 20, 15, 16 o 17.',
-                            badgeText: 'Prefijo no válido',
-                            tipo: ''
-                        };
-                        return false;
-                    }
-
-                    const esValido = this.validarRucChecksum(ruc);
-                    if (!esValido) {
-                        this.rucInfo = {
-                            status: 'invalid',
-                            message: 'El número no supera la validación matemática oficial de SUNAT (dígito verificador incorrecto).',
-                            badgeText: 'RUC Inválido',
-                            tipo: ''
-                        };
-                        return false;
-                    }
-
-                    let tipoDesc = 'Persona Jurídica';
-                    if (prefijo === '10') tipoDesc = 'Persona Natural con Negocio';
-                    else if (['15', '16', '17'].includes(prefijo)) tipoDesc = 'Contribuyente Especial';
-
-                    this.rucInfo = {
-                        status: 'valid',
-                        message: `✓ RUC válido ante SUNAT (${tipoDesc})`,
-                        badgeText: '✓ RUC Válido',
-                        tipo: tipoDesc
-                    };
-
-                    this.verificarRucEnServidor();
-                    return true;
+                consultaSigueVigente(seq, rucConsultado) {
+                    return seq === this.rucConsultaSeq && this.ruc === rucConsultado;
                 },
 
-                async verificarRucEnServidor() {
-                    if (this.ruc.length !== 11 || this.rucInfo.status === 'invalid') return;
+                tipoPersonaDesdeRuc(ruc) {
+                    const prefijo = ruc.slice(0, 2);
+                    if (prefijo === '10') {
+                        return 'Persona Natural con Negocio';
+                    }
+                    if (prefijo === '20') {
+                        return 'Persona Jurídica (Empresa / Sociedad)';
+                    }
+                    if (['15', '16', '17'].includes(prefijo)) {
+                        return 'Contribuyente Especial';
+                    }
+
+                    return '';
+                },
+
+                padronDesdeRespuesta(data) {
+                    return {
+                        razon_social: data.razon_social || data.cliente?.razon_social || '',
+                        estado_sunat: data.estado_sunat || '',
+                        condicion_sunat: data.condicion_sunat || '',
+                        tipo_persona: data.tipo_persona || '',
+                        direccion_sunat: data.direccion_sunat || '',
+                        ubigeo: data.ubigeo || '',
+                        distrito: data.distrito || '',
+                        provincia: data.provincia || '',
+                        departamento: data.departamento || ''
+                    };
+                },
+
+                respuestaTraePadron(padron) {
+                    return [
+                        padron.razon_social,
+                        padron.estado_sunat,
+                        padron.condicion_sunat,
+                        padron.direccion_sunat,
+                        padron.ubigeo,
+                        padron.distrito,
+                        padron.provincia,
+                        padron.departamento
+                    ].some((valor) => String(valor || '').trim() !== '');
+                },
+
+                aplicarPadronSunat(padron, ruc) {
+                    const razon = String(padron.razon_social || '').trim();
+                    const direccion = String(padron.direccion_sunat || '').trim();
+
+                    this.razonSocial = razon;
+                    this.razonSocialAuto = razon !== '';
+                    this.estadoContribuyente = String(padron.estado_sunat || '').trim();
+                    this.condicionDomicilio = String(padron.condicion_sunat || '').trim();
+                    this.tipoContribuyente = String(padron.tipo_persona || '').trim() || this.tipoPersonaDesdeRuc(ruc);
+                    this.direccionFiscal = direccion;
+                    this.direccionFiscalAuto = direccion !== '';
+                    this.ubigeo = String(padron.ubigeo || '').trim();
+                    this.distrito = String(padron.distrito || '').trim();
+                    this.provincia = String(padron.provincia || '').trim();
+                    this.departamento = String(padron.departamento || '').trim();
+                    this.rucDeLosDatos = ruc;
+                },
+
+                async consultarPadronDelRuc() {
+                    const rucConsultado = this.ruc;
+                    if (rucConsultado.length !== 11 || !this.validarRucChecksum(rucConsultado)) {
+                        return;
+                    }
 
                     const seq = this.rucConsultaSeq;
-                    const rucConsultado = this.ruc;
-
-                    this.rucInfo.status = 'validating';
-                    this.rucInfo.badgeText = 'Consultando...';
+                    this.rucInfo = {
+                        status: 'validating',
+                        message: 'Consultando el padrón de SUNAT…',
+                        badgeText: 'Consultando...',
+                        tipo: ''
+                    };
 
                     try {
                         const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -1336,87 +1510,55 @@
                         });
 
                         const data = await res.json();
-                        if (seq !== this.rucConsultaSeq || this.ruc !== rucConsultado) {
+                        if (!this.consultaSigueVigente(seq, rucConsultado)) {
                             return;
                         }
 
+                        const padron = this.padronDesdeRespuesta(data);
+
                         if (data.duplicate) {
+                            if (this.respuestaTraePadron(padron)) {
+                                this.aplicarPadronSunat(padron, rucConsultado);
+                            }
                             this.rucInfo = {
                                 status: 'duplicate',
                                 message: data.message,
                                 badgeText: '⚠️ Ya Registrado',
                                 tipo: ''
                             };
-                        } else if (data.valid) {
-                            this.rucInfo.status = 'valid';
-                            this.rucInfo.badgeText = '✓ RUC Válido';
-                            this.rucInfo.message = data.message;
-
-                            const reemplazar = this.rucSincronizado !== '' && this.rucSincronizado !== rucConsultado && Boolean(data.razon_social);
-                            this.aplicarDatosSunat(data, reemplazar);
-                            if (data.razon_social) {
-                                this.rucSincronizado = rucConsultado;
-                            }
-                        } else if (data.message) {
-                            this.rucInfo.status = 'invalid';
-                            this.rucInfo.badgeText = 'RUC Inválido';
-                            this.rucInfo.message = data.message;
-                        }
-                    } catch (_) {
-                        if (seq !== this.rucConsultaSeq || this.ruc !== rucConsultado) {
                             return;
                         }
-                        this.rucInfo.status = 'valid';
-                        this.rucInfo.badgeText = '✓ RUC Válido';
-                    }
-                },
 
-                aplicarDatosSunat(data, reemplazar) {
-                    if (data.razon_social && (reemplazar || !this.razonSocial || this.razonSocial.trim() === '')) {
-                        this.razonSocial = data.razon_social;
-                        this.razonSocialAuto = true;
-                    }
-                    if (data.estado_sunat) {
-                        this.estadoContribuyente = data.estado_sunat;
-                    } else if (reemplazar) {
-                        this.estadoContribuyente = '';
-                    }
-                    if (data.condicion_sunat) {
-                        this.condicionDomicilio = data.condicion_sunat;
-                    } else if (reemplazar) {
-                        this.condicionDomicilio = '';
-                    }
-                    if (data.tipo_persona) {
-                        this.tipoContribuyente = data.tipo_persona;
-                    } else if (reemplazar) {
-                        this.tipoContribuyente = '';
-                    }
-                    if (data.direccion_sunat && (reemplazar || !this.direccionFiscal || this.direccionFiscal.trim() === '')) {
-                        this.direccionFiscal = data.direccion_sunat;
-                        this.direccionFiscalAuto = true;
-                    } else if (reemplazar) {
-                        this.direccionFiscal = '';
-                        this.direccionFiscalAuto = false;
-                    }
-                    if (data.ubigeo) {
-                        this.ubigeo = data.ubigeo;
-                    } else if (reemplazar) {
-                        this.ubigeo = '';
-                    }
-                    if (data.distrito) {
-                        this.distrito = data.distrito;
-                    } else if (reemplazar) {
-                        this.distrito = '';
-                    }
-                    if (data.provincia) {
-                        this.provincia = data.provincia;
-                    } else if (reemplazar) {
-                        this.provincia = '';
-                    }
-                    if (data.departamento) {
-                        this.departamento = data.departamento;
-                    } else if (reemplazar) {
-                        this.departamento = '';
+                        if (data.valid) {
+                            if (this.respuestaTraePadron(padron)) {
+                                this.aplicarPadronSunat(padron, rucConsultado);
+                            }
+                            this.rucInfo = {
+                                status: 'valid',
+                                message: data.message,
+                                badgeText: '✓ RUC Válido',
+                                tipo: data.tipo_persona || this.tipoPersonaDesdeRuc(rucConsultado)
+                            };
+                            return;
+                        }
+
+                        this.rucInfo = {
+                            status: 'invalid',
+                            message: data.message || 'El RUC no es válido.',
+                            badgeText: 'RUC Inválido',
+                            tipo: ''
+                        };
+                    } catch (_) {
+                        if (!this.consultaSigueVigente(seq, rucConsultado)) {
+                            return;
+                        }
+
+                        this.rucInfo = {
+                            status: 'valid',
+                            message: 'El RUC tiene formato válido. No se pudo consultar el padrón de SUNAT.',
+                            badgeText: '✓ RUC Válido',
+                            tipo: this.tipoPersonaDesdeRuc(rucConsultado)
+                        };
                     }
                 },
 

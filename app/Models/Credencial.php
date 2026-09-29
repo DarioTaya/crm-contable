@@ -11,6 +11,10 @@ class Credencial extends Model
 {
     use BelongsToEstudioViaCliente, HasFactory;
 
+    public const ENLACE_AFP = 'https://www.afpnet.com.pe/';
+
+    public const ENLACE_BN = 'https://bancaporinternet.bn.com.pe/BNWeb/Inicio';
+
     /**
      * Nombre de la tabla asociada.
      *
@@ -33,14 +37,18 @@ class Credencial extends Model
         'dni_titular',
         'cuenta_detracciones',
         'clave_detracciones',
+        'url_afp',
+        'url_bn',
         'banco_1_nombre',
         'banco_1_usuario',
         'banco_1_clave',
         'banco_1_notas',
+        'banco_1_url',
         'banco_2_nombre',
         'banco_2_usuario',
         'banco_2_clave',
         'banco_2_notas',
+        'banco_2_url',
     ];
 
     /**
@@ -82,5 +90,36 @@ class Credencial extends Model
     public function cliente(): BelongsTo
     {
         return $this->belongsTo(Cliente::class, 'cliente_id');
+    }
+
+    public function enlaceAfp(): string
+    {
+        return $this->enlaceHttp($this->url_afp) ?? self::ENLACE_AFP;
+    }
+
+    public function enlaceBn(): string
+    {
+        return $this->enlaceHttp($this->url_bn) ?? self::ENLACE_BN;
+    }
+
+    public function enlaceBanco1(): ?string
+    {
+        return $this->enlaceHttp($this->banco_1_url);
+    }
+
+    public function enlaceBanco2(): ?string
+    {
+        return $this->enlaceHttp($this->banco_2_url);
+    }
+
+    private function enlaceHttp(?string $url): ?string
+    {
+        $url = trim((string) $url);
+
+        if ($url === '' || preg_match('#\Ahttps?://#i', $url) !== 1) {
+            return null;
+        }
+
+        return $url;
     }
 }

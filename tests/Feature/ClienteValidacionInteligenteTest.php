@@ -72,6 +72,20 @@ class ClienteValidacionInteligenteTest extends TestCase
 
     public function test_validar_ruc_detects_duplicate_client_in_crm(): void
     {
+        Http::preventStrayRequests();
+        Http::fake([
+            'https://api.apis.net.pe/v1/ruc?numero=20605435191' => Http::response([
+                'nombre' => 'EMPRESA REGISTRADA S.A.C.',
+                'estado' => 'ACTIVO',
+                'condicion' => 'HABIDO',
+                'direccion' => 'AV. PRUEBA 123',
+                'ubigeo' => '150101',
+                'distrito' => 'LIMA',
+                'provincia' => 'LIMA',
+                'departamento' => 'LIMA',
+            ], 200),
+        ]);
+
         Cliente::create([
             'razon_social' => 'EMPRESA REGISTRADA S.A.C.',
             'ruc' => '20605435191',
@@ -87,8 +101,17 @@ class ClienteValidacionInteligenteTest extends TestCase
         $response->assertJson([
             'valid' => true,
             'duplicate' => true,
+            'razon_social' => 'EMPRESA REGISTRADA S.A.C.',
+            'estado_sunat' => 'ACTIVO',
+            'condicion_sunat' => 'HABIDO',
+            'direccion_sunat' => 'AV. PRUEBA 123',
+            'ubigeo' => '150101',
+            'distrito' => 'LIMA',
+            'provincia' => 'LIMA',
+            'departamento' => 'LIMA',
         ]);
         $this->assertStringContainsString('EMPRESA REGISTRADA S.A.C.', $response->json('message'));
+        Http::assertSentCount(1);
     }
 
     public function test_validar_sol_returns_success_when_credentials_are_valid(): void

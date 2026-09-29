@@ -990,7 +990,7 @@
                         <div class="px-6 py-5">
                             <div class="mb-3 flex items-center justify-between">
                                 <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-400">AFPnet</h4>
-                                <a href="https://www.afpnet.com.pe/"
+                                <a href="{{ $cliente->credencial->enlaceAfp() }}"
                                    target="_blank"
                                    rel="noopener noreferrer"
                                    class="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 hover:underline"
@@ -1045,7 +1045,7 @@
                         <div class="px-6 py-5">
                             <div class="mb-3 flex items-center justify-between">
                                 <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-400">Detracciones (Banco de la Nación)</h4>
-                                <a href="https://bancaporinternet.bn.com.pe/BNWeb/Inicio"
+                                <a href="{{ $cliente->credencial->enlaceBn() }}"
                                    target="_blank"
                                    rel="noopener noreferrer"
                                    class="inline-flex items-center gap-1 text-xs font-semibold text-red-600 hover:text-red-700 hover:underline"
@@ -1128,7 +1128,20 @@
                                         <span class="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">Configurado</span>
                                     @endif
                                 </div>
-                                <span class="text-[11px] text-gray-400 font-medium">Ej. Telecrédito BCP / Tarjeta y Clave</span>
+                                @if ($cliente->credencial->enlaceBanco1())
+                                    <a href="{{ $cliente->credencial->enlaceBanco1() }}"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       class="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 hover:underline shrink-0"
+                                       title="Abrir el enlace de este acceso en una nueva pestaña">
+                                        <span>Abrir {{ $cliente->credencial->banco_1_nombre ?: 'enlace' }} ↗</span>
+                                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                        </svg>
+                                    </a>
+                                @else
+                                    <span class="text-[11px] text-gray-400 font-medium">Ej. Telecrédito BCP / Tarjeta y Clave</span>
+                                @endif
                             </div>
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 {{-- Usuario / N° Tarjeta --}}
@@ -1206,7 +1219,20 @@
                                         <span class="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700">Configurado</span>
                                     @endif
                                 </div>
-                                <span class="text-[11px] text-gray-400 font-medium">Ej. BBVA Net Cash / Tarjeta y Clave</span>
+                                @if ($cliente->credencial->enlaceBanco2())
+                                    <a href="{{ $cliente->credencial->enlaceBanco2() }}"
+                                       target="_blank"
+                                       rel="noopener noreferrer"
+                                       class="inline-flex items-center gap-1 text-xs font-semibold text-sky-600 hover:text-sky-700 hover:underline shrink-0"
+                                       title="Abrir el enlace de este acceso en una nueva pestaña">
+                                        <span>Abrir {{ $cliente->credencial->banco_2_nombre ?: 'enlace' }} ↗</span>
+                                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                        </svg>
+                                    </a>
+                                @else
+                                    <span class="text-[11px] text-gray-400 font-medium">Ej. BBVA Net Cash / Tarjeta y Clave</span>
+                                @endif
                             </div>
                             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                                 {{-- Usuario / N° Tarjeta --}}
@@ -1391,12 +1417,23 @@
                                     <h4 class="text-xs font-bold uppercase tracking-wider text-blue-800 flex items-center gap-1.5">
                                         <span>💼</span> AFPnet
                                     </h4>
-                                    <a href="https://www.afpnet.com.pe/"
+                                    <a href="{{ $cliente->credencial?->enlaceAfp() ?? \App\Models\Credencial::ENLACE_AFP }}"
                                        target="_blank"
                                        rel="noopener noreferrer"
                                        class="text-[11px] font-semibold text-sky-600 hover:underline flex items-center gap-1">
                                         AFPnet Oficial ↗
                                     </a>
+                                </div>
+                                <div>
+                                    <label for="modal_url_afp" class="block text-xs font-semibold text-gray-700 mb-1">Enlace</label>
+                                    <input type="url"
+                                           id="modal_url_afp"
+                                           name="url_afp"
+                                           value="{{ old('url_afp', $cliente->credencial?->url_afp ?: \App\Models\Credencial::ENLACE_AFP) }}"
+                                           class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                    @error('url_afp')
+                                        <p class="mt-1 text-[11px] text-red-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
@@ -1434,12 +1471,23 @@
                                     <h4 class="text-xs font-bold uppercase tracking-wider text-red-800 flex items-center gap-1.5">
                                         <span>🏦</span> Detracciones (Banco de la Nación)
                                     </h4>
-                                    <a href="https://bancaporinternet.bn.com.pe/BNWeb/Inicio"
+                                    <a href="{{ $cliente->credencial?->enlaceBn() ?? \App\Models\Credencial::ENLACE_BN }}"
                                        target="_blank"
                                        rel="noopener noreferrer"
                                        class="text-[11px] font-semibold text-red-600 hover:underline flex items-center gap-1">
                                         BN por Internet ↗
                                     </a>
+                                </div>
+                                <div>
+                                    <label for="modal_url_bn" class="block text-xs font-semibold text-gray-700 mb-1">Enlace</label>
+                                    <input type="url"
+                                           id="modal_url_bn"
+                                           name="url_bn"
+                                           value="{{ old('url_bn', $cliente->credencial?->url_bn ?: \App\Models\Credencial::ENLACE_BN) }}"
+                                           class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                    @error('url_bn')
+                                        <p class="mt-1 text-[11px] text-red-600">{{ $message }}</p>
+                                    @enderror
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div>
@@ -1488,7 +1536,17 @@
                                     <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-900">
                                         Acceso Adicional 1 (Bancos / Libre - Ej. BCP)
                                     </h4>
-                                    <span class="text-[10px] text-gray-500 font-medium">Opcional</span>
+                                    <div class="flex items-center gap-3">
+                                        @if ($cliente->credencial?->enlaceBanco1())
+                                            <a href="{{ $cliente->credencial->enlaceBanco1() }}"
+                                               target="_blank"
+                                               rel="noopener noreferrer"
+                                               class="text-[11px] font-semibold text-sky-600 hover:underline flex items-center gap-1">
+                                                {{ $cliente->credencial->banco_1_nombre ?: 'Enlace' }} ↗
+                                            </a>
+                                        @endif
+                                        <span class="text-[10px] text-gray-500 font-medium">Opcional</span>
+                                    </div>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div class="sm:col-span-2">
@@ -1535,6 +1593,18 @@
                                                placeholder="Ej: Para descarga de movimientos bancarios y extractos"
                                                class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     </div>
+                                    <div class="sm:col-span-2">
+                                        <label for="modal_banco_1_url" class="block text-xs font-semibold text-gray-700 mb-1">Enlace</label>
+                                        <input type="url"
+                                               id="modal_banco_1_url"
+                                               name="banco_1_url"
+                                               value="{{ old('banco_1_url', $cliente->credencial?->banco_1_url) }}"
+                                               placeholder="https://"
+                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                        @error('banco_1_url')
+                                            <p class="mt-1 text-[11px] text-red-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
                                 </div>
                             </div>
 
@@ -1544,7 +1614,17 @@
                                     <h4 class="text-xs font-bold uppercase tracking-wider text-sky-900">
                                         Acceso Adicional 2 (Bancos / Libre - Ej. BBVA)
                                     </h4>
-                                    <span class="text-[10px] text-gray-500 font-medium">Opcional</span>
+                                    <div class="flex items-center gap-3">
+                                        @if ($cliente->credencial?->enlaceBanco2())
+                                            <a href="{{ $cliente->credencial->enlaceBanco2() }}"
+                                               target="_blank"
+                                               rel="noopener noreferrer"
+                                               class="text-[11px] font-semibold text-sky-600 hover:underline flex items-center gap-1">
+                                                {{ $cliente->credencial->banco_2_nombre ?: 'Enlace' }} ↗
+                                            </a>
+                                        @endif
+                                        <span class="text-[10px] text-gray-500 font-medium">Opcional</span>
+                                    </div>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div class="sm:col-span-2">
@@ -1590,6 +1670,18 @@
                                                value="{{ old('banco_2_notas', $cliente->credencial?->banco_2_notas) }}"
                                                placeholder="Ej: Token digital en celular de administración"
                                                class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <label for="modal_banco_2_url" class="block text-xs font-semibold text-gray-700 mb-1">Enlace</label>
+                                        <input type="url"
+                                               id="modal_banco_2_url"
+                                               name="banco_2_url"
+                                               value="{{ old('banco_2_url', $cliente->credencial?->banco_2_url) }}"
+                                               placeholder="https://"
+                                               class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
+                                        @error('banco_2_url')
+                                            <p class="mt-1 text-[11px] text-red-600">{{ $message }}</p>
+                                        @enderror
                                     </div>
                                 </div>
                             </div>
@@ -2531,7 +2623,7 @@
                 _sincronizandoHistorial: false,
                 alertasPendientesCount: config.alertasPendientes ?? 0,
                 modalEditarDatos: false,
-                modalEditarCredenciales: false,
+                modalEditarCredenciales: {{ $errors->hasAny(['url_afp', 'url_bn', 'banco_1_url', 'banco_2_url']) ? 'true' : 'false' }},
                 modalEstadoEstudio: false,
                 menuSunat: { abierto: false, top: 0, left: 0, url: '', nombre: '', ruc: '' },
                 _ignorarCierreSunat: false,
