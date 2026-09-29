@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Operacion extends Model
 {
@@ -93,6 +94,14 @@ class Operacion extends Model
     }
 
     /**
+     * Liquidación detallada del periodo (IGV, Renta, Crédito Fiscal, ITAN).
+     */
+    public function liquidacionPeriodo(): HasOne
+    {
+        return $this->hasOne(LiquidacionPeriodo::class, 'operacion_id');
+    }
+
+    /**
      * Copia en la operación el resumen del mes para el anillo de la matriz.
      * El detalle por tributo vive en deuda_tributarias.
      */
@@ -105,6 +114,10 @@ class Operacion extends Model
             $this->tributo_codigo = null;
             $this->es_igv_justo = false;
             $this->vencimiento_deuda = null;
+            $this->tiene_deuda = false;
+            if ($this->exists) {
+                $this->save();
+            }
 
             return;
         }
@@ -115,6 +128,9 @@ class Operacion extends Model
         $this->es_igv_justo = (bool) $referencia->es_igv_justo;
         $this->vencimiento_deuda = $referencia->vencimiento_deuda;
         $this->tiene_deuda = true;
+        if ($this->exists) {
+            $this->save();
+        }
     }
 
     /**

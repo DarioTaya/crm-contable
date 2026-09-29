@@ -42,6 +42,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/control-impuestos', [ControlMensualController::class, 'index'])->name('control.index');
     Route::get('/control', fn () => redirect()->route('control.index'));
     Route::post('/control/update', [ControlMensualController::class, 'update'])->name('control.update');
+    Route::post('/control/liquidacion', [ControlMensualController::class, 'guardarLiquidacion'])->name('control.liquidacion');
+    Route::post('/control/liquidacion/limpiar', [ControlMensualController::class, 'limpiarLiquidacion'])->name('control.liquidacion.limpiar');
     Route::post('/control/deuda', [ControlMensualController::class, 'getDeuda'])->name('control.deuda');
     Route::post('/control/calcular-igv-justo', [ControlMensualController::class, 'calcularIgvJusto'])->name('control.calcular_igv_justo');
     Route::get('/control/carga-masiva/plantilla', [CargaMasivaControlController::class, 'plantilla'])->name('control.carga_masiva.plantilla');

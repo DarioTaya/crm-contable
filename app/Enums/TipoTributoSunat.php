@@ -85,13 +85,21 @@ enum TipoTributoSunat: string
      */
     public static function rentaDelRegimen(RegimenTributario|string|null $regimen): ?self
     {
-        $valor = $regimen instanceof RegimenTributario ? $regimen->value : $regimen;
+        if ($regimen === null) {
+            return null;
+        }
 
-        return match ($valor) {
-            RegimenTributario::Mype->value => self::RentaMype,
-            RegimenTributario::Rer->value => self::RentaEspecial,
-            RegimenTributario::General->value => self::RentaGeneral,
-            default => null,
+        $valor = $regimen instanceof RegimenTributario ? $regimen->value : (string) $regimen;
+        $norm = strtoupper(trim($valor));
+        if ($norm === '') {
+            return null;
+        }
+
+        return match ($norm) {
+            'RER' => self::RentaEspecial,
+            'GENERAL', 'RG' => self::RentaGeneral,
+            'RUS', 'NRUS' => null,
+            default => self::RentaMype,
         };
     }
 

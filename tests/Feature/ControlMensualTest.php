@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Cliente;
+use App\Models\DeudaTributaria;
 use App\Models\Operacion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -450,5 +451,313 @@ class ControlMensualTest extends TestCase
         $response->assertSee('PLAME', false);
         $response->assertSee('cambiarEstadoIndividual', false);
         $response->assertSee('marcarTodoEstado', false);
+    }
+
+    public function test_guardar_liquidacion_calcula_determinacion_igv_renta_y_actualiza_deudas(): void
+    {
+        $cliente = Cliente::create([
+            'razon_social' => 'COMERCIAL LIQUIDACION SAC',
+            'ruc' => '20111222333',
+            'regimen_tributario' => 'MYPE',
+            'estado' => true,
+        ]);
+
+        $response = $this->postJson(route('control.liquidacion'), [
+            'cliente_id' => $cliente->id,
+            'periodo' => '03-2026',
+            'ventas_base' => 10000,
+            'igv_ventas' => 1800,
+            'compras_base' => 4000,
+            'igv_compras' => 720,
+            'igv_saldo_favor_anterior' => 300,
+            'igv_retenciones' => 80,
+            'igv_percepciones' => 50,
+            'renta_base_ingresos' => 10000,
+            'renta_tasa' => 1.0,
+            'renta_calculada' => 100,
+            'renta_saldo_favor_anterior' => 20,
+            'renta_compensacion_itan' => 30,
+            'renta_retenciones' => 0,
+            'notas_liquidacion' => 'Determinación de Marzo 2026 OK',
+            'actualizar_deudas' => true,
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'liquidacion' => [
+                'ventas_base' => 10000.0,
+                'igv_ventas' => 1800.0,
+                'compras_base' => 4000.0,
+                'igv_compras' => 720.0,
+                'igv_saldo_favor_anterior' => 300.0,
+                'igv_retenciones' => 80.0,
+                'igv_percepciones' => 50.0,
+                'igv_saldo_favor_siguiente' => 0.0,
+                'igv_resultante_pagar' => 650.0,
+                'renta_base_ingresos' => 10000.0,
+                'renta_tasa' => 1.0,
+                'renta_calculada' => 100.0,
+                'renta_saldo_favor_anterior' => 20.0,
+                'renta_compensacion_itan' => 30.0,
+                'renta_retenciones' => 0.0,
+                'renta_resultante_pagar' => 50.0,
+            ],
+            'tiene_deuda' => true,
+            'monto_deuda_inicial' => 700.0,
+            'saldo_pendiente' => 700.0,
+        ]);
+
+        $this->assertDatabaseHas('liquidaciones_periodo', [
+            'cliente_id' => $cliente->id,
+            'periodo' => '03-2026',
+            'igv_resultante_pagar' => 650.0,
+            'igv_saldo_favor_siguiente' => 0.0,
+            'renta_resultante_pagar' => 50.0,
+        ]);
+
+        $this->assertDatabaseHas('deuda_tributarias', [
+            'tributo_codigo' => '1011',
+            'monto_deuda_inicial' => 650.0,
+            'estudio_id' => $cliente->estudio_id,
+        ]);
+
+        $this->assertDatabaseHas('deuda_tributarias', [
+            'tributo_codigo' => '3121',
+            'monto_deuda_inicial' => 50.0,
+            'estudio_id' => $cliente->estudio_id,
+        ]);
+
+        $this->assertDatabaseHas('operaciones', [
+            'cliente_id' => $cliente->id,
+            'periodo' => '03-2026',
+            'tiene_deuda' => true,
+            'monto_deuda_inicial' => 700.0,
+            'estudio_id' => $cliente->estudio_id,
+        ]);
+
+        $deuda1011 = DeudaTributaria::where('tributo_codigo', '1011')->first();
+        $this->assertNotNull($deuda1011);
+        $this->assertNotNull($deuda1011->vencimiento_deuda, 'El vencimiento_deuda de la deuda 1011 debe persistirse.');
+
+        $deuda3121 = DeudaTributaria::where('tributo_codigo', '3121')->first();
+        $this->assertNotNull($deuda3121);
+        $this->assertNotNull($deuda3121->vencimiento_deuda, 'El vencimiento_deuda de la deuda Renta debe persistirse.');
+    }
+
+    public function test_guardar_liquidacion_con_saldo_a_favor_de_igv_no_genera_deuda_y_se_arrastra_al_mes_siguiente(): void
+    {
+        $cliente = Cliente::create([
+            'razon_social' => 'EXPORTADORA CRÉDITO SAC',
+            'ruc' => '20222333444',
+            'regimen_tributario' => 'RER',
+            'estado' => true,
+        ]);
+
+        // Enero: compras superan ventas
+        $resEnero = $this->postJson(route('control.liquidacion'), [
+            'cliente_id' => $cliente->id,
+            'periodo' => '01-2026',
+            'ventas_base' => 2000,
+            'igv_ventas' => 360,
+            'compras_base' => 5000,
+            'igv_compras' => 900,
+            'renta_base_ingresos' => 2000,
+            'renta_tasa' => 1.5,
+            'actualizar_deudas' => true,
+        ]);
+
+        $resEnero->assertOk();
+        $resEnero->assertJson([
+            'success' => true,
+            'liquidacion' => [
+                'igv_saldo_favor_siguiente' => 540.0,
+                'igv_resultante_pagar' => 0.0,
+                'renta_resultante_pagar' => 30.0,
+            ],
+        ]);
+
+        // Al consultar la sábana, Febrero (mes 2) debe recibir como saldo sugerido los 540 de Enero
+        $resIndex = $this->get(route('control.index', ['anio' => 2026]));
+        $resIndex->assertOk();
+        $matriz = $resIndex->viewData('matrizClientes');
+        $clienteRow = collect($matriz)->firstWhere('cliente.id', $cliente->id);
+        $this->assertNotNull($clienteRow);
+
+        // Mes 2 (Febrero)
+        $febrero = $clienteRow['meses'][1]; // index 1 is mes 2
+        $this->assertEquals(2, $febrero['numero']);
+        $this->assertEquals(540.0, $febrero['saldo_favor_anterior_sugerido']);
+    }
+
+    public function test_la_vista_control_renderiza_hoja_de_liquidacion_pdt621(): void
+    {
+        Cliente::create([
+            'razon_social' => 'EMPRESA VISTA LIQUIDACION SAC',
+            'ruc' => '20333444555',
+            'regimen_tributario' => 'MYPE',
+            'estado' => true,
+        ]);
+
+        $response = $this->get(route('control.index'));
+
+        $response->assertOk();
+        $response->assertSee('Hoja de Liquidación PDT 621', false);
+        $response->assertSee('Régimen Amazonía / Selva (Ley 27037)', false);
+        $response->assertSee('Ventas No Gravadas (Cas. 105)', false);
+        $response->assertSee('Saldo Favor Periodo Anterior (Casilla 145)', false);
+        $response->assertSee('Compensación ITAN (Cas. 111)', false);
+        $response->assertSee('guardarLiquidacion', false);
+        $response->assertSee('limpiarHojaLiquidacion', false);
+        $response->assertDontSee('Copiar a Tributo Renta', false);
+        $response->assertDontSee('Copiar a Tributo 1011', false);
+    }
+
+    public function test_guardar_liquidacion_cliente_selva_exonerado_de_igv_solo_determina_renta(): void
+    {
+        $cliente = Cliente::create([
+            'razon_social' => 'MADERERA IQUITOS SAC',
+            'ruc' => '20777888999',
+            'regimen_tributario' => 'MYPE',
+            'departamento' => 'LORETO',
+            'estado' => true,
+        ]);
+
+        $response = $this->postJson(route('control.liquidacion'), [
+            'cliente_id' => $cliente->id,
+            'periodo' => '04-2026',
+            'es_zona_selva' => true,
+            'ventas_base' => 15000,
+            'compras_base' => 5000,
+            'renta_tasa' => 1.0,
+            'actualizar_deudas' => true,
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'liquidacion' => [
+                'es_zona_selva' => true,
+                'ventas_base' => 15000.0,
+                'igv_ventas' => 0.0,
+                'igv_resultante_pagar' => 0.0,
+                'renta_base_ingresos' => 15000.0,
+                'renta_calculada' => 150.0,
+                'renta_resultante_pagar' => 150.0,
+            ],
+            'tiene_deuda' => true,
+            'monto_deuda_inicial' => 150.0,
+        ]);
+
+        $operacion = Operacion::where('cliente_id', $cliente->id)->where('periodo', '04-2026')->first();
+        $this->assertNotNull($operacion);
+
+        // No debe haberse creado deuda de IGV 1011
+        $this->assertDatabaseMissing('deuda_tributarias', [
+            'operacion_id' => $operacion->id,
+            'tributo_codigo' => '1011',
+        ]);
+
+        // Sí debe haberse creado la deuda de Renta 3121
+        $this->assertDatabaseHas('deuda_tributarias', [
+            'operacion_id' => $operacion->id,
+            'tributo_codigo' => '3121',
+            'monto_deuda_inicial' => 150.0,
+        ]);
+    }
+
+    public function test_guardar_liquidacion_con_ventas_no_gravadas_acumula_a_base_de_renta(): void
+    {
+        $cliente = Cliente::create([
+            'razon_social' => 'AGROINDUSTRIAS MIXTAS SAC',
+            'ruc' => '20888999111',
+            'regimen_tributario' => 'MYPE',
+            'estado' => true,
+        ]);
+
+        $response = $this->postJson(route('control.liquidacion'), [
+            'cliente_id' => $cliente->id,
+            'periodo' => '05-2026',
+            'ventas_base' => 10000, // Gravadas IGV 18%
+            'ventas_no_gravadas' => 4000, // No gravadas IGV
+            'compras_base' => 2000,
+            'renta_tasa' => 1.0,
+            'actualizar_deudas' => true,
+        ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'success' => true,
+            'liquidacion' => [
+                'ventas_base' => 10000.0,
+                'ventas_no_gravadas' => 4000.0,
+                'igv_ventas' => 1800.0,
+                'igv_resultante_pagar' => 1440.0, // 1800 - 360 compras
+                'renta_base_ingresos' => 14000.0, // 10000 + 4000
+                'renta_resultante_pagar' => 140.0,
+            ],
+        ]);
+    }
+
+    public function test_limpiar_liquidacion_restablece_hoja_y_elimina_deudas_pdt621_sin_abonos(): void
+    {
+        $cliente = Cliente::create([
+            'razon_social' => 'SERVICIOS LIMPIEZA SAC',
+            'ruc' => '20999000111',
+            'regimen_tributario' => 'RER',
+            'estado' => true,
+        ]);
+
+        // 1. Guardamos una liquidación con deuda de IGV y Renta
+        $this->postJson(route('control.liquidacion'), [
+            'cliente_id' => $cliente->id,
+            'periodo' => '06-2026',
+            'ventas_base' => 5000,
+            'renta_tasa' => 1.5,
+            'actualizar_deudas' => true,
+        ])->assertOk();
+
+        $operacion = Operacion::where('cliente_id', $cliente->id)->where('periodo', '06-2026')->first();
+        $this->assertNotNull($operacion);
+
+        $this->assertDatabaseHas('liquidaciones_periodo', [
+            'cliente_id' => $cliente->id,
+            'periodo' => '06-2026',
+        ]);
+        $this->assertDatabaseHas('deuda_tributarias', [
+            'operacion_id' => $operacion->id,
+            'tributo_codigo' => '1011',
+        ]);
+
+        // 2. Ejecutamos limpiar liquidación
+        $responseLimpiar = $this->postJson(route('control.liquidacion.limpiar'), [
+            'cliente_id' => $cliente->id,
+            'periodo' => '06-2026',
+        ]);
+
+        $responseLimpiar->assertOk();
+        $responseLimpiar->assertJson([
+            'success' => true,
+            'liquidacion' => null,
+            'tiene_deuda' => false,
+            'monto_deuda_inicial' => 0.0,
+            'saldo_pendiente' => 0.0,
+        ]);
+
+        // La liquidación debe haber sido eliminada de la base de datos
+        $this->assertDatabaseMissing('liquidaciones_periodo', [
+            'cliente_id' => $cliente->id,
+            'periodo' => '06-2026',
+        ]);
+
+        // Las deudas PDT 621 sin abonos deben haber sido eliminadas
+        $this->assertDatabaseMissing('deuda_tributarias', [
+            'operacion_id' => $operacion->id,
+            'tributo_codigo' => '1011',
+        ]);
+        $this->assertDatabaseMissing('deuda_tributarias', [
+            'operacion_id' => $operacion->id,
+            'tributo_codigo' => '3111',
+        ]);
     }
 }
