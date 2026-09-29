@@ -9,6 +9,7 @@ use App\Models\CronogramaSunat;
 use App\Services\CronogramaSunatService;
 use App\Services\TipoCambioSunatService;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -49,9 +50,11 @@ class DashboardController extends Controller
         $nombreMesActual = ucfirst($fechaPeriodo->locale('es')->isoFormat('MMMM [de] YYYY'));
         $mesVencimientoNombre = ucfirst(now()->locale('es')->isoFormat('MMMM [de] YYYY'));
 
-        // Cargar clientes activos con su operación del mes actual
+        $periodosExigibles = $this->periodosDeclaracionExigible($periodoActual);
+
+        // Cargar clientes activos con las declaraciones ya exigibles del ejercicio.
         $clientesActivos = Cliente::where('estado', 'activo')
-            ->with(['operaciones' => fn ($query) => $query->where('periodo', $periodoActual)])
+            ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $periodosExigibles)])
             ->get();
 
         $totalObligaciones = $clientesActivos->count(); // 1 obligación DJ unificada por cliente/mes
@@ -60,16 +63,14 @@ class DashboardController extends Controller
         $procesando = 0;
         $pendientes = 0;
 
-        $alertasVencimiento = [];
-
         foreach ($clientesActivos as $cliente) {
-            $operacion = $cliente->operaciones->first();
+            $operacion = $cliente->operaciones->firstWhere('periodo', $periodoActual);
 
-            $sire = $operacion->estado_compras_ventas ?? 'Pendiente';
-            $pdt = $operacion->estado_pdt621 ?? 'Pendiente';
-            $ple = $operacion->estado_ple ?? 'Pendiente';
+            $sire = $operacion?->estado_compras_ventas ?? 'Pendiente';
+            $pdt = $operacion?->estado_pdt621 ?? 'Pendiente';
+            $ple = $operacion?->estado_ple ?? 'Pendiente';
 
-            // Conteo unificado: 1 mes = 1 DJ (estadoMaestro)
+            // Conteo unificado del periodo en curso: 1 mes = 1 DJ (estadoMaestro)
             if ($sire === 'Declarado' && $pdt === 'Declarado' && $ple === 'Declarado') {
                 $declarados++;
             } elseif ($sire === 'Procesando' || $pdt === 'Procesando' || $ple === 'Procesando'
@@ -78,71 +79,9 @@ class DashboardController extends Controller
             } else {
                 $pendientes++;
             }
-
-            // Detalle individual para alertas de vencimiento (útil para saber cuál falta)
-            $faltantes = [];
-            if ($sire !== 'Declarado') {
-                $faltantes[] = ['nombre' => 'SIRE', 'estado' => $sire];
-            }
-            if ($pdt !== 'Declarado') {
-                $faltantes[] = ['nombre' => 'PDT 621', 'estado' => $pdt];
-            }
-            if ($ple !== 'Declarado') {
-                $faltantes[] = ['nombre' => 'PDT 601', 'estado' => $ple];
-            }
-
-            if (! empty($faltantes)) {
-                $ultimoDigito = substr($cliente->ruc, -1);
-                $fechaVencimientoPdt = $this->cronogramaService->obtenerFechaVencimiento('pdt_621', $periodoActual, $cliente);
-                $fechaVencimientoSire = $this->cronogramaService->obtenerFechaVencimiento('sire', $periodoActual, $cliente);
-
-                // Determinar fecha crítica según lo que falte
-                $fechaCritica = ($sire !== 'Declarado' && $fechaVencimientoSire) ? $fechaVencimientoSire : $fechaVencimientoPdt;
-                $estadoCritico = $this->cronogramaService->calcularEstadoVencimiento($fechaCritica);
-
-                $alertasVencimiento[] = [
-                    'cliente' => $cliente,
-                    'ultimo_digito' => (int) $ultimoDigito,
-                    'ultimo_digito_str' => $ultimoDigito,
-                    'faltantes' => $faltantes,
-                    'total_faltantes' => count($faltantes),
-                    'fecha_pdt' => $fechaVencimientoPdt,
-                    'fecha_sire' => $fechaVencimientoSire,
-                    'fecha_critica' => $fechaCritica,
-                    'estado_critico' => $estadoCritico,
-                ];
-            }
         }
 
-        // Ordenar con inteligencia de negocio:
-        // 1. Vence Hoy y Vencidos primero (urgencia fiscal crítica)
-        // 2. Por fecha crítica más próxima
-        // 3. Por último dígito del RUC (0 al 9)
-        usort($alertasVencimiento, function ($a, $b) {
-            $prioridad = [
-                'hoy' => 1,
-                'vencido' => 2,
-                'proximo' => 3,
-                'al_dia' => 4,
-                'sin_cronograma' => 5,
-            ];
-
-            $pesoA = $prioridad[$a['estado_critico']['estado']] ?? 9;
-            $pesoB = $prioridad[$b['estado_critico']['estado']] ?? 9;
-
-            if ($pesoA !== $pesoB) {
-                return $pesoA <=> $pesoB;
-            }
-
-            if ($a['fecha_critica'] && $b['fecha_critica']) {
-                $compFecha = $a['fecha_critica']->timestamp <=> $b['fecha_critica']->timestamp;
-                if ($compFecha !== 0) {
-                    return $compFecha;
-                }
-            }
-
-            return $a['ultimo_digito'] <=> $b['ultimo_digito'];
-        });
+        $alertasVencimiento = $this->alertasVencimientoImpuestos($clientesActivos, $periodosExigibles);
 
         $porcentajeAvance = $totalObligaciones > 0 ? (int) round(($declarados / $totalObligaciones) * 100) : 0;
 
@@ -185,6 +124,222 @@ class DashboardController extends Controller
             'radarVencimientos',
             'tipoCambio',
         ));
+    }
+
+    /**
+     * Meses del ejercicio que ya se declaran, desde enero hasta el periodo en curso.
+     *
+     * En setiembre el periodo en curso es agosto. Setiembre y los meses
+     * posteriores siguen en blanco en la matriz, pero todavía no vencen.
+     *
+     * @return list<string>
+     */
+    private function periodosDeclaracionExigible(string $periodoActual): array
+    {
+        [$mesTexto, $anioTexto] = explode('-', $periodoActual);
+        $hasta = (int) $mesTexto;
+        $anio = (int) $anioTexto;
+        $periodos = [];
+
+        for ($mes = 1; $mes <= $hasta; $mes++) {
+            $periodos[] = sprintf('%02d-%d', $mes, $anio);
+        }
+
+        return $periodos;
+    }
+
+    /**
+     * Clientes activos con meses de impuestos que el control todavía no marca como Declarado.
+     *
+     * Un mes entra si falta SIRE, PDT 621 o PDT 601, igual que el botón de la matriz.
+     * El orden prioriza lo vencido y, en empate, el último dígito del RUC.
+     *
+     * @param  Collection<int, Cliente>  $clientes
+     * @param  list<string>  $periodos
+     * @return list<array{
+     *     cliente: Cliente,
+     *     ultimo_digito: int,
+     *     ultimo_digito_str: string,
+     *     faltantes: list<array{nombre: string, estado: string}>,
+     *     total_faltantes: int,
+     *     meses: list<array<string, mixed>>,
+     *     anio: int,
+     *     fecha_critica: Carbon|null,
+     *     estado_critico: array<string, mixed>
+     * }>
+     */
+    private function alertasVencimientoImpuestos(Collection $clientes, array $periodos): array
+    {
+        $cronogramas = CronogramaSunat::query()
+            ->whereIn('tipo', ['pdt_621', 'sire'])
+            ->whereIn('periodo', $periodos)
+            ->get()
+            ->groupBy(fn (CronogramaSunat $cronograma): string => $cronograma->tipo.'|'.$cronograma->periodo);
+
+        $alertas = [];
+
+        foreach ($clientes as $cliente) {
+            $operaciones = $cliente->operaciones->keyBy('periodo');
+            $meses = [];
+
+            foreach ($periodos as $periodo) {
+                if (! $cliente->rindeEnPeriodo($periodo)) {
+                    continue;
+                }
+
+                $operacion = $operaciones->get($periodo);
+                $sire = $operacion?->estado_compras_ventas ?? 'Pendiente';
+                $pdt = $operacion?->estado_pdt621 ?? 'Pendiente';
+                $ple = $operacion?->estado_ple ?? 'Pendiente';
+                $estado = $this->estadoDeclaracionMaestro($sire, $pdt, $ple);
+
+                if ($estado === 'Declarado') {
+                    continue;
+                }
+
+                [$mesTexto, $anioTexto] = explode('-', $periodo);
+                $mes = (int) $mesTexto;
+                $anio = (int) $anioTexto;
+                $fechaPdt = $this->fechaCronogramaCliente($cronogramas->get('pdt_621|'.$periodo)?->first(), $cliente);
+                $fechaSire = $this->fechaCronogramaCliente($cronogramas->get('sire|'.$periodo)?->first(), $cliente);
+                $fechaCritica = ($sire !== 'Declarado' && $fechaSire) ? $fechaSire : $fechaPdt;
+
+                $meses[] = [
+                    'periodo' => $periodo,
+                    'anio' => $anio,
+                    'mes' => $mes,
+                    'nombre' => $this->nombreMesDeclaracion($anio, $mes),
+                    'estado' => $estado,
+                    'sire' => $sire,
+                    'pdt' => $pdt,
+                    'ple' => $ple,
+                    'fecha' => $fechaCritica,
+                    'estado_critico' => $this->cronogramaService->calcularEstadoVencimiento($fechaCritica),
+                ];
+            }
+
+            if ($meses === []) {
+                continue;
+            }
+
+            $porUrgencia = $meses;
+            usort($porUrgencia, fn (array $a, array $b): int => $this->compararUrgenciaBalance($a, $b));
+
+            $ultimoDigito = substr((string) $cliente->ruc, -1);
+            $faltantes = $this->obligacionesFaltantes($meses);
+
+            $alertas[] = [
+                'cliente' => $cliente,
+                'ultimo_digito' => (int) $ultimoDigito,
+                'ultimo_digito_str' => $ultimoDigito,
+                'faltantes' => $faltantes,
+                'total_faltantes' => count($faltantes),
+                'meses' => $meses,
+                'anio' => $meses[0]['anio'],
+                'fecha_critica' => $porUrgencia[0]['fecha'],
+                'estado_critico' => $porUrgencia[0]['estado_critico'],
+            ];
+        }
+
+        usort($alertas, function (array $a, array $b): int {
+            $prioridad = [
+                'hoy' => 1,
+                'vencido' => 2,
+                'proximo' => 3,
+                'al_dia' => 4,
+                'sin_cronograma' => 5,
+            ];
+
+            $pesoA = $prioridad[$a['estado_critico']['estado']] ?? 9;
+            $pesoB = $prioridad[$b['estado_critico']['estado']] ?? 9;
+
+            if ($pesoA !== $pesoB) {
+                return $pesoA <=> $pesoB;
+            }
+
+            if ($a['fecha_critica'] && $b['fecha_critica']) {
+                $compFecha = $a['fecha_critica']->timestamp <=> $b['fecha_critica']->timestamp;
+                if ($compFecha !== 0) {
+                    return $compFecha;
+                }
+            }
+
+            return $a['ultimo_digito'] <=> $b['ultimo_digito'];
+        });
+
+        return $alertas;
+    }
+
+    /**
+     * Mismo criterio que la matriz de control: verde solo cuando las tres DJ están declaradas.
+     */
+    private function estadoDeclaracionMaestro(string $sire, string $pdt, string $ple): string
+    {
+        if ($sire === 'Declarado' && $pdt === 'Declarado' && $ple === 'Declarado') {
+            return 'Declarado';
+        }
+
+        if ($sire === 'Procesando' || $pdt === 'Procesando' || $ple === 'Procesando'
+            || $sire === 'Declarado' || $pdt === 'Declarado' || $ple === 'Declarado') {
+            return 'Procesando';
+        }
+
+        return 'Pendiente';
+    }
+
+    /**
+     * Obligaciones que siguen abiertas en alguno de los meses listados.
+     *
+     * @param  list<array{sire: string, pdt: string, ple: string}>  $meses
+     * @return list<array{nombre: string, estado: string}>
+     */
+    private function obligacionesFaltantes(array $meses): array
+    {
+        $mapa = [
+            'SIRE' => 'sire',
+            'PDT 621' => 'pdt',
+            'PDT 601' => 'ple',
+        ];
+
+        $faltantes = [];
+
+        foreach ($mapa as $nombre => $clave) {
+            $pendientes = array_values(array_filter(
+                array_column($meses, $clave),
+                fn (string $estado): bool => $estado !== 'Declarado'
+            ));
+
+            if ($pendientes === []) {
+                continue;
+            }
+
+            $faltantes[] = [
+                'nombre' => $nombre,
+                'estado' => in_array('Pendiente', $pendientes, true) ? 'Pendiente' : 'Procesando',
+            ];
+        }
+
+        return $faltantes;
+    }
+
+    private function fechaCronogramaCliente(?CronogramaSunat $cronograma, Cliente $cliente): ?Carbon
+    {
+        if (! $cronograma instanceof CronogramaSunat) {
+            return null;
+        }
+
+        if ($cronograma->fecha_vencimiento_general) {
+            return $cronograma->fecha_vencimiento_general;
+        }
+
+        return $cronograma->getFechaPorDigito((string) $cliente->ruc, (bool) $cliente->es_buen_contribuyente);
+    }
+
+    private function nombreMesDeclaracion(int $anio, int $mes): string
+    {
+        $nombre = ucfirst(Carbon::createFromDate($anio, $mes, 1)->locale('es')->isoFormat('MMMM YYYY'));
+
+        return str_replace(['Septiembre', 'septiembre'], ['Setiembre', 'setiembre'], $nombre);
     }
 
     /**

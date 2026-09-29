@@ -343,7 +343,7 @@
                         </span>
                     </div>
                     <p class="text-xs text-gray-500 mt-0.5">
-                        Período tributario <strong>{{ $nombreMesActual }}</strong> (vencimientos en {{ $mesVencimientoNombre }} según cronograma oficial SUNAT).
+                        Meses por declarar hasta <strong>{{ $nombreMesActual }}</strong>, con el mismo criterio del control de impuestos.
                     </p>
                 </div>
 
@@ -368,7 +368,7 @@
                     </div>
                     <h4 class="text-base font-bold text-gray-900">¡Todo al día!</h4>
                     <p class="mt-1 text-sm text-gray-500 max-w-sm">
-                        Todos los clientes activos han completado sus declaraciones de SIRE, PDT 621 y PLAME correspondientes a este mes.
+                        Todos los clientes activos tienen declarados SIRE, PDT 621 y PDT 601 en los meses que ya corresponde declarar.
                     </p>
                 </div>
             @else
@@ -404,24 +404,21 @@
                                         <span>RUC: {{ substr($item['cliente']->ruc, 0, -1) }}<strong class="text-blue-700 font-extrabold underline decoration-blue-400 decoration-2">{{ $item['ultimo_digito_str'] }}</strong></span>
                                     </div>
 
-                                    {{-- Vencimientos Oficiales SUNAT por Dígito --}}
-                                    <div class="mt-2 flex flex-wrap items-center gap-2">
-                                        {{-- Semáforo Dinámico según Cronograma --}}
-                                        <span class="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold {{ $item['estado_critico']['badge_clase'] }}">
-                                            {{ $item['estado_critico']['badge_texto'] }}
-                                        </span>
-
-                                        @if ($item['fecha_sire'])
-                                            <span class="inline-flex items-center rounded-md bg-purple-50 border border-purple-200 px-2 py-0.5 text-[10px] font-semibold text-purple-700" title="SIRE vence 1 día hábil antes del PDT">
-                                                SIRE: {{ $item['fecha_sire']->format('d/m') }}
-                                            </span>
-                                        @endif
-
-                                        @if ($item['fecha_pdt'])
-                                            <span class="inline-flex items-center rounded-md bg-gray-50 border border-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-600">
-                                                PDT 621: {{ $item['fecha_pdt']->format('d/m') }}
-                                            </span>
-                                        @endif
+                                    {{-- Meses que el control de impuestos todavía no tiene en Declarado --}}
+                                    <div class="mt-2 flex flex-wrap items-center gap-1.5">
+                                        @foreach ($item['meses'] as $mesImpuesto)
+                                            @if ($mesImpuesto['estado'] === 'Procesando')
+                                                <span class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                                    {{ $mesImpuesto['nombre'] }} (En proceso)
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                                                    {{ $mesImpuesto['nombre'] }}
+                                                </span>
+                                            @endif
+                                        @endforeach
                                     </div>
 
                                     {{-- Etiquetas de obligaciones faltantes --}}
@@ -444,9 +441,8 @@
                                 </div>
                             </div>
 
-                            {{-- Botón de Acción Rápida (Directo a Operaciones) --}}
                             <div class="shrink-0 flex items-center justify-end sm:self-center">
-                                <a href="{{ route('clientes.operaciones', $item['cliente']) }}"
+                                <a href="{{ route('control.index', ['anio' => $item['anio']]) }}"
                                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-xs transition hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     <span>Declarar</span>
                                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

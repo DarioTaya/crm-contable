@@ -63,7 +63,9 @@ class DashboardTest extends TestCase
             'estado' => 'Leído',
         ]);
 
-        // 3. Operación del mes actual
+        // 3. Meses anteriores ya declarados; el mes en curso sigue abierto
+        $this->declararMesesAnteriores($activo);
+
         $periodo = now()->format('m-Y');
         Operacion::create([
             'cliente_id' => $activo->id,
@@ -174,6 +176,7 @@ class DashboardTest extends TestCase
             'estado_pdt621' => 'Declarado',
             'estado_ple' => 'Declarado',
         ]);
+        $this->declararMesesAnteriores($cAlDia);
 
         $response = $this->get(route('dashboard'));
 
@@ -194,6 +197,95 @@ class DashboardTest extends TestCase
 
         $this->assertEquals(8, $alertas[2]['ultimo_digito']);
         $this->assertEquals('CLIENTE OCHO SAC', $alertas[2]['cliente']->razon_social);
+    }
+
+    public function test_dashboard_tax_alerts_list_open_months_and_link_to_tax_control(): void
+    {
+        $this->seed(CronogramaSunatSeeder::class);
+
+        $pendiente = Cliente::create([
+            'razon_social' => 'MESES PENDIENTES SAC',
+            'ruc' => '20111111111',
+            'regimen_tributario' => 'RUS',
+            'estado' => true,
+        ]);
+
+        foreach ([1, 3, 4, 5, 6, 7] as $mes) {
+            Operacion::create([
+                'cliente_id' => $pendiente->id,
+                'periodo' => sprintf('%02d-2026', $mes),
+                'estado_compras_ventas' => 'Declarado',
+                'estado_pdt621' => 'Declarado',
+                'estado_ple' => 'Declarado',
+            ]);
+        }
+
+        Operacion::create([
+            'cliente_id' => $pendiente->id,
+            'periodo' => '08-2026',
+            'estado_compras_ventas' => 'Declarado',
+            'estado_pdt621' => 'Procesando',
+            'estado_ple' => 'Declarado',
+        ]);
+
+        $alDia = Cliente::create([
+            'razon_social' => 'IMPUESTOS AL DIA SAC',
+            'ruc' => '20222222222',
+            'regimen_tributario' => 'RUS',
+            'estado' => true,
+        ]);
+
+        foreach (range(1, 8) as $mes) {
+            Operacion::create([
+                'cliente_id' => $alDia->id,
+                'periodo' => sprintf('%02d-2026', $mes),
+                'estado_compras_ventas' => 'Declarado',
+                'estado_pdt621' => 'Declarado',
+                'estado_ple' => 'Declarado',
+            ]);
+        }
+
+        Operacion::create([
+            'cliente_id' => $alDia->id,
+            'periodo' => '09-2026',
+            'estado_compras_ventas' => 'Pendiente',
+            'estado_pdt621' => 'Pendiente',
+            'estado_ple' => 'Pendiente',
+        ]);
+
+        $this->travelTo(Carbon::parse('2026-09-29 10:00:00', 'America/Lima'), function () use ($pendiente) {
+            $response = $this->actingAs($this->usuarioDelEstudio('Sebastian'))
+                ->get(route('dashboard'));
+
+            $response->assertOk();
+            $response->assertSee('MESES PENDIENTES SAC');
+            $response->assertSee('Febrero 2026');
+            $response->assertSee('Agosto 2026 (En proceso)');
+            $response->assertSee('Falta:');
+            $response->assertSee('SIRE');
+            $response->assertSee('PDT 621');
+            $response->assertSee('PDT 601');
+            $response->assertSee(route('control.index', ['anio' => 2026]), false);
+            $response->assertDontSee(route('clientes.operaciones', $pendiente), false);
+            $response->assertDontSee('IMPUESTOS AL DIA SAC');
+            $response->assertDontSee('SIRE:');
+            $response->assertDontSee('PDT 621:');
+            $response->assertDontSee('Enero 2026');
+            $response->assertDontSee('Setiembre 2026');
+
+            $alerta = collect($response->viewData('alertasVencimiento'))
+                ->first(fn (array $item): bool => $item['cliente']->razon_social === 'MESES PENDIENTES SAC');
+
+            $this->assertSame([2, 8], array_column($alerta['meses'], 'mes'));
+            $this->assertSame(['Febrero 2026', 'Agosto 2026'], array_column($alerta['meses'], 'nombre'));
+            $this->assertSame('Pendiente', $alerta['meses'][0]['estado']);
+            $this->assertSame('Procesando', $alerta['meses'][1]['estado']);
+            $this->assertSame(2026, $alerta['anio']);
+            $this->assertSame(
+                ['SIRE', 'PDT 621', 'PDT 601'],
+                collect($alerta['faltantes'])->pluck('nombre')->all()
+            );
+        });
     }
 
     public function test_clientes_index_renders_quick_actions_toolbar_and_sidebar_is_clean(): void
@@ -599,6 +691,22 @@ class DashboardTest extends TestCase
             $response->assertDontSee('opacity-50', false);
             $response->assertSee('ring-emerald-500', false);
         });
+    }
+
+    private function declararMesesAnteriores(Cliente $cliente): void
+    {
+        $mesActual = (int) now()->format('n');
+        $anio = now()->format('Y');
+
+        for ($mes = 1; $mes < $mesActual; $mes++) {
+            Operacion::create([
+                'cliente_id' => $cliente->id,
+                'periodo' => sprintf('%02d-%s', $mes, $anio),
+                'estado_compras_ventas' => 'Declarado',
+                'estado_pdt621' => 'Declarado',
+                'estado_ple' => 'Declarado',
+            ]);
+        }
     }
 
     private function usuarioDelEstudio(string $nombre, string $rol = 'admin'): User
