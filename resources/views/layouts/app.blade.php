@@ -25,7 +25,7 @@
 
             const soloEncuadre = panel._soloEncuadre === true;
             const margen = 16;
-            const separacion = 10;
+            const separacion = panel.dataset.separacion ? parseInt(panel.dataset.separacion, 10) : 10;
             const rect = ancla.getBoundingClientRect();
             const maxAlto = window.innerHeight - (margen * 2);
 
@@ -173,6 +173,7 @@
             @php
                 $currentEstudio = auth()->user()?->estudio;
                 $estudioLogoUrl = $currentEstudio?->logoUrl();
+                $estudioIsotipoUrl = $currentEstudio?->isotipoUrl();
                 $estudioNombre = $currentEstudio ? $currentEstudio->nombreParaMostrar() : 'CRM Contable';
                 $estudioSubtitulo = $currentEstudio?->slogan ?: ($currentEstudio?->nombre_comercial ? $currentEstudio->nombre : 'Estudio Contable');
                 $estudioDisplay = $currentEstudio?->sidebar_display ?? 'logo_nombre';
@@ -184,29 +185,41 @@
                  :class="sidebarCollapsed ? 'justify-center' : 'justify-between'">
                 <a href="{{ route('dashboard') }}"
                    title="{{ $estudioNombre }} - Ir al Dashboard"
-                   class="group flex items-center gap-3 min-w-0 hover:opacity-90 transition rounded-lg p-1 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
-                    {{-- Logo o Iniciales Monograma --}}
-                    @if ($estudioDisplay !== 'nombre_solo' && $estudioLogoUrl)
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 p-1 shadow-md overflow-hidden border border-white/15">
-                            <img src="{{ $estudioLogoUrl }}" alt="{{ $estudioNombre }}" class="h-full w-full object-contain rounded">
-                        </div>
-                    @else
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white font-black text-sm shadow-md tracking-wider">
-                            {{ $estudioIniciales }}
-                        </div>
-                    @endif
+                   class="group flex items-center min-w-0 hover:opacity-90 transition rounded-lg p-1 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
 
-                    {{-- Texto: Nombre y Subtítulo / Slogan --}}
-                    @if ($estudioDisplay !== 'logo_solo')
-                        <div x-show="!sidebarCollapsed" class="truncate min-w-0 text-left">
-                            <span class="block text-sm font-bold text-white leading-tight truncate group-hover:text-brand-300 transition">
-                                {{ $estudioNombre }}
-                            </span>
-                            <span class="block text-[11px] text-gray-400 truncate">
-                                {{ \Illuminate\Support\Str::limit($estudioSubtitulo, 24) }}
-                            </span>
-                        </div>
-                    @endif
+                    {{-- Vista 1: Barra Lateral Extendida (Muestra el Logotipo Completo o Nombre) --}}
+                    <div x-show="!sidebarCollapsed" class="flex items-center gap-2.5 min-w-0">
+                        @if ($estudioDisplay !== 'nombre_solo' && $estudioLogoUrl)
+                            <div class="flex h-10 max-h-10 items-center">
+                                <img src="{{ $estudioLogoUrl }}" alt="{{ $estudioNombre }}" class="max-h-10 w-auto max-w-[170px] object-contain">
+                            </div>
+                        @else
+                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white font-black text-sm shadow-md tracking-wider">
+                                {{ $estudioIniciales }}
+                            </div>
+                            <div class="truncate min-w-0 text-left">
+                                <span class="block text-sm font-bold text-white leading-tight truncate group-hover:text-brand-300 transition">
+                                    {{ $estudioNombre }}
+                                </span>
+                                <span class="block text-[11px] text-gray-400 truncate">
+                                    {{ \Illuminate\Support\Str::limit($estudioSubtitulo, 24) }}
+                                </span>
+                            </div>
+                        @endif
+                    </div>
+
+                    {{-- Vista 2: Barra Lateral Contraída / Encogida (Muestra únicamente el Isotipo o Monograma) --}}
+                    <div x-show="sidebarCollapsed" class="flex items-center justify-center">
+                        @if ($estudioDisplay !== 'nombre_solo' && $estudioIsotipoUrl)
+                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 p-1 shadow-md overflow-hidden border border-white/15">
+                                <img src="{{ $estudioIsotipoUrl }}" alt="{{ $estudioNombre }}" class="h-full w-full object-contain rounded">
+                            </div>
+                        @else
+                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white font-black text-sm shadow-md tracking-wider">
+                                {{ $estudioIniciales }}
+                            </div>
+                        @endif
+                    </div>
                 </a>
 
                 {{-- Botón Toggle de la Barra Lateral --}}
@@ -385,16 +398,14 @@
                          x-show="menuConfigOpen"
                          x-cloak
                          data-menu-flotante
+                         data-separacion="16"
                          @click.outside="if (!$el._clicInicioDentro) menuConfigOpen = false"
                          class="fixed z-50 w-64 rounded-2xl border border-slate-700/80 bg-slate-900 p-2 shadow-2xl text-xs space-y-1 ring-1 ring-white/10"
                          style="display: none;">
 
-                        {{-- Pico / Flecha tipo Caja de Mensaje (Estilo Bitrix24) apuntando al botón Configuración --}}
-                        <div class="pointer-events-none absolute -bottom-2 left-[20px] z-20">
-                            <svg class="h-2 w-4" viewBox="0 0 16 8" fill="none">
-                                <path d="M0 0L8 8L16 0H0Z" fill="#0f172a" stroke="#334155" stroke-width="1"/>
-                                <rect x="0" y="-1" width="16" height="2" fill="#0f172a" />
-                            </svg>
+                        {{-- Pico estilo bocadillo apuntando hacia abajo hacia el botón Configuración --}}
+                        <div class="pointer-events-none absolute -bottom-2 left-7 z-20">
+                            <div class="h-3.5 w-3.5 rotate-45 transform bg-slate-900 border-r border-b border-slate-700/80"></div>
                         </div>
 
                         {{-- Item 1: Cronograma SUNAT --}}
@@ -459,8 +470,9 @@
 
                             <div class="relative shrink-0">
                                 <div class="flex h-8 w-8 items-center justify-center rounded-lg font-bold text-xs text-white shadow-xs transition-transform group-hover:scale-105
-                                            {{ auth()->user()->isAdmin() ? 'bg-gradient-to-tr from-purple-600 to-indigo-600' : 'bg-gradient-to-tr from-brand-600 to-blue-500' }}">
-                                    {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
+                                            {{ auth()->user()->isAdmin() ? 'bg-gradient-to-tr from-purple-600 to-indigo-600' : 'bg-gradient-to-tr from-brand-600 to-blue-500' }}"
+                                     style="{{ auth()->user()->isAdmin() ? 'background-color: #9333ea; color: #ffffff;' : 'background-color: #2563eb; color: #ffffff;' }}">
+                                    {{ auth()->user()->iniciales() }}
                                 </div>
                             </div>
 
@@ -505,11 +517,13 @@
                 @yield('content')
             </div>
 
-            {{-- Footer sutil de aplicación --}}
-            <footer class="mt-auto px-8 py-3 text-xs text-gray-400 border-t border-gray-200/50 flex items-center justify-between no-print">
-                <span class="truncate">{{ $estudioNombre }} &copy; {{ date('Y') }}</span>
-                <span class="font-mono text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded">v1.0</span>
-            </footer>
+            {{-- Footer sutil de aplicación: visible únicamente en la página de Ajustes del Sistema --}}
+            @if (request()->routeIs('ajustes.*'))
+                <footer class="mt-auto px-8 py-3 text-xs text-gray-400 border-t border-gray-200/50 flex items-center justify-between no-print">
+                    <span class="truncate">{{ $estudioNombre }} &copy; {{ date('Y') }}</span>
+                    <span class="font-mono text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded">v1.0</span>
+                </footer>
+            @endif
         </main>
     </div>
 </body>

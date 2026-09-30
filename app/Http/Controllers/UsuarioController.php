@@ -63,6 +63,7 @@ class UsuarioController extends Controller
             'email' => $validated['email'],
             'telefono' => $validated['telefono'] ?? null,
             'password' => Hash::make($validated['password']),
+            'password_plain' => $validated['password'],
             'rol' => $validated['rol'],
             'activo' => true,
         ]);
@@ -152,6 +153,7 @@ class UsuarioController extends Controller
 
         if (! empty($validated['password'])) {
             $data['password'] = Hash::make($validated['password']);
+            $data['password_plain'] = $validated['password'];
         }
 
         $usuario->update($data);

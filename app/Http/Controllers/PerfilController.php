@@ -56,6 +56,7 @@ class PerfilController extends Controller
         $user = Auth::user();
         $user->update([
             'password' => Hash::make($validated['password']),
+            'password_plain' => $validated['password'],
         ]);
 
         return redirect()->route('perfil.edit')->with('success', 'Tu contraseña ha sido modificada correctamente.');

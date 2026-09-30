@@ -24,6 +24,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'password_plain',
         'rol',
         'activo',
         'telefono',
@@ -49,6 +50,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'password_plain' => 'encrypted',
             'activo' => 'boolean',
         ];
     }
@@ -83,5 +85,24 @@ class User extends Authenticatable
     public function isAsistente(): bool
     {
         return $this->rol === 'asistente';
+    }
+
+    /**
+     * Obtiene las iniciales del usuario (ej. 'ST' para Sebastián Taya, 'MS' para Maria Soledad).
+     */
+    public function iniciales(): string
+    {
+        $nombre = trim($this->name ?? '');
+        if ($nombre === '') {
+            return 'US';
+        }
+
+        $palabras = array_values(array_filter(preg_split('/\s+/', $nombre)));
+
+        if (count($palabras) >= 2) {
+            return mb_strtoupper(mb_substr($palabras[0], 0, 1).mb_substr($palabras[1], 0, 1));
+        }
+
+        return mb_strtoupper(mb_substr($nombre, 0, 2));
     }
 }

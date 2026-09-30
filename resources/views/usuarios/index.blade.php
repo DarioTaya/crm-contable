@@ -85,8 +85,9 @@
                                     <a href="{{ route('usuarios.show', $user) }}"
                                        title="Ver Perfil de {{ $user->name }}"
                                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-white shadow-xs transition-transform hover:scale-105
-                                        {{ $user->isAdmin() ? 'bg-purple-600' : 'bg-brand-600' }}">
-                                        {{ strtoupper(substr($user->name, 0, 2)) }}
+                                        {{ $user->isAdmin() ? 'bg-purple-600' : 'bg-brand-600' }}"
+                                       style="{{ $user->isAdmin() ? 'background-color: #9333ea; color: #ffffff;' : 'background-color: #2563eb; color: #ffffff;' }}">
+                                        {{ $user->iniciales() }}
                                     </a>
                                     <div>
                                         <div class="flex items-center gap-2">

@@ -18,6 +18,7 @@
             sitio_web: @js($estudio->sitio_web ?? ''),
             sidebar_display: @js($estudio->sidebar_display ?? 'logo_nombre'),
             logo_actual: @js($estudio->logoUrl()),
+            isotipo_actual: @js($estudio->isotipo_path ? asset('storage/'.$estudio->isotipo_path) : null),
             frecuencia_cron_horas: {{ $ajustes->frecuencia_cron_horas }},
             notificar_whatsapp: {{ $ajustes->notificar_whatsapp ? 'true' : 'false' }},
             nivel_alerta_whatsapp: @js($ajustes->nivel_alerta_whatsapp),
@@ -149,50 +150,102 @@
                             <p class="text-[11px] text-gray-500 mt-0.5">Se utiliza en el encabezado del CRM, reportes de auditoría y documentos membretados.</p>
                         </div>
 
-                        {{-- Visor y cargador de logotipo --}}
-                        <div class="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50/50 hover:bg-gray-50 transition text-center relative">
-                            {{-- Preview de imagen si existe logo o archivo seleccionado --}}
-                            <div class="h-28 w-28 rounded-2xl flex items-center justify-center p-2 bg-white shadow-sm border border-gray-200 overflow-hidden mb-3">
-                                <template x-if="previewLogoUrl">
-                                    <img :src="previewLogoUrl" alt="Vista previa del logo" class="h-full w-full object-contain">
-                                </template>
-                                <template x-if="!previewLogoUrl && form.logo_actual && !eliminarLogo">
-                                    <img :src="form.logo_actual" alt="Logo actual" class="h-full w-full object-contain">
-                                </template>
-                                <template x-if="(!previewLogoUrl && !form.logo_actual) || (!previewLogoUrl && eliminarLogo)">
-                                    <div class="flex flex-col items-center justify-center text-gray-400">
-                                        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-600 text-white font-bold text-lg shadow-sm">
+                        {{-- 1. Logotipo Completo (Horizontal / Barra Lateral Extendida) --}}
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block font-semibold text-gray-800 text-xs">Logotipo Completo (Horizontal)</label>
+                                <p class="text-[10px] text-gray-400">Imagen alargada "Isotipo + Nombre". Se muestra cuando la barra lateral está extendida.</p>
+                            </div>
+
+                            <div class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50/50 hover:bg-gray-50 transition text-center relative">
+                                <div class="h-16 w-full max-w-[240px] rounded-xl flex items-center justify-center p-2 bg-white shadow-xs border border-gray-200 overflow-hidden mb-2.5">
+                                    <template x-if="previewLogoUrl">
+                                        <img :src="previewLogoUrl" alt="Vista previa del logo" class="h-full w-full object-contain">
+                                    </template>
+                                    <template x-if="!previewLogoUrl && form.logo_actual && !eliminarLogo">
+                                        <img :src="form.logo_actual" alt="Logo actual" class="h-full w-full object-contain">
+                                    </template>
+                                    <template x-if="(!previewLogoUrl && !form.logo_actual) || (!previewLogoUrl && eliminarLogo)">
+                                        <div class="flex items-center gap-2 text-gray-400">
+                                            <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-600 text-white font-bold text-xs shadow-xs">
+                                                {{ $estudio->iniciales() }}
+                                            </div>
+                                            <span class="text-xs font-semibold text-gray-500">{{ $estudio->nombreParaMostrar() }}</span>
+                                        </div>
+                                    </template>
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    <label for="logo_file_input" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 shadow-xs transition">
+                                        <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                                        </svg>
+                                        <span>Seleccionar Logotipo Completo</span>
+                                    </label>
+                                    <input type="file"
+                                           id="logo_file_input"
+                                           accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                                           @change="seleccionarArchivo($event)"
+                                           class="sr-only">
+
+                                    <button type="button"
+                                            x-show="(form.logo_actual && !eliminarLogo) || previewLogoUrl"
+                                            @click="quitarLogo()"
+                                            class="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 transition"
+                                            title="Eliminar logotipo">
+                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- 2. Isotipo (Símbolo / Barra Lateral Encogida) --}}
+                        <div class="space-y-2">
+                            <div>
+                                <label class="block font-semibold text-gray-800 text-xs">Isotipo (Solo Símbolo Cuadrado)</label>
+                                <p class="text-[10px] text-gray-400">Icono o símbolo cuadrado. Se muestra cuando la barra lateral está encogida.</p>
+                            </div>
+
+                            <div class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50/50 hover:bg-gray-50 transition text-center relative">
+                                <div class="h-16 w-16 rounded-xl flex items-center justify-center p-2 bg-white shadow-xs border border-gray-200 overflow-hidden mb-2.5">
+                                    <template x-if="previewIsotipoUrl">
+                                        <img :src="previewIsotipoUrl" alt="Vista previa del isotipo" class="h-full w-full object-contain">
+                                    </template>
+                                    <template x-if="!previewIsotipoUrl && form.isotipo_actual && !eliminarIsotipo">
+                                        <img :src="form.isotipo_actual" alt="Isotipo actual" class="h-full w-full object-contain">
+                                    </template>
+                                    <template x-if="(!previewIsotipoUrl && !form.isotipo_actual) || (!previewIsotipoUrl && eliminarIsotipo)">
+                                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-white font-bold text-xs shadow-xs">
                                             {{ $estudio->iniciales() }}
                                         </div>
-                                    </div>
-                                </template>
-                            </div>
+                                    </template>
+                                </div>
 
-                            <div class="space-y-1">
-                                <label for="logo_file_input" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 shadow-xs transition">
-                                    <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-                                    </svg>
-                                    <span>Seleccionar Logotipo</span>
-                                </label>
-                                <input type="file"
-                                       id="logo_file_input"
-                                       accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                                       @change="seleccionarArchivo($event)"
-                                       class="sr-only">
-                                <p class="text-[10px] text-gray-400">PNG, JPG, SVG o WebP (Máx. 2MB)</p>
-                            </div>
+                                <div class="flex items-center gap-2">
+                                    <label for="isotipo_file_input" class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-50 shadow-xs transition">
+                                        <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                                        </svg>
+                                        <span>Seleccionar Isotipo</span>
+                                    </label>
+                                    <input type="file"
+                                           id="isotipo_file_input"
+                                           accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                                           @change="seleccionarIsotipo($event)"
+                                           class="sr-only">
 
-                            {{-- Botón para quitar el logo si hay uno activo --}}
-                            <div class="mt-3" x-show="(form.logo_actual && !eliminarLogo) || previewLogoUrl">
-                                <button type="button"
-                                        @click="quitarLogo()"
-                                        class="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 transition">
-                                    <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                                    </svg>
-                                    <span>Quitar logotipo</span>
-                                </button>
+                                    <button type="button"
+                                            x-show="(form.isotipo_actual && !eliminarIsotipo) || previewIsotipoUrl"
+                                            @click="quitarIsotipo()"
+                                            class="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 transition"
+                                            title="Eliminar isotipo">
+                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
@@ -682,6 +735,7 @@
                     sitio_web: initialData.sitio_web || '',
                     sidebar_display: initialData.sidebar_display || 'logo_nombre',
                     logo_actual: initialData.logo_actual || null,
+                    isotipo_actual: initialData.isotipo_actual || null,
                     frecuencia_cron_horas: initialData.frecuencia_cron_horas || 8,
                     notificar_whatsapp: Boolean(initialData.notificar_whatsapp),
                     nivel_alerta_whatsapp: initialData.nivel_alerta_whatsapp || 'Solo Altas'
@@ -689,6 +743,9 @@
                 logoFile: null,
                 previewLogoUrl: null,
                 eliminarLogo: false,
+                isotipoFile: null,
+                previewIsotipoUrl: null,
+                eliminarIsotipo: false,
                 guardando: false,
                 probandoWhatsApp: false,
                 sincronizandoRpa: false,
@@ -734,6 +791,33 @@
                     this.previewLogoUrl = null;
                     this.eliminarLogo = true;
                     const fileInput = document.getElementById('logo_file_input');
+                    if (fileInput) fileInput.value = '';
+                },
+
+                seleccionarIsotipo(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    if (file.size > 2 * 1024 * 1024) {
+                        this.lanzarToast('Archivo demasiado grande', 'El isotipo debe pesar menos de 2MB.', 'error');
+                        event.target.value = '';
+                        return;
+                    }
+
+                    this.isotipoFile = file;
+                    this.eliminarIsotipo = false;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.previewIsotipoUrl = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                },
+
+                quitarIsotipo() {
+                    this.isotipoFile = null;
+                    this.previewIsotipoUrl = null;
+                    this.eliminarIsotipo = true;
+                    const fileInput = document.getElementById('isotipo_file_input');
                     if (fileInput) fileInput.value = '';
                 },
 
@@ -802,6 +886,12 @@
                         if (this.eliminarLogo) {
                             formData.append('eliminar_logo', '1');
                         }
+                        if (this.isotipoFile) {
+                            formData.append('isotipo', this.isotipoFile);
+                        }
+                        if (this.eliminarIsotipo) {
+                            formData.append('eliminar_isotipo', '1');
+                        }
 
                         const response = await fetch('{{ route('ajustes.update') }}', {
                             method: 'POST',
@@ -819,11 +909,17 @@
                             throw new Error(errorMsg);
                         }
 
-                        if (data.estudio && data.estudio.logo_url !== undefined) {
-                            this.form.logo_actual = data.estudio.logo_url;
+                        if (data.logo_url !== undefined) {
+                            this.form.logo_actual = data.logo_url;
                             this.previewLogoUrl = null;
                             this.logoFile = null;
                             this.eliminarLogo = false;
+                        }
+                        if (data.isotipo_url !== undefined) {
+                            this.form.isotipo_actual = data.isotipo_url;
+                            this.previewIsotipoUrl = null;
+                            this.isotipoFile = null;
+                            this.eliminarIsotipo = false;
                         }
 
                         this.lanzarToast('¡Ajustes Actualizados!', data.message || 'La configuración se guardó correctamente.', 'success');

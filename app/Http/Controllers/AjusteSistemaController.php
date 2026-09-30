@@ -57,6 +57,8 @@ class AjusteSistemaController extends Controller
             'sidebar_display' => ['nullable', 'in:logo_nombre,logo_solo,nombre_solo'],
             'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
             'eliminar_logo' => ['nullable', 'boolean'],
+            'isotipo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
+            'eliminar_isotipo' => ['nullable', 'boolean'],
             'frecuencia_cron_horas' => ['required', 'integer', 'in:2,4,6,8,12'],
             'notificar_whatsapp' => ['boolean'],
             'nivel_alerta_whatsapp' => ['required', 'in:Todas,Solo Altas'],
@@ -69,7 +71,7 @@ class AjusteSistemaController extends Controller
         $user = auth()->user();
         $estudio = $user?->estudio ?? Estudio::firstOrCreate(['id' => $user?->estudio_id ?? 1], ['nombre' => $nombre]);
 
-        // Manejo de logo
+        // Manejo de logotipo completo (barra extendida)
         if ($request->boolean('eliminar_logo')) {
             if ($estudio->logo_path && Storage::disk('public')->exists($estudio->logo_path)) {
                 Storage::disk('public')->delete($estudio->logo_path);
@@ -80,6 +82,19 @@ class AjusteSistemaController extends Controller
                 Storage::disk('public')->delete($estudio->logo_path);
             }
             $estudio->logo_path = $request->file('logo')->store('estudios/logos/'.$estudio->id, 'public');
+        }
+
+        // Manejo de isotipo (símbolo para barra contraída)
+        if ($request->boolean('eliminar_isotipo')) {
+            if ($estudio->isotipo_path && Storage::disk('public')->exists($estudio->isotipo_path)) {
+                Storage::disk('public')->delete($estudio->isotipo_path);
+            }
+            $estudio->isotipo_path = null;
+        } elseif ($request->hasFile('isotipo')) {
+            if ($estudio->isotipo_path && Storage::disk('public')->exists($estudio->isotipo_path)) {
+                Storage::disk('public')->delete($estudio->isotipo_path);
+            }
+            $estudio->isotipo_path = $request->file('isotipo')->store('estudios/isotipos/'.$estudio->id, 'public');
         }
 
         $estudio->nombre = $nombre;
@@ -129,6 +144,7 @@ class AjusteSistemaController extends Controller
                 'ajustes' => $ajustes,
                 'estudio' => $estudio,
                 'logo_url' => $estudio->logoUrl(),
+                'isotipo_url' => $estudio->isotipo_path ? asset('storage/'.$estudio->isotipo_path) : null,
             ]);
         }
 

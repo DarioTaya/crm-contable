@@ -377,4 +377,72 @@ class AuthAndRbacTest extends TestCase
         $this->assertCount(1, Cliente::all());
         $this->assertTrue(Cliente::where('ruc', '20333333333')->exists());
     }
+
+    public function test_user_iniciales_returns_proper_monogram(): void
+    {
+        $user1 = new User(['name' => 'Sebastián Taya Yucra']);
+        $this->assertSame('ST', $user1->iniciales());
+
+        $user2 = new User(['name' => 'Maria Soledad Carillo Callo']);
+        $this->assertSame('MS', $user2->iniciales());
+
+        $user3 = new User(['name' => 'Contador']);
+        $this->assertSame('CO', $user3->iniciales());
+    }
+
+    public function test_footer_version_and_copyright_only_displayed_on_ajustes_page(): void
+    {
+        $this->actingAs($this->admin);
+
+        // En /dashboard no debe aparecer el footer ni v1.0
+        $responseDashboard = $this->get(route('dashboard'));
+        $responseDashboard->assertStatus(200);
+        $responseDashboard->assertDontSee('v1.0');
+
+        // En /usuarios no debe aparecer el footer ni v1.0
+        $responseUsuarios = $this->get(route('usuarios.index'));
+        $responseUsuarios->assertStatus(200);
+        $responseUsuarios->assertDontSee('v1.0');
+
+        // En /ajustes SI debe aparecer el footer con v1.0
+        $responseAjustes = $this->get(route('ajustes.index'));
+        $responseAjustes->assertStatus(200);
+        $responseAjustes->assertSee('v1.0');
+    }
+
+    public function test_user_password_plain_encrypted_storage(): void
+    {
+        $this->actingAs($this->admin);
+
+        $response = $this->post(route('usuarios.store'), [
+            'name' => 'Usuario Prueba Clave',
+            'email' => 'claveprueba@estudio.com',
+            'telefono' => '999888777',
+            'password' => 'Secreto123!',
+            'rol' => 'asistente',
+        ]);
+
+        $response->assertRedirect(route('usuarios.index'));
+
+        $user = User::where('email', 'claveprueba@estudio.com')->first();
+        $this->assertNotNull($user);
+        $this->assertSame('Secreto123!', $user->password_plain);
+        $this->assertTrue(Hash::check('Secreto123!', $user->password));
+
+        // En la ficha del usuario se puede ver la clave desencriptada
+        $responseShow = $this->get(route('usuarios.show', $user));
+        $responseShow->assertStatus(200);
+        $responseShow->assertSee('Secreto123!');
+    }
+
+    public function test_estudio_isotipo_and_logo_fallbacks(): void
+    {
+        $estudio = Estudio::create([
+            'nombre' => 'Estudio Demo',
+            'ruc' => '20123456789',
+        ]);
+
+        $this->assertNull($estudio->logoUrl());
+        $this->assertNull($estudio->isotipoUrl());
+    }
 }

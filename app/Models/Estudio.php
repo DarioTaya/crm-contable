@@ -37,6 +37,7 @@ class Estudio extends Model
         'direccion',
         'ciudad',
         'logo_path',
+        'isotipo_path',
         'sidebar_display',
         'activo',
         'configuracion',
@@ -65,6 +66,18 @@ class Estudio extends Model
         }
 
         return null;
+    }
+
+    /**
+     * URL pública del isotipo (símbolo para barra lateral encogida) o fallback al logoUrl.
+     */
+    public function isotipoUrl(): ?string
+    {
+        if (! empty($this->isotipo_path) && Storage::disk('public')->exists($this->isotipo_path)) {
+            return asset('storage/'.$this->isotipo_path);
+        }
+
+        return $this->logoUrl();
     }
 
     /**
