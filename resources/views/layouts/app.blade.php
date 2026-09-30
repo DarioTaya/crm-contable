@@ -380,26 +380,21 @@
                         </div>
                     </button>
 
-                    {{-- Miniventana Flotante Submenú (Estilo Bocadillo / Speech Bubble Premium 100% Sólido) --}}
+                    {{-- Miniventana Flotante Submenú (Estilo Bocadillo Bitrix24 100% Sólido) --}}
                     <div x-ref="panelConfig"
                          x-show="menuConfigOpen"
                          x-cloak
                          data-menu-flotante
                          @click.outside="if (!$el._clicInicioDentro) menuConfigOpen = false"
-                         class="fixed z-50 w-64 rounded-2xl border border-slate-700/80 bg-slate-900 p-2.5 shadow-2xl text-xs space-y-1 ring-1 ring-white/10"
+                         class="fixed z-50 w-64 rounded-2xl border border-slate-700/80 bg-slate-900 p-2 shadow-2xl text-xs space-y-1 ring-1 ring-white/10"
                          style="display: none;">
 
-                        {{-- Pico / Flecha tipo Caja de Mensaje apuntando al botón de Configuración --}}
-                        <div class="pointer-events-none absolute -bottom-2 left-[22px] h-3.5 w-3.5 rotate-45 border-b border-r border-slate-700/80 bg-slate-900"></div>
-
-                        <div class="px-3 py-2 border-b border-slate-800 mb-1 flex items-center justify-between">
-                            <div>
-                                <p class="text-[10px] font-bold uppercase tracking-wider text-brand-400">Configuración</p>
-                                <p class="text-xs font-semibold text-white">Módulos del Sistema</p>
-                            </div>
-                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-brand-500/20 text-brand-300 border border-brand-500/30">
-                                Menú
-                            </span>
+                        {{-- Pico / Flecha tipo Caja de Mensaje (Estilo Bitrix24) apuntando al botón Configuración --}}
+                        <div class="pointer-events-none absolute -bottom-2 left-[20px] z-20">
+                            <svg class="h-2 w-4" viewBox="0 0 16 8" fill="none">
+                                <path d="M0 0L8 8L16 0H0Z" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+                                <rect x="0" y="-1" width="16" height="2" fill="#0f172a" />
+                            </svg>
                         </div>
 
                         {{-- Item 1: Cronograma SUNAT --}}
@@ -453,12 +448,12 @@
             </div>
 
             {{-- Footer sidebar con Perfil y Logout --}}
-            <div class="border-t border-white/10 p-3 flex flex-col gap-2">
+            <div class="border-t border-white/10 p-3">
                 @if (auth()->check())
                     <div class="flex items-center gap-2" :class="sidebarCollapsed ? 'justify-center' : ''">
-                        {{-- Enlace directo a Edición de Usuario / Perfil (Limpio, Sin caja envolvente pesada) --}}
-                        <a href="{{ auth()->user()->isAdmin() ? route('usuarios.edit', auth()->user()) : route('perfil.edit') }}"
-                           title="Mi Cuenta ({{ auth()->user()->name }})"
+                        {{-- Enlace directo a la Ficha / Perfil de Usuario --}}
+                        <a href="{{ auth()->user()->isAdmin() ? route('usuarios.show', auth()->user()) : route('perfil.edit') }}"
+                           title="Mi Perfil ({{ auth()->user()->name }})"
                            class="flex items-center gap-2.5 p-1 rounded-xl transition cursor-pointer group select-none flex-1 min-w-0 hover:bg-white/5"
                            :class="sidebarCollapsed ? 'justify-center !p-1' : ''">
 
@@ -467,7 +462,6 @@
                                             {{ auth()->user()->isAdmin() ? 'bg-gradient-to-tr from-purple-600 to-indigo-600' : 'bg-gradient-to-tr from-brand-600 to-blue-500' }}">
                                     {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
                                 </div>
-                                <span class="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-[#0f172a]" title="En línea"></span>
                             </div>
 
                             <div x-show="!sidebarCollapsed" class="min-w-0 flex-1 text-left">
@@ -493,16 +487,11 @@
                         </form>
                     </div>
                 @endif
-
-                <div class="flex items-center justify-between text-gray-500 text-[10px] px-1 pt-0.5" x-show="!sidebarCollapsed">
-                    <span class="truncate">{{ $estudioNombre }}</span>
-                    <span>v1.0</span>
-                </div>
             </div>
         </aside>
 
         {{-- ═══════════════════════════════ CONTENIDO PRINCIPAL ═══════════════════════════════ --}}
-        <main class="app-main flex-1 min-w-0">
+        <main class="app-main flex-1 min-w-0 flex flex-col justify-between">
             {{-- Contenido dinámico --}}
             <div class="p-8">
                 @if (session('success'))
@@ -515,6 +504,12 @@
 
                 @yield('content')
             </div>
+
+            {{-- Footer sutil de aplicación --}}
+            <footer class="mt-auto px-8 py-3 text-xs text-gray-400 border-t border-gray-200/50 flex items-center justify-between no-print">
+                <span class="truncate">{{ $estudioNombre }} &copy; {{ date('Y') }}</span>
+                <span class="font-mono text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded">v1.0</span>
+            </footer>
         </main>
     </div>
 </body>

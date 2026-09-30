@@ -75,7 +75,25 @@ class UsuarioController extends Controller
     }
 
     /**
-     * Formulario para editar un usuario.
+     * Muestra la ficha y perfil detallado del usuario.
+     */
+    public function show(User $usuario): View
+    {
+        $currentEstudioId = Auth::user()->estudio_id ?? 1;
+
+        if ($usuario->estudio_id !== $currentEstudioId) {
+            abort(403, 'No tiene autorización para ver este usuario.');
+        }
+
+        $clientes = Cliente::where('estudio_id', $currentEstudioId)->orderBy('razon_social')->get();
+        $assignedClientIds = $usuario->clientes()->pluck('clientes.id')->toArray();
+        $modoEdicion = false;
+
+        return view('usuarios.show', compact('usuario', 'clientes', 'assignedClientIds', 'modoEdicion'));
+    }
+
+    /**
+     * Formulario para editar un usuario (perfil en modo edición).
      */
     public function edit(User $usuario): View
     {
@@ -87,8 +105,9 @@ class UsuarioController extends Controller
 
         $clientes = Cliente::where('estudio_id', $currentEstudioId)->orderBy('razon_social')->get();
         $assignedClientIds = $usuario->clientes()->pluck('clientes.id')->toArray();
+        $modoEdicion = true;
 
-        return view('usuarios.edit', compact('usuario', 'clientes', 'assignedClientIds'));
+        return view('usuarios.show', compact('usuario', 'clientes', 'assignedClientIds', 'modoEdicion'));
     }
 
     /**
@@ -140,7 +159,7 @@ class UsuarioController extends Controller
         // Sincronizar clientes asignados
         $usuario->clientes()->sync($validated['clientes'] ?? []);
 
-        return redirect()->route('usuarios.index')->with('success', "Usuario '{$usuario->name}' actualizado correctamente.");
+        return redirect()->route('usuarios.show', $usuario)->with('success', "Perfil de '{$usuario->name}' actualizado correctamente.");
     }
 
     /**

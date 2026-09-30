@@ -230,6 +230,37 @@ class AuthAndRbacTest extends TestCase
 
         $responseUsuarios = $this->actingAs($this->asistente)->get(route('usuarios.index'));
         $responseUsuarios->assertStatus(403);
+
+        $responseShow = $this->actingAs($this->asistente)->get(route('usuarios.show', $this->admin));
+        $responseShow->assertStatus(403);
+    }
+
+    public function test_admin_can_view_user_profile_show_page(): void
+    {
+        $response = $this->actingAs($this->admin)->get(route('usuarios.show', $this->asistente));
+        $response->assertStatus(200);
+        $response->assertSee('Asistente Junior');
+        $response->assertSee('asistente@estudio.com');
+        $response->assertSee('Ficha de Usuario');
+    }
+
+    public function test_admin_can_update_user_from_profile_page(): void
+    {
+        $response = $this->actingAs($this->admin)->put(route('usuarios.update', $this->asistente), [
+            'name' => 'Asistente Senior Promovido',
+            'email' => 'asistente.promovido@estudio.com',
+            'telefono' => '988777666',
+            'rol' => 'asistente',
+            'activo' => true,
+            'clientes' => [$this->clienteAsignado->id],
+        ]);
+
+        $response->assertRedirect(route('usuarios.show', $this->asistente));
+        $response->assertSessionHas('success');
+
+        $this->asistente->refresh();
+        $this->assertSame('Asistente Senior Promovido', $this->asistente->name);
+        $this->assertSame('asistente.promovido@estudio.com', $this->asistente->email);
     }
 
     public function test_assistant_cannot_delete_clients(): void
