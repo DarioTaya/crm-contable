@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Storage;
 
 class Estudio extends Model
 {
@@ -25,11 +26,18 @@ class Estudio extends Model
      */
     protected $fillable = [
         'nombre',
+        'nombre_comercial',
         'ruc',
+        'representante',
+        'colegiatura',
+        'slogan',
         'correo',
         'telefono',
+        'sitio_web',
         'direccion',
+        'ciudad',
         'logo_path',
+        'sidebar_display',
         'activo',
         'configuracion',
     ];
@@ -45,6 +53,40 @@ class Estudio extends Model
             'activo' => 'boolean',
             'configuracion' => 'array',
         ];
+    }
+
+    /**
+     * URL pública del logotipo o null si no se ha subido.
+     */
+    public function logoUrl(): ?string
+    {
+        if (! empty($this->logo_path) && Storage::disk('public')->exists($this->logo_path)) {
+            return asset('storage/'.$this->logo_path);
+        }
+
+        return null;
+    }
+
+    /**
+     * Iniciales estilizadas para monograma (fallback cuando no hay imagen).
+     */
+    public function iniciales(): string
+    {
+        $nombre = trim($this->nombre_comercial ?: $this->nombre ?: 'Estudio Contable');
+        $palabras = explode(' ', $nombre);
+        if (count($palabras) >= 2) {
+            return strtoupper(substr($palabras[0], 0, 1).substr($palabras[1], 0, 1));
+        }
+
+        return strtoupper(substr($nombre, 0, 2));
+    }
+
+    /**
+     * Nombre comercial preferente o razón social.
+     */
+    public function nombreParaMostrar(): string
+    {
+        return $this->nombre_comercial ?: $this->nombre ?: 'Estudio Contable';
     }
 
     /**

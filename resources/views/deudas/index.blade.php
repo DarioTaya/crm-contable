@@ -85,44 +85,10 @@
      )">
 
     {{-- ═══════════════════════════════ MEMBRETE OFICIAL PARA IMPRESIÓN (PDF) ═══════════════════════════════ --}}
-    <div class="hidden print-only mb-6 border-b-2 border-gray-900 pb-4">
-        <div class="flex items-start justify-between">
-            <div>
-                <h1 class="text-xl font-black uppercase tracking-tight text-gray-900">
-                    {{ auth()->user()?->estudio?->nombre ?? 'ESTUDIO CONTABLE' }}
-                </h1>
-                @if(auth()->user()?->estudio?->ruc)
-                    <p class="text-xs font-mono font-bold text-gray-700">RUC: {{ auth()->user()->estudio->ruc }}</p>
-                @endif
-                @if(auth()->user()?->estudio?->direccion)
-                    <p class="text-[11px] text-gray-600">{{ auth()->user()->estudio->direccion }}</p>
-                @endif
-                @if(auth()->user()?->estudio?->telefono)
-                    <p class="text-[11px] text-gray-600">Tel: {{ auth()->user()->estudio->telefono }}</p>
-                @endif
-            </div>
-            <div class="text-right">
-                <span class="inline-block rounded border border-gray-400 bg-gray-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-gray-800">
-                    Documento de Auditoría y Cobranza
-                </span>
-                <p class="text-xs text-gray-700 mt-1.5 font-medium">
-                    Fecha de Emisión: <span class="font-bold font-mono">{{ now()->format('d/m/Y H:i') }}</span>
-                </p>
-                <p class="text-[11px] text-gray-500">
-                    Generado por: {{ auth()->user()?->name ?? 'Sistema CRM Contable' }}
-                </p>
-            </div>
-        </div>
-
-        <div class="mt-4 pt-3 border-t border-gray-200 text-center">
-            <h2 class="text-lg font-black uppercase tracking-wide text-gray-900">
-                Reporte Consolidado de Deudas Tributarias (SUNAT)
-            </h2>
-            <p class="text-xs text-gray-600 mt-0.5">
-                Seguimiento de Fraccionamientos, Cuotas de IGV Justo y Obligaciones Mensuales Pendientes
-            </p>
-        </div>
-
+    <x-reportes.membrete
+        titulo="Reporte Consolidado de Deudas Tributarias (SUNAT)"
+        subtitulo="Seguimiento de Fraccionamientos, Cuotas de IGV Justo y Obligaciones Mensuales Pendientes"
+        badge="Documento de Auditoría y Cobranza">
         {{-- Resumen ejecutivo en impresión --}}
         <div class="mt-4 grid grid-cols-3 gap-3 border border-gray-300 rounded p-2.5 text-center bg-gray-50">
             <div>
@@ -144,7 +110,7 @@
                 </p>
             </div>
         </div>
-    </div>
+    </x-reportes.membrete>
 
     {{-- ═══════════════════════════════ ENCABEZADO DE PANTALLA (Stripe / Mercury Style) ═══════════════════════════════ --}}
     <div class="no-print mb-6 relative z-40 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

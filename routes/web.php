@@ -14,6 +14,7 @@ use App\Http\Controllers\CronogramaSunatController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\OperacionController;
+use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\TipoCambioController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VisorXmlController;
@@ -131,6 +132,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/cronogramas/update', [CronogramaSunatController::class, 'update'])->name('cronogramas.update');
     Route::post('/cronogramas/autogenerar-sire', [CronogramaSunatController::class, 'autogenerarSire'])->name('cronogramas.autogenerar-sire');
     Route::post('/cronogramas/restablecer', [CronogramaSunatController::class, 'restablecer'])->name('cronogramas.restablecer');
+
+    // Perfil del Usuario en Sesión (Disponible para cualquier rol)
+    Route::get('/perfil', [PerfilController::class, 'edit'])->name('perfil.edit');
+    Route::put('/perfil', [PerfilController::class, 'update'])->name('perfil.update');
+    Route::put('/perfil/password', [PerfilController::class, 'updatePassword'])->name('perfil.password');
 
     /*
     |--------------------------------------------------------------------------

@@ -25,7 +25,7 @@
 
             const soloEncuadre = panel._soloEncuadre === true;
             const margen = 16;
-            const separacion = 6;
+            const separacion = 10;
             const rect = ancla.getBoundingClientRect();
             const maxAlto = window.innerHeight - (margen * 2);
 
@@ -170,18 +170,44 @@
         {{-- ═══════════════════════════════════ SIDEBAR COLAPSABLE ═══════════════════════════════════ --}}
         <aside class="app-sidebar fixed inset-y-0 left-0 z-30 flex flex-col bg-sidebar text-gray-300 select-none shadow-xl">
 
+            @php
+                $currentEstudio = auth()->user()?->estudio;
+                $estudioLogoUrl = $currentEstudio?->logoUrl();
+                $estudioNombre = $currentEstudio ? $currentEstudio->nombreParaMostrar() : 'CRM Contable';
+                $estudioSubtitulo = $currentEstudio?->slogan ?: ($currentEstudio?->nombre_comercial ? $currentEstudio->nombre : 'Estudio Contable');
+                $estudioDisplay = $currentEstudio?->sidebar_display ?? 'logo_nombre';
+                $estudioIniciales = $currentEstudio ? $currentEstudio->iniciales() : 'EC';
+            @endphp
+
             {{-- Logo / Marca + Botón Encoger/Expandir --}}
             <div class="flex h-16 items-center border-b border-white/10 px-4"
                  :class="sidebarCollapsed ? 'justify-center' : 'justify-between'">
-                <div class="flex items-center gap-3 min-w-0">
-                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white font-bold text-sm shadow-md">
-                        EC
-                    </div>
-                    <div x-show="!sidebarCollapsed" class="truncate">
-                        <span class="block text-sm font-semibold text-white leading-tight">CRM Contable</span>
-                        <span class="block text-xs text-gray-400">Estudio Contable</span>
-                    </div>
-                </div>
+                <a href="{{ route('dashboard') }}"
+                   title="{{ $estudioNombre }} - Ir al Dashboard"
+                   class="group flex items-center gap-3 min-w-0 hover:opacity-90 transition rounded-lg p-1 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+                    {{-- Logo o Iniciales Monograma --}}
+                    @if ($estudioDisplay !== 'nombre_solo' && $estudioLogoUrl)
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 p-1 shadow-md overflow-hidden border border-white/15">
+                            <img src="{{ $estudioLogoUrl }}" alt="{{ $estudioNombre }}" class="h-full w-full object-contain rounded">
+                        </div>
+                    @else
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white font-black text-sm shadow-md tracking-wider">
+                            {{ $estudioIniciales }}
+                        </div>
+                    @endif
+
+                    {{-- Texto: Nombre y Subtítulo / Slogan --}}
+                    @if ($estudioDisplay !== 'logo_solo')
+                        <div x-show="!sidebarCollapsed" class="truncate min-w-0 text-left">
+                            <span class="block text-sm font-bold text-white leading-tight truncate group-hover:text-brand-300 transition">
+                                {{ $estudioNombre }}
+                            </span>
+                            <span class="block text-[11px] text-gray-400 truncate">
+                                {{ \Illuminate\Support\Str::limit($estudioSubtitulo, 24) }}
+                            </span>
+                        </div>
+                    @endif
+                </a>
 
                 {{-- Botón Toggle de la Barra Lateral --}}
                 <button type="button"
@@ -320,66 +346,146 @@
                 </a>
             </nav>
 
-            {{-- Sección de Configuración / Sistema separada --}}
-            <div class="px-3 pb-2">
-                <div class="border-t border-white/10 pt-3">
-                    <p x-show="!sidebarCollapsed" class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Configuración</p>
-                    <a href="{{ route('cronogramas.index') }}"
-                       title="Cronograma SUNAT"
-                       :class="sidebarCollapsed ? 'justify-center !px-2' : ''"
-                       class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-sidebar
-                              {{ request()->routeIs('cronogramas.*') ? 'bg-brand-600/20 text-white font-semibold' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
-                        <svg class="h-5 w-5 shrink-0 text-gray-400 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                        </svg>
-                        <span x-show="!sidebarCollapsed" class="truncate">Cronograma SUNAT</span>
-                    </a>
-                    @if (auth()->user()?->isAdmin())
-                        <a href="{{ route('usuarios.index') }}"
-                           title="Equipo y Usuarios"
-                           :class="sidebarCollapsed ? 'justify-center !px-2' : ''"
-                           class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-sidebar mt-1
-                                  {{ request()->routeIs('usuarios.*') ? 'bg-brand-600/20 text-white font-semibold' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
-                            <svg class="h-5 w-5 shrink-0 text-gray-400 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-                            </svg>
-                            <span x-show="!sidebarCollapsed" class="truncate">Equipo y Usuarios</span>
-                        </a>
-
-                        <a href="{{ route('ajustes.index') }}"
-                           title="Ajustes del Sistema"
-                           :class="sidebarCollapsed ? 'justify-center !px-2' : ''"
-                           class="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-sidebar mt-1
-                                  {{ request()->routeIs('ajustes.*') ? 'bg-brand-600/20 text-white font-semibold' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
-                            <svg class="h-5 w-5 shrink-0 text-gray-400 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            {{-- Sección de Configuración Compacta con Menú Flotante Flyout --}}
+            <div class="px-3 pb-2"
+                 x-data="{
+                     menuConfigOpen: false,
+                     toggleMenuConfig() {
+                         this.menuConfigOpen = !this.menuConfigOpen;
+                         if (this.menuConfigOpen) {
+                             this.$nextTick(() => {
+                                 if (window.ubicarMenuFlotante && this.$refs.panelConfig && this.$refs.btnConfig) {
+                                     window.ubicarMenuFlotante(this.$refs.panelConfig, this.$refs.btnConfig);
+                                 }
+                             });
+                         }
+                     }
+                 }">
+                <div class="border-t border-white/10 pt-2.5">
+                    {{-- Botón único "Configuración" --}}
+                    <button type="button"
+                            x-ref="btnConfig"
+                            @click="toggleMenuConfig()"
+                            title="Configuración del Sistema"
+                            :class="sidebarCollapsed ? 'justify-center !px-2' : 'justify-start'"
+                            class="w-full group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors cursor-pointer select-none
+                                   {{ (request()->routeIs('cronogramas.*') || request()->routeIs('usuarios.*') || request()->routeIs('ajustes.*')) ? 'bg-brand-600/25 text-white font-semibold ring-1 ring-brand-500/40' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
+                        <div class="flex items-center gap-3 min-w-0" :class="sidebarCollapsed ? 'justify-center' : ''">
+                            {{-- Icono de Engranaje / Configuración --}}
+                            <svg class="h-5 w-5 shrink-0 transition-transform duration-200 group-hover:rotate-45" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                             </svg>
-                            <span x-show="!sidebarCollapsed" class="truncate">Ajustes del Sistema</span>
+                            <span x-show="!sidebarCollapsed" class="truncate">Configuración</span>
+                        </div>
+                    </button>
+
+                    {{-- Miniventana Flotante Submenú (Estilo Bocadillo / Speech Bubble Premium 100% Sólido) --}}
+                    <div x-ref="panelConfig"
+                         x-show="menuConfigOpen"
+                         x-cloak
+                         data-menu-flotante
+                         @click.outside="if (!$el._clicInicioDentro) menuConfigOpen = false"
+                         class="fixed z-50 w-64 rounded-2xl border border-slate-700/80 bg-slate-900 p-2.5 shadow-2xl text-xs space-y-1 ring-1 ring-white/10"
+                         style="display: none;">
+
+                        {{-- Pico / Flecha tipo Caja de Mensaje apuntando al botón de Configuración --}}
+                        <div class="pointer-events-none absolute -bottom-2 left-[22px] h-3.5 w-3.5 rotate-45 border-b border-r border-slate-700/80 bg-slate-900"></div>
+
+                        <div class="px-3 py-2 border-b border-slate-800 mb-1 flex items-center justify-between">
+                            <div>
+                                <p class="text-[10px] font-bold uppercase tracking-wider text-brand-400">Configuración</p>
+                                <p class="text-xs font-semibold text-white">Módulos del Sistema</p>
+                            </div>
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold bg-brand-500/20 text-brand-300 border border-brand-500/30">
+                                Menú
+                            </span>
+                        </div>
+
+                        {{-- Item 1: Cronograma SUNAT --}}
+                        <a href="{{ route('cronogramas.index') }}"
+                           @click="menuConfigOpen = false"
+                           class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition {{ request()->routeIs('cronogramas.*') ? 'bg-brand-600/30 text-white font-bold ring-1 ring-brand-500/50' : 'text-slate-300 hover:text-white hover:bg-slate-800' }}">
+                            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                                </svg>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="font-bold leading-tight">Cronograma SUNAT</p>
+                                <p class="text-[10px] text-slate-400 leading-tight">Calendario de vencimientos</p>
+                            </div>
                         </a>
-                    @endif
+
+                        @if (auth()->user()?->isAdmin())
+                            {{-- Item 2: Equipo y Usuarios --}}
+                            <a href="{{ route('usuarios.index') }}"
+                               @click="menuConfigOpen = false"
+                               class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition {{ request()->routeIs('usuarios.*') ? 'bg-brand-600/30 text-white font-bold ring-1 ring-brand-500/50' : 'text-slate-300 hover:text-white hover:bg-slate-800' }}">
+                                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+                                    </svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-bold leading-tight">Equipo y Usuarios</p>
+                                    <p class="text-[10px] text-slate-400 leading-tight">Personal y asignación de clientes</p>
+                                </div>
+                            </a>
+
+                            {{-- Item 3: Ajustes del Estudio --}}
+                            <a href="{{ route('ajustes.index') }}"
+                               @click="menuConfigOpen = false"
+                               class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition {{ request()->routeIs('ajustes.*') ? 'bg-brand-600/30 text-white font-bold ring-1 ring-brand-500/50' : 'text-slate-300 hover:text-white hover:bg-slate-800' }}">
+                                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                                    </svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-bold leading-tight">Ajustes del Estudio</p>
+                                    <p class="text-[10px] text-slate-400 leading-tight">Logo, RUC, RPA SUNAT y WhatsApp</p>
+                                </div>
+                            </a>
+                        @endif
+                    </div>
                 </div>
             </div>
 
             {{-- Footer sidebar con Perfil y Logout --}}
             <div class="border-t border-white/10 p-3 flex flex-col gap-2">
                 @if (auth()->check())
-                    <div class="flex items-center gap-2.5" :class="sidebarCollapsed ? 'justify-center' : ''">
-                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-bold text-xs text-white shadow-xs
-                                    {{ auth()->user()->isAdmin() ? 'bg-purple-600' : 'bg-brand-600' }}">
-                            {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
-                        </div>
-                        <div x-show="!sidebarCollapsed" class="min-w-0 flex-1">
-                            <p class="truncate text-xs font-semibold text-white leading-tight">{{ auth()->user()->name }}</p>
-                            <p class="truncate text-[10px] {{ auth()->user()->isAdmin() ? 'text-purple-300' : 'text-blue-300' }}">
-                                {{ auth()->user()->isAdmin() ? '👑 Administrador' : '👷 Asistente' }}
-                            </p>
-                        </div>
-                        <form x-show="!sidebarCollapsed" action="{{ route('logout') }}" method="POST" class="inline">
+                    <div class="flex items-center gap-2" :class="sidebarCollapsed ? 'justify-center' : ''">
+                        {{-- Enlace directo a Edición de Usuario / Perfil (Limpio, Sin caja envolvente pesada) --}}
+                        <a href="{{ auth()->user()->isAdmin() ? route('usuarios.edit', auth()->user()) : route('perfil.edit') }}"
+                           title="Mi Cuenta ({{ auth()->user()->name }})"
+                           class="flex items-center gap-2.5 p-1 rounded-xl transition cursor-pointer group select-none flex-1 min-w-0 hover:bg-white/5"
+                           :class="sidebarCollapsed ? 'justify-center !p-1' : ''">
+
+                            <div class="relative shrink-0">
+                                <div class="flex h-8 w-8 items-center justify-center rounded-lg font-bold text-xs text-white shadow-xs transition-transform group-hover:scale-105
+                                            {{ auth()->user()->isAdmin() ? 'bg-gradient-to-tr from-purple-600 to-indigo-600' : 'bg-gradient-to-tr from-brand-600 to-blue-500' }}">
+                                    {{ strtoupper(substr(auth()->user()->name, 0, 2)) }}
+                                </div>
+                                <span class="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-[#0f172a]" title="En línea"></span>
+                            </div>
+
+                            <div x-show="!sidebarCollapsed" class="min-w-0 flex-1 text-left">
+                                <p class="truncate text-xs font-semibold text-white leading-tight group-hover:text-brand-300 transition">
+                                    {{ auth()->user()->name }}
+                                </p>
+                                <p class="truncate text-[10px] {{ auth()->user()->isAdmin() ? 'text-purple-300' : 'text-blue-300' }}">
+                                    {{ auth()->user()->isAdmin() ? '👑 Administrador' : '👷 Asistente' }}
+                                </p>
+                            </div>
+                        </a>
+
+                        {{-- Botón Cerrar Sesión --}}
+                        <form action="{{ route('logout') }}" method="POST" class="inline shrink-0" x-show="!sidebarCollapsed">
                             @csrf
                             <button type="submit"
                                     title="Cerrar Sesión"
-                                    class="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-rose-500/20 hover:text-rose-400 transition">
+                                    class="flex h-8 w-8 items-center justify-center rounded-xl text-gray-400 hover:bg-rose-500/20 hover:text-rose-400 transition">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
                                 </svg>
@@ -387,8 +493,9 @@
                         </form>
                     </div>
                 @endif
-                <div class="flex items-center justify-between text-gray-500 text-[10px] px-1" x-show="!sidebarCollapsed">
-                    <span class="truncate">{{ auth()->user()?->estudio?->nombre ?? 'Estudio Contable' }}</span>
+
+                <div class="flex items-center justify-between text-gray-500 text-[10px] px-1 pt-0.5" x-show="!sidebarCollapsed">
+                    <span class="truncate">{{ $estudioNombre }}</span>
                     <span>v1.0</span>
                 </div>
             </div>

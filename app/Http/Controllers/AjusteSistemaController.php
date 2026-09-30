@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\AjusteSistema;
+use App\Models\Estudio;
 use App\Services\WhatsAppService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class AjusteSistemaController extends Controller
@@ -17,8 +19,19 @@ class AjusteSistemaController extends Controller
     public function index(): View
     {
         $ajustes = AjusteSistema::getSettings();
+        $user = auth()->user();
+        $estudio = $user?->estudio ?? Estudio::firstOrCreate(
+            ['id' => $user?->estudio_id ?? 1],
+            [
+                'nombre' => $ajustes->razon_social,
+                'ruc' => $ajustes->ruc,
+                'representante' => $ajustes->representante,
+                'correo' => $ajustes->correo_corporativo,
+                'telefono' => $ajustes->telefono_whatsapp,
+            ]
+        );
 
-        return view('ajustes.index', compact('ajustes'));
+        return view('ajustes.index', compact('ajustes', 'estudio'));
     }
 
     /**
@@ -27,26 +40,85 @@ class AjusteSistemaController extends Controller
     public function update(Request $request): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
-            'razon_social' => ['required', 'string', 'max:255'],
+            'razon_social' => ['required_without:nombre', 'string', 'max:255'],
+            'nombre' => ['required_without:razon_social', 'string', 'max:255'],
+            'nombre_comercial' => ['nullable', 'string', 'max:150'],
             'ruc' => ['required', 'string', 'size:11', 'regex:/^[0-9]+$/'],
             'representante' => ['required', 'string', 'max:255'],
+            'colegiatura' => ['nullable', 'string', 'max:50'],
+            'slogan' => ['nullable', 'string', 'max:255'],
+            'correo' => ['nullable', 'email', 'max:255'],
             'correo_corporativo' => ['nullable', 'email', 'max:255'],
+            'telefono' => ['nullable', 'string', 'max:50'],
             'telefono_whatsapp' => ['nullable', 'string', 'max:50'],
+            'sitio_web' => ['nullable', 'string', 'max:255'],
+            'direccion' => ['nullable', 'string', 'max:255'],
+            'ciudad' => ['nullable', 'string', 'max:100'],
+            'sidebar_display' => ['nullable', 'in:logo_nombre,logo_solo,nombre_solo'],
+            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
+            'eliminar_logo' => ['nullable', 'boolean'],
             'frecuencia_cron_horas' => ['required', 'integer', 'in:2,4,6,8,12'],
             'notificar_whatsapp' => ['boolean'],
             'nivel_alerta_whatsapp' => ['required', 'in:Todas,Solo Altas'],
         ]);
 
-        $ajustes = AjusteSistema::getSettings();
+        $nombre = $validated['nombre'] ?? $validated['razon_social'] ?? 'Estudio Contable';
+        $correo = $validated['correo'] ?? $validated['correo_corporativo'] ?? null;
+        $telefono = $validated['telefono'] ?? $validated['telefono_whatsapp'] ?? null;
 
+        $user = auth()->user();
+        $estudio = $user?->estudio ?? Estudio::firstOrCreate(['id' => $user?->estudio_id ?? 1], ['nombre' => $nombre]);
+
+        // Manejo de logo
+        if ($request->boolean('eliminar_logo')) {
+            if ($estudio->logo_path && Storage::disk('public')->exists($estudio->logo_path)) {
+                Storage::disk('public')->delete($estudio->logo_path);
+            }
+            $estudio->logo_path = null;
+        } elseif ($request->hasFile('logo')) {
+            if ($estudio->logo_path && Storage::disk('public')->exists($estudio->logo_path)) {
+                Storage::disk('public')->delete($estudio->logo_path);
+            }
+            $estudio->logo_path = $request->file('logo')->store('estudios/logos/'.$estudio->id, 'public');
+        }
+
+        $estudio->nombre = $nombre;
+        $estudio->ruc = $validated['ruc'];
+        $estudio->representante = $validated['representante'];
+        $estudio->correo = $correo;
+        $estudio->telefono = $telefono;
+        if (array_key_exists('nombre_comercial', $validated)) {
+            $estudio->nombre_comercial = $validated['nombre_comercial'];
+        }
+        if (array_key_exists('colegiatura', $validated)) {
+            $estudio->colegiatura = $validated['colegiatura'];
+        }
+        if (array_key_exists('slogan', $validated)) {
+            $estudio->slogan = $validated['slogan'];
+        }
+        if (array_key_exists('sitio_web', $validated)) {
+            $estudio->sitio_web = $validated['sitio_web'];
+        }
+        if (array_key_exists('direccion', $validated)) {
+            $estudio->direccion = $validated['direccion'];
+        }
+        if (array_key_exists('ciudad', $validated)) {
+            $estudio->ciudad = $validated['ciudad'];
+        }
+        if (! empty($validated['sidebar_display'])) {
+            $estudio->sidebar_display = $validated['sidebar_display'];
+        }
+        $estudio->save();
+
+        $ajustes = AjusteSistema::getSettings();
         $ajustes->update([
-            'razon_social' => $validated['razon_social'],
+            'razon_social' => $nombre,
             'ruc' => $validated['ruc'],
             'representante' => $validated['representante'],
-            'correo_corporativo' => $validated['correo_corporativo'] ?? null,
-            'telefono_whatsapp' => $validated['telefono_whatsapp'] ?? null,
+            'correo_corporativo' => $correo,
+            'telefono_whatsapp' => $validated['telefono_whatsapp'] ?? $telefono,
             'frecuencia_cron_horas' => (int) $validated['frecuencia_cron_horas'],
-            'notificar_whatsapp' => (bool) ($request->boolean('notificar_whatsapp')),
+            'notificar_whatsapp' => (bool) $request->boolean('notificar_whatsapp'),
             'nivel_alerta_whatsapp' => $validated['nivel_alerta_whatsapp'],
         ]);
 
@@ -55,6 +127,8 @@ class AjusteSistemaController extends Controller
                 'success' => true,
                 'message' => 'Ajustes del sistema actualizados correctamente.',
                 'ajustes' => $ajustes,
+                'estudio' => $estudio,
+                'logo_url' => $estudio->logoUrl(),
             ]);
         }
 
