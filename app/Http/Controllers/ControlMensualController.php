@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\EstadoCliente;
+use App\Enums\RegimenTributario;
 use App\Enums\TipoTributoSunat;
 use App\Models\AbonoDeuda;
 use App\Models\Cliente;
@@ -237,12 +239,15 @@ class ControlMensualController extends Controller
                 ->paraUsuario()
                 ->vigentesEnEjercicio($anio)
                 ->orderBy('numero')
-                ->get(['id', 'numero', 'razon_social', 'ruc'])
+                ->get(['id', 'numero', 'razon_social', 'ruc', 'estado', 'mes_baja', 'regimen_tributario'])
                 ->map(fn (Cliente $cliente): array => [
                     'id' => $cliente->id,
                     'numero' => $cliente->numero,
                     'razon_social' => $cliente->razon_social,
                     'ruc' => $cliente->ruc,
+                    'estado' => $cliente->estado instanceof EstadoCliente ? $cliente->estado->value : (string) $cliente->estado,
+                    'mes_baja' => $cliente->mes_baja,
+                    'regimen' => $cliente->regimen_tributario instanceof RegimenTributario ? $cliente->regimen_tributario->value : (string) $cliente->regimen_tributario,
                 ])->values()->all(),
             'plantillaUrl' => route('control.carga_masiva.plantilla', ['anio' => $anio]),
             'previsualizarUrl' => route('control.carga_masiva.previsualizar'),

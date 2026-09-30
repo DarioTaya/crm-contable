@@ -6,6 +6,7 @@ use App\Models\AbonoDeuda;
 use App\Models\Cliente;
 use App\Models\DeudaTributaria;
 use App\Models\Estudio;
+use App\Models\LiquidacionPeriodo;
 use App\Models\Operacion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -339,9 +340,10 @@ class CargaMasivaControlTest extends TestCase
         $respuesta->assertOk();
         $respuesta->assertHeader('content-disposition', 'attachment; filename="control-impuestos-2026.csv"');
         $contenido = $respuesta->getContent();
-        $this->assertStringContainsString('Declaracion DJ (Pendiente, En proceso o Declarado; un solo valor para SIRE, PDT 621 y PDT 601; vacio no cambia)', $contenido);
-        $this->assertStringNotContainsString('SIRE (Pendiente, En proceso o Declarado; vacio no cambia)', $contenido);
-        $this->assertStringNotContainsString('PDT 601 PLAME (Pendiente, En proceso o Declarado; vacio no cambia)', $contenido);
+        $this->assertStringContainsString('SIRE (Pendiente, En proceso o Declarado; vacio no cambia)', $contenido);
+        $this->assertStringContainsString('PDT 621 (Pendiente, En proceso o Declarado; vacio no cambia)', $contenido);
+        $this->assertStringContainsString('PDT 601 PLAME (Pendiente, En proceso o Declarado; vacio no cambia)', $contenido);
+        $this->assertStringContainsString('Honorarios RH (Debe o Pago; vacio no cambia)', $contenido);
         $this->assertStringContainsString('PAGOS', $contenido);
         $this->assertStringContainsString('Codigo del tributo (el mismo codigo de la fila del mes: 1011, 5210, AFP u otro)', $contenido);
         $this->assertStringContainsString('Fecha de pago (DD/MM/AAAA)', $contenido);
@@ -734,6 +736,167 @@ CSV;
             'obligaciones' => ['sire', 'pdt', 'ple'],
             'alcance' => 'todos',
         ], $extra);
+    }
+
+    public function test_reinicio_solo_de_sire_no_borra_tributos_ni_pagos(): void
+    {
+        ['cliente' => $cliente] = $this->cartera();
+        $this->guardarTributo($cliente, '01-2026', '1011', 500);
+
+        $operacion = Operacion::where('cliente_id', $cliente->id)->where('periodo', '01-2026')->firstOrFail();
+        $operacion->estado_compras_ventas = 'Declarado';
+        $operacion->estado_pdt621 = 'Declarado';
+        $operacion->save();
+
+        $this->postJson(route('control.carga_masiva.aplicar'), $this->tramo(1, 1, [
+            'estado' => 'Pendiente',
+            'obligaciones' => ['sire'],
+        ]))->assertOk();
+
+        $operacion->refresh();
+        $this->assertSame('Pendiente', $operacion->estado_compras_ventas);
+        $this->assertSame('Declarado', $operacion->estado_pdt621);
+        $this->assertTrue((bool) $operacion->tiene_deuda);
+        $this->assertSame(1, $operacion->deudasTributarias()->count());
+    }
+
+    public function test_reinicio_de_pdt_elimina_deuda_pdt_y_liquidacion_pero_conserva_plame(): void
+    {
+        ['cliente' => $cliente] = $this->cartera();
+        $this->guardarTributo($cliente, '01-2026', '1011', 400);
+        $this->guardarTributo($cliente, '01-2026', '5210', 150);
+
+        $operacion = Operacion::where('cliente_id', $cliente->id)->where('periodo', '01-2026')->firstOrFail();
+        LiquidacionPeriodo::create([
+            'operacion_id' => $operacion->id,
+            'cliente_id' => $cliente->id,
+            'periodo' => '01-2026',
+            'ventas_18' => 1000,
+        ]);
+
+        $this->postJson(route('control.carga_masiva.aplicar'), $this->tramo(1, 1, [
+            'estado' => 'Pendiente',
+            'obligaciones' => ['pdt'],
+        ]))->assertOk();
+
+        $operacion->refresh();
+        $this->assertSame('Pendiente', $operacion->estado_pdt621);
+        $this->assertNull(LiquidacionPeriodo::where('operacion_id', $operacion->id)->first());
+        $this->assertNull($operacion->deudasTributarias()->where('tributo_codigo', '1011')->first());
+        $this->assertNotNull($operacion->deudasTributarias()->where('tributo_codigo', '5210')->first());
+        $this->assertTrue((bool) $operacion->tiene_deuda);
+        $this->assertSame(150.0, (float) $operacion->monto_deuda_inicial);
+    }
+
+    public function test_reinicio_omite_pdt_y_sire_en_cliente_del_nuevo_rus(): void
+    {
+        ['estudio' => $estudio] = $this->cartera(ruc: '20111000996', razon: 'EMPRESA MYPE SAC');
+        Cliente::create([
+            'estudio_id' => $estudio->id,
+            'razon_social' => 'BODEGA RUS EIRL',
+            'ruc' => '10444555661',
+            'regimen_tributario' => 'RUS',
+            'estado' => 'activo',
+        ]);
+
+        $respuesta = $this->postJson(route('control.carga_masiva.aplicar'), $this->tramo(1, 1, [
+            'estado' => 'Declarado',
+            'obligaciones' => ['sire', 'pdt'],
+        ]));
+
+        $respuesta->assertOk();
+        $this->assertContains('Se omitió PDT 621 / SIRE en clientes del Nuevo RUS (no presentan estas declaraciones).', $respuesta->json('avisos'));
+    }
+
+    public function test_plantilla_csv_actualiza_declaraciones_de_forma_independiente(): void
+    {
+        $this->cartera(ruc: '20111000991');
+
+        $csv = "ruc;periodo;sire;pdt;ple\n20111000991;01-2026;Declarado;Procesando;Pendiente\n";
+        $this->aplicarPlantilla($csv)
+            ->assertOk()
+            ->assertJsonPath('estados', 1);
+
+        $operacion = Operacion::query()->firstOrFail();
+        $this->assertSame('Declarado', $operacion->estado_compras_ventas);
+        $this->assertSame('Procesando', $operacion->estado_pdt621);
+        $this->assertSame('Pendiente', $operacion->estado_ple);
+    }
+
+    public function test_plantilla_csv_actualiza_honorarios_rh(): void
+    {
+        $this->cartera(ruc: '20111000992');
+
+        $csv = "ruc;periodo;honorarios\n20111000992;01-2026;Pago\n20111000992;02-2026;Pago\n";
+        $this->aplicarPlantilla($csv)
+            ->assertOk()
+            ->assertJsonPath('honorarios', 2);
+
+        $op1 = Operacion::where('periodo', '01-2026')->firstOrFail();
+        $op2 = Operacion::where('periodo', '02-2026')->firstOrFail();
+        $this->assertSame('Pagado', $op1->estado_pago_honorarios);
+        $this->assertSame('Pagado', $op2->estado_pago_honorarios);
+    }
+
+    public function test_modo_honorarios_actualiza_rango_de_meses(): void
+    {
+        ['cliente' => $cliente] = $this->cartera(ruc: '20111000993');
+
+        $this->postJson(route('control.carga_masiva.aplicar'), [
+            'modo' => 'honorarios',
+            'anio' => 2026,
+            'mes_desde' => 1,
+            'mes_hasta' => 3,
+            'estado' => 'Pagado',
+            'alcance' => 'todos',
+            'politica' => 'reemplazar',
+        ])->assertOk()
+            ->assertJsonPath('honorarios', 3);
+
+        $this->assertSame(3, Operacion::where('cliente_id', $cliente->id)->where('estado_pago_honorarios', 'Pagado')->count());
+    }
+
+    public function test_plantilla_csv_valida_regimen_del_cliente_contra_codigo_de_renta(): void
+    {
+        ['cliente' => $cliente] = $this->cartera(ruc: '20111000994');
+        $cliente->update(['regimen_tributario' => 'RER']);
+
+        $csvError = "ruc;periodo;3121\n20111000994;01-2026;150\n";
+        $this->aplicarPlantilla($csvError)
+            ->assertUnprocessable()
+            ->assertJsonPath('errores.0.mensaje', 'Fila 2: el tributo 3121 no corresponde al régimen RER de CLIENTE CARGA SAC (corresponde 3111 Renta RER 1.5%).');
+
+        $csvValido = "ruc;periodo;3111\n20111000994;01-2026;150\n";
+        $this->aplicarPlantilla($csvValido)
+            ->assertOk()
+            ->assertJsonPath('tributos', 1);
+    }
+
+    public function test_plantilla_csv_rechaza_multiples_codigos_de_renta_en_la_misma_fila(): void
+    {
+        $this->cartera(ruc: '20111000995');
+
+        $csv = "ruc;periodo;3111;3121\n20111000995;01-2026;100;120\n";
+        $this->aplicarPlantilla($csv)
+            ->assertUnprocessable()
+            ->assertJsonPath('errores.0.mensaje', 'Fila 2: no puede ingresar más de un tributo de renta mensual (RER, MYPE, General) para el mismo periodo.');
+    }
+
+    public function test_plantilla_csv_acepta_sinonimos_de_medio_de_pago(): void
+    {
+        $this->cartera(ruc: '20111000997');
+
+        $csv = "ruc;periodo;1011\n20111000997;01-2026;600\n\nPAGOS\nruc;periodo;codigo;monto;fecha;medio\n20111000997;01-2026;1011;200;15/02/2026;efectivo\n20111000997;01-2026;1011;300;16/02/2026;banco\n20111000997;01-2026;1011;100;17/02/2026;detraccion\n";
+        $this->aplicarPlantilla($csv)
+            ->assertOk()
+            ->assertJsonPath('tributos', 1)
+            ->assertJsonPath('pagos', 3);
+
+        $abonos = AbonoDeuda::query()->orderBy('fecha_pago')->get();
+        $this->assertCount(3, $abonos);
+        $this->assertSame('caja', $abonos[0]->medio_pago?->value);
+        $this->assertSame('bancos', $abonos[1]->medio_pago?->value);
+        $this->assertSame('detracciones', $abonos[2]->medio_pago?->value);
     }
 
     /**

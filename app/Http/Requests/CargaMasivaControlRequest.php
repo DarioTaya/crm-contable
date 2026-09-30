@@ -84,7 +84,7 @@ class CargaMasivaControlRequest extends FormRequest
             ],
             'obligaciones' => ['required_if:modo,estados', 'nullable', 'array', 'min:1'],
             'obligaciones.*' => ['in:sire,pdt,ple'],
-            'alcance' => ['required_if:modo,estados', 'nullable', 'in:todos,seleccion'],
+            'alcance' => ['required_if:modo,estados,honorarios', 'nullable', 'in:todos,seleccion'],
             'cliente_ids' => ['required_if:alcance,seleccion', 'nullable', 'array', 'min:1', 'max:500'],
             'cliente_ids.*' => ['integer', Cliente::reglaPerteneceACartera()],
             'contenido' => ['nullable', 'string', 'max:2000000'],

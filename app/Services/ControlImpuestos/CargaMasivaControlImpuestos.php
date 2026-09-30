@@ -2,6 +2,7 @@
 
 namespace App\Services\ControlImpuestos;
 
+use App\Enums\RegimenTributario;
 use App\Enums\TipoTributoSunat;
 use App\Models\AbonoDeuda;
 use App\Models\Cliente;
@@ -138,13 +139,17 @@ class CargaMasivaControlImpuestos
         }
 
         $reinicio = $solicitud->estado === 'Pendiente';
-        $operaciones = $this->operacionesDe($clientes, $periodos, $reinicio);
+        $afectaTributos = in_array('pdt', $elegidas, true) || in_array('ple', $elegidas, true);
+        $operaciones = $this->operacionesDe($clientes, $periodos, $reinicio && $afectaTributos);
         $cambios = [];
         $bajas = 0;
         $conservados = 0;
         $iguales = 0;
+        $omitidosRus = 0;
 
         foreach ($clientes as $cliente) {
+            $esRus = ($cliente->regimen_tributario instanceof RegimenTributario ? $cliente->regimen_tributario->value : (string) $cliente->regimen_tributario) === 'RUS';
+
             foreach ($periodos as $periodo) {
                 if (! $cliente->rindeEnPeriodo($periodo)) {
                     $bajas++;
@@ -155,6 +160,12 @@ class CargaMasivaControlImpuestos
                 $operacion = $operaciones->get($cliente->id.'|'.$periodo);
                 $datos = [];
                 foreach ($elegidas as $clave) {
+                    if ($esRus && in_array($clave, ['pdt', 'sire'], true)) {
+                        $omitidosRus++;
+
+                        continue;
+                    }
+
                     $actual = $operacion?->{$this->columnaEstado($clave)} ?? 'Pendiente';
                     if ($actual === $solicitud->estado) {
                         $iguales++;
@@ -173,24 +184,29 @@ class CargaMasivaControlImpuestos
                     $cambios[] = $this->cambioEstado($cliente, $periodo, $datos, null);
                 }
 
-                if ($reinicio && $this->tieneTributosOPagos($operacion)) {
+                if ($reinicio && $afectaTributos && $this->tieneTributosOPagosPara($operacion, $elegidas)) {
                     $cambios[] = [
                         'tipo' => 'limpiar',
                         'cliente_id' => $cliente->id,
                         'periodo' => $periodo,
                         'fila' => null,
                         'resumen' => "{$cliente->razon_social} · {$periodo} · se eliminan tributos y pagos",
-                        'datos' => [],
+                        'datos' => ['obligaciones' => $elegidas],
                     ];
                 }
             }
         }
 
+        $avisos = $this->avisos($bajas, $conservados + $iguales);
+        if ($omitidosRus > 0) {
+            $avisos[] = 'Se omitió PDT 621 / SIRE en clientes del Nuevo RUS (no presentan estas declaraciones).';
+        }
+
         return [
             'cambios' => $cambios,
             'errores' => [],
-            'omitidos' => $bajas + $conservados + $iguales,
-            'avisos' => $this->avisos($bajas, $conservados + $iguales),
+            'omitidos' => $bajas + $conservados + $iguales + $omitidosRus,
+            'avisos' => $avisos,
         ];
     }
 
@@ -400,6 +416,37 @@ class CargaMasivaControlImpuestos
 
             if ($datosEstado !== []) {
                 $cambios[] = $this->cambioEstado($cliente, $periodo, $datosEstado, $numero);
+            }
+
+            if (is_string($fila['honorarios'] ?? null)) {
+                $destinoRh = $fila['honorarios'];
+                $actualRh = $operacion?->estado_pago_honorarios ?? 'Pendiente';
+                if ($actualRh === $destinoRh) {
+                    $iguales++;
+                } elseif ($solicitud->politica === 'conservar' && $actualRh !== 'Pendiente') {
+                    $conservados++;
+                } else {
+                    $etiquetaRh = $destinoRh === 'Pagado' ? 'Pagó' : 'Debe';
+                    $cambios[] = [
+                        'tipo' => 'honorario',
+                        'cliente_id' => $cliente->id,
+                        'periodo' => $periodo,
+                        'fila' => $numero,
+                        'resumen' => "{$cliente->razon_social} · {$periodo} · RH → {$etiquetaRh}",
+                        'datos' => ['honorarios' => $destinoRh],
+                    ];
+                }
+            }
+
+            $codigosRentaMes = ['3111', '3121', '3031'];
+            $rentasEnFila = array_filter($fila['tributos'], fn (array $t): bool => in_array((string) $t['codigo'], $codigosRentaMes, true));
+            if (count($rentasEnFila) > 1) {
+                $errores[] = [
+                    'fila' => $numero,
+                    'mensaje' => "Fila {$numero}: no puede ingresar más de un tributo de renta mensual (RER, MYPE, General) para el mismo periodo.",
+                ];
+
+                continue;
             }
 
             $deudas = $operacion?->deudasTributarias?->keyBy('tributo_codigo') ?? collect();
@@ -763,6 +810,31 @@ class CargaMasivaControlImpuestos
         mixed $existente,
         string $politica,
     ): array {
+        $regimenValor = $cliente->regimen_tributario instanceof RegimenTributario
+            ? $cliente->regimen_tributario->value
+            : (string) $cliente->regimen_tributario;
+        $regimenNorm = strtoupper(trim($regimenValor));
+
+        $dec = TipoTributoSunat::declaracionDe($codigo);
+        if ($regimenNorm === 'RUS' && $dec === 'pdt_621') {
+            return [
+                'cambio' => null,
+                'error' => "Fila {$fila}: {$cliente->razon_social} está en el Nuevo RUS y no declara tributos de PDT 621.",
+                'motivo' => null,
+            ];
+        }
+
+        $rentaEsperada = TipoTributoSunat::rentaDelRegimen($cliente->regimen_tributario);
+        if (in_array($codigo, ['3111', '3121', '3031'], true) && $rentaEsperada !== null && $codigo !== $rentaEsperada->value) {
+            $nombreEsperado = $rentaEsperada->nombreCorto();
+
+            return [
+                'cambio' => null,
+                'error' => "Fila {$fila}: el tributo {$codigo} no corresponde al régimen {$regimenNorm} de {$cliente->razon_social} (corresponde {$rentaEsperada->value} {$nombreEsperado}).",
+                'motivo' => null,
+            ];
+        }
+
         $deuda = $existente instanceof DeudaTributaria ? $existente : null;
         if ($deuda && $politica === 'conservar') {
             return ['cambio' => null, 'error' => null, 'motivo' => 'conservado'];
@@ -866,6 +938,7 @@ class CargaMasivaControlImpuestos
         $hayEstados = false;
         $hayHonorario = false;
         $limpia = false;
+        $obligacionesLimpiar = ['pdt', 'ple'];
 
         foreach ($grupo as $cambio) {
             if ($cambio['tipo'] === 'honorario') {
@@ -876,6 +949,9 @@ class CargaMasivaControlImpuestos
             }
             if ($cambio['tipo'] === 'limpiar') {
                 $limpia = true;
+                if (! empty($cambio['datos']['obligaciones'])) {
+                    $obligacionesLimpiar = $cambio['datos']['obligaciones'];
+                }
 
                 continue;
             }
@@ -890,18 +966,22 @@ class CargaMasivaControlImpuestos
             }
         }
 
+        if ($hayEstados || $hayHonorario) {
+            $operacion->save();
+        }
+
         if ($limpia) {
-            $this->limpiarTributos($operacion);
+            $this->limpiarTributos($operacion, $obligacionesLimpiar);
 
             return;
         }
 
         $tributos = $grupo->where('tipo', 'tributo')->values();
-        if ($hayEstados || $hayHonorario || $tributos->isNotEmpty()) {
-            if (! $operacion->exists && $tributos->isNotEmpty()) {
+        if ($tributos->isNotEmpty()) {
+            if (! $operacion->exists) {
                 $operacion->tiene_deuda = true;
+                $operacion->save();
             }
-            $operacion->save();
         }
 
         foreach ($tributos as $cambio) {
@@ -923,7 +1003,10 @@ class CargaMasivaControlImpuestos
         }
     }
 
-    private function limpiarTributos(Operacion $operacion): void
+    /**
+     * @param  list<string>  $obligaciones
+     */
+    private function limpiarTributos(Operacion $operacion, array $obligaciones = ['pdt', 'ple']): void
     {
         if (! $operacion->exists) {
             $operacion->tiene_deuda = false;
@@ -932,33 +1015,83 @@ class CargaMasivaControlImpuestos
             return;
         }
 
-        $operacion->deudasTributarias()->get()->each(function (DeudaTributaria $deuda): void {
-            $deuda->abonos()->delete();
-            $deuda->delete();
+        $declaraciones = [];
+        if (in_array('pdt', $obligaciones, true)) {
+            $declaraciones[] = 'pdt_621';
+        }
+        if (in_array('ple', $obligaciones, true)) {
+            $declaraciones[] = 'pdt_601';
+        }
+
+        if ($declaraciones === []) {
+            return;
+        }
+
+        $operacion->deudasTributarias()->get()->each(function (DeudaTributaria $deuda) use ($declaraciones): void {
+            $dec = TipoTributoSunat::declaracionDe($deuda->tributo_codigo);
+            if ($dec !== null && in_array($dec, $declaraciones, true)) {
+                $deuda->abonos()->delete();
+                $deuda->delete();
+            }
         });
-        $operacion->abonosDeuda()->delete();
+
+        if (in_array('pdt_621', $declaraciones, true)) {
+            $operacion->liquidacionPeriodo()?->delete();
+            $operacion->abonosDeuda()->whereNull('deuda_tributaria_id')->delete();
+        }
+
         $operacion->unsetRelation('deudasTributarias');
         $operacion->unsetRelation('abonosDeuda');
+        $operacion->unsetRelation('liquidacionPeriodo');
         $operacion->refrescarResumenDeudas();
-        $operacion->tiene_deuda = false;
-        $operacion->save();
     }
 
-    private function tieneTributosOPagos(?Operacion $operacion): bool
+    /**
+     * @param  list<string>  $obligaciones
+     */
+    private function tieneTributosOPagosPara(?Operacion $operacion, array $obligaciones): bool
     {
         if (! $operacion instanceof Operacion) {
             return false;
         }
 
-        if ($operacion->relationLoaded('deudasTributarias') && $operacion->deudasTributarias->isNotEmpty()) {
+        $declaraciones = [];
+        if (in_array('pdt', $obligaciones, true)) {
+            $declaraciones[] = 'pdt_621';
+        }
+        if (in_array('ple', $obligaciones, true)) {
+            $declaraciones[] = 'pdt_601';
+        }
+
+        if ($declaraciones === []) {
+            return false;
+        }
+
+        if ($operacion->relationLoaded('deudasTributarias')) {
+            $hay = $operacion->deudasTributarias->contains(function (DeudaTributaria $deuda) use ($declaraciones): bool {
+                $dec = TipoTributoSunat::declaracionDe($deuda->tributo_codigo);
+
+                return $dec !== null && in_array($dec, $declaraciones, true);
+            });
+            if ($hay) {
+                return true;
+            }
+        } else {
+            $hay = $operacion->deudasTributarias()->get()->contains(function (DeudaTributaria $deuda) use ($declaraciones): bool {
+                $dec = TipoTributoSunat::declaracionDe($deuda->tributo_codigo);
+
+                return $dec !== null && in_array($dec, $declaraciones, true);
+            });
+            if ($hay) {
+                return true;
+            }
+        }
+
+        if (in_array('pdt', $obligaciones, true) && $operacion->liquidacionPeriodo()->exists()) {
             return true;
         }
 
-        if ($operacion->relationLoaded('abonosDeuda') && $operacion->abonosDeuda->isNotEmpty()) {
-            return true;
-        }
-
-        return (bool) $operacion->tiene_deuda && (float) $operacion->monto_deuda_inicial > 0;
+        return false;
     }
 
     /**
@@ -1077,6 +1210,10 @@ class CargaMasivaControlImpuestos
 
     private function vencimientoDe(Cliente $cliente, string $periodo, string $codigo, bool $igvJusto, ?DeudaTributaria $deuda): ?string
     {
+        if ($codigo === TipoTributoSunat::Afp->value) {
+            return $deuda?->vencimiento_deuda?->format('Y-m-d') ?? $this->vencimientoAfp($periodo);
+        }
+
         $seraIgv = $codigo === TipoTributoSunat::Igv18->value && $igvJusto;
         $eraIgv = (bool) ($deuda?->es_igv_justo ?? false);
 
@@ -1100,6 +1237,28 @@ class CargaMasivaControlImpuestos
         }
 
         return $this->fechas[$clave];
+    }
+
+    private function vencimientoAfp(string $periodo): string
+    {
+        $clave = $periodo.'|afp';
+        if (! array_key_exists($clave, $this->fechas)) {
+            [$mesP, $anioP] = explode('-', $periodo);
+            // 5to día hábil del mes siguiente
+            $fecha = Carbon::create((int) $anioP, (int) $mesP, 1)->addMonth();
+            $diasHabiles = 0;
+            while ($diasHabiles < 5) {
+                if (! $fecha->isWeekend()) {
+                    $diasHabiles++;
+                }
+                if ($diasHabiles < 5) {
+                    $fecha->addDay();
+                }
+            }
+            $this->fechas[$clave] = $fecha->format('Y-m-d');
+        }
+
+        return (string) $this->fechas[$clave];
     }
 
     private function vencimientoIgvJusto(Cliente $cliente, string $periodo): string
@@ -1339,7 +1498,11 @@ class CargaMasivaControlImpuestos
             'RUC',
             'Razon social',
             'Periodo (MM-AAAA, ejemplo 01-2026)',
-            'Declaracion DJ (Pendiente, En proceso o Declarado; un solo valor para SIRE, PDT 621 y PDT 601; vacio no cambia)',
+            'SIRE (Pendiente, En proceso o Declarado; vacio no cambia)',
+            'PDT 621 (Pendiente, En proceso o Declarado; vacio no cambia)',
+            'PDT 601 PLAME (Pendiente, En proceso o Declarado; vacio no cambia)',
+            'Declaracion DJ (Opcional: un solo valor para marcar SIRE, PDT 621 y PLAME a la vez; vacio no cambia)',
+            'Honorarios RH (Debe o Pago; vacio no cambia)',
         ];
         foreach (TipoTributoSunat::catalogoFormulario() as $bloque) {
             $grupo = $bloque['titulo'].' '.$bloque['detalle'];

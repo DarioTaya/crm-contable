@@ -184,7 +184,7 @@ class LectorPlantillaControlImpuestos
 
         $tieneDatos = false;
         foreach (array_keys($columnas) as $campo) {
-            if (in_array($campo, ['sire', 'pdt', 'ple', 'dj', 'pagado'], true) || str_starts_with($campo, 'tributo:')) {
+            if (in_array($campo, ['sire', 'pdt', 'ple', 'dj', 'pagado', 'honorarios'], true) || str_starts_with($campo, 'tributo:')) {
                 $tieneDatos = true;
                 break;
             }
@@ -226,18 +226,31 @@ class LectorPlantillaControlImpuestos
             'ple' => 'ple',
             'plame' => 'ple',
             'pdt' => 'pdt',
+            'honorarios rh' => 'honorarios',
+            'honorarios' => 'honorarios',
+            'recibos por honorarios' => 'honorarios',
+            'recibo por honorarios' => 'honorarios',
+            'rh' => 'honorarios',
+            'pago honorarios' => 'honorarios',
             'codigo del tributo' => 'codigo_tributo',
             'codigo tributo' => 'codigo_tributo',
+            'codigo' => 'codigo_tributo',
             'monto del pago' => 'monto_pago',
             'monto pago' => 'monto_pago',
+            'monto' => 'monto_pago',
+            'importe' => 'monto_pago',
             'pagado' => 'pagado',
             'pago' => 'pagado',
             'fecha de pago' => 'fecha_pago',
             'fecha pago' => 'fecha_pago',
+            'fecha' => 'fecha_pago',
             'medio de pago' => 'medio_pago',
             'medio pago' => 'medio_pago',
+            'medio' => 'medio_pago',
             'numero de operacion' => 'numero_operacion',
             'numero operacion' => 'numero_operacion',
+            'numero' => 'numero_operacion',
+            'operacion' => 'numero_operacion',
             'n de operacion' => 'numero_operacion',
             'igv justo' => 'igv_justo',
             'ley igv justo' => 'igv_justo',
@@ -322,6 +335,18 @@ class LectorPlantillaControlImpuestos
             }
         }
 
+        $honorariosTexto = $this->valor($celdas, $columnas, 'honorarios');
+        $honorarios = null;
+        if ($honorariosTexto !== '') {
+            $honorarios = $this->honorarios($honorariosTexto);
+            if ($honorarios === null) {
+                $errores[] = [
+                    'fila' => $numero,
+                    'mensaje' => "Fila {$numero}: el estado «{$honorariosTexto}» de Honorarios RH no es válido. Use Pagó o Debe (o Pagado/Pendiente).",
+                ];
+            }
+        }
+
         $igv = $this->afirmacion($this->valor($celdas, $columnas, 'igv_justo'));
         $pagado = $this->afirmacion($this->valor($celdas, $columnas, 'pagado'));
         if ($pagado['error'] !== null) {
@@ -377,6 +402,7 @@ class LectorPlantillaControlImpuestos
             || $estados['sire'] !== null
             || $estados['pdt'] !== null
             || $estados['ple'] !== null
+            || $honorarios !== null
             || $pagado['valor'] === true
             || $pagado['error'] !== null
             || $traeDetalleDePago
@@ -409,6 +435,7 @@ class LectorPlantillaControlImpuestos
                 'sire' => $estados['sire'],
                 'pdt' => $estados['pdt'],
                 'ple' => $estados['ple'],
+                'honorarios' => $honorarios,
                 'igv_justo' => $igv['valor'],
                 'pagado' => $pagado['valor'],
                 'fecha_pago' => $fechaPago['valor'],
@@ -485,9 +512,18 @@ class LectorPlantillaControlImpuestos
         };
     }
 
-    /**
-     * @return array{valor: ?bool, error: ?string}
-     */
+    private function honorarios(string $texto): ?string
+    {
+        $normalizado = str_replace(['_', '-'], ' ', $this->sinAcentos(mb_strtolower(trim($texto))));
+        $normalizado = trim(preg_replace('/\s+/', ' ', $normalizado) ?? $normalizado);
+
+        return match ($normalizado) {
+            'pago', 'pagado', 'si', 's', '1', 'cancelado' => 'Pagado',
+            'debe', 'pendiente', 'no', 'n', '0' => 'Pendiente',
+            default => null,
+        };
+    }
+
     /**
      * @return array{valor: ?string, error: ?string}
      */
@@ -497,7 +533,7 @@ class LectorPlantillaControlImpuestos
             return ['valor' => null, 'error' => null];
         }
 
-        foreach (['d/m/Y', 'd-m-Y', 'Y-m-d'] as $formato) {
+        foreach (['d/m/Y', 'd-m-Y', 'Y-m-d', 'd/m/y', 'd-m-y', 'Y/m/d'] as $formato) {
             try {
                 $fecha = Carbon::createFromFormat('!'.$formato, $texto);
             } catch (\Throwable) {
@@ -528,6 +564,28 @@ class LectorPlantillaControlImpuestos
 
         $normalizado = str_replace(['_', '-'], ' ', $this->sinAcentos(mb_strtolower(trim($texto))));
         $normalizado = trim(preg_replace('/\s+/', ' ', $normalizado) ?? $normalizado);
+
+        $sinonimos = [
+            'efectivo' => MedioPagoTributo::Caja->value,
+            'caja' => MedioPagoTributo::Caja->value,
+            'banco' => MedioPagoTributo::Bancos->value,
+            'bancos' => MedioPagoTributo::Bancos->value,
+            'transferencia' => MedioPagoTributo::Bancos->value,
+            'deposito' => MedioPagoTributo::Bancos->value,
+            'detraccion' => MedioPagoTributo::Detracciones->value,
+            'detracciones' => MedioPagoTributo::Detracciones->value,
+            'cuenta detracciones' => MedioPagoTributo::Detracciones->value,
+            'saldo a favor' => MedioPagoTributo::CompensacionRenta->value,
+            'compensacion saldo' => MedioPagoTributo::CompensacionRenta->value,
+            'compensacion renta' => MedioPagoTributo::CompensacionRenta->value,
+            'compensacion renta anual' => MedioPagoTributo::CompensacionRenta->value,
+            'itan' => MedioPagoTributo::CompensacionItan->value,
+            'compensacion itan' => MedioPagoTributo::CompensacionItan->value,
+        ];
+
+        if (isset($sinonimos[$normalizado])) {
+            return ['valor' => $sinonimos[$normalizado], 'error' => null];
+        }
 
         foreach (MedioPagoTributo::cases() as $caso) {
             $etiqueta = str_replace(['_', '-'], ' ', $this->sinAcentos(mb_strtolower($caso->etiqueta())));
@@ -831,6 +889,9 @@ class LectorPlantillaControlImpuestos
         }
         if (strcasecmp($token, 'afp') === 0) {
             $token = 'AFP';
+        }
+        if ($token === '3011') {
+            $token = '3031';
         }
 
         return TipoTributoSunat::resolver($token)?->value;

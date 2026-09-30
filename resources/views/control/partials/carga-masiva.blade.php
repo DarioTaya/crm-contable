@@ -31,7 +31,11 @@
                 if (this.aplicando) {
                     return;
                 }
+                const recargar = this.paso === 'listo';
                 this.abierto = false;
+                if (recargar) {
+                    window.location.reload();
+                }
             },
 
             clientesVisibles() {
@@ -43,17 +47,27 @@
                 return (this.config.clientes || []).filter((cliente) => {
                     return String(cliente.razon_social || '').toLowerCase().includes(consulta)
                         || String(cliente.ruc || '').includes(consulta)
-                        || String(cliente.numero || '').includes(consulta);
+                        || String(cliente.numero || '').includes(consulta)
+                        || String(cliente.regimen || '').toLowerCase().includes(consulta);
                 });
             },
 
             todosMarcados() {
-                const clientes = this.config.clientes || [];
-                return clientes.length > 0 && this.seleccionados.length === clientes.length;
+                const visibles = this.clientesVisibles();
+                if (visibles.length === 0) {
+                    return false;
+                }
+                return visibles.every((cliente) => this.seleccionados.includes(cliente.id));
             },
 
             alternarTodos(marcado) {
-                this.seleccionados = marcado ? (this.config.clientes || []).map((cliente) => cliente.id) : [];
+                const visiblesIds = this.clientesVisibles().map((cliente) => cliente.id);
+                if (marcado) {
+                    const nuevos = new Set([...this.seleccionados, ...visiblesIds]);
+                    this.seleccionados = Array.from(nuevos);
+                } else {
+                    this.seleccionados = this.seleccionados.filter((id) => !visiblesIds.includes(id));
+                }
                 this.limpiarRevision();
             },
 
@@ -400,6 +414,8 @@
                                             <input type="checkbox" class="rounded border-hairline text-brand-600" :checked="seleccionados.includes(cliente.id)" @change="alternarCliente(cliente.id, $event.target.checked)">
                                             <span class="font-mono text-xs text-neutral-500" x-text="cliente.numero"></span>
                                             <span class="truncate" x-text="cliente.razon_social"></span>
+                                            <span x-show="cliente.regimen" class="rounded bg-brand-50 border border-brand-200 px-1 py-0.5 text-[10px] font-semibold text-brand-700" x-text="cliente.regimen"></span>
+                                            <span x-show="cliente.estado === 'retirado' || cliente.mes_baja" class="rounded bg-neutral-200 px-1 py-0.5 text-[10px] font-medium text-neutral-600" x-text="cliente.mes_baja ? 'Baja ' + cliente.mes_baja : 'Baja'"></span>
                                             <span class="ml-auto font-mono text-xs text-neutral-500" x-text="cliente.ruc"></span>
                                         </label>
                                     </template>
@@ -454,6 +470,8 @@
                                             <input type="checkbox" class="rounded border-hairline text-brand-600" :checked="seleccionados.includes(cliente.id)" @change="alternarCliente(cliente.id, $event.target.checked)">
                                             <span class="font-mono text-xs text-neutral-500" x-text="cliente.numero"></span>
                                             <span class="truncate" x-text="cliente.razon_social"></span>
+                                            <span x-show="cliente.regimen" class="rounded bg-brand-50 border border-brand-200 px-1 py-0.5 text-[10px] font-semibold text-brand-700" x-text="cliente.regimen"></span>
+                                            <span x-show="cliente.estado === 'retirado' || cliente.mes_baja" class="rounded bg-neutral-200 px-1 py-0.5 text-[10px] font-medium text-neutral-600" x-text="cliente.mes_baja ? 'Baja ' + cliente.mes_baja : 'Baja'"></span>
                                             <span class="ml-auto font-mono text-xs text-neutral-500" x-text="cliente.ruc"></span>
                                         </label>
                                     </template>
@@ -485,6 +503,8 @@
                                             <input type="checkbox" class="rounded border-hairline text-brand-600" :checked="seleccionados.includes(cliente.id)" @change="alternarCliente(cliente.id, $event.target.checked)">
                                             <span class="font-mono text-xs text-neutral-500" x-text="cliente.numero"></span>
                                             <span class="truncate" x-text="cliente.razon_social"></span>
+                                            <span x-show="cliente.regimen" class="rounded bg-brand-50 border border-brand-200 px-1 py-0.5 text-[10px] font-semibold text-brand-700" x-text="cliente.regimen"></span>
+                                            <span x-show="cliente.estado === 'retirado' || cliente.mes_baja" class="rounded bg-neutral-200 px-1 py-0.5 text-[10px] font-medium text-neutral-600" x-text="cliente.mes_baja ? 'Baja ' + cliente.mes_baja : 'Baja'"></span>
                                             <span class="ml-auto font-mono text-xs text-neutral-500" x-text="cliente.ruc"></span>
                                         </label>
                                     </template>
@@ -504,7 +524,8 @@
                             <summary class="cursor-pointer font-semibold">Cómo llenar la plantilla</summary>
                             <div class="mt-2 space-y-2 text-xs leading-relaxed">
                                 <p>Cada fila de arriba es una empresa y un mes. El periodo va como <span class="font-mono">01-2026</span>. Los meses de baja no vienen. No borre el RUC ni el periodo.</p>
-                                <p><span class="font-mono">Declaracion DJ</span> es el botón verde de la matriz: un solo valor (Pendiente, En proceso o Declarado) para SIRE, PDT 621 y PDT 601. Si la deja vacía, el botón no cambia.</p>
+                                <p><span class="font-mono">SIRE</span>, <span class="font-mono">PDT 621</span> y <span class="font-mono">PDT 601 PLAME</span> permiten actualizar el estado de cada declaración de forma independiente (Pendiente, En proceso o Declarado). También puede usar <span class="font-mono">Declaracion DJ</span> para marcar las tres a la vez. Si las deja vacías, sus estados no cambian.</p>
+                                <p><span class="font-mono">Honorarios RH</span> permite registrar el estado de recibos por honorarios del mes (Pagó o Debe).</p>
                                 <p>Los importes van en la fila del mes, uno por tributo. Los pagos van abajo, después de la fila <span class="font-mono">PAGOS</span>: una fila por abono. El mismo tributo puede tener dos, tres o más pagos; cada uno lleva su monto, fecha, medio y, si quiere, número de operación. El código es el de la columna de arriba, por ejemplo <span class="font-mono">1011</span> o <span class="font-mono">5210</span>.</p>
                                 <p><span class="font-mono">IGV Justo</span> es SI o NO y solo aplica al IGV 1011. SI usa la prórroga de tres meses.</p>
                                 <p>El importe se escribe como <span class="font-mono">550</span>, <span class="font-mono">1500.50</span> o <span class="font-mono">1.500,50</span>. Es el mismo “importe a pagar” de la caja. La suma de los pagos de un tributo no puede pasar de ese importe. Guarde el libro como CSV UTF-8, o copie la hoja y péguela abajo.</p>
@@ -544,7 +565,7 @@
                                 <input type="radio" name="politica-carga" value="conservar" x-model="politica" @change="limpiarRevision()" class="mt-0.5 text-brand-600">
                                 <span>
                                     <span class="font-semibold text-neutral-900">Conservar lo ya trabajado.</span>
-                                    <span class="text-neutral-600" x-show="pestana === 'declaraciones'">Solo mueve el botón verde en los meses que siguen en Pendiente. Un mes en En proceso o Declarado queda igual, con sus tributos y pagos. Pendiente es la excepción: vuelve a Pendiente aunque el mes ya esté trabajado y, al confirmar, borra tributos y pagos.</span>
+                                    <span class="text-neutral-600" x-show="pestana === 'declaraciones'">Solo actualiza las declaraciones en los meses que siguen en Pendiente. Un mes en En proceso o Declarado queda igual, con sus tributos y pagos. Pendiente es la excepción: vuelve a Pendiente aunque el mes ya esté trabajado y, al confirmar, borra los tributos de esa obligación.</span>
                                     <span class="text-neutral-600" x-show="pestana === 'tributos'" x-cloak>No pisa un tributo ya guardado. Un pago nuevo se anota si no supera ese importe y no repite el mismo abono.</span>
                                     <span class="text-neutral-600" x-show="pestana === 'honorarios'" x-cloak>Solo marca Pagó en los meses que siguen en Debe. Un mes que ya está en Pagó no vuelve a Debe.</span>
                                 </span>
@@ -553,7 +574,7 @@
                                 <input type="radio" name="politica-carga" value="reemplazar" x-model="politica" @change="limpiarRevision()" class="mt-0.5 text-brand-600">
                                 <span>
                                     <span class="font-semibold text-neutral-900">Reemplazar.</span>
-                                    <span class="text-neutral-600" x-show="pestana === 'declaraciones'">Pone SIRE, PDT 621 y PDT 601 en el estado elegido, aunque el mes ya tenga otro. No cambia importes ni pagos. Si elige Pendiente, al confirmar también borra tributos y pagos.</span>
+                                    <span class="text-neutral-600" x-show="pestana === 'declaraciones'">Pone SIRE, PDT 621 y PDT 601 en el estado elegido, aunque el mes ya tenga otro. No cambia importes ni pagos. Si elige Pendiente, al confirmar también borra tributos y pagos correspondientes.</span>
                                     <span class="text-neutral-600" x-show="pestana === 'tributos'" x-cloak>Actualiza el importe. No lo deja por debajo de los pagos ya registrados y no borra tributos ni pagos. Los abonos nuevos se suman, sin pasar del importe.</span>
                                     <span class="text-neutral-600" x-show="pestana === 'honorarios'" x-cloak>Pone Debe o Pagó aunque el mes ya tenga el otro estado. No toca declaraciones, tributos ni pagos.</span>
                                 </span>
@@ -582,7 +603,7 @@
                         </ul>
                     </template>
                     <template x-if="resultado && resultado.errores && resultado.errores.length">
-                        <ul class="space-y-1 rounded-panel border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700" role="alert">
+                        <ul class="max-h-56 overflow-y-auto space-y-1 rounded-panel border border-danger-200 bg-danger-50 px-3 py-2 text-sm text-danger-700" role="alert">
                             <template x-for="(error, indice) in resultado.errores" :key="'error-' + indice">
                                 <li x-text="error.mensaje"></li>
                             </template>
