@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AlertaBuzon;
+use App\Models\Cliente;
+use App\Models\Estudio;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,10 +28,19 @@ class AuthController extends Controller
         $rememberedEmail = $request->cookie((string) config('auth.device_remember.email_cookie'));
         $rememberedPassword = $request->cookie((string) config('auth.device_remember.secret_cookie'));
 
+        $estudio = Estudio::first();
+        $totalClientes = Cliente::count();
+        $totalAlertas = AlertaBuzon::pendientes()->count();
+        $totalRiesgo = AlertaBuzon::altaPrioridad()->pendientes()->count();
+
         return view('auth.login', [
             'rememberedEmail' => is_string($rememberedEmail) ? $rememberedEmail : '',
             'rememberedPassword' => is_string($rememberedPassword) ? $rememberedPassword : '',
             'rememberDevice' => filled($rememberedEmail),
+            'estudio' => $estudio,
+            'totalClientes' => $totalClientes,
+            'totalAlertas' => $totalAlertas,
+            'totalRiesgo' => $totalRiesgo,
         ]);
     }
 

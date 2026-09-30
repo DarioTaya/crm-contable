@@ -14,6 +14,7 @@ use App\Http\Controllers\CronogramaSunatController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\OperacionController;
+use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PerfilController;
 use App\Http\Controllers\TipoCambioController;
 use App\Http\Controllers\UsuarioController;
@@ -28,6 +29,12 @@ use Illuminate\Support\Facades\Route;
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+// Recuperación de Contraseña
+Route::get('/forgot-password', [PasswordResetController::class, 'showForgotPasswordForm'])->name('password.request');
+Route::post('/forgot-password', [PasswordResetController::class, 'sendResetLinkEmail'])->name('password.email');
+Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword'])->name('password.update');
 
 /*
 |--------------------------------------------------------------------------

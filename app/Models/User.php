@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Notifications\ResetPasswordNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -137,5 +138,15 @@ class User extends Authenticatable
         }
 
         return mb_strtoupper(mb_substr($nombre, 0, 2));
+    }
+
+    /**
+     * Envía la notificación para el restablecimiento de contraseña.
+     *
+     * @param  string  $token
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
     }
 }
