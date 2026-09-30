@@ -119,6 +119,81 @@
                             </svg>
                         </button>
                     </div>
+                {{-- DNI / Documento de Identidad --}}
+                <div>
+                    <label for="dni" class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+                        DNI / Documento de Identidad
+                    </label>
+                    <input type="text"
+                           id="dni"
+                           name="dni"
+                           value="{{ old('dni') }}"
+                           placeholder="8 dígitos"
+                           maxlength="15"
+                           class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
+                </div>
+
+                {{-- Cargo / Puesto --}}
+                <div>
+                    <label for="cargo" class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+                        Cargo en el Estudio Contable
+                    </label>
+                    <input type="text"
+                           id="cargo"
+                           name="cargo"
+                           value="{{ old('cargo') }}"
+                           placeholder="Ej. Asistente Contable, Planillas, Tributario..."
+                           class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
+                </div>
+
+                {{-- Fecha de Nacimiento / Cumpleaños --}}
+                <div>
+                    <label for="fecha_nacimiento" class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5 flex items-center justify-between">
+                        <span>Fecha de Cumpleaños / Nacimiento</span>
+                        <span class="text-brand-600 font-normal lowercase">🎂 Experiencia CRM</span>
+                    </label>
+                    <input type="date"
+                           id="fecha_nacimiento"
+                           name="fecha_nacimiento"
+                           value="{{ old('fecha_nacimiento') }}"
+                           class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
+                </div>
+
+                {{-- Fecha de Ingreso / Contratación --}}
+                <div>
+                    <label for="fecha_ingreso" class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+                        Fecha de Contratación / Ingreso
+                    </label>
+                    <input type="date"
+                           id="fecha_ingreso"
+                           name="fecha_ingreso"
+                           value="{{ old('fecha_ingreso') }}"
+                           class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
+                </div>
+
+                {{-- Fecha de Cese Laboral --}}
+                <div>
+                    <label for="fecha_cese" class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+                        Fecha de Cese Laboral <span class="text-gray-400 font-normal lowercase">(opcional)</span>
+                    </label>
+                    <input type="date"
+                           id="fecha_cese"
+                           name="fecha_cese"
+                           value="{{ old('fecha_cese') }}"
+                           class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
+                </div>
+
+                {{-- Dirección Domiciliaria --}}
+                <div>
+                    <label for="direccion" class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+                        Dirección Domiciliaria
+                    </label>
+                    <input type="text"
+                           id="direccion"
+                           name="direccion"
+                           value="{{ old('direccion') }}"
+                           placeholder="Av. o Calle, Urbanización, Ciudad"
+                           class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
                 </div>
             </div>
 

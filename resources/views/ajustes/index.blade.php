@@ -18,7 +18,9 @@
             sitio_web: @js($estudio->sitio_web ?? ''),
             sidebar_display: @js($estudio->sidebar_display ?? 'logo_nombre'),
             logo_actual: @js($estudio->logoUrl()),
+            logo_nombre_actual: @js($estudio->logoNombreOriginal()),
             isotipo_actual: @js($estudio->isotipo_path ? asset('storage/'.$estudio->isotipo_path) : null),
+            isotipo_nombre_actual: @js($estudio->isotipoNombreOriginal()),
             frecuencia_cron_horas: {{ $ajustes->frecuencia_cron_horas }},
             notificar_whatsapp: {{ $ajustes->notificar_whatsapp ? 'true' : 'false' }},
             nivel_alerta_whatsapp: @js($ajustes->nivel_alerta_whatsapp),
@@ -184,7 +186,7 @@
                                     </label>
                                     <input type="file"
                                            id="logo_file_input"
-                                           accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                                           accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg,.png,.jpg,.jpeg,.webp,.ico,.gif,.avif"
                                            @change="seleccionarArchivo($event)"
                                            class="sr-only">
 
@@ -198,6 +200,17 @@
                                         </svg>
                                     </button>
                                 </div>
+
+                                {{-- Nombre del archivo de logotipo subido / seleccionado --}}
+                                <template x-if="logo_nombre_nuevo || (form.logo_actual && form.logo_nombre_actual && !eliminarLogo)">
+                                    <div class="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-[11px] font-mono text-gray-700 shadow-2xs max-w-[260px] truncate"
+                                         :title="logo_nombre_nuevo || form.logo_nombre_actual">
+                                        <svg class="h-3.5 w-3.5 text-brand-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
+                                        </svg>
+                                        <span class="truncate" x-text="logo_nombre_nuevo || form.logo_nombre_actual"></span>
+                                    </div>
+                                </template>
                             </div>
                         </div>
 
@@ -232,7 +245,7 @@
                                     </label>
                                     <input type="file"
                                            id="isotipo_file_input"
-                                           accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                                           accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg,.png,.jpg,.jpeg,.webp,.ico,.gif,.avif"
                                            @change="seleccionarIsotipo($event)"
                                            class="sr-only">
 
@@ -246,6 +259,17 @@
                                         </svg>
                                     </button>
                                 </div>
+
+                                {{-- Nombre del archivo de isotipo subido / seleccionado --}}
+                                <template x-if="isotipo_nombre_nuevo || (form.isotipo_actual && form.isotipo_nombre_actual && !eliminarIsotipo)">
+                                    <div class="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-gray-200 text-[11px] font-mono text-gray-700 shadow-2xs max-w-[260px] truncate"
+                                         :title="isotipo_nombre_nuevo || form.isotipo_nombre_actual">
+                                        <svg class="h-3.5 w-3.5 text-brand-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94A3 3 0 1 1 19.5 7.372L8.552 18.32m.009-.01-.01.01m5.699-9.941-7.81 7.81a1.5 1.5 0 0 0 2.112 2.13" />
+                                        </svg>
+                                        <span class="truncate" x-text="isotipo_nombre_nuevo || form.isotipo_nombre_actual"></span>
+                                    </div>
+                                </template>
                             </div>
                         </div>
 
@@ -735,15 +759,19 @@
                     sitio_web: initialData.sitio_web || '',
                     sidebar_display: initialData.sidebar_display || 'logo_nombre',
                     logo_actual: initialData.logo_actual || null,
+                    logo_nombre_actual: initialData.logo_nombre_actual || null,
                     isotipo_actual: initialData.isotipo_actual || null,
+                    isotipo_nombre_actual: initialData.isotipo_nombre_actual || null,
                     frecuencia_cron_horas: initialData.frecuencia_cron_horas || 8,
                     notificar_whatsapp: Boolean(initialData.notificar_whatsapp),
                     nivel_alerta_whatsapp: initialData.nivel_alerta_whatsapp || 'Solo Altas'
                 },
                 logoFile: null,
+                logo_nombre_nuevo: null,
                 previewLogoUrl: null,
                 eliminarLogo: false,
                 isotipoFile: null,
+                isotipo_nombre_nuevo: null,
                 previewIsotipoUrl: null,
                 eliminarIsotipo: false,
                 guardando: false,
@@ -771,13 +799,14 @@
                     const file = event.target.files[0];
                     if (!file) return;
 
-                    if (file.size > 2 * 1024 * 1024) {
-                        this.lanzarToast('Archivo demasiado grande', 'El logotipo debe pesar menos de 2MB.', 'error');
+                    if (file.size > 5 * 1024 * 1024) {
+                        this.lanzarToast('Archivo demasiado grande', 'El logotipo debe pesar menos de 5MB.', 'error');
                         event.target.value = '';
                         return;
                     }
 
                     this.logoFile = file;
+                    this.logo_nombre_nuevo = file.name;
                     this.eliminarLogo = false;
                     const reader = new FileReader();
                     reader.onload = (e) => {
@@ -788,6 +817,7 @@
 
                 quitarLogo() {
                     this.logoFile = null;
+                    this.logo_nombre_nuevo = null;
                     this.previewLogoUrl = null;
                     this.eliminarLogo = true;
                     const fileInput = document.getElementById('logo_file_input');
@@ -798,13 +828,14 @@
                     const file = event.target.files[0];
                     if (!file) return;
 
-                    if (file.size > 2 * 1024 * 1024) {
-                        this.lanzarToast('Archivo demasiado grande', 'El isotipo debe pesar menos de 2MB.', 'error');
+                    if (file.size > 5 * 1024 * 1024) {
+                        this.lanzarToast('Archivo demasiado grande', 'El isotipo debe pesar menos de 5MB.', 'error');
                         event.target.value = '';
                         return;
                     }
 
                     this.isotipoFile = file;
+                    this.isotipo_nombre_nuevo = file.name;
                     this.eliminarIsotipo = false;
                     const reader = new FileReader();
                     reader.onload = (e) => {
@@ -815,6 +846,7 @@
 
                 quitarIsotipo() {
                     this.isotipoFile = null;
+                    this.isotipo_nombre_nuevo = null;
                     this.previewIsotipoUrl = null;
                     this.eliminarIsotipo = true;
                     const fileInput = document.getElementById('isotipo_file_input');
@@ -911,14 +943,18 @@
 
                         if (data.logo_url !== undefined) {
                             this.form.logo_actual = data.logo_url;
+                            this.form.logo_nombre_actual = data.logo_nombre || (this.logoFile ? this.logoFile.name : null);
                             this.previewLogoUrl = null;
                             this.logoFile = null;
+                            this.logo_nombre_nuevo = null;
                             this.eliminarLogo = false;
                         }
                         if (data.isotipo_url !== undefined) {
                             this.form.isotipo_actual = data.isotipo_url;
+                            this.form.isotipo_nombre_actual = data.isotipo_nombre || (this.isotipoFile ? this.isotipoFile.name : null);
                             this.previewIsotipoUrl = null;
                             this.isotipoFile = null;
+                            this.isotipo_nombre_nuevo = null;
                             this.eliminarIsotipo = false;
                         }
 

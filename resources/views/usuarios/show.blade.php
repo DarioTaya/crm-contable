@@ -193,6 +193,17 @@
                         <dd class="mt-0.5 font-bold text-gray-900 text-sm">{{ $usuario->name }}</dd>
                     </div>
 
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <dt class="text-[11px] font-semibold uppercase text-gray-400">DNI / Documento</dt>
+                            <dd class="mt-0.5 font-semibold text-gray-800">{{ $usuario->dni ?: 'No registrado' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-[11px] font-semibold uppercase text-gray-400">Cargo / Puesto</dt>
+                            <dd class="mt-0.5 font-semibold text-brand-700">{{ $usuario->cargoParaMostrar() }}</dd>
+                        </div>
+                    </div>
+
                     <div>
                         <dt class="text-[11px] font-semibold uppercase text-gray-400">Correo Electrónico (Login)</dt>
                         <dd class="mt-0.5 font-medium text-gray-800 flex items-center gap-2">
@@ -214,6 +225,51 @@
                             @endif
                         </dd>
                     </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <dt class="text-[11px] font-semibold uppercase text-gray-400">Fecha de Cumpleaños</dt>
+                            <dd class="mt-0.5 font-medium text-gray-800 flex items-center gap-1.5 flex-wrap">
+                                @if ($usuario->fecha_nacimiento)
+                                    <span>🎂 {{ $usuario->fecha_nacimiento->format('d/m/Y') }}</span>
+                                    @if ($usuario->esCumpleanosHoy())
+                                        <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800 border border-amber-300 animate-pulse">
+                                            ¡Hoy Cumple Años! 🎉
+                                        </span>
+                                    @endif
+                                @else
+                                    <span class="text-gray-400 italic">No registrada</span>
+                                @endif
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-[11px] font-semibold uppercase text-gray-400">Fecha de Contratación</dt>
+                            <dd class="mt-0.5 font-medium text-gray-800">
+                                @if ($usuario->fecha_ingreso)
+                                    <span>📅 {{ $usuario->fecha_ingreso->format('d/m/Y') }}</span>
+                                @else
+                                    <span class="text-gray-400 italic">No registrada</span>
+                                @endif
+                            </dd>
+                        </div>
+                    </div>
+
+                    @if ($usuario->fecha_cese)
+                        <div>
+                            <dt class="text-[11px] font-semibold uppercase text-rose-500">Fecha de Cese Laboral</dt>
+                            <dd class="mt-0.5 font-bold text-rose-700 flex items-center gap-1.5">
+                                <span>🛑 {{ $usuario->fecha_cese->format('d/m/Y') }}</span>
+                                <span class="rounded bg-rose-100 text-rose-800 text-[10px] px-1.5 py-0.5 font-semibold">Baja efectuada</span>
+                            </dd>
+                        </div>
+                    @endif
+
+                    @if ($usuario->direccion)
+                        <div>
+                            <dt class="text-[11px] font-semibold uppercase text-gray-400">Dirección</dt>
+                            <dd class="mt-0.5 font-medium text-gray-800">{{ $usuario->direccion }}</dd>
+                        </div>
+                    @endif
 
                     <div>
                         <dt class="text-[11px] font-semibold uppercase text-gray-400">Estudio Contable</dt>
@@ -261,14 +317,14 @@
                         </dd>
                     </div>
 
-                    <div x-data="{ verPass: false }">
-                        <dt class="text-[11px] font-semibold uppercase text-gray-400">Contraseña</dt>
+                    <div x-data="{ verPass: false, copiado: false }">
+                        <dt class="text-[11px] font-semibold uppercase text-gray-400">Contraseña de Acceso</dt>
                         <dd class="mt-1 flex items-center justify-between">
                             <div class="flex items-center gap-2">
                                 <span class="font-mono text-xs font-semibold"
                                       :class="verPass ? 'text-gray-900 bg-gray-100 px-2 py-0.5 rounded' : 'text-gray-400 tracking-widest'">
                                     <span x-show="!verPass">••••••••••••</span>
-                                    <span x-show="verPass" x-cloak>{{ $usuario->password_plain ?? '••••••••••••' }}</span>
+                                    <span x-show="verPass" x-cloak>{{ $usuario->password_plain ?: 'admin123' }}</span>
                                 </span>
                                 <button type="button"
                                         @click="verPass = !verPass"
@@ -282,9 +338,18 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
                                     </svg>
                                 </button>
+                                <button type="button"
+                                        @click="navigator.clipboard.writeText('{{ $usuario->password_plain ?: 'admin123' }}'); copiado = true; setTimeout(() => copiado = false, 2000)"
+                                        class="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                                        title="Copiar contraseña al portapapeles">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
+                                    </svg>
+                                </button>
+                                <span x-show="copiado" x-cloak class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">¡Copiado!</span>
                             </div>
                             <button type="button" @click="modoEdicion = true" class="text-[11px] font-semibold text-brand-600 hover:underline cursor-pointer">
-                                Actualizar Contraseña
+                                Actualizar Clave
                             </button>
                         </dd>
                     </div>
@@ -432,11 +497,90 @@
                                class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
                     </div>
 
-                    {{-- Contraseña (opcional para editar) --}}
-                    <div x-data="{ verPassInput: false }">
-                        <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
-                            Nueva Contraseña <span class="text-gray-400 font-normal lowercase">(dejar en blanco para mantener actual)</span>
+                    {{-- DNI / Documento de Identidad --}}
+                    <div>
+                        <label for="dni" class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+                            DNI / Documento de Identidad
                         </label>
+                        <input type="text"
+                               id="dni"
+                               name="dni"
+                               value="{{ old('dni', $usuario->dni) }}"
+                               placeholder="8 dígitos"
+                               maxlength="15"
+                               class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
+                    </div>
+
+                    {{-- Cargo / Puesto --}}
+                    <div>
+                        <label for="cargo" class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+                            Cargo en el Estudio Contable
+                        </label>
+                        <input type="text"
+                               id="cargo"
+                               name="cargo"
+                               value="{{ old('cargo', $usuario->cargo) }}"
+                               placeholder="Ej. Asistente Contable, Tributario, Planillas..."
+                               class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
+                    </div>
+
+                    {{-- Fecha de Nacimiento / Cumpleaños --}}
+                    <div>
+                        <label for="fecha_nacimiento" class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5 flex items-center justify-between">
+                            <span>Fecha de Cumpleaños / Nacimiento</span>
+                            <span class="text-brand-600 font-normal lowercase">🎂 Experiencia CRM</span>
+                        </label>
+                        <input type="date"
+                               id="fecha_nacimiento"
+                               name="fecha_nacimiento"
+                               value="{{ old('fecha_nacimiento', $usuario->fecha_nacimiento?->format('Y-m-d')) }}"
+                               class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
+                    </div>
+
+                    {{-- Fecha de Ingreso / Contratación --}}
+                    <div>
+                        <label for="fecha_ingreso" class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+                            Fecha de Contratación / Ingreso
+                        </label>
+                        <input type="date"
+                               id="fecha_ingreso"
+                               name="fecha_ingreso"
+                               value="{{ old('fecha_ingreso', $usuario->fecha_ingreso?->format('Y-m-d')) }}"
+                               class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
+                    </div>
+
+                    {{-- Fecha de Cese Laboral --}}
+                    <div>
+                        <label for="fecha_cese" class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+                            Fecha de Cese Laboral <span class="text-gray-400 font-normal lowercase">(opcional)</span>
+                        </label>
+                        <input type="date"
+                               id="fecha_cese"
+                               name="fecha_cese"
+                               value="{{ old('fecha_cese', $usuario->fecha_cese?->format('Y-m-d')) }}"
+                               class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
+                    </div>
+
+                    {{-- Dirección Domiciliaria --}}
+                    <div>
+                        <label for="direccion" class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-1.5">
+                            Dirección Domiciliaria
+                        </label>
+                        <input type="text"
+                               id="direccion"
+                               name="direccion"
+                               value="{{ old('direccion', $usuario->direccion) }}"
+                               placeholder="Av. o Calle, Urbanización, Ciudad"
+                               class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
+                    </div>
+
+                    {{-- Contraseña (opcional para editar) con visor de clave actual --}}
+                    <div x-data="{ verPassInput: false, verPassActual: false, copiado: false }">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-gray-700">
+                                Cambiar Contraseña <span class="text-gray-400 font-normal lowercase">(dejar en blanco para mantener)</span>
+                            </label>
+                        </div>
                         <div class="relative">
                             <input :type="verPassInput ? 'text' : 'password'"
                                    id="password"
@@ -455,6 +599,20 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
                                 </svg>
                             </button>
+                        </div>
+                        <div class="mt-2 flex items-center justify-between text-[11px] text-gray-500 bg-gray-50 border border-gray-200/80 rounded-lg px-2.5 py-1.5">
+                            <span class="flex items-center gap-1.5">
+                                <span>Clave actual registrada:</span>
+                                <span class="font-mono font-bold text-gray-800">
+                                    <span x-show="!verPassActual">••••••••</span>
+                                    <span x-show="verPassActual" x-cloak>{{ $usuario->password_plain ?: 'admin123' }}</span>
+                                </span>
+                            </span>
+                            <div class="flex items-center gap-2">
+                                <button type="button" @click="verPassActual = !verPassActual" class="text-brand-600 hover:underline font-semibold cursor-pointer" x-text="verPassActual ? 'Ocultar' : 'Ver clave'"></button>
+                                <span>•</span>
+                                <button type="button" @click="navigator.clipboard.writeText('{{ $usuario->password_plain ?: 'admin123' }}'); copiado = true; setTimeout(() => copiado = false, 2000)" class="text-gray-600 hover:text-gray-900 cursor-pointer" x-text="copiado ? '¡Copiada!' : 'Copiar'"></button>
+                            </div>
                         </div>
                     </div>
                 </div>

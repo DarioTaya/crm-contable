@@ -23,11 +23,17 @@ class User extends Authenticatable
         'estudio_id',
         'name',
         'email',
+        'dni',
+        'cargo',
         'password',
         'password_plain',
         'rol',
         'activo',
         'telefono',
+        'fecha_nacimiento',
+        'fecha_ingreso',
+        'fecha_cese',
+        'direccion',
     ];
 
     /**
@@ -52,6 +58,9 @@ class User extends Authenticatable
             'password' => 'hashed',
             'password_plain' => 'encrypted',
             'activo' => 'boolean',
+            'fecha_nacimiento' => 'date',
+            'fecha_ingreso' => 'date',
+            'fecha_cese' => 'date',
         ];
     }
 
@@ -85,6 +94,30 @@ class User extends Authenticatable
     public function isAsistente(): bool
     {
         return $this->rol === 'asistente';
+    }
+
+    /**
+     * Determina si hoy es el cumpleaños del usuario.
+     */
+    public function esCumpleanosHoy(): bool
+    {
+        if (! $this->fecha_nacimiento) {
+            return false;
+        }
+
+        return $this->fecha_nacimiento->format('m-d') === now()->format('m-d');
+    }
+
+    /**
+     * Devuelve el cargo registrado o una denominación por defecto según su rol.
+     */
+    public function cargoParaMostrar(): string
+    {
+        if (! empty($this->cargo)) {
+            return $this->cargo;
+        }
+
+        return $this->isAdmin() ? 'Administrador General' : 'Asistente Contable';
     }
 
     /**

@@ -81,6 +81,30 @@ class Estudio extends Model
     }
 
     /**
+     * Nombre original del archivo del logotipo o nombre base guardado.
+     */
+    public function logoNombreOriginal(): ?string
+    {
+        if (! empty($this->configuracion['logo_nombre_original'])) {
+            return $this->configuracion['logo_nombre_original'];
+        }
+
+        return $this->logo_path ? basename($this->logo_path) : null;
+    }
+
+    /**
+     * Nombre original del archivo del isotipo o nombre base guardado.
+     */
+    public function isotipoNombreOriginal(): ?string
+    {
+        if (! empty($this->configuracion['isotipo_nombre_original'])) {
+            return $this->configuracion['isotipo_nombre_original'];
+        }
+
+        return $this->isotipo_path ? basename($this->isotipo_path) : null;
+    }
+
+    /**
      * Iniciales estilizadas para monograma (fallback cuando no hay imagen).
      */
     public function iniciales(): string

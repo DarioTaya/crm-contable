@@ -85,6 +85,45 @@
                 </div>
 
                 <div>
+                    <label class="block font-semibold text-gray-700 mb-1">DNI / Documento de Identidad</label>
+                    <input type="text"
+                           name="dni"
+                           value="{{ old('dni', $user->dni) }}"
+                           placeholder="8 dígitos"
+                           maxlength="15"
+                           class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">Cargo / Puesto</label>
+                    <input type="text"
+                           name="cargo"
+                           value="{{ old('cargo', $user->cargo) }}"
+                           placeholder="Ej. Asistente Contable, Titular, etc."
+                           class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1 flex items-center justify-between">
+                        <span>Fecha de Cumpleaños / Nacimiento</span>
+                        <span class="text-brand-600 font-normal">🎂 Experiencia CRM</span>
+                    </label>
+                    <input type="date"
+                           name="fecha_nacimiento"
+                           value="{{ old('fecha_nacimiento', $user->fecha_nacimiento?->format('Y-m-d')) }}"
+                           class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500">
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-gray-700 mb-1">Dirección Domiciliaria</label>
+                    <input type="text"
+                           name="direccion"
+                           value="{{ old('direccion', $user->direccion) }}"
+                           placeholder="Av. o Calle, Urbanización, Ciudad"
+                           class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500">
+                </div>
+
+                <div>
                     <label class="block font-semibold text-gray-700 mb-1">Estudio Contable Asignado</label>
                     <input type="text"
                            disabled

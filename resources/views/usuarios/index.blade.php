@@ -70,7 +70,8 @@
                 <thead class="border-b border-gray-200 bg-gray-50/75 text-xs font-semibold uppercase tracking-wider text-gray-500">
                     <tr>
                         <th class="px-6 py-4">Usuario</th>
-                        <th class="px-6 py-4">Rol & Permisos</th>
+                        <th class="px-6 py-4">Rol & Puesto</th>
+                        <th class="px-6 py-4">Contraseña</th>
                         <th class="px-6 py-4">Estado</th>
                         <th class="px-6 py-4">Cartera Asignada</th>
                         <th class="px-6 py-4 text-right">Acciones</th>
@@ -98,26 +99,74 @@
                                             @if ($user->id === auth()->id())
                                                 <span class="rounded-md bg-brand-50 px-2 py-0.5 text-[10px] font-semibold text-brand-700 border border-brand-200">Tú</span>
                                             @endif
+                                            @if ($user->esCumpleanosHoy())
+                                                <span class="inline-flex items-center gap-0.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800 border border-amber-300 animate-pulse" title="¡Hoy es su cumpleaños!">
+                                                    🎂 Cumpleaños
+                                                </span>
+                                            @endif
                                         </div>
                                         <span class="block text-xs text-gray-500">{{ $user->email }}</span>
-                                        @if ($user->telefono)
-                                            <span class="block text-xs text-gray-400 mt-0.5">📞 {{ $user->telefono }}</span>
-                                        @endif
+                                        <div class="flex items-center gap-2 mt-0.5 text-[11px] text-gray-400">
+                                            @if ($user->dni)
+                                                <span>DNI: <strong class="text-gray-600">{{ $user->dni }}</strong></span>
+                                            @endif
+                                            @if ($user->telefono)
+                                                @if ($user->dni) <span>•</span> @endif
+                                                <span>📞 {{ $user->telefono }}</span>
+                                            @endif
+                                        </div>
                                     </div>
                                 </div>
                             </td>
 
-                            {{-- Rol --}}
+                            {{-- Rol y Cargo --}}
                             <td class="px-6 py-4">
-                                @if ($user->isAdmin())
-                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700 border border-purple-200/60 shadow-xs">
-                                        👑 Administrador
+                                <div>
+                                    @if ($user->isAdmin())
+                                        <span class="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700 border border-purple-200/60 shadow-xs">
+                                            👑 Administrador
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200/60 shadow-xs">
+                                            👷 Asistente
+                                        </span>
+                                    @endif
+                                    <span class="block text-[11px] text-gray-500 font-medium mt-1 truncate max-w-[140px]">
+                                        {{ $user->cargoParaMostrar() }}
                                     </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-200/60 shadow-xs">
-                                        👷 Asistente
+                                </div>
+                            </td>
+
+                            {{-- Contraseña con Visor y Copia para el Administrador --}}
+                            <td class="px-6 py-4" x-data="{ verPass: false, copiado: false }">
+                                <div class="flex items-center gap-1.5">
+                                    <span class="font-mono text-xs font-semibold"
+                                          :class="verPass ? 'text-gray-900 bg-gray-100 px-2 py-0.5 rounded' : 'text-gray-400 tracking-widest'">
+                                        <span x-show="!verPass">••••••••</span>
+                                        <span x-show="verPass" x-cloak>{{ $user->password_plain ?: 'admin123' }}</span>
                                     </span>
-                                @endif
+                                    <button type="button"
+                                            @click="verPass = !verPass"
+                                            class="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                                            :title="verPass ? 'Ocultar contraseña' : 'Ver contraseña'">
+                                        <svg x-show="!verPass" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                        </svg>
+                                        <svg x-show="verPass" x-cloak class="h-4 w-4 text-brand-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                                        </svg>
+                                    </button>
+                                    <button type="button"
+                                            @click="navigator.clipboard.writeText('{{ $user->password_plain ?: 'admin123' }}'); copiado = true; setTimeout(() => copiado = false, 2000)"
+                                            class="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                                            title="Copiar contraseña al portapapeles">
+                                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
+                                        </svg>
+                                    </button>
+                                    <span x-show="copiado" x-cloak class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1 py-0.5 rounded">¡Copiada!</span>
+                                </div>
                             </td>
 
                             {{-- Estado Activo/Inactivo --}}

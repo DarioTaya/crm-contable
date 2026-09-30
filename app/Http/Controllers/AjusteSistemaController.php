@@ -55,9 +55,9 @@ class AjusteSistemaController extends Controller
             'direccion' => ['nullable', 'string', 'max:255'],
             'ciudad' => ['nullable', 'string', 'max:100'],
             'sidebar_display' => ['nullable', 'in:logo_nombre,logo_solo,nombre_solo'],
-            'logo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
+            'logo' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg,ico,gif,avif', 'max:5120'],
             'eliminar_logo' => ['nullable', 'boolean'],
-            'isotipo' => ['nullable', 'image', 'mimes:png,jpg,jpeg,webp,svg', 'max:2048'],
+            'isotipo' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg,ico,gif,avif', 'max:5120'],
             'eliminar_isotipo' => ['nullable', 'boolean'],
             'frecuencia_cron_horas' => ['required', 'integer', 'in:2,4,6,8,12'],
             'notificar_whatsapp' => ['boolean'],
@@ -70,6 +70,7 @@ class AjusteSistemaController extends Controller
 
         $user = auth()->user();
         $estudio = $user?->estudio ?? Estudio::firstOrCreate(['id' => $user?->estudio_id ?? 1], ['nombre' => $nombre]);
+        $configuracion = $estudio->configuracion ?? [];
 
         // Manejo de logotipo completo (barra extendida)
         if ($request->boolean('eliminar_logo')) {
@@ -77,11 +78,13 @@ class AjusteSistemaController extends Controller
                 Storage::disk('public')->delete($estudio->logo_path);
             }
             $estudio->logo_path = null;
+            unset($configuracion['logo_nombre_original']);
         } elseif ($request->hasFile('logo')) {
             if ($estudio->logo_path && Storage::disk('public')->exists($estudio->logo_path)) {
                 Storage::disk('public')->delete($estudio->logo_path);
             }
             $estudio->logo_path = $request->file('logo')->store('estudios/logos/'.$estudio->id, 'public');
+            $configuracion['logo_nombre_original'] = $request->file('logo')->getClientOriginalName();
         }
 
         // Manejo de isotipo (símbolo para barra contraída)
@@ -90,13 +93,16 @@ class AjusteSistemaController extends Controller
                 Storage::disk('public')->delete($estudio->isotipo_path);
             }
             $estudio->isotipo_path = null;
+            unset($configuracion['isotipo_nombre_original']);
         } elseif ($request->hasFile('isotipo')) {
             if ($estudio->isotipo_path && Storage::disk('public')->exists($estudio->isotipo_path)) {
                 Storage::disk('public')->delete($estudio->isotipo_path);
             }
             $estudio->isotipo_path = $request->file('isotipo')->store('estudios/isotipos/'.$estudio->id, 'public');
+            $configuracion['isotipo_nombre_original'] = $request->file('isotipo')->getClientOriginalName();
         }
 
+        $estudio->configuracion = $configuracion;
         $estudio->nombre = $nombre;
         $estudio->ruc = $validated['ruc'];
         $estudio->representante = $validated['representante'];
@@ -144,7 +150,9 @@ class AjusteSistemaController extends Controller
                 'ajustes' => $ajustes,
                 'estudio' => $estudio,
                 'logo_url' => $estudio->logoUrl(),
+                'logo_nombre' => $estudio->logoNombreOriginal(),
                 'isotipo_url' => $estudio->isotipo_path ? asset('storage/'.$estudio->isotipo_path) : null,
+                'isotipo_nombre' => $estudio->isotipoNombreOriginal(),
             ]);
         }
 
