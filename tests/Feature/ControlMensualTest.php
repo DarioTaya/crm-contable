@@ -370,6 +370,35 @@ class ControlMensualTest extends TestCase
         $response->assertSee('data-marca-en-trabajo="'.$cliente->id.'"', false);
         $response->assertSee('crm-cliente-en-trabajo-', false);
         $response->assertSee('Marcar: estoy trabajando en esta empresa', false);
+        $response->assertSee("JSON.parse('[".$cliente->id."]')", false);
+    }
+
+    public function test_la_matriz_prepara_la_marca_azul_de_la_empresa_indicada_al_entrar(): void
+    {
+        $cliente = Cliente::create([
+            'razon_social' => 'EMPRESA DESDE EL DASHBOARD SAC',
+            'ruc' => '20600999000',
+            'regimen_tributario' => 'MYPE',
+            'estado' => true,
+        ]);
+
+        $ajena = Cliente::create([
+            'razon_social' => 'EMPRESA FUERA DE LA MATRIZ SAC',
+            'ruc' => '20600999111',
+            'regimen_tributario' => 'MYPE',
+            'estado' => false,
+        ]);
+
+        $response = $this->get(route('control.index', [
+            'anio' => (int) now()->year,
+            'empresa' => $cliente->id,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee("JSON.parse('[".$cliente->id."]')", false);
+        $response->assertSee("params.get('empresa')", false);
+        $response->assertDontSee('EMPRESA FUERA DE LA MATRIZ SAC');
+        $response->assertDontSee("JSON.parse('[".$ajena->id."]')", false);
     }
 
     public function test_control_mensual_individual_declaration_states_derive_master_state(): void

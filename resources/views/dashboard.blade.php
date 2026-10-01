@@ -408,42 +408,26 @@
                                     <div class="mt-2 flex flex-wrap items-center gap-1.5">
                                         @foreach ($item['meses'] as $mesImpuesto)
                                             @php
-                                                $estadoMes = $mesImpuesto['estado_critico']['estado'] ?? 'sin_cronograma';
-                                                $esProcesando = $mesImpuesto['estado'] === 'Procesando';
+                                                $presentacion = $mesImpuesto['presentacion'];
+                                                $enProceso = $mesImpuesto['estado'] === 'Procesando';
                                             @endphp
-                                            @if ($esProcesando)
-                                                <span class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700"
-                                                      @if (!empty($mesImpuesto['fecha_formateada'])) title="Vence según cronograma: {{ $mesImpuesto['fecha_formateada'] }}" @endif>
-                                                    <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
-                                                    {{ $mesImpuesto['nombre'] }} (En proceso)
-                                                </span>
-                                            @elseif ($estadoMes === 'vencido')
-                                                <span class="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700"
-                                                      @if (!empty($mesImpuesto['fecha_formateada'])) title="Vencido según cronograma: {{ $mesImpuesto['fecha_formateada'] }}" @endif>
-                                                    <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
-                                                    {{ $mesImpuesto['nombre'] }}
-                                                    <span class="text-[9.5px] font-semibold text-rose-600">(Vencido)</span>
-                                                </span>
-                                            @elseif ($estadoMes === 'hoy')
-                                                <span class="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700"
-                                                      @if (!empty($mesImpuesto['fecha_formateada'])) title="Vence hoy según cronograma: {{ $mesImpuesto['fecha_formateada'] }}" @endif>
-                                                    <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
-                                                    {{ $mesImpuesto['nombre'] }}
-                                                    <span class="text-[9.5px] font-bold text-rose-800">(¡Hoy!)</span>
-                                                </span>
-                                            @elseif ($estadoMes === 'proximo')
-                                                <span class="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700"
-                                                      @if (!empty($mesImpuesto['fecha_formateada'])) title="Vence pronto según cronograma: {{ $mesImpuesto['fecha_formateada'] }}" @endif>
-                                                    <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
-                                                    {{ $mesImpuesto['nombre'] }}
-                                                </span>
-                                            @else
-                                                <span class="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700"
-                                                      @if (!empty($mesImpuesto['fecha_formateada'])) title="Según cronograma: {{ $mesImpuesto['fecha_formateada'] }}" @endif>
-                                                    <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
-                                                    {{ $mesImpuesto['nombre'] }}
-                                                </span>
-                                            @endif
+                                            <span @class([
+                                                'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium',
+                                                'border-amber-200 bg-amber-50 text-amber-700' => $enProceso,
+                                                'border-rose-200 bg-rose-50 text-rose-700' => ! $enProceso,
+                                            ])
+                                                  @if ($presentacion['titulo'] !== '') title="{{ $presentacion['titulo'] }}" @endif>
+                                                @if ($presentacion['marca'] === 'alerta')
+                                                    <span aria-hidden="true">⚠️</span>
+                                                @else
+                                                    <span @class([
+                                                        'h-1.5 w-1.5 rounded-full',
+                                                        'bg-amber-500' => $enProceso,
+                                                        'bg-rose-500' => ! $enProceso,
+                                                    ])></span>
+                                                @endif
+                                                {{ $presentacion['texto'] }}
+                                            </span>
                                         @endforeach
                                     </div>
 
@@ -470,7 +454,7 @@
                             </div>
 
                             <div class="shrink-0 flex items-center justify-end sm:self-center">
-                                <a href="{{ route('control.index', ['anio' => $item['anio']]) }}"
+                                <a href="{{ route('control.index', ['anio' => $item['anio'], 'empresa' => $item['cliente']->id]) }}"
                                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-xs transition hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     <span>Declarar</span>
                                     <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">

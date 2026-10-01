@@ -12,9 +12,21 @@
 <script>
     document.addEventListener('alpine:init', () => {
         const clave = @js('crm-cliente-en-trabajo-'.auth()->id());
+        const idsEnMatriz = @js(array_values(array_map('intval', $idsEnMatriz ?? [])));
+        let id = Number(localStorage.getItem(clave)) || null;
+        const params = new URLSearchParams(window.location.search);
+        const solicitada = Number(params.get('empresa'));
+
+        if (solicitada && idsEnMatriz.includes(solicitada)) {
+            id = solicitada;
+            localStorage.setItem(clave, String(id));
+            params.delete('empresa');
+            const consulta = params.toString();
+            history.replaceState(null, '', window.location.pathname + (consulta ? '?' + consulta : '') + window.location.hash);
+        }
 
         Alpine.store('enTrabajo', {
-            id: Number(localStorage.getItem(clave)) || null,
+            id,
 
             alternar(clienteId) {
                 clienteId = Number(clienteId);

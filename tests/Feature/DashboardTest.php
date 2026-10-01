@@ -290,12 +290,20 @@ class DashboardTest extends TestCase
             $this->assertNull($faltantes['SIRE']['vence']);
             $this->assertStringContainsString('meses anteriores', $faltantes['SIRE']['titulo']);
             $this->assertSame('16 set', $faltantes['PDT 621']['vence']);
-            $this->assertSame('PDT 621 16 set', $faltantes['PDT 621']['etiqueta']);
+            $this->assertSame('PDT 621', $faltantes['PDT 621']['etiqueta']);
+            $this->assertSame('SIRE', $faltantes['SIRE']['etiqueta']);
             $this->assertNull($faltantes['PDT 601']['vence']);
-            $response->assertSee('PDT 621 16 set');
+            $this->assertSame('Febrero 2026 (Vencido)', $alerta['meses'][0]['presentacion']['texto']);
+            $this->assertSame('alerta', $alerta['meses'][0]['presentacion']['marca']);
+            $this->assertSame('Agosto 2026 (En proceso)', $alerta['meses'][1]['presentacion']['texto']);
+            $this->assertSame('alerta', $alerta['meses'][1]['presentacion']['marca']);
+            $response->assertSee('Febrero 2026 (Vencido)');
+            $response->assertSee('⚠️', false);
+            $response->assertDontSee('PDT 621 16 set');
             $response->assertDontSee('SIRE 16 mar');
             $response->assertDontSee('PDT 601 16 set');
             $response->assertDontSee('Vence:');
+            $response->assertSee(route('control.index', ['anio' => 2026, 'empresa' => $pendiente->id]));
         });
     }
 
@@ -788,36 +796,57 @@ class DashboardTest extends TestCase
                 ->get(route('dashboard'));
 
             $response->assertOk();
-            $response->assertDontSee('Vence:');
             $response->assertDontSee('Sire:');
             $response->assertDontSee('PDTs:');
-            $response->assertSee('SIRE 21 set');
-            $response->assertSee('PDT 621 22 set');
-            $response->assertSee('PDT 601 22 set');
-            $response->assertSee('SIRE 22 set');
-            $response->assertSee('PDT 621 23 set');
-            $response->assertSee('PDT 601 23 set');
+            $response->assertDontSee('SIRE 21 set');
+            $response->assertDontSee('PDT 621 22 set');
+            $response->assertDontSee('PDT 601 22 set');
+            $response->assertDontSee('SIRE 22 set');
+            $response->assertDontSee('PDT 621 23 set');
+            $response->assertDontSee('PDT 601 23 set');
+            $response->assertDontSee('¡Hoy!');
+            $response->assertSee('Ago-26 (Vence: 21 set)');
+            $response->assertSee('Ago-26 (Vence: 22 set)');
             $response->assertSee('border-rose-200 bg-rose-50', false);
-            $response->assertSee('¡Hoy!');
 
             /** @var list<array<string, mixed>> $alertas */
             $alertas = $response->viewData('alertasVencimiento');
 
             $estandar = collect(collect($alertas)->firstWhere('cliente.id', $clienteEstandar->id)['faltantes'])->keyBy('nombre');
+            $this->assertSame('SIRE', $estandar['SIRE']['etiqueta']);
+            $this->assertSame('PDT 621', $estandar['PDT 621']['etiqueta']);
+            $this->assertSame('PDT 601', $estandar['PDT 601']['etiqueta']);
             $this->assertSame('21 set', $estandar['SIRE']['vence']);
             $this->assertSame('22 set', $estandar['PDT 621']['vence']);
             $this->assertSame('22 set', $estandar['PDT 601']['vence']);
+            $this->assertSame(
+                'Ago-26 (Vence: 21 set)',
+                collect($alertas)->firstWhere('cliente.id', $clienteEstandar->id)['meses'][0]['presentacion']['texto']
+            );
             $this->assertStringContainsString('registros electrónicos SIRE', $estandar['SIRE']['titulo']);
             $this->assertStringContainsString('PLAME', $estandar['PDT 601']['titulo']);
+
+            $this->assertSame(
+                'punto',
+                collect($alertas)->firstWhere('cliente.id', $clienteEstandar->id)['meses'][0]['presentacion']['marca']
+            );
 
             $bueno = collect(collect($alertas)->firstWhere('cliente.id', $clienteBueno->id)['faltantes'])->keyBy('nombre');
             $this->assertSame('22 set', $bueno['SIRE']['vence']);
             $this->assertSame('23 set', $bueno['PDT 621']['vence']);
             $this->assertSame('23 set', $bueno['PDT 601']['vence']);
+            $this->assertSame(
+                'Ago-26 (Vence: 22 set)',
+                collect($alertas)->firstWhere('cliente.id', $clienteBueno->id)['meses'][0]['presentacion']['texto']
+            );
 
             $sireListo = collect(collect($alertas)->firstWhere('cliente.id', $clienteSireListo->id)['faltantes'])->keyBy('nombre');
             $this->assertSame(['PDT 621'], $sireListo->keys()->all());
             $this->assertSame('22 set', $sireListo['PDT 621']['vence']);
+            $this->assertSame(
+                'Ago-26 (Vence: 22 set) (En proceso)',
+                collect($alertas)->firstWhere('cliente.id', $clienteSireListo->id)['meses'][0]['presentacion']['texto']
+            );
         });
     }
 
@@ -840,14 +869,23 @@ class DashboardTest extends TestCase
                 ->first(fn (array $item): bool => $item['cliente']->razon_social === 'DIGITOS CERO SAC');
             $faltantes = collect($alerta['faltantes'])->keyBy('nombre');
 
+            $this->assertSame('SIRE', $faltantes['SIRE']['etiqueta']);
             $this->assertSame('15 oct', $faltantes['SIRE']['vence']);
             $this->assertSame('16 oct', $faltantes['PDT 621']['vence']);
             $this->assertSame('16 oct', $faltantes['PDT 601']['vence']);
-            $response->assertSee('SIRE 15 oct');
-            $response->assertSee('PDT 621 16 oct');
-            $response->assertSee('PDT 601 16 oct');
+            $septiembre = collect($alerta['meses'])->firstWhere('periodo', '09-2026');
+            $enero = collect($alerta['meses'])->firstWhere('periodo', '01-2026');
+            $this->assertSame('Set-26 (Vence: 15 oct)', $septiembre['presentacion']['texto']);
+            $this->assertSame('punto', $septiembre['presentacion']['marca']);
+            $this->assertSame('Enero 2026 (Vencido)', $enero['presentacion']['texto']);
+            $this->assertSame('alerta', $enero['presentacion']['marca']);
+            $response->assertSee('Set-26 (Vence: 15 oct)');
+            $response->assertSee('Enero 2026 (Vencido)');
+            $response->assertSee('⚠️', false);
+            $response->assertDontSee('SIRE 15 oct');
+            $response->assertDontSee('PDT 621 16 oct');
+            $response->assertDontSee('PDT 601 16 oct');
             $response->assertDontSee('SIRE 13 feb');
-            $response->assertDontSee('Vence:');
         });
     }
 
@@ -880,12 +918,64 @@ class DashboardTest extends TestCase
                 ->first(fn (array $item): bool => $item['cliente']->razon_social === 'CIERRE ANUAL SAC');
             $faltantes = collect($alerta['faltantes'])->keyBy('nombre');
 
+            $this->assertSame('SIRE', $faltantes['SIRE']['etiqueta']);
             $this->assertSame('5 ene 27', $faltantes['SIRE']['vence']);
             $this->assertSame('8 ene 27', $faltantes['PDT 621']['vence']);
             $this->assertSame('8 ene 27', $faltantes['PDT 601']['vence']);
-            $response->assertSee('SIRE 5 ene 27');
-            $response->assertSee('PDT 621 8 ene 27');
-            $response->assertSee('PDT 601 8 ene 27');
+            $noviembre = collect($alerta['meses'])->firstWhere('periodo', '11-2026');
+            $this->assertSame('Nov-26 (Vence: 5 ene 27)', $noviembre['presentacion']['texto']);
+            $this->assertSame('punto', $noviembre['presentacion']['marca']);
+            $response->assertSee('Nov-26 (Vence: 5 ene 27)');
+            $response->assertDontSee('SIRE 5 ene 27');
+            $response->assertDontSee('PDT 621 8 ene 27');
+            $response->assertDontSee('PDT 601 8 ene 27');
+        });
+    }
+
+    public function test_un_mes_en_proceso_dentro_del_cronograma_conserva_la_fecha_abreviada(): void
+    {
+        $this->seed(CronogramaSunatSeeder::class);
+
+        $cliente = Cliente::create([
+            'razon_social' => 'EN PROCESO OCTUBRE SAC',
+            'ruc' => '20444444440',
+            'regimen_tributario' => 'General',
+            'estado' => true,
+        ]);
+
+        foreach (range(1, 8) as $mes) {
+            Operacion::create([
+                'cliente_id' => $cliente->id,
+                'periodo' => sprintf('%02d-2026', $mes),
+                'estado_compras_ventas' => 'Declarado',
+                'estado_pdt621' => 'Declarado',
+                'estado_ple' => 'Declarado',
+            ]);
+        }
+
+        Operacion::create([
+            'cliente_id' => $cliente->id,
+            'periodo' => '09-2026',
+            'estado_compras_ventas' => 'Procesando',
+            'estado_pdt621' => 'Pendiente',
+            'estado_ple' => 'Pendiente',
+        ]);
+
+        $this->travelTo(Carbon::parse('2026-10-01 09:00:00', 'America/Lima'), function () use ($cliente) {
+            $response = $this->actingAs($this->usuarioDelEstudio('Sebastian'))
+                ->get(route('dashboard'));
+
+            $alerta = collect($response->viewData('alertasVencimiento'))
+                ->first(fn (array $item): bool => $item['cliente']->id === $cliente->id);
+
+            $this->assertSame('Set-26 (Vence: 15 oct) (En proceso)', $alerta['meses'][0]['presentacion']['texto']);
+            $this->assertSame('punto', $alerta['meses'][0]['presentacion']['marca']);
+            $this->assertSame(
+                ['SIRE', 'PDT 621', 'PDT 601'],
+                collect($alerta['faltantes'])->pluck('etiqueta')->all()
+            );
+            $response->assertSee('Set-26 (Vence: 15 oct) (En proceso)');
+            $response->assertDontSee('SIRE 15 oct');
         });
     }
 

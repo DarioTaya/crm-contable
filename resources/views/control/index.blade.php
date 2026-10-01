@@ -177,7 +177,12 @@
         </div>
     </div>
 
-    @include('partials.marca-cliente-en-trabajo')
+    @include('partials.marca-cliente-en-trabajo', [
+        'idsEnMatriz' => array_map(
+            fn (array $fila): int => (int) $fila['cliente']->id,
+            $matrizClientes
+        ),
+    ])
 
     {{-- ═══════════════════════════════ TABLA MATRIZ 100% MONITOR (13 COLUMNAS: DJ + RH) ═══════════════════════════════ --}}
     <div class="overflow-x-auto rounded-xl border border-gray-300 bg-white shadow-md min-h-[200px]">

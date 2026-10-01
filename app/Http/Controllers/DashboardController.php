@@ -204,7 +204,7 @@ class DashboardController extends Controller
                 $fechaSire = $this->fechaCronogramaCliente($cronogramas->get('sire|'.$periodo)?->first(), $cliente);
                 $fechaCritica = ($sire !== 'Declarado' && $fechaSire) ? $fechaSire : $fechaPdt;
 
-                $meses[] = [
+                $mesAlerta = [
                     'periodo' => $periodo,
                     'anio' => $anio,
                     'mes' => $mes,
@@ -220,6 +220,8 @@ class DashboardController extends Controller
                     'estado_critico' => $this->cronogramaService->calcularEstadoVencimiento($fechaCritica),
                     'obligacion_critica' => ($sire !== 'Declarado' && $fechaSire) ? 'SIRE' : 'PDT 621',
                 ];
+                $mesAlerta['presentacion'] = $this->presentacionMesImpuesto($mesAlerta);
+                $meses[] = $mesAlerta;
             }
 
             if ($meses === []) {
@@ -353,12 +355,104 @@ class DashboardController extends Controller
                 'nombre' => $nombre,
                 'estado' => in_array('Pendiente', $pendientes, true) ? 'Pendiente' : 'Procesando',
                 'vence' => $vence,
-                'etiqueta' => $vence === null ? $nombre : $nombre.' '.$vence,
+                'etiqueta' => $nombre,
                 'titulo' => $this->tituloVencimientoObligacion($nombre, $fecha, $mesEnCurso, $abiertaEnCurso),
             ];
         }
 
         return $faltantes;
+    }
+
+    /**
+     * Texto del mes en la alerta.
+     *
+     * Lo ya vencido conserva el nombre completo. Lo que todavía está en el
+     * cronograma se abrevia y muestra la fecha de la obligación más próxima
+     * de ese mes (SIRE si sigue abierto; si no, PDT 621 / PDT 601).
+     *
+     * @param  array{
+     *     anio: int,
+     *     mes: int,
+     *     nombre: string,
+     *     estado: string,
+     *     fecha: Carbon|null,
+     *     fecha_formateada: string|null,
+     *     estado_critico: array{estado?: string}
+     * }  $mesAlerta
+     * @return array{marca: string, texto: string, titulo: string}
+     */
+    private function presentacionMesImpuesto(array $mesAlerta): array
+    {
+        $cronograma = $mesAlerta['estado_critico']['estado'] ?? 'sin_cronograma';
+        $enProceso = $mesAlerta['estado'] === 'Procesando';
+        $fecha = $mesAlerta['fecha'] instanceof Carbon ? $mesAlerta['fecha'] : null;
+        $vence = $this->fechaCortaCronograma($fecha);
+        $titulo = $this->tituloMesImpuesto($cronograma, $mesAlerta['fecha_formateada']);
+
+        if ($cronograma === 'vencido') {
+            return [
+                'marca' => 'alerta',
+                'texto' => $mesAlerta['nombre'].($enProceso ? ' (En proceso)' : ' (Vencido)'),
+                'titulo' => $titulo,
+            ];
+        }
+
+        if ($vence !== null) {
+            $texto = $this->etiquetaPeriodoCorta($mesAlerta['anio'], $mesAlerta['mes']).' (Vence: '.$vence.')';
+
+            if ($enProceso) {
+                $texto .= ' (En proceso)';
+            }
+
+            return [
+                'marca' => 'punto',
+                'texto' => $texto,
+                'titulo' => $titulo,
+            ];
+        }
+
+        return [
+            'marca' => 'punto',
+            'texto' => $mesAlerta['nombre'].($enProceso ? ' (En proceso)' : ''),
+            'titulo' => $titulo,
+        ];
+    }
+
+    /**
+     * Periodo tributario en el formato de la matriz: "Jul-26", "Set-26".
+     */
+    private function etiquetaPeriodoCorta(int $anio, int $mes): string
+    {
+        $cortos = [
+            1 => 'Ene',
+            2 => 'Feb',
+            3 => 'Mar',
+            4 => 'Abr',
+            5 => 'May',
+            6 => 'Jun',
+            7 => 'Jul',
+            8 => 'Ago',
+            9 => 'Set',
+            10 => 'Oct',
+            11 => 'Nov',
+            12 => 'Dic',
+        ];
+
+        return ($cortos[$mes] ?? 'Mes').'-'.substr((string) $anio, -2);
+    }
+
+    private function tituloMesImpuesto(string $cronograma, ?string $fecha): string
+    {
+        if ($fecha === null || $fecha === '') {
+            return '';
+        }
+
+        return match ($cronograma) {
+            'vencido' => "Vencido según cronograma: {$fecha}",
+            'hoy' => "Vence hoy según cronograma: {$fecha}",
+            'proximo' => "Vence pronto según cronograma: {$fecha}",
+            default => "Según cronograma: {$fecha}",
+        };
     }
 
     /**
