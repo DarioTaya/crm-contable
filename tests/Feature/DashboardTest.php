@@ -285,6 +285,17 @@ class DashboardTest extends TestCase
                 ['SIRE', 'PDT 621', 'PDT 601'],
                 collect($alerta['faltantes'])->pluck('nombre')->all()
             );
+
+            $faltantes = collect($alerta['faltantes'])->keyBy('nombre');
+            $this->assertNull($faltantes['SIRE']['vence']);
+            $this->assertStringContainsString('meses anteriores', $faltantes['SIRE']['titulo']);
+            $this->assertSame('16 set', $faltantes['PDT 621']['vence']);
+            $this->assertSame('PDT 621 16 set', $faltantes['PDT 621']['etiqueta']);
+            $this->assertNull($faltantes['PDT 601']['vence']);
+            $response->assertSee('PDT 621 16 set');
+            $response->assertDontSee('SIRE 16 mar');
+            $response->assertDontSee('PDT 601 16 set');
+            $response->assertDontSee('Vence:');
         });
     }
 
@@ -693,7 +704,7 @@ class DashboardTest extends TestCase
         });
     }
 
-    public function test_tax_alerts_render_subtle_cronograma_expiration_badge_with_dependencies(): void
+    public function test_tax_alert_chips_show_the_current_cronograma_due_date(): void
     {
         $this->seed(CronogramaSunatSeeder::class);
 
@@ -777,43 +788,104 @@ class DashboardTest extends TestCase
                 ->get(route('dashboard'));
 
             $response->assertOk();
-
-            // Debe mostrar la etiqueta sutil dual de vencimiento según cronograma
-            $response->assertSee('Vence:');
-            $response->assertSee('Sire: 21 de Set. · PDTs: 22 de Set.');
-            $response->assertSee('PDTs: 22 de Set. (Sire ✓)');
+            $response->assertDontSee('Vence:');
+            $response->assertDontSee('Sire:');
+            $response->assertDontSee('PDTs:');
+            $response->assertSee('SIRE 21 set');
+            $response->assertSee('PDT 621 22 set');
+            $response->assertSee('PDT 601 22 set');
+            $response->assertSee('SIRE 22 set');
+            $response->assertSee('PDT 621 23 set');
+            $response->assertSee('PDT 601 23 set');
+            $response->assertSee('border-rose-200 bg-rose-50', false);
             $response->assertSee('¡Hoy!');
-            $response->assertSee('(en 1d)');
 
             /** @var list<array<string, mixed>> $alertas */
             $alertas = $response->viewData('alertasVencimiento');
 
-            $alertaEstandar = collect($alertas)->firstWhere('cliente.id', $clienteEstandar->id);
-            $this->assertNotNull($alertaEstandar['etiqueta_cronograma']);
-            $this->assertSame('21/09/2026', $alertaEstandar['etiqueta_cronograma']['fecha_formateada']);
-            $this->assertSame('SIRE', $alertaEstandar['etiqueta_cronograma']['obligacion']);
-            $this->assertSame('21 de Set.', $alertaEstandar['etiqueta_cronograma']['dia_mes_sire']);
-            $this->assertSame('22 de Set.', $alertaEstandar['etiqueta_cronograma']['dia_mes_pdt']);
-            $this->assertSame('hoy', $alertaEstandar['etiqueta_cronograma']['estado']);
-            $this->assertStringContainsString('Dígito 8', $alertaEstandar['etiqueta_cronograma']['tooltip']);
+            $estandar = collect(collect($alertas)->firstWhere('cliente.id', $clienteEstandar->id)['faltantes'])->keyBy('nombre');
+            $this->assertSame('21 set', $estandar['SIRE']['vence']);
+            $this->assertSame('22 set', $estandar['PDT 621']['vence']);
+            $this->assertSame('22 set', $estandar['PDT 601']['vence']);
+            $this->assertStringContainsString('registros electrónicos SIRE', $estandar['SIRE']['titulo']);
+            $this->assertStringContainsString('PLAME', $estandar['PDT 601']['titulo']);
 
-            $alertaBueno = collect($alertas)->firstWhere('cliente.id', $clienteBueno->id);
-            $this->assertNotNull($alertaBueno['etiqueta_cronograma']);
-            $this->assertSame('22/09/2026', $alertaBueno['etiqueta_cronograma']['fecha_formateada']);
-            $this->assertSame('SIRE', $alertaBueno['etiqueta_cronograma']['obligacion']);
-            $this->assertSame('22 de Set.', $alertaBueno['etiqueta_cronograma']['dia_mes_sire']);
-            $this->assertSame('23 de Set.', $alertaBueno['etiqueta_cronograma']['dia_mes_pdt']);
-            $this->assertSame('proximo', $alertaBueno['etiqueta_cronograma']['estado']);
-            $this->assertStringContainsString('Buen Contribuyente', $alertaBueno['etiqueta_cronograma']['tooltip']);
+            $bueno = collect(collect($alertas)->firstWhere('cliente.id', $clienteBueno->id)['faltantes'])->keyBy('nombre');
+            $this->assertSame('22 set', $bueno['SIRE']['vence']);
+            $this->assertSame('23 set', $bueno['PDT 621']['vence']);
+            $this->assertSame('23 set', $bueno['PDT 601']['vence']);
 
-            $alertaSireListo = collect($alertas)->firstWhere('cliente.id', $clienteSireListo->id);
-            $this->assertNotNull($alertaSireListo['etiqueta_cronograma']);
-            $this->assertSame('22/09/2026', $alertaSireListo['etiqueta_cronograma']['fecha_formateada']);
-            $this->assertSame('PDT 621', $alertaSireListo['etiqueta_cronograma']['obligacion']);
-            $this->assertSame('22 de Set.', $alertaSireListo['etiqueta_cronograma']['dia_mes_pdt']);
-            $this->assertTrue($alertaSireListo['etiqueta_cronograma']['sire_declarado']);
-            $this->assertSame('proximo', $alertaSireListo['etiqueta_cronograma']['estado']);
-            $this->assertStringContainsString('PDTs', $alertaSireListo['etiqueta_cronograma']['tooltip']);
+            $sireListo = collect(collect($alertas)->firstWhere('cliente.id', $clienteSireListo->id)['faltantes'])->keyBy('nombre');
+            $this->assertSame(['PDT 621'], $sireListo->keys()->all());
+            $this->assertSame('22 set', $sireListo['PDT 621']['vence']);
+        });
+    }
+
+    public function test_tax_alert_chips_use_the_october_schedule_of_the_september_period(): void
+    {
+        $this->seed(CronogramaSunatSeeder::class);
+
+        Cliente::create([
+            'razon_social' => 'DIGITOS CERO SAC',
+            'ruc' => '20999999990',
+            'regimen_tributario' => 'General',
+            'estado' => true,
+        ]);
+
+        $this->travelTo(Carbon::parse('2026-10-01 09:00:00', 'America/Lima'), function () {
+            $response = $this->actingAs($this->usuarioDelEstudio('Sebastian'))
+                ->get(route('dashboard'));
+
+            $alerta = collect($response->viewData('alertasVencimiento'))
+                ->first(fn (array $item): bool => $item['cliente']->razon_social === 'DIGITOS CERO SAC');
+            $faltantes = collect($alerta['faltantes'])->keyBy('nombre');
+
+            $this->assertSame('15 oct', $faltantes['SIRE']['vence']);
+            $this->assertSame('16 oct', $faltantes['PDT 621']['vence']);
+            $this->assertSame('16 oct', $faltantes['PDT 601']['vence']);
+            $response->assertSee('SIRE 15 oct');
+            $response->assertSee('PDT 621 16 oct');
+            $response->assertSee('PDT 601 16 oct');
+            $response->assertDontSee('SIRE 13 feb');
+            $response->assertDontSee('Vence:');
+        });
+    }
+
+    public function test_tax_alert_chip_adds_the_year_when_the_due_date_falls_in_another_year(): void
+    {
+        foreach (['sire' => '2027-01-05', 'pdt_621' => '2027-01-08'] as $tipo => $fechaDigito) {
+            CronogramaSunat::create([
+                'anio' => 2026,
+                'tipo' => $tipo,
+                'mes' => 11,
+                'periodo' => '11-2026',
+                'digito_0' => '2026-12-15',
+                'digito_8_9' => $fechaDigito,
+                'descripcion' => 'Prueba de año',
+            ]);
+        }
+
+        Cliente::create([
+            'razon_social' => 'CIERRE ANUAL SAC',
+            'ruc' => '20111111118',
+            'regimen_tributario' => 'General',
+            'estado' => true,
+        ]);
+
+        $this->travelTo(Carbon::parse('2026-12-10 10:00:00', 'America/Lima'), function () {
+            $response = $this->actingAs($this->usuarioDelEstudio('Sebastian'))
+                ->get(route('dashboard'));
+
+            $alerta = collect($response->viewData('alertasVencimiento'))
+                ->first(fn (array $item): bool => $item['cliente']->razon_social === 'CIERRE ANUAL SAC');
+            $faltantes = collect($alerta['faltantes'])->keyBy('nombre');
+
+            $this->assertSame('5 ene 27', $faltantes['SIRE']['vence']);
+            $this->assertSame('8 ene 27', $faltantes['PDT 621']['vence']);
+            $this->assertSame('8 ene 27', $faltantes['PDT 601']['vence']);
+            $response->assertSee('SIRE 5 ene 27');
+            $response->assertSee('PDT 621 8 ene 27');
+            $response->assertSee('PDT 601 8 ene 27');
         });
     }
 

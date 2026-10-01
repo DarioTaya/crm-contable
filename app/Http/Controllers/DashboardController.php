@@ -81,7 +81,7 @@ class DashboardController extends Controller
             }
         }
 
-        $alertasVencimiento = $this->alertasVencimientoImpuestos($clientesActivos, $periodosExigibles);
+        $alertasVencimiento = $this->alertasVencimientoImpuestos($clientesActivos, $periodosExigibles, $periodoActual);
 
         $porcentajeAvance = $totalObligaciones > 0 ? (int) round(($declarados / $totalObligaciones) * 100) : 0;
 
@@ -160,16 +160,15 @@ class DashboardController extends Controller
      *     cliente: Cliente,
      *     ultimo_digito: int,
      *     ultimo_digito_str: string,
-     *     faltantes: list<array{nombre: string, estado: string}>,
+     *     faltantes: list<array{nombre: string, estado: string, vence: string|null, etiqueta: string, titulo: string}>,
      *     total_faltantes: int,
      *     meses: list<array<string, mixed>>,
      *     anio: int,
      *     fecha_critica: Carbon|null,
-     *     estado_critico: array<string, mixed>,
-     *     etiqueta_cronograma: array<string, mixed>|null
+     *     estado_critico: array<string, mixed>
      * }>
      */
-    private function alertasVencimientoImpuestos(Collection $clientes, array $periodos): array
+    private function alertasVencimientoImpuestos(Collection $clientes, array $periodos, string $periodoEnCurso): array
     {
         $cronogramas = CronogramaSunat::query()
             ->whereIn('tipo', ['pdt_621', 'sire'])
@@ -231,7 +230,7 @@ class DashboardController extends Controller
             usort($porUrgencia, fn (array $a, array $b): int => $this->compararUrgenciaBalance($a, $b));
 
             $ultimoDigito = substr((string) $cliente->ruc, -1);
-            $faltantes = $this->obligacionesFaltantes($meses);
+            $faltantes = $this->obligacionesFaltantes($meses, $periodoEnCurso);
 
             $alertas[] = [
                 'cliente' => $cliente,
@@ -243,7 +242,6 @@ class DashboardController extends Controller
                 'anio' => $meses[0]['anio'],
                 'fecha_critica' => $porUrgencia[0]['fecha'],
                 'estado_critico' => $porUrgencia[0]['estado_critico'],
-                'etiqueta_cronograma' => $this->construirEtiquetaCronograma($porUrgencia[0], $cliente),
             ];
         }
 
@@ -296,22 +294,44 @@ class DashboardController extends Controller
     /**
      * Obligaciones que siguen abiertas en alguno de los meses listados.
      *
-     * @param  list<array{sire: string, pdt: string, ple: string}>  $meses
-     * @return list<array{nombre: string, estado: string}>
+     * La fecha es solo la del periodo en curso (el que el cronograma SUNAT
+     * está venciendo ahora). Los meses anteriores ya vencieron y se listan
+     * aparte. PDT 601 (PLAME) usa el cronograma de obligaciones mensuales,
+     * el mismo del PDT 621. SIRE tiene su propia fecha, un día hábil antes.
+     *
+     * @param  list<array{
+     *     periodo: string,
+     *     nombre: string,
+     *     sire: string,
+     *     pdt: string,
+     *     ple: string,
+     *     fecha_sire: Carbon|null,
+     *     fecha_pdt: Carbon|null
+     * }>  $meses
+     * @return list<array{nombre: string, estado: string, vence: string|null, etiqueta: string, titulo: string}>
      */
-    private function obligacionesFaltantes(array $meses): array
+    private function obligacionesFaltantes(array $meses, string $periodoEnCurso): array
     {
+        $mesEnCurso = null;
+
+        foreach ($meses as $mes) {
+            if ($mes['periodo'] === $periodoEnCurso) {
+                $mesEnCurso = $mes;
+                break;
+            }
+        }
+
         $mapa = [
-            'SIRE' => 'sire',
-            'PDT 621' => 'pdt',
-            'PDT 601' => 'ple',
+            'SIRE' => ['estado' => 'sire', 'fecha' => 'fecha_sire'],
+            'PDT 621' => ['estado' => 'pdt', 'fecha' => 'fecha_pdt'],
+            'PDT 601' => ['estado' => 'ple', 'fecha' => 'fecha_pdt'],
         ];
 
         $faltantes = [];
 
-        foreach ($mapa as $nombre => $clave) {
+        foreach ($mapa as $nombre => $campos) {
             $pendientes = array_values(array_filter(
-                array_column($meses, $clave),
+                array_column($meses, $campos['estado']),
                 fn (string $estado): bool => $estado !== 'Declarado'
             ));
 
@@ -319,13 +339,89 @@ class DashboardController extends Controller
                 continue;
             }
 
+            $abiertaEnCurso = $mesEnCurso !== null && $mesEnCurso[$campos['estado']] !== 'Declarado';
+            $fecha = null;
+
+            if ($abiertaEnCurso) {
+                $candidata = $mesEnCurso[$campos['fecha']] ?? null;
+                $fecha = $candidata instanceof Carbon ? $candidata : null;
+            }
+
+            $vence = $this->fechaCortaCronograma($fecha);
+
             $faltantes[] = [
                 'nombre' => $nombre,
                 'estado' => in_array('Pendiente', $pendientes, true) ? 'Pendiente' : 'Procesando',
+                'vence' => $vence,
+                'etiqueta' => $vence === null ? $nombre : $nombre.' '.$vence,
+                'titulo' => $this->tituloVencimientoObligacion($nombre, $fecha, $mesEnCurso, $abiertaEnCurso),
             ];
         }
 
         return $faltantes;
+    }
+
+    /**
+     * Fecha de cronograma en el menor espacio posible: "15 oct" o "18 ene 27".
+     */
+    private function fechaCortaCronograma(?Carbon $fecha): ?string
+    {
+        if (! $fecha instanceof Carbon) {
+            return null;
+        }
+
+        $lima = Carbon::createFromFormat('!Y-m-d', $fecha->toDateString(), 'America/Lima');
+        $meses = [
+            1 => 'ene',
+            2 => 'feb',
+            3 => 'mar',
+            4 => 'abr',
+            5 => 'may',
+            6 => 'jun',
+            7 => 'jul',
+            8 => 'ago',
+            9 => 'set',
+            10 => 'oct',
+            11 => 'nov',
+            12 => 'dic',
+        ];
+
+        $texto = $lima->day.' '.($meses[$lima->month] ?? $lima->format('m'));
+
+        if ($lima->year !== (int) now('America/Lima')->year) {
+            $texto .= ' '.$lima->format('y');
+        }
+
+        return $texto;
+    }
+
+    /**
+     * @param  array{nombre?: string}|null  $mesEnCurso
+     */
+    private function tituloVencimientoObligacion(string $nombre, ?Carbon $fecha, ?array $mesEnCurso, bool $abiertaEnCurso): string
+    {
+        if (! $fecha instanceof Carbon) {
+            if ($abiertaEnCurso) {
+                $periodo = $mesEnCurso['nombre'] ?? 'en curso';
+
+                return $nombre.' del periodo '.$periodo.' no tiene fecha en el cronograma SUNAT.';
+            }
+
+            return $nombre.' sigue pendiente en meses anteriores. El periodo que se declara ahora ya está presentado.';
+        }
+
+        $lima = Carbon::createFromFormat('!Y-m-d', $fecha->toDateString(), 'America/Lima');
+        $completa = str_replace(
+            ['Septiembre', 'septiembre'],
+            ['Setiembre', 'setiembre'],
+            $lima->locale('es')->isoFormat('D [de] MMMM [de] YYYY')
+        );
+        $periodo = $mesEnCurso['nombre'] ?? 'en curso';
+        $detalle = $nombre === 'PDT 601'
+            ? 'PLAME, mismo cronograma de obligaciones mensuales que el PDT 621'
+            : ($nombre === 'SIRE' ? 'registros electrónicos SIRE' : 'obligaciones mensuales');
+
+        return "{$nombre} del periodo {$periodo} vence el {$completa} ({$detalle}).";
     }
 
     private function fechaCronogramaCliente(?CronogramaSunat $cronograma, Cliente $cliente): ?Carbon
@@ -358,173 +454,6 @@ class DashboardController extends Controller
         $nombre = ucfirst(Carbon::createFromDate($anio, $mes, 1)->locale('es')->isoFormat('MMMM YYYY'));
 
         return str_replace(['Septiembre', 'septiembre'], ['Setiembre', 'setiembre'], $nombre);
-    }
-
-    /**
-     * Construye la información de la etiqueta sutil de vencimiento según cronograma SUNAT.
-     * Muestra las fechas específicas tanto de SIRE como de PDTs para máxima claridad del contador.
-     *
-     * @param  array<string, mixed>|null  $mesCritico
-     * @return array{
-     *     texto: string,
-     *     dia_mes: string,
-     *     dia_mes_sire: string|null,
-     *     dia_mes_pdt: string|null,
-     *     fecha_formateada: string,
-     *     estado: string,
-     *     dias: int,
-     *     dias_texto: string,
-     *     clase: string,
-     *     tooltip: string,
-     *     obligacion: string,
-     *     sire_declarado: bool
-     * }|null
-     */
-    private function construirEtiquetaCronograma(?array $mesCritico, Cliente $cliente): ?array
-    {
-        if (! $mesCritico || ! ($mesCritico['fecha'] instanceof Carbon)) {
-            return null;
-        }
-
-        $mesesAbrev = [
-            1 => 'Ene.',
-            2 => 'Feb.',
-            3 => 'Mar.',
-            4 => 'Abr.',
-            5 => 'May.',
-            6 => 'Jun.',
-            7 => 'Jul.',
-            8 => 'Ago.',
-            9 => 'Set.',
-            10 => 'Oct.',
-            11 => 'Nov.',
-            12 => 'Dic.',
-        ];
-
-        $formatearDiaMes = function (?Carbon $fecha) use ($mesesAbrev): ?string {
-            if (! $fecha) {
-                return null;
-            }
-            $limatized = Carbon::createFromFormat('!Y-m-d', $fecha->toDateString(), 'America/Lima');
-
-            return $limatized->day.' de '.($mesesAbrev[$limatized->month] ?? $limatized->format('m'));
-        };
-
-        $formatearCompleta = function (?Carbon $fecha): ?string {
-            if (! $fecha) {
-                return null;
-            }
-            $limatized = Carbon::createFromFormat('!Y-m-d', $fecha->toDateString(), 'America/Lima');
-
-            return str_replace(
-                ['Septiembre', 'septiembre'],
-                ['Setiembre', 'setiembre'],
-                ucfirst($limatized->locale('es')->isoFormat('dddd, D [de] MMMM [de] YYYY'))
-            );
-        };
-
-        $fechaSire = isset($mesCritico['fecha_sire']) && $mesCritico['fecha_sire'] instanceof Carbon
-            ? Carbon::createFromFormat('!Y-m-d', $mesCritico['fecha_sire']->toDateString(), 'America/Lima')
-            : null;
-
-        $fechaPdt = isset($mesCritico['fecha_pdt']) && $mesCritico['fecha_pdt'] instanceof Carbon
-            ? Carbon::createFromFormat('!Y-m-d', $mesCritico['fecha_pdt']->toDateString(), 'America/Lima')
-            : null;
-
-        $diaMesSire = $formatearDiaMes($fechaSire);
-        $diaMesPdt = $formatearDiaMes($fechaPdt);
-
-        $sireDeclarado = ($mesCritico['sire'] ?? '') === 'Declarado';
-        $pdtDeclarado = ($mesCritico['pdt'] ?? '') === 'Declarado';
-
-        // Determinar fecha crítica y texto conciso (ej: "Vence: Sire: 15 de Oct. · PDTs: 16 de Oct.")
-        if ($sireDeclarado && $fechaPdt) {
-            $vence = $fechaPdt;
-            $obligacion = 'PDT 621';
-            $texto = "Vence: PDTs: {$diaMesPdt} (Sire ✓)";
-        } elseif ($pdtDeclarado && $fechaSire) {
-            $vence = $fechaSire;
-            $obligacion = 'SIRE';
-            $texto = "Vence: Sire: {$diaMesSire}";
-        } elseif ($fechaSire && $fechaPdt) {
-            $vence = $fechaSire;
-            $obligacion = 'SIRE';
-            if ($diaMesSire === $diaMesPdt) {
-                $texto = "Vence: Sire y PDTs: {$diaMesSire}";
-            } else {
-                $texto = "Vence: Sire: {$diaMesSire} · PDTs: {$diaMesPdt}";
-            }
-        } elseif ($fechaSire) {
-            $vence = $fechaSire;
-            $obligacion = 'SIRE';
-            $texto = "Vence: Sire: {$diaMesSire}";
-        } elseif ($fechaPdt) {
-            $vence = $fechaPdt;
-            $obligacion = 'PDT 621';
-            $texto = "Vence: PDTs: {$diaMesPdt}";
-        } else {
-            $vence = Carbon::createFromFormat('!Y-m-d', $mesCritico['fecha']->toDateString(), 'America/Lima');
-            $obligacion = $mesCritico['obligacion_critica'] ?? 'PDT 621';
-            $diaMesGeneral = $formatearDiaMes($vence);
-            $texto = "Vence: {$obligacion}: {$diaMesGeneral}";
-        }
-
-        $diaMesCritica = $formatearDiaMes($vence);
-        $hoy = now('America/Lima')->startOfDay();
-
-        $criterio = $cliente->es_buen_contribuyente
-            ? 'Buen Contribuyente'
-            : 'Dígito '.substr((string) $cliente->ruc, -1);
-        $periodoNombre = $mesCritico['nombre'] ?? '';
-
-        if ($vence->lt($hoy)) {
-            $dias = abs((int) $hoy->diffInDays($vence));
-            $estado = 'vencido';
-            $diasTexto = $dias === 1 ? 'Venció ayer' : "Venció hace {$dias} días";
-            $clase = 'border-rose-200 bg-rose-50/80 text-rose-700';
-        } elseif ($vence->isSameDay($hoy)) {
-            $dias = 0;
-            $estado = 'hoy';
-            $diasTexto = 'Vence hoy';
-            $clase = 'border-amber-300 bg-amber-50 text-amber-900 font-semibold ring-1 ring-amber-400/30';
-        } else {
-            $dias = abs((int) $hoy->diffInDays($vence));
-            if ($dias <= 3) {
-                $estado = 'proximo';
-                $diasTexto = $dias === 1 ? 'Vence mañana' : "Vence en {$dias} días";
-                $clase = 'border-amber-200 bg-amber-50/80 text-amber-800';
-            } else {
-                $estado = 'al_dia';
-                $diasTexto = "Vence en {$dias} días";
-                $clase = 'border-slate-200 bg-slate-50/90 text-slate-700';
-            }
-        }
-
-        $fechasTooltip = [];
-        if ($fechaSire) {
-            $fechasTooltip[] = 'Sire: '.$formatearCompleta($fechaSire).($sireDeclarado ? ' (Declarado)' : '');
-        }
-        if ($fechaPdt) {
-            $fechasTooltip[] = 'PDTs: '.$formatearCompleta($fechaPdt).($pdtDeclarado ? ' (Declarado)' : '');
-        }
-        $detalleFechas = implode(' | ', $fechasTooltip);
-
-        $tooltip = "Cronograma SUNAT ({$criterio} • Período {$periodoNombre}): {$detalleFechas}. {$diasTexto}.";
-
-        return [
-            'texto' => $texto,
-            'dia_mes' => $diaMesCritica,
-            'dia_mes_sire' => $diaMesSire,
-            'dia_mes_pdt' => $diaMesPdt,
-            'fecha_formateada' => $vence->format('d/m/Y'),
-            'estado' => $estado,
-            'dias' => $dias,
-            'dias_texto' => $diasTexto,
-            'clase' => $clase,
-            'tooltip' => $tooltip,
-            'obligacion' => $obligacion,
-            'sire_declarado' => $sireDeclarado,
-        ];
     }
 
     /**
