@@ -42,6 +42,7 @@ return [
     'sunat' => [
         'tipo_cambio_url' => env('SUNAT_TIPO_CAMBIO_URL', 'https://www.sunat.gob.pe/a/txt/tipoCambio.txt'),
         'tipo_cambio_mes_url' => env('SUNAT_TIPO_CAMBIO_MES_URL', 'https://e-consulta.sunat.gob.pe/cl-at-ittipcam/tcS01Alias/listarTipoCambio'),
+        'ruc_url' => env('SUNAT_RUC_URL', 'https://api.apis.net.pe/v2/sunat/ruc'),
+        'ruc_token' => env('SUNAT_RUC_TOKEN', env('APIS_NET_PE_TOKEN')),
     ],
-
 ];

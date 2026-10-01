@@ -238,13 +238,17 @@
             },
 
             async pausaAntesDelSiguiente(fila, siguiente) {
-                for (let falta = 4; falta > 0; falta--) {
-                    if (this.abortar) {
-                        return;
-                    }
-                    this.progreso.texto = 'RUC ' + fila.ruc + ' consultado. El siguiente, ' + siguiente.ruc + ', empieza en ' + falta + ' s.';
-                    await this.esperar(1000);
+                if (this.abortar) {
+                    return;
                 }
+                if (fila.reintentable) {
+                    this.progreso.texto = 'RUC ' + fila.ruc + ' con observación temporal. Pausando 800 ms antes de ' + siguiente.ruc + '…';
+                    await this.esperar(800);
+                    return;
+                }
+                const razon = fila.padron && fila.padron.razon_social ? (' · ' + fila.padron.razon_social) : '';
+                this.progreso.texto = 'RUC ' + fila.ruc + ' verificado' + razon + '. Pasando al siguiente…';
+                await this.esperar(300);
             },
 
             esperar(milisegundos) {
@@ -255,7 +259,13 @@
 
             async consultarUna(fila) {
                 fila.estado = 'consultando';
-                fila.mensaje = '';
+                fila.mensaje = 'Consultando en SUNAT…';
+                this.$nextTick(() => {
+                    const el = document.getElementById('fila-cm-' + fila.fila);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                });
                 try {
                     const respuesta = await this.enviarJson(this.config.consultarUrl, { ruc: fila.ruc });
                     if (this.abortar) {
@@ -552,7 +562,9 @@
                             </thead>
                             <tbody class="divide-y divide-hairline">
                                 <template x-for="fila in filas" :key="fila.fila + '-' + fila.ruc">
-                                    <tr :class="fila.registrada ? 'bg-emerald-50/60' : (fila.estado === 'consultando' ? 'bg-sky-50' : (fila.estado === 'observada' ? 'bg-rose-50/70' : ''))">
+                                    <tr :id="'fila-cm-' + fila.fila"
+                                        :class="fila.registrada ? 'bg-emerald-50/60' : (fila.estado === 'consultando' ? 'bg-sky-50 ring-1 ring-inset ring-sky-300' : (fila.estado === 'observada' ? 'bg-rose-50/70' : ''))"
+                                        class="transition-colors duration-150">
                                         <td class="px-3 py-2">
                                             <input type="checkbox" class="rounded border-hairline text-brand-600"
                                                    :checked="fila.incluir"
@@ -560,7 +572,7 @@
                                                    @change="fila.incluir = $event.target.checked">
                                         </td>
                                         <td class="px-3 py-2 font-mono text-xs text-neutral-500" x-text="fila.fila"></td>
-                                        <td class="px-3 py-2 font-mono text-xs text-neutral-800" x-text="fila.ruc || '—'"></td>
+                                        <td class="px-3 py-2 font-mono text-xs font-semibold text-neutral-800" x-text="fila.ruc || '—'"></td>
                                         <td class="px-3 py-2">
                                             <p class="font-medium text-neutral-900" x-text="fila.padron && fila.padron.razon_social ? fila.padron.razon_social : '—'"></p>
                                             <p class="mt-0.5 text-xs text-neutral-500" x-show="fila.padron && fila.padron.tipo_persona" x-text="fila.padron.tipo_persona"></p>
@@ -569,9 +581,21 @@
                                         </td>
                                         <td class="px-3 py-2 text-xs font-semibold text-neutral-700" x-text="fila.regimen || '—'"></td>
                                         <td class="px-3 py-2 text-xs">
-                                            <p class="font-medium"
-                                               :class="fila.registrada ? 'text-emerald-700' : (fila.estado === 'observada' ? 'text-rose-700' : 'text-neutral-700')"
-                                               x-text="fila.registrada ? ('Registrado · N° ' + fila.numero) : (fila.estado === 'consultando' ? 'Consultando este RUC…' : (fila.mensaje || 'En espera'))"></p>
+                                            <div class="flex items-center gap-1.5 font-medium"
+                                                 :class="fila.registrada ? 'text-emerald-700' : (fila.estado === 'observada' ? 'text-rose-700' : (fila.estado === 'consultando' ? 'text-sky-700' : 'text-neutral-700'))">
+                                                <template x-if="fila.estado === 'consultando'">
+                                                    <svg class="h-3.5 w-3.5 animate-spin text-sky-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                                                    </svg>
+                                                </template>
+                                                <template x-if="fila.estado === 'lista' && !fila.registrada">
+                                                    <svg class="h-3.5 w-3.5 text-emerald-600 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+                                                    </svg>
+                                                </template>
+                                                <span x-text="fila.registrada ? ('Registrado · N° ' + fila.numero) : (fila.estado === 'consultando' ? 'Consultando en SUNAT…' : (fila.mensaje || 'En espera'))"></span>
+                                            </div>
                                             <p class="mt-0.5 text-neutral-500" x-show="fila.padron && (fila.padron.estado_sunat || fila.padron.condicion_sunat)"
                                                x-text="[fila.padron.estado_sunat, fila.padron.condicion_sunat].filter(Boolean).join(' · ')"></p>
                                             <p class="mt-0.5 text-neutral-400" x-show="fila.usuario_sol || fila.sunat_client_id">

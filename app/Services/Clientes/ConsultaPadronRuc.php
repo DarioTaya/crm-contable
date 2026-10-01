@@ -14,7 +14,7 @@ use Throwable;
  */
 class ConsultaPadronRuc
 {
-    private const ESPERA_REINTENTO_MICROSEGUNDOS = 800_000;
+    private const ESPERA_REINTENTO_MICROSEGUNDOS = 500_000;
 
     /**
      * @return array{
@@ -64,7 +64,7 @@ class ConsultaPadronRuc
      */
     private function descargar(string $ruc, bool $insistir): array
     {
-        $timeout = $insistir ? 8 : 3;
+        $timeout = $insistir ? 6 : 3;
         $resultado = $this->intento($ruc, $timeout);
 
         if ($insistir && ($resultado['disponibilidad'] ?? '') !== 'completo') {
@@ -107,17 +107,23 @@ class ConsultaPadronRuc
             'codigo' => 0,
         ];
 
+        $baseUrl = config('services.sunat.ruc_url', 'https://api.apis.net.pe/v2/sunat/ruc');
+        $token = config('services.sunat.ruc_token');
+
         try {
-            $apiRes = Http::connectTimeout(3)
-                ->timeout($timeout)
-                ->get("https://api.apis.net.pe/v1/ruc?numero={$ruc}");
+            $clienteHttp = Http::connectTimeout(3)->timeout($timeout);
+            if (! empty($token)) {
+                $clienteHttp = $clienteHttp->withToken($token);
+            }
+
+            $apiRes = $clienteHttp->get("{$baseUrl}?numero={$ruc}");
         } catch (Throwable) {
             return $padron;
         }
 
         if (! $apiRes->successful()) {
             $padron['codigo'] = $apiRes->status();
-            if ($apiRes->status() === 404) {
+            if ($apiRes->status() === 404 || $apiRes->status() === 422) {
                 $padron['disponibilidad'] = 'no_figura';
             }
 
@@ -129,7 +135,7 @@ class ConsultaPadronRuc
             return $padron;
         }
 
-        $nombre = trim((string) ($datosApi['nombre'] ?? ''));
+        $nombre = trim((string) ($datosApi['razonSocial'] ?? $datosApi['nombre'] ?? ''));
         if ($nombre === '') {
             $padron['disponibilidad'] = 'sin_nombre';
 
@@ -151,8 +157,12 @@ class ConsultaPadronRuc
 
     private function esperaAntesDeReintentar(int $codigo): int
     {
+        if (app()->environment('testing')) {
+            return 1_000;
+        }
+
         if ($codigo === 429) {
-            return 4_000_000;
+            return 800_000;
         }
 
         return self::ESPERA_REINTENTO_MICROSEGUNDOS;
