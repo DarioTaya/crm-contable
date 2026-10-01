@@ -560,10 +560,11 @@
 
         {{-- ═══════════════════════════════ CONTENIDO PRINCIPAL ═══════════════════════════════ --}}
         <main class="app-main flex-1 min-w-0 flex flex-col">
-            {{-- Barra delgada de acceso rápido. Vive en el flujo, encima del contenido,
-                 para no tapar matrices ni la barra lateral. --}}
+            {{-- Barra delgada de acceso rápido. z-24 queda sobre las columnas fijas
+                 de las matrices (z-20) y debajo de la barra lateral (z-30),
+                 también cuando esa se despliega en hover. --}}
             <header
-                class="app-topbar sticky top-0 z-30 flex h-11 shrink-0 items-center justify-center border-b border-gray-200 bg-white px-3"
+                class="app-topbar sticky top-0 z-[24] flex h-11 shrink-0 items-center justify-center border-b border-gray-200 bg-white px-3"
                 data-selector-empresa
                 data-empresa-id="{{ $empresaActiva?->id ?? '' }}"
             >
@@ -571,7 +572,7 @@
             </header>
 
             {{-- Contenido dinámico --}}
-            <div class="p-8">
+            <div class="px-8 pt-5 pb-8">
                 @if (session('success'))
                     <x-ui.alert variant="success" timeout="4500" class="mb-6">{{ session('success') }}</x-ui.alert>
                 @endif
