@@ -7,6 +7,7 @@ use App\Enums\RegimenTributario;
 use App\Enums\SeccionExpediente;
 use App\Models\Cliente;
 use App\Models\Credencial;
+use App\Services\Clientes\ValidacionRuc;
 use App\Services\Impuestos\ReporteImpuestosCliente;
 use App\Services\SunafilBuzonSyncService;
 use App\Services\SunatBuzonSyncService;
@@ -171,11 +172,11 @@ class ClienteController extends Controller
                 'clave_sol' => $clean($validated['clave_sol'] ?? null),
                 'usuario_afp' => $clean($validated['usuario_afp'] ?? null),
                 'clave_afp' => $clean($validated['clave_afp'] ?? null),
-                'url_afp' => $this->enlaceDistintoDelOficial($clean($validated['url_afp'] ?? null), Credencial::ENLACE_AFP),
+                'url_afp' => Credencial::enlaceSiDifiereDelOficial($clean($validated['url_afp'] ?? null), Credencial::ENLACE_AFP),
                 'dni_titular' => $clean($validated['dni_titular'] ?? null),
                 'cuenta_detracciones' => $clean($validated['cuenta_detracciones'] ?? null),
                 'clave_detracciones' => $clean($validated['clave_detracciones'] ?? null),
-                'url_bn' => $this->enlaceDistintoDelOficial($clean($validated['url_bn'] ?? null), Credencial::ENLACE_BN),
+                'url_bn' => Credencial::enlaceSiDifiereDelOficial($clean($validated['url_bn'] ?? null), Credencial::ENLACE_BN),
                 'banco_1_nombre' => $clean($validated['banco_1_nombre'] ?? null),
                 'banco_1_usuario' => $clean($validated['banco_1_usuario'] ?? null),
                 'banco_1_clave' => $clean($validated['banco_1_clave'] ?? null),
@@ -221,142 +222,11 @@ class ClienteController extends Controller
      * Valida el formato y el algoritmo matemático oficial Módulo 11 de SUNAT para un RUC,
      * y comprueba si ya existe registrado en la base de datos del CRM.
      */
-    public function validarRuc(Request $request): JsonResponse
+    public function validarRuc(Request $request, ValidacionRuc $validacion): JsonResponse
     {
-        $ruc = trim((string) $request->input('ruc', ''));
+        $resultado = $validacion->evaluar(trim((string) $request->input('ruc', '')));
 
-        if (! preg_match('/^\d{11}$/', $ruc)) {
-            return response()->json([
-                'valid' => false,
-                'message' => 'El RUC debe contener exactamente 11 dígitos numéricos.',
-            ], 422);
-        }
-
-        $prefijo = substr($ruc, 0, 2);
-        $prefijosValidos = ['10', '15', '16', '17', '20'];
-        if (! in_array($prefijo, $prefijosValidos, true)) {
-            return response()->json([
-                'valid' => false,
-                'message' => 'El RUC debe iniciar con 10, 20, 15, 16 o 17.',
-            ], 422);
-        }
-
-        // Algoritmo oficial SUNAT Módulo 11
-        $factores = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
-        $suma = 0;
-        for ($i = 0; $i < 10; $i++) {
-            $suma += ((int) $ruc[$i]) * $factores[$i];
-        }
-        $resto = 11 - ($suma % 11);
-        $digitoVerificador = match ($resto) {
-            10 => 0,
-            11 => 1,
-            default => $resto,
-        };
-
-        if ((int) $ruc[10] !== $digitoVerificador) {
-            return response()->json([
-                'valid' => false,
-                'message' => "El RUC {$ruc} no supera la validación matemática oficial de SUNAT (dígito verificador incorrecto).",
-            ], 422);
-        }
-
-        $padron = $this->datosPadronRuc($ruc, $prefijo);
-
-        $clienteExistente = Cliente::where('ruc', $ruc)->first();
-        if ($clienteExistente) {
-            if ($padron['razon_social'] === null || $padron['razon_social'] === '') {
-                $padron['razon_social'] = $clienteExistente->razon_social;
-            }
-
-            return response()->json([
-                'valid' => true,
-                'duplicate' => true,
-                'message' => "Este RUC ya se encuentra registrado en el CRM: {$clienteExistente->razon_social}",
-                'cliente' => [
-                    'id' => $clienteExistente->id,
-                    'razon_social' => $clienteExistente->razon_social,
-                ],
-                ...$padron,
-            ]);
-        }
-
-        $mensaje = $padron['razon_social']
-            ? "RUC verificado ante SUNAT: {$padron['razon_social']} (".trim("{$padron['estado_sunat']} / {$padron['condicion_sunat']}", ' /').')'
-            : "RUC válido ante SUNAT ({$padron['tipo_persona']}).";
-
-        return response()->json([
-            'valid' => true,
-            'duplicate' => false,
-            ...$padron,
-            'message' => $mensaje,
-        ]);
-    }
-
-    /**
-     * Padrón público del RUC. La misma forma se entrega siempre, esté o no el cliente en el CRM.
-     *
-     * @return array{
-     *     tipo_persona: string,
-     *     razon_social: string|null,
-     *     estado_sunat: string|null,
-     *     condicion_sunat: string|null,
-     *     direccion_sunat: string|null,
-     *     ubigeo: string|null,
-     *     distrito: string|null,
-     *     provincia: string|null,
-     *     departamento: string|null
-     * }
-     */
-    private function datosPadronRuc(string $ruc, string $prefijo): array
-    {
-        $tipoPersona = match ($prefijo) {
-            '10' => 'Persona Natural con Negocio',
-            '20' => 'Persona Jurídica (Empresa / Sociedad)',
-            default => 'Contribuyente Especial',
-        };
-
-        $razonSocial = null;
-        $estado = null;
-        $condicion = null;
-        $direccion = null;
-        $ubigeo = null;
-        $distrito = null;
-        $provincia = null;
-        $departamento = null;
-
-        try {
-            $apiRes = Http::connectTimeout(3)
-                ->timeout(3)
-                ->get("https://api.apis.net.pe/v1/ruc?numero={$ruc}");
-            if ($apiRes->successful()) {
-                $datosApi = $apiRes->json();
-                if (is_array($datosApi) && ! empty($datosApi['nombre'])) {
-                    $razonSocial = trim((string) $datosApi['nombre']);
-                    $estado = trim((string) ($datosApi['estado'] ?? ''));
-                    $condicion = trim((string) ($datosApi['condicion'] ?? ''));
-                    $direccion = trim((string) ($datosApi['direccion'] ?? ''));
-                    $ubigeo = trim((string) ($datosApi['ubigeo'] ?? ''));
-                    $distrito = trim((string) ($datosApi['distrito'] ?? ''));
-                    $provincia = trim((string) ($datosApi['provincia'] ?? ''));
-                    $departamento = trim((string) ($datosApi['departamento'] ?? ''));
-                }
-            }
-        } catch (Throwable) {
-            // Falla de red o timeout se ignora limpiamente para no degradar la experiencia
-        }
-
-        return [
-            'tipo_persona' => $tipoPersona,
-            'razon_social' => $razonSocial,
-            'estado_sunat' => $estado,
-            'condicion_sunat' => $condicion,
-            'direccion_sunat' => $direccion,
-            'ubigeo' => $ubigeo,
-            'distrito' => $distrito,
-            'provincia' => $provincia,
-            'departamento' => $departamento,
-        ];
+        return response()->json($resultado['cuerpo'], $resultado['estado']);
     }
 
     /**
@@ -786,11 +656,11 @@ class ClienteController extends Controller
                     'clave_sol' => $clean($validated['clave_sol'] ?? null),
                     'usuario_afp' => $clean($validated['usuario_afp'] ?? null),
                     'clave_afp' => $clean($validated['clave_afp'] ?? null),
-                    'url_afp' => $this->enlaceDistintoDelOficial($clean($validated['url_afp'] ?? null), Credencial::ENLACE_AFP),
+                    'url_afp' => Credencial::enlaceSiDifiereDelOficial($clean($validated['url_afp'] ?? null), Credencial::ENLACE_AFP),
                     'dni_titular' => $clean($validated['dni_titular'] ?? null),
                     'cuenta_detracciones' => $clean($validated['cuenta_detracciones'] ?? null),
                     'clave_detracciones' => $clean($validated['clave_detracciones'] ?? null),
-                    'url_bn' => $this->enlaceDistintoDelOficial($clean($validated['url_bn'] ?? null), Credencial::ENLACE_BN),
+                    'url_bn' => Credencial::enlaceSiDifiereDelOficial($clean($validated['url_bn'] ?? null), Credencial::ENLACE_BN),
                     'banco_1_nombre' => $clean($validated['banco_1_nombre'] ?? null),
                     'banco_1_usuario' => $clean($validated['banco_1_usuario'] ?? null),
                     'banco_1_clave' => $clean($validated['banco_1_clave'] ?? null),
@@ -807,15 +677,6 @@ class ClienteController extends Controller
 
         return redirect()->route('clientes.show', $cliente)
             ->with('success', 'Credenciales de acceso actualizadas correctamente.');
-    }
-
-    private function enlaceDistintoDelOficial(?string $url, string $oficial): ?string
-    {
-        if ($url === null || $url === $oficial) {
-            return null;
-        }
-
-        return $url;
     }
 
     /**

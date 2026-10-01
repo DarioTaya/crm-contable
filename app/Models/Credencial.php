@@ -112,6 +112,24 @@ class Credencial extends Model
         return $this->enlaceHttp($this->banco_2_url);
     }
 
+    /**
+     * El alta manual no guarda el portal oficial: si el enlace está vacío o es
+     * el de siempre, queda null y la ficha abre la dirección vigente.
+     */
+    public static function enlaceSiDifiereDelOficial(?string $url, string $oficial): ?string
+    {
+        if ($url === null) {
+            return null;
+        }
+
+        $url = trim($url);
+        if ($url === '' || $url === $oficial) {
+            return null;
+        }
+
+        return $url;
+    }
+
     private function enlaceHttp(?string $url): ?string
     {
         $url = trim((string) $url);

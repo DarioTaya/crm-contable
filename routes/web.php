@@ -4,6 +4,7 @@ use App\Http\Controllers\AbonoDeudaController;
 use App\Http\Controllers\AjusteSistemaController;
 use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CargaMasivaClienteController;
 use App\Http\Controllers\CargaMasivaControlController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ComprobanteController;
@@ -104,6 +105,10 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
     Route::post('/clientes', [ClienteController::class, 'store'])->name('clientes.store');
     Route::post('/clientes/validar-ruc', [ClienteController::class, 'validarRuc'])->name('clientes.validar-ruc');
     Route::post('/clientes/validar-sol', [ClienteController::class, 'validarCredencialesSol'])->name('clientes.validar-sol');
+    Route::get('/clientes/carga-masiva/plantilla', [CargaMasivaClienteController::class, 'plantilla'])->name('clientes.carga_masiva.plantilla');
+    Route::post('/clientes/carga-masiva/leer', [CargaMasivaClienteController::class, 'leer'])->name('clientes.carga_masiva.leer');
+    Route::post('/clientes/carga-masiva/consultar', [CargaMasivaClienteController::class, 'consultar'])->name('clientes.carga_masiva.consultar');
+    Route::post('/clientes/carga-masiva/registrar', [CargaMasivaClienteController::class, 'registrar'])->name('clientes.carga_masiva.registrar');
 
     // Rutas de Administración de Clientes, Papelera y Baja Lógica
     Route::middleware('admin')->group(function () {

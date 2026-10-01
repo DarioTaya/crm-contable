@@ -92,14 +92,24 @@
             </div>
         </form>
 
-        {{-- Botón Nuevo Cliente --}}
-        <a href="{{ route('clientes.create') }}"
-           class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white shadow-xs transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
-            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            Nuevo Cliente
-        </a>
+        <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <button type="button"
+                    onclick="window.dispatchEvent(new CustomEvent('abrir-carga-masiva-clientes'))"
+                    title="Cargar varios clientes desde una plantilla. El alta de uno en uno no cambia."
+                    class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-xs transition hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-brand-500/30">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                </svg>
+                Carga masiva
+            </button>
+            <a href="{{ route('clientes.create') }}"
+               class="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white shadow-xs transition hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                Nuevo Cliente
+            </a>
+        </div>
     </div>
 
     {{-- Tabla de clientes --}}
@@ -624,4 +634,5 @@
         };
     }
 </script>
+    @include('clientes.partials.carga-masiva')
 @endsection
