@@ -125,6 +125,16 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
+                    @if (auth()->user()?->isAdmin())
+                        <th class="w-10 px-3 py-3.5 text-center">
+                            <input type="checkbox"
+                                   @change="alternarTodos($event.target.checked)"
+                                   :checked="todosSeleccionados()"
+                                   x-effect="$el.indeterminate = algunosSeleccionados()"
+                                   title="Seleccionar o deseleccionar todos los clientes visibles"
+                                   class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 transition cursor-pointer">
+                        </th>
+                    @endif
                     <th class="px-4 py-3.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-500 w-14">N°</th>
                     <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">RUC</th>
                     <th class="px-6 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Razón Social</th>
@@ -136,9 +146,19 @@
             <tbody class="divide-y divide-gray-100">
                 @forelse ($clientes as $cliente)
                     <tr class="transition hover:bg-gray-50/80 cliente-row"
+                        :class="estaSeleccionado('{{ $cliente->id }}') ? 'bg-brand-50/40' : ''"
                         data-cliente-ruc="{{ $cliente->ruc }}"
                         data-cliente-razon="{{ mb_strtolower($cliente->razon_social) }}"
                         x-show="coincide('{{ $cliente->ruc }}', '{{ addslashes(mb_strtolower($cliente->razon_social)) }}')">
+                        @if (auth()->user()?->isAdmin())
+                            <td class="w-10 px-3 py-4 text-center">
+                                <input type="checkbox"
+                                       value="{{ $cliente->id }}"
+                                       data-cliente-id="{{ $cliente->id }}"
+                                       x-model="seleccionados"
+                                       class="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 transition cursor-pointer">
+                            </td>
+                        @endif
                         <td class="whitespace-nowrap px-4 py-4 text-center">
                             <span class="inline-flex h-6 min-w-[26px] px-1.5 items-center justify-center rounded-md bg-gray-100 border border-gray-300 text-xs font-mono font-black text-gray-700 shadow-xs"
                                   title="Cliente N° {{ $cliente->numero }}">
@@ -245,7 +265,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="px-6 py-12 text-center">
+                        <td colspan="{{ auth()->user()?->isAdmin() ? 7 : 6 }}" class="px-6 py-12 text-center">
                             <div class="mx-auto max-w-lg rounded-2xl border border-indigo-100 bg-gradient-to-b from-indigo-50/60 to-white p-8 shadow-xs">
                                 <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-2xl text-white shadow-md shadow-indigo-200">
                                     🏢
@@ -274,7 +294,7 @@
 
                 {{-- Fila de Estado Vacío para Búsqueda en Tiempo Real --}}
                 <tr x-show="buscar.trim() !== '' && !hayCoincidenciasVisibles" x-cloak id="fila-sin-coincidencias">
-                    <td colspan="6" class="px-6 py-12 text-center">
+                    <td colspan="{{ auth()->user()?->isAdmin() ? 7 : 6 }}" class="px-6 py-12 text-center">
                         <div class="mx-auto flex max-w-sm flex-col items-center">
                             <div class="flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-500 mb-3 border border-amber-200">
                                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -306,6 +326,45 @@
             Mostrando {{ $clientes->firstItem() ?? 0 }} – {{ $clientes->lastItem() ?? 0 }} de {{ $clientes->total() }} clientes
         </p>
     </div>
+
+    {{-- ═══════════════ BARRA FLOTANTE DE ACCIONES MASIVAS ═══════════════ --}}
+    @if (auth()->user()?->isAdmin())
+        <div x-show="seleccionados.length > 0"
+             x-cloak
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 translate-y-8 scale-95"
+             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+             x-transition:leave-end="opacity-0 translate-y-8 scale-95"
+             class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 rounded-2xl border border-gray-700/60 bg-gray-900/95 px-5 py-3 text-white shadow-2xl backdrop-blur-md">
+            <div class="flex items-center gap-2.5 pr-3 border-r border-gray-700">
+                <span class="flex h-6 min-w-6 px-1.5 items-center justify-center rounded-full bg-brand-500 text-xs font-bold text-white shadow-xs" x-text="seleccionados.length"></span>
+                <span class="text-xs font-semibold text-gray-100" x-text="seleccionados.length === 1 ? 'cliente seleccionado' : 'clientes seleccionados'"></span>
+            </div>
+
+            <button type="button"
+                    @click="deseleccionarTodos()"
+                    class="rounded-lg px-2.5 py-1 text-xs font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition">
+                Deseleccionar
+            </button>
+
+            <form method="POST" action="{{ route('clientes.eliminar-masivo') }}" @submit.prevent="confirmarEliminacionMasiva($event.target)">
+                @csrf
+                @method('DELETE')
+                <template x-for="id in seleccionados" :key="id">
+                    <input type="hidden" name="ids[]" :value="id">
+                </template>
+                <button type="submit"
+                        class="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-rose-700 active:scale-95 transition">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                    </svg>
+                    <span>Mover a Papelera</span>
+                </button>
+            </form>
+        </div>
+    @endif
 
     @include('clientes.partials.menu-accesos-sunat')
 
@@ -416,6 +475,67 @@
                 { ruc: '{{ $c->ruc }}', razon: '{{ addslashes(mb_strtolower($c->razon_social)) }}' },
                 @endforeach
             ],
+
+            // ═══════════════ SELECCIÓN MASIVA Y GESTIÓN EN PAPELERA ═══════════════
+            seleccionados: [],
+
+            estaSeleccionado(id) {
+                return this.seleccionados.some(s => String(s) === String(id));
+            },
+
+            obtenerIdsVisibles() {
+                const wrapper = document.getElementById('tabla-clientes-wrapper');
+                if (!wrapper) return [];
+                const checks = wrapper.querySelectorAll('input[type="checkbox"][data-cliente-id]');
+                return Array.from(checks)
+                    .filter(cb => {
+                        const tr = cb.closest('tr');
+                        return !tr || tr.style.display !== 'none';
+                    })
+                    .map(cb => cb.getAttribute('data-cliente-id'))
+                    .filter(Boolean);
+            },
+
+            todosSeleccionados() {
+                const visibles = this.obtenerIdsVisibles();
+                if (visibles.length === 0) return false;
+                return visibles.every(id => this.estaSeleccionado(id));
+            },
+
+            algunosSeleccionados() {
+                const visibles = this.obtenerIdsVisibles();
+                if (visibles.length === 0) return false;
+                const marcados = visibles.filter(id => this.estaSeleccionado(id));
+                return marcados.length > 0 && marcados.length < visibles.length;
+            },
+
+            alternarTodos(marcar) {
+                const visibles = this.obtenerIdsVisibles();
+                if (marcar) {
+                    const set = new Set([...this.seleccionados.map(String), ...visibles.map(String)]);
+                    this.seleccionados = Array.from(set);
+                } else {
+                    const visiblesSet = new Set(visibles.map(String));
+                    this.seleccionados = this.seleccionados.filter(id => !visiblesSet.has(String(id)));
+                }
+            },
+
+            deseleccionarTodos() {
+                this.seleccionados = [];
+            },
+
+            confirmarEliminacionMasiva(formElement) {
+                if (this.seleccionados.length === 0) return;
+                const n = this.seleccionados.length;
+                const mensaje = `¿Confirma el traslado de ${n} ${n === 1 ? 'cliente seleccionado' : 'clientes seleccionados'} a la Papelera de Reciclaje?\n\n` +
+                                `✓ Se mantendrán a buen recaudo todos sus comprobantes SIRE, declaraciones PDT y correlativo histórico para auditoría tributaria.\n` +
+                                `✓ No consumirán recursos ni alertas mientras estén en papelera.\n` +
+                                `✓ Podrá restaurar cualquier contribuyente cuando lo requiera.\n\n` +
+                                `¿Desea continuar?`;
+                if (confirm(mensaje)) {
+                    formElement.submit();
+                }
+            },
 
             init() {
                 this.recalcularCoincidencias();

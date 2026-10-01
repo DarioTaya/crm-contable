@@ -408,6 +408,166 @@ class ClienteController extends Controller
     }
 
     /**
+     * Da de baja lógica (Soft Delete) masiva a los clientes seleccionados.
+     * Preserva íntegramente sus comprobantes, declaraciones PDT y expediente para fines de auditoría.
+     */
+    public function eliminarMasivo(Request $request): RedirectResponse|JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'integer'],
+        ], [
+            'ids.required' => 'Debe seleccionar al menos un cliente para enviar a la papelera.',
+            'ids.min' => 'Debe seleccionar al menos un cliente para enviar a la papelera.',
+        ]);
+
+        $ids = array_map('intval', $validated['ids']);
+        $clientes = Cliente::whereIn('id', $ids)->get();
+
+        if ($clientes->isEmpty()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontraron clientes válidos para enviar a la papelera.',
+                ], 422);
+            }
+
+            return redirect()->route('clientes.index')
+                ->with('warning', 'No se encontraron clientes válidos para enviar a la papelera.');
+        }
+
+        $total = 0;
+        DB::transaction(function () use ($clientes, &$total) {
+            foreach ($clientes as $cliente) {
+                $cliente->delete();
+                $total++;
+            }
+        });
+
+        $mensaje = $total === 1
+            ? 'El cliente seleccionado fue enviado a la papelera de reciclaje.'
+            : "Se enviaron {$total} clientes a la papelera de reciclaje. Sus comprobantes y declaraciones históricas han sido preservados.";
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $mensaje,
+                'total' => $total,
+            ]);
+        }
+
+        return redirect()->route('clientes.index')->with('success', $mensaje);
+    }
+
+    /**
+     * Restaura masivamente clientes archivados en la papelera de reciclaje.
+     */
+    public function restaurarMasivo(Request $request): RedirectResponse|JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'integer'],
+        ], [
+            'ids.required' => 'Debe seleccionar al menos un cliente para restaurar.',
+            'ids.min' => 'Debe seleccionar al menos un cliente para restaurar.',
+        ]);
+
+        $ids = array_map('intval', $validated['ids']);
+        $clientes = Cliente::onlyTrashed()->whereIn('id', $ids)->get();
+
+        if ($clientes->isEmpty()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontraron clientes archivados para restaurar.',
+                ], 422);
+            }
+
+            return redirect()->route('clientes.papelera')
+                ->with('warning', 'No se encontraron clientes archivados para restaurar.');
+        }
+
+        $total = 0;
+        DB::transaction(function () use ($clientes, &$total) {
+            foreach ($clientes as $cliente) {
+                $cliente->restore();
+                $total++;
+            }
+        });
+
+        $mensaje = $total === 1
+            ? 'El cliente fue restaurado exitosamente a la cartera activa.'
+            : "Se restauraron {$total} clientes exitosamente a la cartera activa.";
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $mensaje,
+                'total' => $total,
+            ]);
+        }
+
+        return redirect()->route('clientes.papelera')->with('success', $mensaje);
+    }
+
+    /**
+     * Elimina permanentemente de forma física e irreversible a los clientes seleccionados en papelera.
+     */
+    public function purgarMasivo(Request $request): RedirectResponse|JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['required', 'integer'],
+        ], [
+            'ids.required' => 'Debe seleccionar al menos un cliente para purgar.',
+            'ids.min' => 'Debe seleccionar al menos un cliente para purgar.',
+        ]);
+
+        $ids = array_map('intval', $validated['ids']);
+        $clientes = Cliente::onlyTrashed()->whereIn('id', $ids)->get();
+
+        if ($clientes->isEmpty()) {
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No se encontraron clientes para purgar definitivamente.',
+                ], 422);
+            }
+
+            return redirect()->route('clientes.papelera')
+                ->with('warning', 'No se encontraron clientes para purgar definitivamente.');
+        }
+
+        $total = 0;
+        DB::transaction(function () use ($clientes, &$total) {
+            foreach ($clientes as $cliente) {
+                $cliente->credencial()->delete();
+                $cliente->notificaciones()->delete();
+                $cliente->operaciones()->delete();
+                $cliente->alertas()->delete();
+                $cliente->comprobantes()->delete();
+                $cliente->asistentes()->detach();
+                $cliente->forceDelete();
+                $total++;
+            }
+        });
+
+        $mensaje = $total === 1
+            ? 'El cliente y todos sus registros físicos fueron eliminados permanentemente del sistema.'
+            : "Se eliminaron permanentemente {$total} clientes y todos sus registros físicos del sistema.";
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $mensaje,
+                'total' => $total,
+            ]);
+        }
+
+        return redirect()->route('clientes.papelera')->with('success', $mensaje);
+    }
+
+    /**
      * Da de baja lógica (Soft Delete) al cliente.
      * Preserva íntegramente sus comprobantes, declaraciones PDT y expediente para fines de auditoría.
      */

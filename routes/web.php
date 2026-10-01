@@ -113,6 +113,9 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
     // Rutas de Administración de Clientes, Papelera y Baja Lógica
     Route::middleware('admin')->group(function () {
         Route::get('/clientes/papelera', [ClienteController::class, 'papelera'])->name('clientes.papelera');
+        Route::post('/clientes/restaurar-masivo', [ClienteController::class, 'restaurarMasivo'])->name('clientes.restaurar-masivo');
+        Route::delete('/clientes/purgar-masivo', [ClienteController::class, 'purgarMasivo'])->name('clientes.purgar-masivo');
+        Route::delete('/clientes/eliminar-masivo', [ClienteController::class, 'eliminarMasivo'])->name('clientes.eliminar-masivo');
         Route::post('/clientes/{id}/restaurar', [ClienteController::class, 'restaurar'])->name('clientes.restaurar');
         Route::delete('/clientes/{id}/forzar-eliminacion', [ClienteController::class, 'forzarEliminacion'])->name('clientes.forzar-eliminacion');
         Route::delete('/clientes/{cliente}', [ClienteController::class, 'destroy'])->name('clientes.destroy');
