@@ -572,7 +572,7 @@
             </header>
 
             {{-- Contenido dinámico --}}
-            <div class="px-8 pt-5 pb-8">
+            <div class="px-8 pt-4 pb-8">
                 @if (session('success'))
                     <x-ui.alert variant="success" timeout="4500" class="mb-6">{{ session('success') }}</x-ui.alert>
                 @endif

@@ -96,20 +96,179 @@ class SelectorEmpresaTest extends TestCase
         $response->assertJsonMissing(['razon_social' => 'ASIGNADA DEMO SAC']);
     }
 
-    public function test_search_reports_when_more_companies_exist_than_the_page(): void
+    public function test_idle_list_returns_the_first_five_companies_and_search_finds_the_rest(): void
     {
         $estudio = Estudio::factory()->create();
         $admin = User::factory()->create([
             'estudio_id' => $estudio->id,
             'rol' => 'admin',
         ]);
-        Cliente::factory()->count(SelectorEmpresa::LIMITE + 1)->paraEstudio($estudio)->create();
+
+        $empresas = collect(range(1, 6))->map(
+            fn (int $numero): Cliente => Cliente::factory()->paraEstudio($estudio)->create([
+                'razon_social' => sprintf('%02d EMPRESA DEMO SAC', $numero),
+            ]),
+        );
 
         $this->actingAs($admin)
             ->getJson(route('acceso-rapido.empresas'))
             ->assertOk()
             ->assertJsonPath('hay_mas', true)
+            ->assertJsonCount(SelectorEmpresa::VISIBLES, 'empresas')
+            ->assertJsonPath('empresas.0.id', $empresas[0]->id)
+            ->assertJsonPath('empresas.4.id', $empresas[4]->id)
+            ->assertJsonMissing(['id' => $empresas[5]->id]);
+
+        $this->getJson(route('acceso-rapido.empresas', ['q' => '06 EMPRESA']))
+            ->assertOk()
+            ->assertJsonCount(1, 'empresas')
+            ->assertJsonPath('empresas.0.id', $empresas[5]->id)
+            ->assertJsonPath('empresas.0.fijada', false);
+    }
+
+    public function test_search_pages_matches_beyond_the_idle_window(): void
+    {
+        $estudio = Estudio::factory()->create();
+        $admin = User::factory()->create([
+            'estudio_id' => $estudio->id,
+            'rol' => 'admin',
+        ]);
+        Cliente::factory()->count(SelectorEmpresa::LIMITE + 1)->paraEstudio($estudio)->create([
+            'razon_social' => 'LOTE BUSQUEDA SAC',
+        ]);
+
+        $this->actingAs($admin)
+            ->getJson(route('acceso-rapido.empresas', ['q' => 'LOTE BUSQUEDA']))
+            ->assertOk()
+            ->assertJsonPath('hay_mas', true)
             ->assertJsonCount(SelectorEmpresa::LIMITE, 'empresas');
+    }
+
+    public function test_pinning_a_company_keeps_it_in_the_first_five(): void
+    {
+        $estudio = Estudio::factory()->create();
+        $admin = User::factory()->create([
+            'estudio_id' => $estudio->id,
+            'rol' => 'admin',
+        ]);
+
+        $empresas = collect(range(1, 6))->map(
+            fn (int $numero): Cliente => Cliente::factory()->paraEstudio($estudio)->create([
+                'razon_social' => sprintf('%02d FIJA DEMO SAC', $numero),
+            ]),
+        );
+
+        $this->actingAs($admin)
+            ->postJson(route('acceso-rapido.fijar'), ['cliente_id' => $empresas[5]->id])
+            ->assertOk()
+            ->assertJsonPath('fijada', true)
+            ->assertJsonPath('empresa.id', $empresas[5]->id);
+
+        $this->getJson(route('acceso-rapido.empresas'))
+            ->assertOk()
+            ->assertJsonCount(SelectorEmpresa::VISIBLES, 'empresas')
+            ->assertJsonPath('empresas.0.id', $empresas[5]->id)
+            ->assertJsonPath('empresas.0.fijada', true)
+            ->assertJsonMissing(['id' => $empresas[4]->id]);
+
+        $this->postJson(route('acceso-rapido.fijar'), ['cliente_id' => $empresas[5]->id])
+            ->assertOk()
+            ->assertJsonPath('fijada', false);
+
+        $this->getJson(route('acceso-rapido.empresas'))
+            ->assertOk()
+            ->assertJsonPath('empresas.0.id', $empresas[0]->id)
+            ->assertJsonMissing(['id' => $empresas[5]->id]);
+    }
+
+    public function test_pinning_a_sixth_company_returns_422(): void
+    {
+        $estudio = Estudio::factory()->create();
+        $admin = User::factory()->create([
+            'estudio_id' => $estudio->id,
+            'rol' => 'admin',
+        ]);
+
+        $empresas = collect(range(1, 6))->map(
+            fn (int $numero): Cliente => Cliente::factory()->paraEstudio($estudio)->create([
+                'razon_social' => sprintf('%02d CUPO DEMO SAC', $numero),
+            ]),
+        );
+
+        $this->actingAs($admin);
+
+        foreach ($empresas->take(5) as $empresa) {
+            $this->postJson(route('acceso-rapido.fijar'), ['cliente_id' => $empresa->id])
+                ->assertOk()
+                ->assertJsonPath('fijada', true);
+        }
+
+        $this->postJson(route('acceso-rapido.fijar'), ['cliente_id' => $empresas[5]->id])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['cliente_id'])
+            ->assertJsonPath('errors.cliente_id.0', 'Ya tienes 5 empresas fijas. Quita una para fijar otra.');
+
+        $this->assertDatabaseMissing('empresa_fijas', [
+            'user_id' => $admin->id,
+            'cliente_id' => $empresas[5]->id,
+        ]);
+    }
+
+    public function test_assistant_cannot_pin_a_company_outside_the_portfolio(): void
+    {
+        $cartera = $this->cartera();
+
+        $this->actingAs($cartera['asistente'])
+            ->postJson(route('acceso-rapido.fijar'), [
+                'cliente_id' => $cartera['privada']->id,
+            ])
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('empresa_fijas', 0);
+    }
+
+    public function test_pinning_a_company_from_another_firm_returns_404(): void
+    {
+        $cartera = $this->cartera();
+        $ajena = Cliente::factory()->create([
+            'razon_social' => 'FIJA AJENA SAC',
+        ]);
+
+        $this->actingAs($cartera['admin'])
+            ->postJson(route('acceso-rapido.fijar'), [
+                'cliente_id' => $ajena->id,
+            ])
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('empresa_fijas', 0);
+    }
+
+    public function test_a_deleted_company_releases_its_pin(): void
+    {
+        $cartera = $this->cartera();
+
+        $this->actingAs($cartera['admin'])
+            ->postJson(route('acceso-rapido.fijar'), [
+                'cliente_id' => $cartera['asignada']->id,
+            ])
+            ->assertOk();
+
+        $cartera['asignada']->delete();
+
+        $this->getJson(route('acceso-rapido.empresas'))
+            ->assertOk()
+            ->assertJsonMissing(['id' => $cartera['asignada']->id]);
+
+        $this->assertDatabaseMissing('empresa_fijas', [
+            'cliente_id' => $cartera['asignada']->id,
+        ]);
+    }
+
+    public function test_guest_cannot_pin_a_company(): void
+    {
+        $this->withHeader('X-Test-Guest', '1')
+            ->postJson(route('acceso-rapido.fijar'), ['cliente_id' => 1])
+            ->assertUnauthorized();
     }
 
     public function test_selecting_a_company_remembers_it_for_the_rest_of_the_crm(): void

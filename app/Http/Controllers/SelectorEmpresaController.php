@@ -26,7 +26,39 @@ class SelectorEmpresaController extends Controller
         $termino = trim((string) ($validated['q'] ?? ''));
 
         return response()
-            ->json($this->selector->buscar($termino))
+            ->json($this->selector->buscar($request->user(), $termino))
+            ->header('Cache-Control', 'private, no-store');
+    }
+
+    /**
+     * Fija o suelta una empresa dentro de las cinco del acceso rápido.
+     */
+    public function fijar(Request $request): JsonResponse
+    {
+        Gate::authorize('viewAny', Cliente::class);
+
+        $validated = $request->validate([
+            'cliente_id' => ['required', 'integer'],
+        ]);
+
+        $cliente = Cliente::query()
+            ->paraUsuario()
+            ->whereKey($validated['cliente_id'])
+            ->first();
+
+        if ($cliente === null) {
+            abort(404);
+        }
+
+        Gate::authorize('view', $cliente);
+
+        $fijada = $this->selector->alternarFija($request->user(), $cliente);
+
+        return response()
+            ->json([
+                'fijada' => $fijada,
+                'empresa' => $this->selector->presentar($cliente, $fijada),
+            ])
             ->header('Cache-Control', 'private, no-store');
     }
 
@@ -53,7 +85,7 @@ class SelectorEmpresaController extends Controller
         $this->selector->recordar($request, $cliente);
 
         return response()
-            ->json(['empresa' => $this->selector->presentar($cliente)])
+            ->json(['empresa' => $this->selector->presentar($cliente, $this->selector->estaFijada($request->user(), $cliente))])
             ->header('Cache-Control', 'private, no-store');
     }
 }

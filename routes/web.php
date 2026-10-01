@@ -96,6 +96,7 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
     // Acceso rápido de empresas (barra superior). La cartera no se incrusta en el layout.
     Route::get('/acceso-rapido/empresas', [SelectorEmpresaController::class, 'index'])->name('acceso-rapido.empresas');
     Route::post('/acceso-rapido/empresa', [SelectorEmpresaController::class, 'seleccionar'])->name('acceso-rapido.seleccionar');
+    Route::post('/acceso-rapido/fijar', [SelectorEmpresaController::class, 'fijar'])->name('acceso-rapido.fijar');
 
     // Clientes y Expediente Digital
     Route::get('/clientes', [ClienteController::class, 'index'])->name('clientes.index');

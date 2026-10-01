@@ -7,6 +7,7 @@ export function registrarSelectorEmpresa(Alpine) {
     Alpine.data('selectorEmpresa', (config = {}) => ({
         buscarUrl: config.buscarUrl,
         seleccionarUrl: config.seleccionarUrl,
+        fijarUrl: config.fijarUrl,
         empresa: config.empresa,
         contextoClienteId: config.contextoClienteId ?? null,
         rutaActual: config.rutaActual ?? null,
@@ -179,6 +180,45 @@ export function registrarSelectorEmpresa(Alpine) {
                 if (!controlador.signal.aborted) {
                     this.cargando = false;
                 }
+            }
+        },
+
+        async alternarFijada(item) {
+            try {
+                const token = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+                const respuesta = await fetch(this.fijarUrl, {
+                    method: 'POST',
+                    headers: {
+                        Accept: 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({ cliente_id: item.id }),
+                });
+                const data = await respuesta.json().catch(() => ({}));
+
+                if (respuesta.status === 422) {
+                    this.errorLista = data.errors?.cliente_id?.[0]
+                        || 'Ya tienes 5 empresas fijas. Quita una para fijar otra.';
+                    return;
+                }
+
+                if (!respuesta.ok) {
+                    this.errorLista = respuesta.status === 404
+                        ? 'Esa empresa ya no está en tu cartera.'
+                        : 'No se pudo fijar la empresa.';
+                    return;
+                }
+
+                this.errorLista = '';
+                item.fijada = Boolean(data.fijada);
+
+                if (this.consulta.trim() === '') {
+                    await this.cargar();
+                }
+            } catch {
+                this.errorLista = 'No se pudo fijar la empresa.';
             }
         },
 

@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -79,6 +80,14 @@ class User extends Authenticatable
     public function clientes(): BelongsToMany
     {
         return $this->belongsToMany(Cliente::class, 'cliente_user')->withTimestamps();
+    }
+
+    /**
+     * Empresas fijas del acceso rápido, de la más reciente a la más antigua.
+     */
+    public function empresasFijas(): HasMany
+    {
+        return $this->hasMany(EmpresaFija::class)->orderByDesc('orden');
     }
 
     /**

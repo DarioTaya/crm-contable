@@ -5,6 +5,7 @@
     $config = [
         'buscarUrl' => route('acceso-rapido.empresas'),
         'seleccionarUrl' => route('acceso-rapido.seleccionar'),
+        'fijarUrl' => route('acceso-rapido.fijar'),
         'empresa' => $empresa ? [
             'id' => $empresa->id,
             'razon_social' => $empresa->razon_social,
@@ -102,11 +103,24 @@
 
                 <template x-for="(item, index) in empresas" :key="item.id">
                     <div
-                        class="flex items-center gap-1.5 px-2 py-1"
+                        class="group relative flex items-center gap-1.5 px-2 py-1"
                         :data-opcion-activa="index === indiceActivo ? '1' : '0'"
                         :class="index === indiceActivo ? 'bg-brand-50' : 'hover:bg-gray-50'"
                         @mouseenter="indiceActivo = index"
                     >
+                        <button
+                            type="button"
+                            @click.stop="alternarFijada(item)"
+                            :title="item.fijada ? 'Quitar de las 5 fijas' : 'Fijar en las 5 del acceso rápido'"
+                            :aria-label="item.fijada ? 'Quitar de las empresas fijas' : 'Fijar empresa'"
+                            :aria-pressed="item.fijada ? 'true' : 'false'"
+                            class="absolute left-6 top-1/2 z-10 flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center rounded-full bg-white text-gray-400 shadow-sm ring-1 ring-gray-200 transition hover:text-brand-700 focus:outline-none focus-visible:pointer-events-auto focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-brand-500/40"
+                            :class="item.fijada ? 'pointer-events-auto text-brand-700 opacity-100' : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100'"
+                        >
+                            <svg class="h-2.5 w-2.5" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true" :fill="item.fijada ? 'currentColor' : 'none'">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+                            </svg>
+                        </button>
                         <button
                             type="button"
                             class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40"
@@ -176,11 +190,8 @@
 
             <a
                 href="{{ route('clientes.create') }}"
-                class="flex shrink-0 items-center gap-2 border-t border-gray-100 px-3 py-2.5 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
+                class="flex shrink-0 items-center justify-center border-t border-gray-100 px-3 py-2.5 text-center text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
             >
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.2" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
                 <span>+ Agregar empresa</span>
             </a>
         </div>
