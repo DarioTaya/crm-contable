@@ -1,5 +1,6 @@
 import Alpine from 'alpinejs';
 import * as FiltrosControlDeudas from './filtros-control-deudas.js';
+import { registrarSelectorEmpresa } from './selector-empresa.js';
 
 /**
  * Alpine se sirve desde el bundle, no desde un CDN: la aplicacion debe
@@ -11,6 +12,8 @@ import * as FiltrosControlDeudas from './filtros-control-deudas.js';
  */
 window.FiltrosControlDeudas = FiltrosControlDeudas;
 window.Alpine = Alpine;
+
+registrarSelectorEmpresa(Alpine);
 
 Alpine.start();
 

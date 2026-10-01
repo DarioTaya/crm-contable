@@ -27,7 +27,14 @@
             const margen = 16;
             const separacion = panel.dataset.separacion ? parseInt(panel.dataset.separacion, 10) : 10;
             const rect = ancla.getBoundingClientRect();
-            const maxAlto = window.innerHeight - (margen * 2);
+            let maxAlto = window.innerHeight - (margen * 2);
+
+            // El acceso rápido siempre cae debajo del disparador. Si el panel
+            // usara todo el alto de la ventana, el reencuadre lo subiría y
+            // taparía el selector.
+            if (panel.dataset.abrir === 'abajo') {
+                maxAlto = Math.max(160, window.innerHeight - rect.bottom - separacion - margen);
+            }
 
             if (!soloEncuadre) {
                 const maxCss = maxAlto + 'px';
@@ -49,10 +56,14 @@
 
             const cabeAbajo = window.innerHeight - rect.bottom >= alto + margen;
             const cabeArriba = rect.top >= alto + margen;
-            const abrirArriba = !cabeAbajo && cabeArriba;
+            const abrirArriba = panel.dataset.abrir === 'abajo' ? false : (!cabeAbajo && cabeArriba);
 
             let top = abrirArriba ? rect.top - alto - separacion : rect.bottom + separacion;
             let left = rect.left;
+
+            if (panel.dataset.alineacion === 'centro') {
+                left = rect.left + (rect.width / 2) - (ancho / 2);
+            }
 
             if (left + ancho > window.innerWidth - margen) {
                 left = rect.right - ancho;
@@ -548,7 +559,17 @@
         </aside>
 
         {{-- ═══════════════════════════════ CONTENIDO PRINCIPAL ═══════════════════════════════ --}}
-        <main class="app-main flex-1 min-w-0 flex flex-col justify-between">
+        <main class="app-main flex-1 min-w-0 flex flex-col">
+            {{-- Barra delgada de acceso rápido. Vive en el flujo, encima del contenido,
+                 para no tapar matrices ni la barra lateral. --}}
+            <header
+                class="app-topbar sticky top-0 z-30 flex h-11 shrink-0 items-center justify-center border-b border-gray-200 bg-white px-3"
+                data-selector-empresa
+                data-empresa-id="{{ $empresaActiva?->id ?? '' }}"
+            >
+                <x-navegacion.selector-empresa :empresa="$empresaActiva" />
+            </header>
+
             {{-- Contenido dinámico --}}
             <div class="p-8">
                 @if (session('success'))

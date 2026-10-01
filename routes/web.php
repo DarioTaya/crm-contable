@@ -16,9 +16,11 @@ use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\OperacionController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PerfilController;
+use App\Http\Controllers\SelectorEmpresaController;
 use App\Http\Controllers\TipoCambioController;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\VisorXmlController;
+use App\Http\Middleware\RecordarEmpresaActiva;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -41,7 +43,7 @@ Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']
 | Rutas Protegidas (Requieren Sesión Activa)
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
 
     // Dashboard Principal
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
@@ -90,6 +92,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/visor-xml', [VisorXmlController::class, 'index'])->name('cpe.visor');
     Route::post('/visor-xml/parse', [VisorXmlController::class, 'parse'])->name('cpe.parse');
     Route::post('/visor-xml/descargar-pdf', [VisorXmlController::class, 'descargarPdf'])->name('cpe.descargar-pdf');
+
+    // Acceso rápido de empresas (barra superior). La cartera no se incrusta en el layout.
+    Route::get('/acceso-rapido/empresas', [SelectorEmpresaController::class, 'index'])->name('acceso-rapido.empresas');
+    Route::post('/acceso-rapido/empresa', [SelectorEmpresaController::class, 'seleccionar'])->name('acceso-rapido.seleccionar');
 
     // Clientes y Expediente Digital
     Route::get('/clientes', [ClienteController::class, 'index'])->name('clientes.index');

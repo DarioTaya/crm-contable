@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\AlertaBuzon;
+use App\Services\Navegacion\SelectorEmpresa;
 use App\Services\SunatBuzonSyncService;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -26,6 +27,10 @@ class AppServiceProvider extends ServiceProvider
             $view->with(
                 'alertasPendientesCount',
                 AlertaBuzon::where('estado', 'Pendiente')->count(),
+            );
+            $view->with(
+                'empresaActiva',
+                app(SelectorEmpresa::class)->actual(request()),
             );
         });
     }
