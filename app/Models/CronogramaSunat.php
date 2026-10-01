@@ -66,7 +66,10 @@ class CronogramaSunat extends Model
     public function getFechaPorDigito(string $ultimoDigito, bool $esBuenContribuyente = false): ?Carbon
     {
         if ($esBuenContribuyente && $this->buenos_contribuyentes) {
-            return Carbon::parse($this->buenos_contribuyentes);
+            $val = $this->buenos_contribuyentes;
+            $str = $val instanceof Carbon ? $val->toDateString() : (string) $val;
+
+            return Carbon::createFromFormat('!Y-m-d', substr($str, 0, 10), 'America/Lima');
         }
 
         $ultimoCaracter = substr(trim((string) $ultimoDigito), -1);
@@ -82,7 +85,15 @@ class CronogramaSunat extends Model
             default => $this->fecha_vencimiento_general ?? $this->digito_0,
         };
 
-        return $fecha ? Carbon::parse($fecha) : ($this->fecha_vencimiento_general ? Carbon::parse($this->fecha_vencimiento_general) : null);
+        $target = $fecha ?? $this->fecha_vencimiento_general;
+
+        if (! $target) {
+            return null;
+        }
+
+        $str = $target instanceof Carbon ? $target->toDateString() : (string) $target;
+
+        return Carbon::createFromFormat('!Y-m-d', substr($str, 0, 10), 'America/Lima');
     }
 
     /**

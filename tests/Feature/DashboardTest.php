@@ -693,6 +693,130 @@ class DashboardTest extends TestCase
         });
     }
 
+    public function test_tax_alerts_render_subtle_cronograma_expiration_badge_with_dependencies(): void
+    {
+        $this->seed(CronogramaSunatSeeder::class);
+
+        // Cliente 1: Dígito 8 estándar, con SIRE pendiente (SIRE vence 21/09/2026 para dígito 8)
+        $clienteEstandar = Cliente::create([
+            'razon_social' => 'CLIENTE DIGITO OCHO SAC',
+            'ruc' => '20123456788',
+            'regimen_tributario' => 'General',
+            'es_buen_contribuyente' => false,
+            'estado' => true,
+        ]);
+        foreach (range(1, 7) as $m) {
+            Operacion::create([
+                'cliente_id' => $clienteEstandar->id,
+                'periodo' => sprintf('%02d-2026', $m),
+                'estado_compras_ventas' => 'Declarado',
+                'estado_pdt621' => 'Declarado',
+                'estado_ple' => 'Declarado',
+            ]);
+        }
+        Operacion::create([
+            'cliente_id' => $clienteEstandar->id,
+            'periodo' => '08-2026',
+            'estado_compras_ventas' => 'Pendiente',
+            'estado_pdt621' => 'Pendiente',
+            'estado_ple' => 'Pendiente',
+        ]);
+
+        // Cliente 2: Dígito 8 pero Buen Contribuyente (aplica fecha especial BC: SIRE vence 22/09/2026)
+        $clienteBueno = Cliente::create([
+            'razon_social' => 'CLIENTE BUEN CONTRIBUYENTE SAC',
+            'ruc' => '20987654328',
+            'regimen_tributario' => 'General',
+            'es_buen_contribuyente' => true,
+            'estado' => true,
+        ]);
+        foreach (range(1, 7) as $m) {
+            Operacion::create([
+                'cliente_id' => $clienteBueno->id,
+                'periodo' => sprintf('%02d-2026', $m),
+                'estado_compras_ventas' => 'Declarado',
+                'estado_pdt621' => 'Declarado',
+                'estado_ple' => 'Declarado',
+            ]);
+        }
+        Operacion::create([
+            'cliente_id' => $clienteBueno->id,
+            'periodo' => '08-2026',
+            'estado_compras_ventas' => 'Pendiente',
+            'estado_pdt621' => 'Pendiente',
+            'estado_ple' => 'Pendiente',
+        ]);
+
+        // Cliente 3: Dígito 8 estándar, pero SIRE ya declarado y PDT 621 pendiente (vence según PDT: 22/09/2026)
+        $clienteSireListo = Cliente::create([
+            'razon_social' => 'CLIENTE SIRE DECLARADO SAC',
+            'ruc' => '20555555558',
+            'regimen_tributario' => 'General',
+            'es_buen_contribuyente' => false,
+            'estado' => true,
+        ]);
+        foreach (range(1, 7) as $m) {
+            Operacion::create([
+                'cliente_id' => $clienteSireListo->id,
+                'periodo' => sprintf('%02d-2026', $m),
+                'estado_compras_ventas' => 'Declarado',
+                'estado_pdt621' => 'Declarado',
+                'estado_ple' => 'Declarado',
+            ]);
+        }
+        Operacion::create([
+            'cliente_id' => $clienteSireListo->id,
+            'periodo' => '08-2026',
+            'estado_compras_ventas' => 'Declarado',
+            'estado_pdt621' => 'Pendiente',
+            'estado_ple' => 'Declarado',
+        ]);
+
+        $this->travelTo(Carbon::parse('2026-09-21 10:00:00', 'America/Lima'), function () use ($clienteEstandar, $clienteBueno, $clienteSireListo) {
+            $response = $this->actingAs($this->usuarioDelEstudio('Admin'))
+                ->get(route('dashboard'));
+
+            $response->assertOk();
+
+            // Debe mostrar la etiqueta sutil dual de vencimiento según cronograma
+            $response->assertSee('Vence:');
+            $response->assertSee('Sire: 21 de Set. · PDTs: 22 de Set.');
+            $response->assertSee('PDTs: 22 de Set. (Sire ✓)');
+            $response->assertSee('¡Hoy!');
+            $response->assertSee('(en 1d)');
+
+            /** @var list<array<string, mixed>> $alertas */
+            $alertas = $response->viewData('alertasVencimiento');
+
+            $alertaEstandar = collect($alertas)->firstWhere('cliente.id', $clienteEstandar->id);
+            $this->assertNotNull($alertaEstandar['etiqueta_cronograma']);
+            $this->assertSame('21/09/2026', $alertaEstandar['etiqueta_cronograma']['fecha_formateada']);
+            $this->assertSame('SIRE', $alertaEstandar['etiqueta_cronograma']['obligacion']);
+            $this->assertSame('21 de Set.', $alertaEstandar['etiqueta_cronograma']['dia_mes_sire']);
+            $this->assertSame('22 de Set.', $alertaEstandar['etiqueta_cronograma']['dia_mes_pdt']);
+            $this->assertSame('hoy', $alertaEstandar['etiqueta_cronograma']['estado']);
+            $this->assertStringContainsString('Dígito 8', $alertaEstandar['etiqueta_cronograma']['tooltip']);
+
+            $alertaBueno = collect($alertas)->firstWhere('cliente.id', $clienteBueno->id);
+            $this->assertNotNull($alertaBueno['etiqueta_cronograma']);
+            $this->assertSame('22/09/2026', $alertaBueno['etiqueta_cronograma']['fecha_formateada']);
+            $this->assertSame('SIRE', $alertaBueno['etiqueta_cronograma']['obligacion']);
+            $this->assertSame('22 de Set.', $alertaBueno['etiqueta_cronograma']['dia_mes_sire']);
+            $this->assertSame('23 de Set.', $alertaBueno['etiqueta_cronograma']['dia_mes_pdt']);
+            $this->assertSame('proximo', $alertaBueno['etiqueta_cronograma']['estado']);
+            $this->assertStringContainsString('Buen Contribuyente', $alertaBueno['etiqueta_cronograma']['tooltip']);
+
+            $alertaSireListo = collect($alertas)->firstWhere('cliente.id', $clienteSireListo->id);
+            $this->assertNotNull($alertaSireListo['etiqueta_cronograma']);
+            $this->assertSame('22/09/2026', $alertaSireListo['etiqueta_cronograma']['fecha_formateada']);
+            $this->assertSame('PDT 621', $alertaSireListo['etiqueta_cronograma']['obligacion']);
+            $this->assertSame('22 de Set.', $alertaSireListo['etiqueta_cronograma']['dia_mes_pdt']);
+            $this->assertTrue($alertaSireListo['etiqueta_cronograma']['sire_declarado']);
+            $this->assertSame('proximo', $alertaSireListo['etiqueta_cronograma']['estado']);
+            $this->assertStringContainsString('PDTs', $alertaSireListo['etiqueta_cronograma']['tooltip']);
+        });
+    }
+
     private function declararMesesAnteriores(Cliente $cliente): void
     {
         $mesActual = (int) now()->format('n');

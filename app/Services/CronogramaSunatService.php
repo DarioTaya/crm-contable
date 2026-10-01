@@ -113,8 +113,10 @@ class CronogramaSunatService
             ];
         }
 
-        $hoy = ($fechaReferencia ? $fechaReferencia->copy() : Carbon::now())->startOfDay();
-        $vence = $fechaVencimiento->copy()->startOfDay();
+        $hoy = $fechaReferencia
+            ? Carbon::createFromFormat('!Y-m-d', $fechaReferencia->toDateString(), 'America/Lima')->startOfDay()
+            : Carbon::now('America/Lima')->startOfDay();
+        $vence = Carbon::createFromFormat('!Y-m-d', $fechaVencimiento->toDateString(), 'America/Lima')->startOfDay();
 
         $formatoFecha = $vence->translatedFormat('d M');
 

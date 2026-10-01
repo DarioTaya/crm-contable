@@ -338,7 +338,10 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <h3 class="text-base font-semibold text-gray-900">Alertas de Vencimiento de Impuestos</h3>
-                        <span class="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700">
+                        @php
+                            $totalVencidos = collect($alertasVencimiento)->filter(fn ($a) => ($a['estado_critico']['estado'] ?? '') === 'vencido')->count();
+                        @endphp
+                        <span class="inline-flex items-center rounded-full {{ $totalVencidos > 0 ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-700' }} px-2 py-0.5 text-xs font-bold">
                             {{ count($alertasVencimiento) }}
                         </span>
                     </div>
@@ -400,21 +403,65 @@
                                         @endif
                                     </div>
 
-                                    <div class="mt-1 flex items-center gap-2 text-xs text-gray-500 font-mono">
-                                        <span>RUC: {{ substr($item['cliente']->ruc, 0, -1) }}<strong class="text-blue-700 font-extrabold underline decoration-blue-400 decoration-2">{{ $item['ultimo_digito_str'] }}</strong></span>
+                                    <div class="mt-1 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                                        <span class="font-mono">RUC: {{ substr($item['cliente']->ruc, 0, -1) }}<strong class="text-blue-700 font-extrabold underline decoration-blue-400 decoration-2">{{ $item['ultimo_digito_str'] }}</strong></span>
+
+                                        @if (!empty($item['etiqueta_cronograma']))
+                                            <span class="text-gray-300 select-none">•</span>
+                                            <span class="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[10.5px] leading-tight font-medium shadow-2xs {{ $item['etiqueta_cronograma']['clase'] }}"
+                                                  title="{{ $item['etiqueta_cronograma']['tooltip'] }}">
+                                                <svg class="h-3 w-3 shrink-0 opacity-70" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                                                </svg>
+                                                <span>{{ $item['etiqueta_cronograma']['texto'] }}</span>
+                                                @if ($item['etiqueta_cronograma']['estado'] === 'vencido')
+                                                    <span class="rounded bg-rose-100 px-1 py-0.2 text-[9.5px] font-bold text-rose-700 uppercase tracking-tight">Vencido</span>
+                                                @elseif ($item['etiqueta_cronograma']['estado'] === 'hoy')
+                                                    <span class="rounded bg-amber-200/80 px-1 py-0.2 text-[9.5px] font-bold text-amber-900 tracking-tight">¡Hoy!</span>
+                                                @elseif ($item['etiqueta_cronograma']['estado'] === 'proximo')
+                                                    <span class="text-[9.5px] font-medium text-amber-700">(en {{ $item['etiqueta_cronograma']['dias'] }}d)</span>
+                                                @endif
+                                            </span>
+                                        @endif
                                     </div>
 
                                     {{-- Meses que el control de impuestos todavía no tiene en Declarado --}}
                                     <div class="mt-2 flex flex-wrap items-center gap-1.5">
                                         @foreach ($item['meses'] as $mesImpuesto)
-                                            @if ($mesImpuesto['estado'] === 'Procesando')
-                                                <span class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                                            @php
+                                                $estadoMes = $mesImpuesto['estado_critico']['estado'] ?? 'sin_cronograma';
+                                                $esProcesando = $mesImpuesto['estado'] === 'Procesando';
+                                            @endphp
+                                            @if ($esProcesando)
+                                                <span class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700"
+                                                      @if (!empty($mesImpuesto['fecha_formateada'])) title="Vence según cronograma: {{ $mesImpuesto['fecha_formateada'] }}" @endif>
                                                     <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
                                                     {{ $mesImpuesto['nombre'] }} (En proceso)
                                                 </span>
-                                            @else
-                                                <span class="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">
+                                            @elseif ($estadoMes === 'vencido')
+                                                <span class="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700"
+                                                      @if (!empty($mesImpuesto['fecha_formateada'])) title="Vencido según cronograma: {{ $mesImpuesto['fecha_formateada'] }}" @endif>
                                                     <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                                                    {{ $mesImpuesto['nombre'] }}
+                                                    <span class="text-[9.5px] font-semibold text-rose-600">(Vencido)</span>
+                                                </span>
+                                            @elseif ($estadoMes === 'hoy')
+                                                <span class="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-900"
+                                                      @if (!empty($mesImpuesto['fecha_formateada'])) title="Vence hoy según cronograma: {{ $mesImpuesto['fecha_formateada'] }}" @endif>
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                                    {{ $mesImpuesto['nombre'] }}
+                                                    <span class="text-[9.5px] font-bold text-amber-700">(¡Hoy!)</span>
+                                                </span>
+                                            @elseif ($estadoMes === 'proximo')
+                                                <span class="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50/80 px-2 py-0.5 text-[11px] font-medium text-amber-800"
+                                                      @if (!empty($mesImpuesto['fecha_formateada'])) title="Vence pronto según cronograma: {{ $mesImpuesto['fecha_formateada'] }}" @endif>
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+                                                    {{ $mesImpuesto['nombre'] }}
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-700"
+                                                      @if (!empty($mesImpuesto['fecha_formateada'])) title="En plazo ordinario. Vence: {{ $mesImpuesto['fecha_formateada'] }}" @endif>
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
                                                     {{ $mesImpuesto['nombre'] }}
                                                 </span>
                                             @endif
@@ -425,14 +472,27 @@
                                     <div class="mt-2 flex flex-wrap items-center gap-1.5">
                                         <span class="text-[11px] font-medium text-gray-400 mr-0.5">Falta:</span>
                                         @foreach ($item['faltantes'] as $faltante)
+                                            @php
+                                                $estadoCriticoAlerta = $item['estado_critico']['estado'] ?? 'sin_cronograma';
+                                            @endphp
                                             @if ($faltante['estado'] === 'Procesando')
                                                 <span class="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200 px-2 py-0.5 text-[11px] font-medium text-amber-700">
                                                     <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
                                                     {{ $faltante['nombre'] }} (En Proceso)
                                                 </span>
-                                            @else
+                                            @elseif ($estadoCriticoAlerta === 'vencido')
                                                 <span class="inline-flex items-center gap-1 rounded-md bg-rose-50 border border-rose-200 px-2 py-0.5 text-[11px] font-medium text-rose-700">
                                                     <span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>
+                                                    {{ $faltante['nombre'] }}
+                                                </span>
+                                            @elseif ($estadoCriticoAlerta === 'hoy')
+                                                <span class="inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-300 px-2 py-0.5 text-[11px] font-medium text-amber-900">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                                    {{ $faltante['nombre'] }}
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center gap-1 rounded-md bg-slate-50 border border-slate-200 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                                                    <span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>
                                                     {{ $faltante['nombre'] }}
                                                 </span>
                                             @endif

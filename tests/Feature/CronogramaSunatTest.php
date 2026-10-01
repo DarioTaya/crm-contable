@@ -260,13 +260,15 @@ class CronogramaSunatTest extends TestCase
             'estado' => true,
         ]);
 
-        $response = $this->get(route('dashboard'));
+        $this->travelTo(Carbon::parse('2026-09-15 10:00:00', 'America/Lima'), function () {
+            $response = $this->get(route('dashboard'));
 
-        $response->assertOk();
-        $response->assertSee('Periodo a declarar:');
-        $response->assertSee('08-2026'); // Período que vence en Setiembre
-        $response->assertSee('Cronograma SUNAT');
-        $response->assertSee('CARLOS ALBERTO FLORES VEGA');
-        $response->assertSee('Dígito');
+            $response->assertOk();
+            $response->assertSee('Periodo a declarar:');
+            $response->assertSee('08-2026'); // Período que vence en Setiembre
+            $response->assertSee('Cronograma SUNAT');
+            $response->assertSee('CARLOS ALBERTO FLORES VEGA');
+            $response->assertSee('Dígito');
+        });
     }
 }
