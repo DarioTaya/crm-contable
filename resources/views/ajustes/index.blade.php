@@ -26,6 +26,7 @@
             frecuencia_cron_horas: {{ $ajustes->frecuencia_cron_horas }},
             notificar_whatsapp: {{ $ajustes->notificar_whatsapp ? 'true' : 'false' }},
             nivel_alerta_whatsapp: @js($ajustes->nivel_alerta_whatsapp),
+            enlaces: @js($enlacesRapidos ?? []),
          })"
          x-cloak
          class="space-y-6 max-w-7xl mx-auto">
@@ -81,12 +82,12 @@
                 </div>
             </div>
 
-            {{-- Botón Guardar Cambios Superior --}}
-            <div class="flex items-center gap-3">
+            {{-- Botón de Acción Superior --}}
+            <div class="flex items-center">
                 <button type="button"
                         @click="guardarAjustes()"
                         :disabled="guardando"
-                        class="inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 text-xs font-bold shadow-xs transition disabled:opacity-50 active:scale-95">
+                        class="inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 text-xs font-bold shadow-xs transition disabled:opacity-50 active:scale-95 cursor-pointer">
                     <svg x-show="!guardando" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                     </svg>
@@ -94,7 +95,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    <span x-text="guardando ? 'Guardando Ajustes...' : 'Guardar Todos los Ajustes'"></span>
+                    <span x-text="guardando ? 'Guardando Ajustes...' : 'Guardar Ajustes del Sistema'"></span>
                 </button>
             </div>
         </div>
@@ -134,6 +135,17 @@
                     </svg>
                     <span>Integración WhatsApp</span>
                     <span class="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5">BETA</span>
+                </button>
+
+                <button type="button"
+                        @click="tabActiva = 'enlaces'"
+                        :class="tabActiva === 'enlaces' ? 'border-brand-600 text-brand-600 font-bold' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 font-medium'"
+                        class="whitespace-nowrap flex items-center gap-2.5 border-b-2 py-3 px-2 text-xs transition">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                    </svg>
+                    <span>Consultas Rápidas</span>
+                    <span class="rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5">Enlaces</span>
                 </button>
             </nav>
         </div>
@@ -775,21 +787,202 @@
                         </div>
                     </div>
                 </div>
+
+            {{-- ───────────────────────────────────────────────────────────────────────────── --}}
+            {{-- TAB 4: CONSULTAS RÁPIDAS (ENLACES OFICIALES)                                  --}}
+            {{-- ───────────────────────────────────────────────────────────────────────────── --}}
+            <div x-show="tabActiva === 'enlaces'" class="space-y-6">
+                <div class="rounded-2xl border border-gray-200 bg-white shadow-xs p-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-100 pb-4 mb-6">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-amber-600 border border-amber-200">
+                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                </svg>
+                            </span>
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-900">Consultas Rápidas y Enlaces Oficiales</h3>
+                                <p class="text-[11px] text-gray-500">Configura los accesos directos que se desplegarán en el menú superior para todo el equipo contable.</p>
+                            </div>
+                        </div>
+
+                        <span class="text-xs text-gray-400 font-mono" x-text="`${enlaces.length} enlace(s) configurado(s)`"></span>
+                    </div>
+
+                    {{-- Formulario de Creación / Edición --}}
+                    <div class="rounded-xl border border-gray-200 bg-gray-50/70 p-4 mb-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 class="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                                <span class="h-2 w-2 rounded-full" :class="editandoEnlace ? 'bg-amber-500' : 'bg-brand-500'"></span>
+                                <span x-text="editandoEnlace ? 'Editar Acceso Rápido' : 'Agregar Nuevo Acceso Rápido'"></span>
+                            </h4>
+
+                            <template x-if="editandoEnlace">
+                                <button type="button"
+                                        @click="cancelarEdicionEnlace()"
+                                        class="text-[11px] font-semibold text-gray-500 hover:text-gray-800 transition cursor-pointer">
+                                    Cancelar Edición
+                                </button>
+                            </template>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 text-xs">
+                            <div class="md:col-span-5">
+                                <label class="block font-semibold text-gray-700 mb-1">Nombre o Etiqueta <span class="text-rose-500">*</span></label>
+                                <input type="text"
+                                       x-model="formEnlace.label"
+                                       placeholder="Ej. SUNAT - Clave SOL"
+                                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-2xs focus:border-brand-500 focus:ring-brand-500">
+                            </div>
+
+                            <div class="md:col-span-5">
+                                <label class="block font-semibold text-gray-700 mb-1">Dirección URL <span class="text-rose-500">*</span></label>
+                                <input type="url"
+                                       x-model="formEnlace.url"
+                                       placeholder="https://..."
+                                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-2xs focus:border-brand-500 focus:ring-brand-500">
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="block font-semibold text-gray-700 mb-1">Orden</label>
+                                <input type="number"
+                                       x-model.number="formEnlace.orden"
+                                       min="0"
+                                       placeholder="1"
+                                       class="w-full rounded-xl border border-gray-300 px-3 py-2 text-xs text-gray-900 shadow-2xs focus:border-brand-500 focus:ring-brand-500">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
+                            <label class="inline-flex items-center gap-2 cursor-pointer select-none text-xs text-gray-700">
+                                <input type="checkbox"
+                                       x-model="formEnlace.activo"
+                                       class="rounded border-gray-300 text-brand-600 focus:ring-brand-500">
+                                <span>Habilitado (Visible en el menú)</span>
+                            </label>
+
+                            <button type="button"
+                                    @click="guardarEnlace()"
+                                    :disabled="guardandoEnlace || !formEnlace.label.trim() || !formEnlace.url.trim()"
+                                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-2xs transition disabled:opacity-50 cursor-pointer active:scale-95"
+                                    :class="editandoEnlace ? 'bg-amber-600 hover:bg-amber-700' : 'bg-brand-600 hover:bg-brand-700'">
+                                <svg x-show="!guardandoEnlace" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                                <svg x-show="guardandoEnlace" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                                <span x-text="editandoEnlace ? 'Actualizar Enlace' : 'Agregar Enlace'"></span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Tabla de Accesos Rápidos --}}
+                    <div class="overflow-x-auto rounded-xl border border-gray-200">
+                        <table class="w-full text-left text-xs text-gray-700">
+                            <thead class="bg-gray-50 text-[11px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                                <tr>
+                                    <th scope="col" class="py-2.5 px-3 w-20 text-center">Orden</th>
+                                    <th scope="col" class="py-2.5 px-4">Etiqueta</th>
+                                    <th scope="col" class="py-2.5 px-4">URL Destino</th>
+                                    <th scope="col" class="py-2.5 px-3 text-center">Estado</th>
+                                    <th scope="col" class="py-2.5 px-4 text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 bg-white">
+                                <template x-for="(item, index) in enlaces" :key="item.id">
+                                    <tr class="hover:bg-gray-50/80 transition" :class="editandoEnlace && formEnlace.id === item.id ? 'bg-amber-50/50' : ''">
+                                        <td class="py-2.5 px-3 text-center">
+                                            <div class="flex items-center justify-center gap-1">
+                                                <button type="button"
+                                                        @click="moverEnlace(index, -1)"
+                                                        :disabled="index === 0"
+                                                        class="p-0.5 rounded text-gray-400 hover:text-gray-700 disabled:opacity-20 cursor-pointer"
+                                                        title="Mover arriba">
+                                                    ▲
+                                                </button>
+                                                <span class="inline-flex items-center justify-center font-bold text-[11px] text-gray-600 bg-gray-100 rounded-md px-1.5 py-0.5" x-text="item.orden"></span>
+                                                <button type="button"
+                                                        @click="moverEnlace(index, 1)"
+                                                        :disabled="index === enlaces.length - 1"
+                                                        class="p-0.5 rounded text-gray-400 hover:text-gray-700 disabled:opacity-20 cursor-pointer"
+                                                        title="Mover abajo">
+                                                    ▼
+                                                </button>
+                                            </div>
+                                        </td>
+                                        <td class="py-2.5 px-4 font-semibold text-gray-900">
+                                            <span x-text="item.label"></span>
+                                        </td>
+                                        <td class="py-2.5 px-4 text-gray-500 font-mono text-[11px]">
+                                            <div class="flex items-center gap-1.5 max-w-md truncate">
+                                                <a :href="item.url" target="_blank" rel="noopener noreferrer" class="text-brand-600 hover:underline truncate" :title="item.url" x-text="item.url"></a>
+                                                <svg class="h-3.5 w-3.5 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                                </svg>
+                                            </div>
+                                        </td>
+                                        <td class="py-2.5 px-3 text-center">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold"
+                                                  :class="item.activo ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-600'"
+                                                  x-text="item.activo ? 'Activo' : 'Inactivo'"></span>
+                                        </td>
+                                        <td class="py-2.5 px-4 text-right">
+                                            <div class="inline-flex items-center gap-1">
+                                                <button type="button"
+                                                        @click="editarEnlace(item)"
+                                                        class="p-1.5 rounded-lg text-gray-500 hover:text-brand-600 hover:bg-gray-100 transition cursor-pointer"
+                                                        title="Editar enlace">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                                                    </svg>
+                                                </button>
+                                                <button type="button"
+                                                        @click="eliminarEnlace(item.id)"
+                                                        class="p-1.5 rounded-lg text-gray-500 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                                                        title="Eliminar enlace">
+                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </template>
+
+                                <template x-if="enlaces.length === 0">
+                                    <tr>
+                                        <td colspan="5" class="py-6 text-center text-xs text-gray-400">
+                                            No hay accesos rápidos registrados todavía. Agrega el primero usando el formulario superior.
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
-            {{-- ════════════════════ BARRA INFERIOR DE ACCIÓN GUARDAR ════════════════════ --}}
-            <div class="flex items-center justify-between bg-white border border-gray-200 p-4 rounded-2xl shadow-xs">
-                <div class="text-xs text-gray-500">
-                    <span>Los cambios guardados se aplicarán de inmediato en todo el CRM y reportes oficiales.</span>
+            {{-- ════════════════════ BARRA DE ACCIÓN INFERIOR PEGAJOSA (STICKY SAVE BAR) ════════════════════ --}}
+            <div x-show="tabActiva !== 'enlaces'"
+                 class="sticky bottom-4 z-30 mt-8 rounded-2xl border border-gray-200/90 bg-white/95 px-5 py-3.5 shadow-xl backdrop-blur-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-all">
+                <div class="flex items-center gap-2.5">
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-600"></span>
+                    </span>
+                    <p class="text-xs text-gray-700">
+                        <span class="font-semibold text-gray-500">Configuración activa:</span>
+                        <strong class="font-bold text-gray-900" x-text="tabActiva === 'perfil' ? 'Identidad & Marca' : (tabActiva === 'rpa' ? 'Motor RPA SUNAT' : 'Integración WhatsApp')"></strong>
+                    </p>
+                    <span class="hidden md:inline-block text-[11px] text-gray-400">· Guarda para aplicar los cambios a nivel general en el CRM</span>
                 </div>
-                <div class="flex items-center gap-3">
-                    <a href="{{ route('dashboard') }}"
-                       class="rounded-xl border border-gray-300 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-xs transition hover:bg-gray-50">
-                        Cancelar
-                    </a>
+
+                <div class="flex items-center justify-end gap-3">
                     <button type="submit"
                             :disabled="guardando"
-                            class="inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-5 py-2 text-xs font-bold shadow-xs transition disabled:opacity-50 active:scale-95">
+                            class="inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 text-xs font-bold shadow-md transition disabled:opacity-50 active:scale-95 cursor-pointer">
                         <svg x-show="!guardando" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                         </svg>
@@ -797,10 +990,11 @@
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        <span x-text="guardando ? 'Guardando...' : 'Guardar Ajustes del Sistema'"></span>
+                        <span x-text="guardando ? 'Guardando Ajustes...' : 'Guardar Ajustes del Sistema'"></span>
                     </button>
                 </div>
             </div>
+
         </form>
     </div>
 
@@ -847,6 +1041,16 @@
                 guardando: false,
                 probandoWhatsApp: false,
                 sincronizandoRpa: false,
+                enlaces: initialData.enlaces || [],
+                formEnlace: {
+                    id: null,
+                    label: '',
+                    url: '',
+                    orden: (initialData.enlaces || []).length + 1,
+                    activo: true,
+                },
+                editandoEnlace: false,
+                guardandoEnlace: false,
                 toast: {
                     mostrar: false,
                     titulo: '',
@@ -863,6 +1067,151 @@
                     setTimeout(() => {
                         this.toast.mostrar = false;
                     }, 4000);
+                },
+
+                editarEnlace(item) {
+                    this.editandoEnlace = true;
+                    this.formEnlace = {
+                        id: item.id,
+                        label: item.label,
+                        url: item.url,
+                        orden: item.orden,
+                        activo: Boolean(item.activo),
+                    };
+                },
+
+                cancelarEdicionEnlace() {
+                    this.editandoEnlace = false;
+                    this.formEnlace = {
+                        id: null,
+                        label: '',
+                        url: '',
+                        orden: this.enlaces.length + 1,
+                        activo: true,
+                    };
+                },
+
+                async guardarEnlace() {
+                    if (this.guardandoEnlace) return;
+
+                    const label = (this.formEnlace.label || '').trim();
+                    const url = (this.formEnlace.url || '').trim();
+
+                    if (!label || !url) {
+                        this.lanzarToast('Campos requeridos', 'Por favor ingresa la etiqueta y la URL del enlace.', 'error');
+                        return;
+                    }
+
+                    this.guardandoEnlace = true;
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+                    try {
+                        const esEdicion = this.editandoEnlace && this.formEnlace.id;
+                        const endpoint = esEdicion
+                            ? `{{ url('/ajustes/quick-links') }}/${this.formEnlace.id}`
+                            : `{{ route('quick-links.store') }}`;
+                        const method = esEdicion ? 'PUT' : 'POST';
+
+                        const response = await fetch(endpoint, {
+                            method: method,
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({
+                                label: label,
+                                url: url,
+                                orden: this.formEnlace.orden || 1,
+                                activo: this.formEnlace.activo,
+                            }),
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok && data.success) {
+                            if (esEdicion) {
+                                const idx = this.enlaces.findIndex(e => e.id === this.formEnlace.id);
+                                if (idx !== -1) {
+                                    this.enlaces[idx] = data.link;
+                                }
+                            } else {
+                                this.enlaces.push(data.link);
+                            }
+
+                            this.enlaces.sort((a, b) => (a.orden || 0) - (b.orden || 0));
+                            this.cancelarEdicionEnlace();
+                            this.lanzarToast('Éxito', data.message || 'Acceso rápido guardado.', 'success');
+                        } else {
+                            throw new Error(data.message || 'Error al guardar el acceso rápido.');
+                        }
+                    } catch (err) {
+                        console.error('Error al guardar acceso rápido:', err);
+                        this.lanzarToast('Error', err.message || 'No fue posible guardar el acceso.', 'error');
+                    } finally {
+                        this.guardandoEnlace = false;
+                    }
+                },
+
+                async eliminarEnlace(id) {
+                    if (!confirm('¿Confirma que desea eliminar este acceso rápido?')) return;
+
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+                    try {
+                        const response = await fetch(`{{ url('/ajustes/quick-links') }}/${id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok && data.success) {
+                            this.enlaces = this.enlaces.filter(e => e.id !== id);
+                            if (this.editandoEnlace && this.formEnlace.id === id) {
+                                this.cancelarEdicionEnlace();
+                            }
+                            this.lanzarToast('Eliminado', data.message || 'Acceso rápido eliminado.', 'info');
+                        } else {
+                            throw new Error(data.message || 'Error al eliminar.');
+                        }
+                    } catch (err) {
+                        console.error('Error al eliminar acceso rápido:', err);
+                        this.lanzarToast('Error', err.message || 'No fue posible eliminar el enlace.', 'error');
+                    }
+                },
+
+                async moverEnlace(index, delta) {
+                    const newIndex = index + delta;
+                    if (newIndex < 0 || newIndex >= this.enlaces.length) return;
+
+                    const item = this.enlaces.splice(index, 1)[0];
+                    this.enlaces.splice(newIndex, 0, item);
+
+                    this.enlaces.forEach((el, idx) => {
+                        el.orden = idx + 1;
+                    });
+
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    try {
+                        await fetch(`{{ route('quick-links.reorder') }}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                            },
+                            body: JSON.stringify({
+                                ids: this.enlaces.map(e => e.id),
+                            }),
+                        });
+                        this.lanzarToast('Orden Actualizado', 'El orden de los accesos rápidos se ha guardado.', 'success');
+                    } catch (err) {
+                        console.warn('Error sincronizando orden:', err);
+                    }
                 },
 
                 seleccionarArchivo(event) {

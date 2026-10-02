@@ -101,8 +101,112 @@
             size: landscape;
         }
     }
+
+    /* Estilos idénticos al PDF para la exportación a imagen PNG (WhatsApp Ultra HD) */
+    .modo-reporte-impreso {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        padding: 24px 30px !important;
+        width: 1120px !important;
+        max-width: 1120px !important;
+        box-sizing: border-box !important;
+        margin: 0 auto !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    }
+
+    .modo-reporte-impreso .no-print,
+    .modo-reporte-impreso .action-cell,
+    .modo-reporte-impreso .filter-panel {
+        display: none !important;
+    }
+
+    .modo-reporte-impreso .print-only {
+        display: block !important;
+    }
+
+    .modo-reporte-impreso .rounded-2xl {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        border-radius: 0 !important;
+    }
+
+    .modo-reporte-impreso .overflow-x-auto {
+        overflow: visible !important;
+    }
+
+    .modo-reporte-impreso .print-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        font-size: 8.5pt !important;
+    }
+
+    .modo-reporte-impreso .print-table th,
+    .modo-reporte-impreso .print-table td {
+        border: 1px solid #cbd5e1 !important;
+        padding: 4px 6px !important;
+        color: #0f172a !important;
+    }
+
+    .modo-reporte-impreso .print-table th {
+        background-color: #f8fafc !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        font-size: 7.5pt !important;
+        letter-spacing: 0.04em !important;
+    }
+
+    .modo-reporte-impreso .print-badge {
+        border: 1px solid #94a3b8 !important;
+        background: #f8fafc !important;
+        color: #0f172a !important;
+        padding: 0.5px 3px !important;
+        border-radius: 3px !important;
+        font-size: 7.5pt !important;
+        font-weight: 600 !important;
+    }
+
+    .modo-reporte-impreso .abonos-subtable {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+
+    .modo-reporte-impreso .abonos-subtable th {
+        background-color: #f1f5f9 !important;
+        border: 1px solid #cbd5e1 !important;
+        padding: 3px 5px !important;
+        font-size: 7pt !important;
+        color: #334155 !important;
+    }
+
+    .modo-reporte-impreso .abonos-subtable td {
+        border: 1px solid #e2e8f0 !important;
+        padding: 3px 5px !important;
+        font-size: 7.5pt !important;
+    }
+
+    .modo-reporte-impreso a {
+        color: inherit !important;
+        text-decoration: none !important;
+    }
 </style>
 @endpush
+
+@php
+    $estudio = auth()->user()?->estudio;
+    $logoUrl = $estudio?->logoDocumentosUrl();
+    $nombreEstudio = $estudio?->nombre ?? 'ESTUDIO CONTABLE';
+    $nombreComercial = $estudio?->nombre_comercial;
+    $rucEstudio = $estudio?->ruc;
+    $representante = $estudio?->representante;
+    $colegiatura = $estudio?->colegiatura;
+    $telefonoEstudio = $estudio?->telefono;
+    $correoEstudio = $estudio?->correo;
+    $direccionEstudio = $estudio?->direccion;
+    $ciudadEstudio = $estudio?->ciudad;
+    $slogan = $estudio?->slogan;
+    $nombreUsuario = auth()->user()?->name ?? 'Contador Responsable';
+@endphp
 
 @section('content')
 <div class="container mx-auto"
@@ -113,6 +217,39 @@
          {{ $totalRecaudado }},
          {{ $totalSaldoPorCobrar }}
      )">
+
+    {{-- ════════════════════ TOAST FLOTANTE DE NOTIFICACIÓN ════════════════════ --}}
+    <div x-show="toast.mostrar"
+         x-cloak
+         x-transition:enter="transform ease-out duration-300 transition"
+         x-transition:enter-start="translate-y-2 opacity-0 sm:translate-y-0 sm:translate-x-2"
+         x-transition:enter-end="translate-y-0 opacity-100 sm:translate-x-0"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-2xl backdrop-blur"
+         :class="toast.tipo === 'success' ? 'bg-emerald-900/95 text-white border-emerald-500/50' : (toast.tipo === 'info' ? 'bg-blue-900/95 text-white border-blue-500/50' : 'bg-rose-900/95 text-white border-rose-500/50')">
+        <div class="flex h-7 w-7 items-center justify-center rounded-full shrink-0"
+             :class="toast.tipo === 'success' ? 'bg-emerald-500/20 text-emerald-300' : (toast.tipo === 'info' ? 'bg-blue-500/20 text-blue-300' : 'bg-rose-500/20 text-rose-300')">
+            <template x-if="toast.tipo === 'success'">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+            </template>
+            <template x-if="toast.tipo === 'error'">
+                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+            </template>
+        </div>
+        <div>
+            <p class="text-xs font-bold" x-text="toast.titulo"></p>
+            <p class="text-[11px] opacity-90" x-text="toast.mensaje"></p>
+        </div>
+    </div>
+
+    {{-- ═══════════════════════════════ ÁREA MAESTRA DEL REPORTE OFICIAL (PDF Y PNG UNIFICADOS) ═══════════════════════════════ --}}
+    <div id="reporte-imprimible-deudas">
 
     {{-- ═══════════════════════════════ MEMBRETE OFICIAL PARA IMPRESIÓN (PDF) ═══════════════════════════════ --}}
     <x-reportes.membrete
@@ -165,13 +302,27 @@
 
         {{-- Botonera Superior --}}
         <div class="flex items-center flex-wrap gap-2">
-            <a href="{{ route('control_deudas.archivadas') }}"
-               class="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3.5 py-2 text-xs font-bold text-violet-800 shadow-xs transition hover:bg-violet-100 hover:border-violet-300 active:scale-95">
-                <svg class="h-4 w-4 text-violet-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
-                </svg>
-                Historial archivado
-            </a>
+
+            {{-- Botón: Exportar a PNG (WhatsApp) --}}
+            <button
+                @click="exportarPng()"
+                :disabled="exportandoPng"
+                type="button"
+                title="Exportar imagen PNG de alta definición optimizada para WhatsApp"
+                class="inline-flex items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-3.5 py-2 text-xs font-bold text-gray-700 shadow-xs transition hover:bg-gray-50 hover:border-gray-400 active:scale-95 disabled:opacity-50 cursor-pointer">
+                <template x-if="!exportandoPng">
+                    <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                    </svg>
+                </template>
+                <template x-if="exportandoPng">
+                    <svg class="h-4 w-4 animate-spin text-emerald-600" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </template>
+                <span x-text="exportandoPng ? 'Generando PNG...' : 'Exportar a PNG'"></span>
+            </button>
 
             {{-- Botón: Exportar a PDF --}}
             <button
@@ -730,7 +881,7 @@
     </div>
 
     {{-- ═══════════════════════════════ PIE DE PÁGINA PARA IMPRESIÓN (FIRMAS Y CONFORMIDAD) ═══════════════════════════════ --}}
-    <div class="hidden print-only" style="break-inside: avoid; page-break-inside: avoid; margin-top: 18mm;">
+    <div class="hidden print-only pie-firmas-print" style="break-inside: avoid; page-break-inside: avoid; margin-top: 18mm;">
         <div class="grid grid-cols-2 gap-16 text-center text-xs">
             <div class="flex flex-col items-center">
                 <div class="w-64 border-t border-slate-800 pt-2">
@@ -748,6 +899,7 @@
             </div>
         </div>
     </div>
+</div> {{-- Fin de #reporte-imprimible-deudas --}}
 
     {{-- ═══════════════════════════════ MODAL ENTERPRISE: REGISTRAR ABONO ═══════════════════════════════ --}}
     <div x-show="showModal" x-cloak
@@ -888,6 +1040,9 @@
     </div>
 </div>
 
+{{-- Script de librería local para generación de imágenes PNG (100% offline) --}}
+<script src="{{ asset('vendor/html2canvas/html2canvas.min.js') }}"></script>
+
 {{-- ═══════════════════════════════ SCRIPT REACTIVO ALPINE.JS (Enterprise UX) ═══════════════════════════════ --}}
 <script>
 function controlDeudas(initialDeudas, clientesConDeuda, totalDeudaHistorica, totalRecaudado, totalSaldoPorCobrar) {
@@ -905,6 +1060,46 @@ function controlDeudas(initialDeudas, clientesConDeuda, totalDeudaHistorica, tot
         venceHasta: '',
         expandedRows: [],
         fechaHoraImpresion: '',
+        exportandoPng: false,
+        toast: {
+            mostrar: false,
+            titulo: '',
+            mensaje: '',
+            tipo: 'success'
+        },
+
+        lanzarToast(titulo, mensaje, tipo = 'success') {
+            this.toast.titulo = titulo;
+            this.toast.mensaje = mensaje;
+            this.toast.tipo = tipo;
+            this.toast.mostrar = true;
+            setTimeout(() => {
+                this.toast.mostrar = false;
+            }, 4500);
+        },
+
+        get clienteReporte() {
+            const visibles = this.deudasVisibles;
+            if (visibles.length === 0) {
+                return { esUnico: false, razon: 'Sin deudas seleccionadas', ruc: '', codigo: '' };
+            }
+            const primerId = visibles[0].cliente_id;
+            const esMismoCliente = visibles.every(d => d.cliente_id === primerId);
+            if (esMismoCliente) {
+                return {
+                    esUnico: true,
+                    razon: visibles[0].cliente_razon,
+                    ruc: visibles[0].cliente_ruc,
+                    codigo: visibles[0].cliente_codigo
+                };
+            }
+            return {
+                esUnico: false,
+                razon: 'Reporte Consolidado Multicliente',
+                ruc: '',
+                codigo: ''
+            };
+        },
 
         // Estado del Modal de Abonos
         showModal: false,
@@ -1472,6 +1667,122 @@ function controlDeudas(initialDeudas, clientesConDeuda, totalDeudaHistorica, tot
                     document.title = tituloPrevio;
                 }, 1000);
             });
+        },
+
+        // Exportar Reporte a Imagen PNG (WhatsApp Ultra HD)
+        async exportarPng() {
+            if (this.exportandoPng) return;
+
+            if (this.deudasVisiblesCount === 0) {
+                this.lanzarToast('Sin Deudas para Exportar', 'No hay deudas que coincidan con los filtros aplicados.', 'error');
+                return;
+            }
+
+            this.exportandoPng = true;
+            this.actualizarFechaHoraImpresion();
+
+            try {
+                if (typeof html2canvas === 'undefined') {
+                    throw new Error('La librería de exportación de imagen no se encuentra disponible.');
+                }
+
+                const contenedor = document.getElementById('reporte-imprimible-deudas');
+                if (!contenedor) {
+                    throw new Error('No se encontró el contenedor del reporte oficial.');
+                }
+
+                await this.$nextTick();
+                await new Promise(resolve => setTimeout(resolve, 150));
+
+                const canvas = await html2canvas(contenedor, {
+                    scale: 2, // 2x Retina Ultra HD para WhatsApp
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    logging: false,
+                    windowWidth: 1140,
+                    onclone: (clonedDoc) => {
+                        const target = clonedDoc.getElementById('reporte-imprimible-deudas');
+                        if (target) {
+                            target.classList.add('modo-reporte-impreso');
+                            target.style.background = '#ffffff';
+                            target.style.color = '#0f172a';
+                            target.style.width = '1120px';
+                            target.style.padding = '24px 30px';
+                            target.style.boxSizing = 'border-box';
+                            target.style.margin = '0 auto';
+                        }
+                        // Ocultar/remover todo lo que no va en impresión (botones, buscador, filtros, acciones)
+                        clonedDoc.querySelectorAll('.no-print, .action-cell, .filter-panel').forEach(el => {
+                            el.remove();
+                        });
+                        // Mostrar todo lo que es exclusivo de impresión (membrete y firmas)
+                        clonedDoc.querySelectorAll('.print-only').forEach(el => {
+                            el.classList.remove('hidden');
+                            el.style.display = 'block';
+                            el.style.visibility = 'visible';
+                        });
+                    }
+                });
+
+                const clienteInfo = this.clienteReporte;
+                const nombreSlug = clienteInfo.esUnico
+                    ? clienteInfo.razon.substring(0, 30).trim().replace(/[^a-zA-Z0-9_-]/g, '_')
+                    : 'Consolidado';
+
+                const ahora = new Date();
+                const dia = String(ahora.getDate()).padStart(2, '0');
+                const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+                const anio = ahora.getFullYear();
+                const nombreArchivo = `Reporte_Deudas_SUNAT_${nombreSlug}_${dia}_${mes}_${anio}.png`;
+
+                const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                if (!blob) {
+                    throw new Error('No se pudo convertir el reporte en imagen PNG.');
+                }
+
+                // 1. Descarga automática del archivo PNG
+                const urlDescarga = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = urlDescarga;
+                link.download = nombreArchivo;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(urlDescarga), 2000);
+
+                // 2. Intentar copiar automáticamente al portapapeles para WhatsApp Web (Ctrl+V)
+                let copiado = false;
+                if (navigator.clipboard && window.ClipboardItem) {
+                    try {
+                        await navigator.clipboard.write([
+                            new ClipboardItem({ 'image/png': blob })
+                        ]);
+                        copiado = true;
+                    } catch (clipErr) {
+                        console.warn('Portapapeles no soportado o denegado por el navegador:', clipErr);
+                    }
+                }
+
+                if (copiado) {
+                    this.lanzarToast(
+                        '¡Reporte PNG Generado con Éxito!',
+                        'Imagen descargada en HD y copiada al portapapeles. ¡Pégala directamente con Ctrl+V en WhatsApp!',
+                        'success'
+                    );
+                } else {
+                    this.lanzarToast(
+                        '¡Reporte PNG Descargado!',
+                        `Archivo "${nombreArchivo}" guardado en alta resolución, listo para compartir por WhatsApp.`,
+                        'success'
+                    );
+                }
+            } catch (err) {
+                console.error('Error al exportar reporte a PNG:', err);
+                this.lanzarToast('Error al Exportar Imagen', err.message || 'No fue posible generar la imagen.', 'error');
+            } finally {
+                this.exportandoPng = false;
+            }
         }
     };
 }

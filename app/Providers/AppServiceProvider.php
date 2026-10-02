@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Models\AlertaBuzon;
+use App\Models\QuickLink;
 use App\Services\Navegacion\SelectorEmpresa;
 use App\Services\SunatBuzonSyncService;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -31,6 +33,12 @@ class AppServiceProvider extends ServiceProvider
             $view->with(
                 'empresaActiva',
                 app(SelectorEmpresa::class)->actual(request()),
+            );
+            $view->with(
+                'quickLinks',
+                Schema::hasTable('quick_links')
+                    ? QuickLink::where('activo', true)->orderBy('orden')->orderBy('id')->get()
+                    : collect(),
             );
         });
     }

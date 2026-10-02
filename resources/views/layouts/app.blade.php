@@ -508,67 +508,148 @@
                 </div>
             </div>
 
-            {{-- Footer sidebar con Perfil y Logout --}}
-            <div class="border-t border-white/10 p-2.5 sidebar-footer">
-                @if (auth()->check())
-                    <div class="sidebar-footer-inner flex items-center gap-2 justify-between">
-                        {{-- Enlace directo a la Ficha / Perfil de Usuario --}}
-                        <a href="{{ auth()->user()->isAdmin() ? route('usuarios.show', auth()->user()) : route('perfil.edit') }}"
-                           title="Mi Perfil ({{ auth()->user()->name }})"
-                           class="sidebar-profile-link flex items-center gap-2.5 p-1 rounded-xl transition cursor-pointer group select-none flex-1 min-w-0 hover:bg-white/5">
-
-                            <div class="relative shrink-0">
-                                <div class="flex h-8 w-8 items-center justify-center rounded-lg font-bold text-xs text-white shadow-xs transition-transform group-hover:scale-105
-                                            {{ auth()->user()->isAdmin() ? 'bg-gradient-to-tr from-purple-600 to-indigo-600' : 'bg-gradient-to-tr from-brand-600 to-blue-500' }}"
-                                     style="{{ auth()->user()->isAdmin() ? 'background-color: #9333ea; color: #ffffff;' : 'background-color: #2563eb; color: #ffffff;' }}">
-                                    {{ auth()->user()->iniciales() }}
-                                </div>
-                            </div>
-
-                            <div data-sidebar-expanded-only class="min-w-0 flex-1 text-left">
-                                <p class="truncate text-xs font-semibold text-white leading-tight group-hover:text-brand-300 transition flex items-center gap-1">
-                                    <span class="truncate whitespace-nowrap">{{ auth()->user()->name }}</span>
-                                    @if (auth()->user()->esCumpleanosHoy())
-                                        <span title="¡Hoy es tu cumpleaños! 🎂" class="shrink-0 text-xs">🎂</span>
-                                    @endif
-                                </p>
-                                <p class="truncate text-[10px] {{ auth()->user()->isAdmin() ? 'text-purple-300' : 'text-blue-300' }}">
-                                    @if (auth()->user()->esCumpleanosHoy())
-                                        🎉 ¡Feliz Cumpleaños!
-                                    @else
-                                        {{ auth()->user()->isAdmin() ? '👑 Administrador' : '👷 Asistente' }}
-                                    @endif
-                                </p>
-                            </div>
-                        </a>
-
-                        {{-- Botón Cerrar Sesión --}}
-                        <form action="{{ route('logout') }}" method="POST" class="inline shrink-0" data-sidebar-expanded-only>
-                            @csrf
-                            <button type="submit"
-                                    title="Cerrar Sesión"
-                                    class="flex h-8 w-8 items-center justify-center rounded-xl text-gray-400 hover:bg-rose-500/20 hover:text-rose-400 transition">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-                                </svg>
-                            </button>
-                        </form>
-                    </div>
-                @endif
-            </div>
         </aside>
 
         {{-- ═══════════════════════════════ CONTENIDO PRINCIPAL ═══════════════════════════════ --}}
         <main class="app-main flex-1 min-w-0 flex flex-col">
-            {{-- Barra delgada de acceso rápido. z-24 queda sobre las columnas fijas
-                 de las matrices (z-20) y debajo de la barra lateral (z-30),
-                 también cuando esa se despliega en hover. --}}
+            {{-- Barra delgada de acceso rápido con espaciado respirable, selector central, consultas rápidas y avatar de usuario --}}
             <header
-                class="app-topbar sticky top-0 z-[24] flex h-11 shrink-0 items-center justify-center border-b border-gray-200 bg-white px-3"
+                class="app-topbar sticky top-0 z-[24] flex h-11 shrink-0 items-center border-b border-gray-200 bg-white px-2.5 sm:px-4"
                 data-selector-empresa
                 data-empresa-id="{{ $empresaActiva?->id ?? '' }}"
             >
-                <x-navegacion.selector-empresa :empresa="$empresaActiva" />
+                <div class="w-full flex items-center justify-between gap-2 min-w-0">
+                    {{-- Lado Izquierdo: Spacer para centrado balanceado --}}
+                    <div class="hidden sm:flex items-center min-w-0 flex-1 justify-start"></div>
+
+                    {{-- Centro: Selector de Empresa (REGLA ESTRICTA: Sin modificar clases internas del selector) --}}
+                    <div class="flex shrink-0 items-center justify-center">
+                        <x-navegacion.selector-empresa :empresa="$empresaActiva" />
+                    </div>
+
+                    {{-- Lado Derecho: Consultas Rápidas + Avatar de Usuario Premium con Rol --}}
+                    <div class="flex items-center justify-end gap-2.5 sm:gap-3 flex-1 min-w-0">
+                        {{-- 1. Menú Consultas Rápidas Dinámico --}}
+                        <div x-data="{ abierto: false }"
+                             class="relative"
+                             @click.outside="abierto = false"
+                             @keydown.escape.window="abierto = false">
+                            <button type="button"
+                                    @click="abierto = !abierto"
+                                    :class="abierto ? 'bg-gray-100 text-brand-600 ring-2 ring-brand-500/20' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'"
+                                    class="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition border border-gray-200/80 bg-white shadow-2xs cursor-pointer select-none"
+                                    title="Consultas rápidas (Enlaces oficiales)"
+                                    aria-label="Consultas rápidas"
+                                    :aria-expanded="abierto ? 'true' : 'false'">
+                                {{-- Icono de Consultas Rápidas --}}
+                                <svg class="h-4 w-4 text-brand-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                </svg>
+                                <span class="hidden md:inline font-medium text-gray-700 text-[11px]">Consultas Rápidas</span>
+                                <svg class="h-3 w-3 text-gray-400 transition-transform" :class="abierto ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                </svg>
+                            </button>
+
+                            {{-- Menú Flotante Dropdown --}}
+                            <div x-show="abierto"
+                                 x-cloak
+                                 x-transition:enter="transition ease-out duration-150"
+                                 x-transition:enter-start="opacity-0 translate-y-1 scale-95"
+                                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                                 x-transition:leave="transition ease-in duration-100"
+                                 x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                                 x-transition:leave-end="opacity-0 translate-y-1 scale-95"
+                                 class="absolute right-0 mt-1.5 w-64 rounded-md border border-gray-200 bg-white p-2 shadow-lg z-50">
+
+                                <div class="px-2 py-1 mb-1 border-b border-gray-100">
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">Enlaces oficiales</span>
+                                </div>
+
+                                <div class="max-h-80 overflow-y-auto space-y-0.5 custom-scrollbar">
+                                    @forelse ($quickLinks ?? [] as $link)
+                                        <a href="{{ $link->url }}"
+                                           target="_blank"
+                                           rel="noopener noreferrer"
+                                           @click="abierto = false"
+                                           class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 transition group">
+                                            <svg class="h-3.5 w-3.5 text-gray-400 group-hover:text-brand-600 shrink-0 transition" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                            </svg>
+                                            <span class="truncate font-medium text-gray-700 group-hover:text-gray-900">{{ $link->label }}</span>
+                                        </a>
+                                    @empty
+                                        <div class="px-2.5 py-3 text-center text-xs text-gray-400">
+                                            No hay enlaces configurados
+                                        </div>
+                                    @endforelse
+                                </div>
+                            </div>
+                        </div>
+
+                        {{-- 2. Avatar de Usuario Premium con Rol y Enlace a Perfil --}}
+                        @if (auth()->check())
+                            @php
+                                $usuarioActual = auth()->user();
+                                $esAdmin = $usuarioActual->isAdmin();
+                                $fotoUrl = $usuarioActual->fotoPerfilUrl();
+                            @endphp
+
+                            <a href="{{ route('perfil.edit') }}"
+                               title="Mi Perfil: {{ $usuarioActual->name }} ({{ $esAdmin ? 'Administrador' : 'Asistente' }})"
+                               class="group flex items-center gap-2 rounded-full p-0.5 hover:bg-gray-100 transition select-none cursor-pointer">
+
+                                {{-- Contenedor Circular del Avatar con Anillo y Distintivo de Rol --}}
+                                <div class="relative shrink-0 flex items-center justify-center">
+                                    @if ($fotoUrl)
+                                        <img src="{{ $fotoUrl }}"
+                                             alt="{{ $usuarioActual->name }}"
+                                             class="h-8 w-8 rounded-full object-cover ring-2 {{ $esAdmin ? 'ring-purple-600/80 shadow-purple-500/20' : 'ring-blue-500/80 shadow-blue-500/20' }} shadow-sm">
+                                    @else
+                                        <div class="flex h-8 w-8 items-center justify-center rounded-full font-bold text-xs text-white ring-2 {{ $esAdmin ? 'ring-purple-600/80 bg-gradient-to-tr from-purple-600 to-indigo-600' : 'ring-blue-500/80 bg-gradient-to-tr from-blue-600 to-cyan-600' }} shadow-xs">
+                                            {{ $usuarioActual->iniciales() }}
+                                        </div>
+                                    @endif
+
+                                    {{-- Badge indicador de Rol en la esquina inferior del círculo --}}
+                                    <span class="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-black text-white ring-2 ring-white shadow-2xs {{ $esAdmin ? 'bg-purple-600' : 'bg-blue-600' }}"
+                                          title="{{ $esAdmin ? 'Rol: Administrador General' : 'Rol: Asistente Contable' }}">
+                                        @if ($esAdmin)
+                                            👑
+                                        @else
+                                            💼
+                                        @endif
+                                    </span>
+                                </div>
+
+                                {{-- Nombre y Rol sutil (Visible en pantallas grandes) --}}
+                                <div class="hidden lg:flex flex-col text-left leading-tight pr-1">
+                                    <span class="text-xs font-bold text-gray-800 group-hover:text-brand-600 transition truncate max-w-[130px]">
+                                        {{ $usuarioActual->name }}
+                                        @if ($usuarioActual->esCumpleanosHoy())
+                                            <span title="¡Hoy es tu cumpleaños! 🎂">🎂</span>
+                                        @endif
+                                    </span>
+                                    <span class="text-[10px] font-semibold {{ $esAdmin ? 'text-purple-600' : 'text-blue-600' }} truncate">
+                                        {{ $esAdmin ? 'Administrador' : 'Asistente' }}
+                                    </span>
+                                </div>
+                            </a>
+
+                            {{-- 3. Botón Sutil de Cerrar Sesión --}}
+                            <form action="{{ route('logout') }}" method="POST" class="inline shrink-0">
+                                @csrf
+                                <button type="submit"
+                                        title="Cerrar Sesión"
+                                        class="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-rose-50 hover:text-rose-600 transition cursor-pointer">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
+                                    </svg>
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
             </header>
 
             {{-- Contenido dinámico --}}

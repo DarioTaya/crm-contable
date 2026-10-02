@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Estudio;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PerfilTest extends TestCase
@@ -136,5 +138,48 @@ class PerfilTest extends TestCase
         ]);
 
         $response->assertSessionHasErrors(['password']);
+    }
+
+    public function test_user_can_upload_profile_photo(): void
+    {
+        Storage::fake('public');
+
+        $file = UploadedFile::fake()->image('mi_foto.jpg', 300, 300);
+
+        $response = $this->actingAs($this->user)->put(route('perfil.update'), [
+            'name' => 'Sebastian Taya',
+            'email' => 'sebastian@estudio.pe',
+            'foto_perfil' => $file,
+        ]);
+
+        $response->assertRedirect(route('perfil.edit'));
+        $response->assertSessionHas('success');
+
+        $this->user->refresh();
+        $this->assertNotNull($this->user->foto_perfil);
+        Storage::disk('public')->assertExists($this->user->foto_perfil);
+        $this->assertNotNull($this->user->fotoPerfilUrl());
+        $this->assertStringContainsString('storage/perfiles/', $this->user->fotoPerfilUrl());
+    }
+
+    public function test_user_can_remove_profile_photo(): void
+    {
+        Storage::fake('public');
+
+        $this->user->update([
+            'foto_perfil' => 'perfiles/'.$this->user->id.'/avatar.jpg',
+        ]);
+        Storage::disk('public')->put($this->user->foto_perfil, 'fake image content');
+
+        $response = $this->actingAs($this->user)->put(route('perfil.update'), [
+            'name' => 'Sebastian Taya',
+            'email' => 'sebastian@estudio.pe',
+            'eliminar_foto' => 1,
+        ]);
+
+        $response->assertRedirect(route('perfil.edit'));
+        $this->user->refresh();
+        $this->assertNull($this->user->foto_perfil);
+        $this->assertNull($this->user->fotoPerfilUrl());
     }
 }

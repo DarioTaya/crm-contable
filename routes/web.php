@@ -17,6 +17,7 @@ use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\OperacionController;
 use App\Http\Controllers\PasswordResetController;
 use App\Http\Controllers\PerfilController;
+use App\Http\Controllers\QuickLinkController;
 use App\Http\Controllers\SelectorEmpresaController;
 use App\Http\Controllers\TipoCambioController;
 use App\Http\Controllers\UsuarioController;
@@ -63,7 +64,6 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
 
     // Control de Deudas (Dashboard)
     Route::get('/control-deudas', [ControlDeudaController::class, 'index'])->name('control_deudas.index');
-    Route::get('/control-deudas/archivadas', [ControlDeudaController::class, 'archivadas'])->name('control_deudas.archivadas');
 
     // Abonos de Deudas
     Route::post('/abonos-deudas', [AbonoDeudaController::class, 'store'])->name('abonos_deudas.store');
@@ -186,5 +186,11 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
         Route::post('/ajustes/whatsapp-stop', [AjusteSistemaController::class, 'whatsappStop'])->name('ajustes.whatsapp-stop');
         Route::post('/ajustes/whatsapp-restart', [AjusteSistemaController::class, 'whatsappRestart'])->name('ajustes.whatsapp-restart');
         Route::post('/ajustes/whatsapp-reset-session', [AjusteSistemaController::class, 'whatsappResetSession'])->name('ajustes.whatsapp-reset-session');
+
+        // Accesos Rápidos (Consultas Rápidas / Enlaces Oficiales)
+        Route::post('/ajustes/quick-links', [QuickLinkController::class, 'store'])->name('quick-links.store');
+        Route::put('/ajustes/quick-links/{quickLink}', [QuickLinkController::class, 'update'])->name('quick-links.update');
+        Route::delete('/ajustes/quick-links/{quickLink}', [QuickLinkController::class, 'destroy'])->name('quick-links.destroy');
+        Route::post('/ajustes/quick-links/reorder', [QuickLinkController::class, 'reorder'])->name('quick-links.reorder');
     });
 });

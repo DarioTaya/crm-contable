@@ -65,6 +65,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AjusteSistemaSeeder::class,
             CronogramaSunatSeeder::class,
+            QuickLinkSeeder::class,
         ]);
     }
 }

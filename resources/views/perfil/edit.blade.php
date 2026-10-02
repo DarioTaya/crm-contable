@@ -53,9 +53,88 @@
                 </div>
             </div>
 
-            <form action="{{ route('perfil.update') }}" method="POST" class="space-y-4 text-xs">
+            <form action="{{ route('perfil.update') }}" method="POST" enctype="multipart/form-data" class="space-y-4 text-xs"
+                  x-data="{
+                      previewUrl: null,
+                      eliminarFoto: false,
+                      fotoActual: @js($user->fotoPerfilUrl()),
+                      seleccionarFoto(e) {
+                          const file = e.target.files[0];
+                          if (file) {
+                              this.eliminarFoto = false;
+                              this.previewUrl = URL.createObjectURL(file);
+                          }
+                      },
+                      quitarFoto() {
+                          this.previewUrl = null;
+                          this.eliminarFoto = true;
+                          if (this.$refs.fotoInput) {
+                              this.$refs.fotoInput.value = '';
+                          }
+                      }
+                  }">
                 @csrf
                 @method('PUT')
+                <input type="hidden" name="eliminar_foto" :value="eliminarFoto ? '1' : '0'">
+
+                {{-- Sección Foto de Perfil / Avatar Premium --}}
+                <div class="flex items-center gap-4 p-3 rounded-2xl bg-gray-50 border border-gray-150 mb-3">
+                    <div class="relative shrink-0">
+                        {{-- Imagen con vista previa --}}
+                        <template x-if="previewUrl">
+                            <img :src="previewUrl" alt="Vista previa" class="h-16 w-16 rounded-full object-cover ring-2 ring-brand-500 shadow-sm">
+                        </template>
+                        <template x-if="!previewUrl && fotoActual && !eliminarFoto">
+                            <img :src="fotoActual" alt="{{ $user->name }}" class="h-16 w-16 rounded-full object-cover ring-2 {{ $user->isAdmin() ? 'ring-purple-500' : 'ring-blue-500' }} shadow-sm">
+                        </template>
+                        <template x-if="(!previewUrl && !fotoActual) || (!previewUrl && eliminarFoto)">
+                            <div class="flex h-16 w-16 items-center justify-center rounded-full font-bold text-lg text-white shadow-sm ring-2 {{ $user->isAdmin() ? 'ring-purple-500 bg-gradient-to-tr from-purple-600 to-indigo-600' : 'ring-blue-500 bg-gradient-to-tr from-blue-600 to-cyan-600' }}">
+                                {{ $user->iniciales() }}
+                            </div>
+                        </template>
+
+                        {{-- Distintivo de Rol Elegante --}}
+                        <span class="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-white ring-2 ring-white shadow-xs text-[10px] {{ $user->isAdmin() ? 'bg-purple-600' : 'bg-blue-600' }}"
+                              title="{{ $user->isAdmin() ? 'Administrador' : 'Asistente' }}">
+                            @if ($user->isAdmin())
+                                👑
+                            @else
+                                💼
+                            @endif
+                        </span>
+                    </div>
+
+                    <div class="min-w-0 flex-1 space-y-1">
+                        <label class="block font-bold text-gray-800 text-xs">Foto de Perfil</label>
+                        <p class="text-[11px] text-gray-500">Se mostrará en la barra superior del CRM. Formatos: JPG, PNG o WEBP (máx. 5MB).</p>
+
+                        <div class="flex items-center gap-2 pt-1">
+                            <label class="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-100 shadow-2xs transition active:scale-95">
+                                <svg class="h-3.5 w-3.5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+                                </svg>
+                                <span>Subir Foto</span>
+                                <input type="file"
+                                       name="foto_perfil"
+                                       x-ref="fotoInput"
+                                       accept="image/png,image/jpeg,image/webp,image/gif"
+                                       @change="seleccionarFoto($event)"
+                                       class="sr-only">
+                            </label>
+
+                            <button type="button"
+                                    x-show="previewUrl || (fotoActual && !eliminarFoto)"
+                                    @click="quitarFoto()"
+                                    class="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-600 hover:text-rose-700 transition px-2 py-1 cursor-pointer">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                </svg>
+                                <span>Quitar Foto</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
                 <div>
                     <label class="block font-semibold text-gray-700 mb-1">Nombre Completo</label>

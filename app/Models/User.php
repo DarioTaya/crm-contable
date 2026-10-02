@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
@@ -36,6 +37,7 @@ class User extends Authenticatable
         'fecha_ingreso',
         'fecha_cese',
         'direccion',
+        'foto_perfil',
     ];
 
     /**
@@ -147,6 +149,26 @@ class User extends Authenticatable
         }
 
         return mb_strtoupper(mb_substr($nombre, 0, 2));
+    }
+
+    /**
+     * URL pública de la foto de perfil o null si no se ha subido o no existe en storage.
+     */
+    public function fotoPerfilUrl(): ?string
+    {
+        if (! empty($this->foto_perfil) && Storage::disk('public')->exists($this->foto_perfil)) {
+            return asset('storage/'.$this->foto_perfil);
+        }
+
+        return null;
+    }
+
+    /**
+     * Alias de conveniencia para la foto de perfil del usuario.
+     */
+    public function avatarUrl(): ?string
+    {
+        return $this->fotoPerfilUrl();
     }
 
     /**

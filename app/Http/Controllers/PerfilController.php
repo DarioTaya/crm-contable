@@ -6,6 +6,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -36,7 +37,21 @@ class PerfilController extends Controller
             'telefono' => ['nullable', 'string', 'max:50'],
             'fecha_nacimiento' => ['nullable', 'date'],
             'direccion' => ['nullable', 'string', 'max:255'],
+            'foto_perfil' => ['nullable', 'file', 'image', 'mimes:jpeg,png,jpg,webp,gif,avif', 'max:5120'],
+            'eliminar_foto' => ['nullable', 'boolean'],
         ]);
+
+        if ($request->boolean('eliminar_foto')) {
+            if ($user->foto_perfil && Storage::disk('public')->exists($user->foto_perfil)) {
+                Storage::disk('public')->delete($user->foto_perfil);
+            }
+            $user->foto_perfil = null;
+        } elseif ($request->hasFile('foto_perfil')) {
+            if ($user->foto_perfil && Storage::disk('public')->exists($user->foto_perfil)) {
+                Storage::disk('public')->delete($user->foto_perfil);
+            }
+            $user->foto_perfil = $request->file('foto_perfil')->store('perfiles/'.$user->id, 'public');
+        }
 
         $user->update([
             'name' => $validated['name'],
@@ -46,6 +61,7 @@ class PerfilController extends Controller
             'telefono' => $validated['telefono'] ?? null,
             'fecha_nacimiento' => $validated['fecha_nacimiento'] ?? null,
             'direccion' => $validated['direccion'] ?? null,
+            'foto_perfil' => $user->foto_perfil,
         ]);
 
         return redirect()->route('perfil.edit')->with('success', 'Tus datos de perfil han sido actualizados.');

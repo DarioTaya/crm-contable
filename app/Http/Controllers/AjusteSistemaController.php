@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AjusteSistema;
 use App\Models\Estudio;
+use App\Models\QuickLink;
 use App\Services\WhatsAppService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -31,7 +32,9 @@ class AjusteSistemaController extends Controller
             ]
         );
 
-        return view('ajustes.index', compact('ajustes', 'estudio'));
+        $enlacesRapidos = QuickLink::orderBy('orden')->orderBy('id')->get();
+
+        return view('ajustes.index', compact('ajustes', 'estudio', 'enlacesRapidos'));
     }
 
     /**
