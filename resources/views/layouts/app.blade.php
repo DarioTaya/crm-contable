@@ -527,10 +527,8 @@
                         <x-navegacion.selector-empresa :empresa="$empresaActiva" />
                     </div>
 
-                    {{-- Lado Derecho: Cronograma SUNAT, Consultas Rápidas y foto de la cuenta --}}
+                    {{-- Lado Derecho: Consultas Rápidas, cronograma SUNAT y foto de la cuenta --}}
                     <div class="flex items-center justify-end gap-2.5 sm:gap-3 flex-1 min-w-0">
-                        <x-navegacion.cronograma-barra :cronograma="$cronogramaBarra" />
-
                         {{-- Consultas Rápidas --}}
                         <div x-data="{ abierto: false }"
                              class="relative"
@@ -590,7 +588,9 @@
                             </div>
                         </div>
 
-                        {{-- 2. Cuenta: solo la foto en la barra. El detalle y el cierre de sesión van en el panel. --}}
+                        <x-navegacion.cronograma-barra :cronograma="$cronogramaBarra" />
+
+                        {{-- Cuenta: solo la foto en la barra. El detalle y el cierre de sesión van en el panel. --}}
                         @if (auth()->check())
                             @php
                                 $usuarioActual = auth()->user();

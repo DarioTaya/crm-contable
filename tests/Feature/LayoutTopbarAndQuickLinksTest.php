@@ -246,20 +246,45 @@ class LayoutTopbarAndQuickLinksTest extends TestCase
 
         $response = $this->actingAs($this->admin)->get(route('dashboard'));
 
+        CronogramaSunat::create([
+            'anio' => 2026,
+            'tipo' => 'balance_mensual',
+            'mes' => 1,
+            'periodo' => '01-2026',
+            'fecha_vencimiento_general' => '2026-04-30',
+        ]);
+        CronogramaSunat::create([
+            'anio' => 2026,
+            'tipo' => 'balance_anual',
+            'mes' => null,
+            'periodo' => 'anual-2026',
+            'digito_0' => '2027-03-24',
+            'buenos_contribuyentes' => '2027-04-05',
+        ]);
+
+        $response = $this->actingAs($this->admin)->get(route('dashboard'));
+
         $response->assertSeeInOrder([
-            'title="Cronograma SUNAT"',
             'Consultas Rápidas',
+            'title="Cronograma SUNAT"',
             'Cuenta de Carlos Administrador',
         ], false);
+        $response->assertSeeInOrder([
+            'SIRE',
+            'PDT 621',
+            'Balances',
+            'Rta. 3ra',
+        ]);
+        $response->assertSee("tipo: 'sire'", false);
         $response->assertSee('Cronograma SUNAT 2026');
-        $response->assertSee('PDT 621');
-        $response->assertSee('SIRE');
         $response->assertSee('Último dígito del RUC');
-        $response->assertSee('Buenos');
+        $response->assertSee('Fecha límite');
+        $response->assertSee('Ejercicio 2026');
         $response->assertSee('16 Feb');
         $response->assertSee('13 Feb');
+        $response->assertSee('30 Abr');
+        $response->assertSee('24 Mar');
         $response->assertSee('Período en liquidación', false);
         $response->assertSee('Setiembre');
-        $response->assertDontSee('balance_mensual');
     }
 }

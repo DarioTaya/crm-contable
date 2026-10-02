@@ -2,14 +2,28 @@
 
 @php
     $anio = (int) ($cronograma['anio'] ?? now()->year);
-    $bloques = [
-        'pdt_621' => $cronograma['pdt_621'] ?? collect(),
-        'sire' => $cronograma['sire'] ?? collect(),
+    $menus = [
+        'sire' => 'SIRE',
+        'pdt_621' => 'PDT 621',
+        'balance_mensual' => 'Balances',
+        'balance_anual' => 'Rta. 3ra',
     ];
-    $periodoActivo = [
-        'pdt_621' => (string) ($cronograma['periodo_pdt'] ?? ''),
-        'sire' => (string) ($cronograma['periodo_sire'] ?? ''),
+    $detalles = [
+        'sire' => 'SIRE · RVIE y RCE',
+        'pdt_621' => 'PDT 621 · IGV y Renta mensual',
+        'balance_mensual' => 'Balances mensuales · plazo máximo 3 meses',
+        'balance_anual' => 'Renta de 3ra · declaración jurada anual',
     ];
+    $bloques = [];
+    $periodoActivo = [];
+    foreach ($menus as $clave => $etiqueta) {
+        $bloques[$clave] = $cronograma[$clave] ?? collect();
+        $periodoActivo[$clave] = (string) ($cronograma['periodo_'.($clave === 'pdt_621' ? 'pdt' : $clave)] ?? '');
+    }
+    $fichas = [];
+    foreach (array_keys($menus) as $clave) {
+        $fichas[$clave] = route('cronogramas.index', ['anio' => $anio, 'tipo' => $clave]);
+    }
     $meses = [
         1 => 'Ene', 2 => 'Feb', 3 => 'Mar', 4 => 'Abr', 5 => 'May', 6 => 'Jun',
         7 => 'Jul', 8 => 'Ago', 9 => 'Set', 10 => 'Oct', 11 => 'Nov', 12 => 'Dic',
@@ -36,7 +50,7 @@
 <div
     x-data="{
         abierto: false,
-        tipo: 'pdt_621',
+        tipo: 'sire',
         alternar() {
             this.abierto = !this.abierto;
             if (this.abierto) {
@@ -88,80 +102,108 @@
             class="fixed z-50 w-[min(34rem,calc(100vw-2rem))] overflow-auto rounded-xl border border-slate-200 bg-white text-slate-800 shadow-2xl"
             style="display: none;"
         >
-            <div class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-3 py-2">
-                <div class="min-w-0">
-                    <p class="text-[13px] font-semibold leading-none text-slate-900">Cronograma SUNAT {{ $anio }}</p>
-                    <p class="mt-1 text-[10px] leading-none text-slate-500" x-show="tipo === 'pdt_621'">PDT 621 · IGV y Renta mensual</p>
-                    <p class="mt-1 text-[10px] leading-none text-slate-500" x-show="tipo === 'sire'" x-cloak>SIRE · RVIE y RCE</p>
-                </div>
-                <div class="flex shrink-0 rounded-lg bg-slate-100 p-0.5" role="tablist" aria-label="Tipo de cronograma">
-                    <button
-                        type="button"
-                        role="tab"
-                        @click="elegir('pdt_621')"
-                        :aria-selected="tipo === 'pdt_621' ? 'true' : 'false'"
-                        :class="tipo === 'pdt_621' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'"
-                        class="rounded-md px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer"
-                    >PDT 621</button>
-                    <button
-                        type="button"
-                        role="tab"
-                        @click="elegir('sire')"
-                        :aria-selected="tipo === 'sire' ? 'true' : 'false'"
-                        :class="tipo === 'sire' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'"
-                        class="rounded-md px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer"
-                    >SIRE</button>
+            <div class="shrink-0 border-b border-slate-200 px-3 py-2">
+                <p class="text-[13px] font-semibold leading-none text-slate-900">Cronograma SUNAT {{ $anio }}</p>
+                @foreach ($detalles as $clave => $detalle)
+                    <p class="mt-1 text-[10px] leading-none text-slate-500" x-show="tipo === '{{ $clave }}'" @if ($clave !== 'sire') x-cloak @endif>{{ $detalle }}</p>
+                @endforeach
+                <div class="mt-2 flex rounded-lg bg-slate-100 p-0.5" role="tablist" aria-label="Tipo de cronograma">
+                    @foreach ($menus as $clave => $etiqueta)
+                        <button
+                            type="button"
+                            role="tab"
+                            @click="elegir('{{ $clave }}')"
+                            :aria-selected="tipo === '{{ $clave }}' ? 'true' : 'false'"
+                            :class="tipo === '{{ $clave }}' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'"
+                            class="flex-1 rounded-md px-1.5 py-1 text-center text-[11px] font-semibold whitespace-nowrap transition cursor-pointer"
+                        >{{ $etiqueta }}</button>
+                    @endforeach
                 </div>
             </div>
 
             @foreach ($bloques as $clave => $filas)
-                <div x-show="tipo === '{{ $clave }}'" @if ($clave !== 'pdt_621') x-cloak @endif>
-                    <table class="w-full border-collapse text-[11px] leading-none">
-                        <thead class="sticky top-0 z-10">
-                            <tr class="bg-slate-800 text-white">
-                                <th rowspan="2" scope="col" class="border-r border-slate-700 px-2 py-1.5 text-left text-[10px] font-semibold">Período</th>
-                                <th colspan="6" scope="colgroup" class="border-b border-slate-700 px-1 py-1.5 text-center text-[10px] font-semibold tracking-wide">Último dígito del RUC</th>
-                                <th rowspan="2" scope="col" class="border-l border-slate-700 px-1.5 py-1.5 text-center text-[10px] font-semibold leading-tight">Buenos<br>contribuyentes</th>
-                            </tr>
-                            <tr class="bg-slate-700 text-white">
-                                @foreach ($columnas as $etiqueta)
-                                    <th scope="col" class="px-1 py-1 text-center text-[10px] font-medium">{{ $etiqueta }}</th>
-                                @endforeach
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($filas as $fila)
-                                @php
-                                    $esActivo = $fila->periodo === $periodoActivo[$clave];
-                                @endphp
-                                <tr @class([
-                                    'border-t border-slate-200',
-                                    'bg-brand-50' => $esActivo,
-                                    'odd:bg-white even:bg-slate-50' => ! $esActivo,
-                                ]) @if ($esActivo) title="Período en liquidación" @endif>
-                                    <th scope="row" @class([
-                                        'whitespace-nowrap border-r border-slate-200 px-2 py-1.5 text-left font-semibold',
-                                        'text-brand-800' => $esActivo,
-                                        'text-slate-800' => ! $esActivo,
-                                    ])>{{ $fila->nombre_mes }}</th>
-                                    @foreach (array_keys($columnas) as $campo)
-                                        <td class="px-1 py-1.5 text-center tabular-nums text-slate-700">{{ $fechaSunat($fila->{$campo}) }}</td>
+                <div x-show="tipo === '{{ $clave }}'" @if ($clave !== 'sire') x-cloak @endif>
+                    @if ($clave === 'balance_mensual')
+                        <table class="w-full border-collapse text-[11px] leading-none">
+                            <thead class="sticky top-0 z-10">
+                                <tr class="bg-slate-800 text-white">
+                                    <th scope="col" class="border-r border-slate-700 px-2 py-1.5 text-left text-[10px] font-semibold">Período</th>
+                                    <th scope="col" class="px-2 py-1.5 text-center text-[10px] font-semibold">Fecha límite</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($filas as $fila)
+                                    @php
+                                        $esActivo = $fila->periodo === $periodoActivo[$clave];
+                                    @endphp
+                                    <tr @class([
+                                        'border-t border-slate-200',
+                                        'bg-brand-50' => $esActivo,
+                                        'odd:bg-white even:bg-slate-50' => ! $esActivo,
+                                    ]) @if ($esActivo) title="Período en liquidación" @endif>
+                                        <th scope="row" @class([
+                                            'whitespace-nowrap border-r border-slate-200 px-2 py-1.5 text-left font-semibold',
+                                            'text-brand-800' => $esActivo,
+                                            'text-slate-800' => ! $esActivo,
+                                        ])>{{ $fila->nombre_mes }}</th>
+                                        <td class="px-2 py-1.5 text-center font-medium tabular-nums text-slate-800">{{ $fechaSunat($fila->fecha_vencimiento_general) }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="2" class="px-3 py-8 text-center text-xs text-slate-400">Sin fechas cargadas para este ejercicio.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    @else
+                        <table class="w-full border-collapse text-[11px] leading-none">
+                            <thead class="sticky top-0 z-10">
+                                <tr class="bg-slate-800 text-white">
+                                    <th rowspan="2" scope="col" class="border-r border-slate-700 px-2 py-1.5 text-left text-[10px] font-semibold">Período</th>
+                                    <th colspan="6" scope="colgroup" class="border-b border-slate-700 px-1 py-1.5 text-center text-[10px] font-semibold tracking-wide">Último dígito del RUC</th>
+                                    <th rowspan="2" scope="col" class="border-l border-slate-700 px-1.5 py-1.5 text-center text-[10px] font-semibold leading-tight">Buenos<br>contribuyentes</th>
+                                </tr>
+                                <tr class="bg-slate-700 text-white">
+                                    @foreach ($columnas as $etiqueta)
+                                        <th scope="col" class="px-1 py-1 text-center text-[10px] font-medium">{{ $etiqueta }}</th>
                                     @endforeach
-                                    <td class="border-l border-slate-200 px-1 py-1.5 text-center font-medium tabular-nums text-slate-800">{{ $fechaSunat($fila->buenos_contribuyentes) }}</td>
                                 </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="8" class="px-3 py-8 text-center text-xs text-slate-400">Sin fechas cargadas para este ejercicio.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @forelse ($filas as $fila)
+                                    @php
+                                        $esActivo = $fila->periodo === $periodoActivo[$clave];
+                                        $periodo = $clave === 'balance_anual' ? 'Ejercicio '.$anio : $fila->nombre_mes;
+                                    @endphp
+                                    <tr @class([
+                                        'border-t border-slate-200',
+                                        'bg-brand-50' => $esActivo,
+                                        'odd:bg-white even:bg-slate-50' => ! $esActivo,
+                                    ]) @if ($esActivo) title="Período en liquidación" @endif>
+                                        <th scope="row" @class([
+                                            'whitespace-nowrap border-r border-slate-200 px-2 py-1.5 text-left font-semibold',
+                                            'text-brand-800' => $esActivo,
+                                            'text-slate-800' => ! $esActivo,
+                                        ])>{{ $periodo }}</th>
+                                        @foreach (array_keys($columnas) as $campo)
+                                            <td class="px-1 py-1.5 text-center tabular-nums text-slate-700">{{ $fechaSunat($fila->{$campo}) }}</td>
+                                        @endforeach
+                                        <td class="border-l border-slate-200 px-1 py-1.5 text-center font-medium tabular-nums text-slate-800">{{ $fechaSunat($fila->buenos_contribuyentes) }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="8" class="px-3 py-8 text-center text-xs text-slate-400">Sin fechas cargadas para este ejercicio.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    @endif
                 </div>
             @endforeach
 
             <div class="flex shrink-0 items-center justify-end border-t border-slate-200 px-3 py-1.5">
                 <a
-                    :href="tipo === 'sire' ? @js(route('cronogramas.index', ['anio' => $anio, 'tipo' => 'sire'])) : @js(route('cronogramas.index', ['anio' => $anio, 'tipo' => 'pdt_621']))"
+                    :href="@js($fichas)[tipo]"
                     class="text-[10px] font-medium text-slate-400 hover:text-brand-700"
                 >Abrir ficha</a>
             </div>

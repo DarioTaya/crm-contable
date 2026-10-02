@@ -47,10 +47,14 @@ class AppServiceProvider extends ServiceProvider
                     ? app(CronogramaSunatService::class)->paraBarraSuperior()
                     : [
                         'anio' => (int) now()->year,
-                        'pdt_621' => collect(),
                         'sire' => collect(),
-                        'periodo_pdt' => now()->format('m-Y'),
+                        'pdt_621' => collect(),
+                        'balance_mensual' => collect(),
+                        'balance_anual' => collect(),
                         'periodo_sire' => now()->format('m-Y'),
+                        'periodo_pdt' => now()->format('m-Y'),
+                        'periodo_balance_mensual' => now()->format('m-Y'),
+                        'periodo_balance_anual' => now()->format('m-Y'),
                     ],
             );
         });

@@ -258,17 +258,21 @@ class CronogramaSunatService
     }
 
     /**
-     * PDT 621 y SIRE del ejercicio que se consulta desde la barra superior.
+     * Cronogramas del ejercicio que se consulta desde la barra superior.
      *
      * Usa el año en curso. Si ese ejercicio aún no está cargado, toma el último
      * cronograma PDT 621 guardado en la misma base de la ficha de cronogramas.
      *
      * @return array{
      *     anio: int,
-     *     pdt_621: Collection<int, CronogramaSunat>,
      *     sire: Collection<int, CronogramaSunat>,
+     *     pdt_621: Collection<int, CronogramaSunat>,
+     *     balance_mensual: Collection<int, CronogramaSunat>,
+     *     balance_anual: Collection<int, CronogramaSunat>,
+     *     periodo_sire: string,
      *     periodo_pdt: string,
-     *     periodo_sire: string
+     *     periodo_balance_mensual: string,
+     *     periodo_balance_anual: string
      * }
      */
     public function paraBarraSuperior(): array
@@ -284,19 +288,26 @@ class CronogramaSunatService
             $anio = $ultimo ? (int) $ultimo : $anio;
         }
 
+        $tipos = ['sire', 'pdt_621', 'balance_mensual', 'balance_anual'];
+
         $filas = CronogramaSunat::query()
             ->where('anio', $anio)
-            ->whereIn('tipo', ['pdt_621', 'sire'])
+            ->whereIn('tipo', $tipos)
             ->orderBy('mes')
             ->get()
             ->groupBy('tipo');
 
-        return [
-            'anio' => $anio,
-            'pdt_621' => $filas->get('pdt_621', new Collection)->values(),
-            'sire' => $filas->get('sire', new Collection)->values(),
-            'periodo_pdt' => $this->obtenerPeriodoEnCurso('pdt_621'),
-            'periodo_sire' => $this->obtenerPeriodoEnCurso('sire'),
-        ];
+        $cronograma = ['anio' => $anio];
+
+        foreach ($tipos as $tipo) {
+            $cronograma[$tipo] = $filas->get($tipo, new Collection)->values();
+        }
+
+        $cronograma['periodo_sire'] = $this->obtenerPeriodoEnCurso('sire');
+        $cronograma['periodo_pdt'] = $this->obtenerPeriodoEnCurso('pdt_621');
+        $cronograma['periodo_balance_mensual'] = $this->obtenerPeriodoEnCurso('balance_mensual');
+        $cronograma['periodo_balance_anual'] = $this->obtenerPeriodoEnCurso('balance_anual');
+
+        return $cronograma;
     }
 }
