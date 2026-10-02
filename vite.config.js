@@ -13,7 +13,7 @@ export default defineConfig({
             // CDN en tiempo de ejecucion.
             fonts: [
                 bunny('Inter', {
-                    weights: [400, 500, 600, 700],
+                    weights: [400, 500, 600, 700, 800],
                 }),
             ],
         }),

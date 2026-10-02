@@ -43,7 +43,7 @@
     $lineaContacto = [];
     if (! empty($direccion)) {
         $lineaContacto[] = [
-            'etiqueta' => null,
+            'etiqueta' => 'Dirección',
             'valor' => $direccion.(! empty($ciudad) ? ' — '.$ciudad : ''),
         ];
     }
@@ -51,10 +51,10 @@
         $lineaContacto[] = ['etiqueta' => 'Tel.', 'valor' => $telefono];
     }
     if (! empty($correo)) {
-        $lineaContacto[] = ['etiqueta' => null, 'valor' => $correo];
+        $lineaContacto[] = ['etiqueta' => 'Correo', 'valor' => $correo];
     }
     if (! empty($sitioWebVisible)) {
-        $lineaContacto[] = ['etiqueta' => null, 'valor' => $sitioWebVisible];
+        $lineaContacto[] = ['etiqueta' => 'Web', 'valor' => $sitioWebVisible];
     }
 
     $lineasIdentidad = array_values(array_filter(
