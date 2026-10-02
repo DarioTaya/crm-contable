@@ -527,15 +527,18 @@
                         <x-navegacion.selector-empresa :empresa="$empresaActiva" />
                     </div>
 
-                    {{-- Lado Derecho: Consultas Rápidas + Avatar de Usuario Premium con Rol --}}
+                    {{-- Lado Derecho: Cronograma SUNAT, Consultas Rápidas y foto de la cuenta --}}
                     <div class="flex items-center justify-end gap-2.5 sm:gap-3 flex-1 min-w-0">
-                        {{-- 1. Menú Consultas Rápidas Dinámico --}}
+                        <x-navegacion.cronograma-barra :cronograma="$cronogramaBarra" />
+
+                        {{-- Consultas Rápidas --}}
                         <div x-data="{ abierto: false }"
                              class="relative"
                              @click.outside="abierto = false"
-                             @keydown.escape.window="abierto = false">
+                             @keydown.escape.window="abierto = false"
+                             @topbar-panel.window="if ($event.detail.panel !== 'consultas') abierto = false">
                             <button type="button"
-                                    @click="abierto = !abierto"
+                                    @click="abierto = !abierto; if (abierto) { $dispatch('topbar-panel', { panel: 'consultas' }) }"
                                     :class="abierto ? 'bg-gray-100 text-brand-600 ring-2 ring-brand-500/20' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'"
                                     class="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-semibold transition border border-gray-200/80 bg-white shadow-2xs cursor-pointer select-none"
                                     title="Consultas rápidas (Enlaces oficiales)"
@@ -587,66 +590,108 @@
                             </div>
                         </div>
 
-                        {{-- 2. Avatar de Usuario Premium con Rol y Enlace a Perfil --}}
+                        {{-- 2. Cuenta: solo la foto en la barra. El detalle y el cierre de sesión van en el panel. --}}
                         @if (auth()->check())
                             @php
                                 $usuarioActual = auth()->user();
                                 $esAdmin = $usuarioActual->isAdmin();
                                 $fotoUrl = $usuarioActual->fotoPerfilUrl();
+                                $rolCuenta = $esAdmin ? 'Administrador' : 'Asistente';
                             @endphp
 
-                            <a href="{{ route('perfil.edit') }}"
-                               title="Mi Perfil: {{ $usuarioActual->name }} ({{ $esAdmin ? 'Administrador' : 'Asistente' }})"
-                               class="group flex items-center gap-2 rounded-full p-0.5 hover:bg-gray-100 transition select-none cursor-pointer">
-
-                                {{-- Contenedor Circular del Avatar con Anillo y Distintivo de Rol --}}
-                                <div class="relative shrink-0 flex items-center justify-center">
+                            <div x-data="{ abierto: false }"
+                                 class="relative shrink-0"
+                                 @click.outside="abierto = false"
+                                 @keydown.escape.window="abierto = false"
+                                 @topbar-panel.window="if ($event.detail.panel !== 'cuenta') abierto = false">
+                                <button type="button"
+                                        @click="abierto = !abierto; if (abierto) { $dispatch('topbar-panel', { panel: 'cuenta' }) }"
+                                        class="relative flex h-8 w-8 items-center justify-center rounded-full cursor-pointer"
+                                        title="{{ $usuarioActual->name }}"
+                                        aria-label="Cuenta de {{ $usuarioActual->name }}"
+                                        :aria-expanded="abierto ? 'true' : 'false'">
                                     @if ($fotoUrl)
                                         <img src="{{ $fotoUrl }}"
-                                             alt="{{ $usuarioActual->name }}"
-                                             class="h-8 w-8 rounded-full object-cover ring-2 {{ $esAdmin ? 'ring-purple-600/80 shadow-purple-500/20' : 'ring-blue-500/80 shadow-blue-500/20' }} shadow-sm">
+                                             alt=""
+                                             class="h-8 w-8 rounded-full object-cover ring-2 {{ $esAdmin ? 'ring-gold-500' : 'ring-blue-500' }}">
                                     @else
-                                        <div class="flex h-8 w-8 items-center justify-center rounded-full font-bold text-xs text-white ring-2 {{ $esAdmin ? 'ring-purple-600/80 bg-gradient-to-tr from-purple-600 to-indigo-600' : 'ring-blue-500/80 bg-gradient-to-tr from-blue-600 to-cyan-600' }} shadow-xs">
+                                        <span class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white ring-2 {{ $esAdmin ? 'ring-gold-500 bg-gold-600' : 'ring-blue-500 bg-blue-600' }}">
                                             {{ $usuarioActual->iniciales() }}
-                                        </div>
+                                        </span>
                                     @endif
 
-                                    {{-- Badge indicador de Rol en la esquina inferior del círculo --}}
-                                    <span class="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] font-black text-white ring-2 ring-white shadow-2xs {{ $esAdmin ? 'bg-purple-600' : 'bg-blue-600' }}"
-                                          title="{{ $esAdmin ? 'Rol: Administrador General' : 'Rol: Asistente Contable' }}">
-                                        @if ($esAdmin)
-                                            👑
-                                        @else
-                                            💼
-                                        @endif
+                                    <span class="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] leading-none ring-2 ring-white {{ $esAdmin ? 'bg-gold-600' : 'bg-blue-600' }}"
+                                          title="{{ $rolCuenta }}">
+                                        {{ $esAdmin ? '👑' : '💼' }}
                                     </span>
-                                </div>
-
-                                {{-- Nombre y Rol sutil (Visible en pantallas grandes) --}}
-                                <div class="hidden lg:flex flex-col text-left leading-tight pr-1">
-                                    <span class="text-xs font-bold text-gray-800 group-hover:text-brand-600 transition truncate max-w-[130px]">
-                                        {{ $usuarioActual->name }}
-                                        @if ($usuarioActual->esCumpleanosHoy())
-                                            <span title="¡Hoy es tu cumpleaños! 🎂">🎂</span>
-                                        @endif
-                                    </span>
-                                    <span class="text-[10px] font-semibold {{ $esAdmin ? 'text-purple-600' : 'text-blue-600' }} truncate">
-                                        {{ $esAdmin ? 'Administrador' : 'Asistente' }}
-                                    </span>
-                                </div>
-                            </a>
-
-                            {{-- 3. Botón Sutil de Cerrar Sesión --}}
-                            <form action="{{ route('logout') }}" method="POST" class="inline shrink-0">
-                                @csrf
-                                <button type="submit"
-                                        title="Cerrar Sesión"
-                                        class="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-rose-50 hover:text-rose-600 transition cursor-pointer">
-                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
-                                    </svg>
                                 </button>
-                            </form>
+
+                                <div x-show="abierto"
+                                     x-cloak
+                                     x-transition:enter="transition ease-out duration-150"
+                                     x-transition:enter-start="opacity-0 translate-y-1"
+                                     x-transition:enter-end="opacity-100 translate-y-0"
+                                     x-transition:leave="transition ease-in duration-100"
+                                     x-transition:leave-start="opacity-100 translate-y-0"
+                                     x-transition:leave-end="opacity-0 translate-y-1"
+                                     class="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-gray-200 bg-white shadow-xl">
+                                    <div class="flex items-center gap-3 px-3.5 py-3">
+                                        @if ($fotoUrl)
+                                            <img src="{{ $fotoUrl }}" alt="" class="h-11 w-11 shrink-0 rounded-full object-cover ring-2 {{ $esAdmin ? 'ring-gold-500' : 'ring-blue-500' }}">
+                                        @else
+                                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ring-2 {{ $esAdmin ? 'ring-gold-500 bg-gold-600' : 'ring-blue-500 bg-blue-600' }}">
+                                                {{ $usuarioActual->iniciales() }}
+                                            </span>
+                                        @endif
+                                        <div class="min-w-0">
+                                            <p class="truncate text-sm font-semibold text-gray-900">{{ $usuarioActual->name }}</p>
+                                            <p class="mt-0.5 text-[11px] font-semibold {{ $esAdmin ? 'text-gold-600' : 'text-blue-600' }}">{{ $rolCuenta }}</p>
+                                        </div>
+                                    </div>
+
+                                    <dl class="space-y-1.5 border-t border-gray-100 px-3.5 py-2.5 text-[11px]">
+                                        <div class="flex gap-3">
+                                            <dt class="w-16 shrink-0 text-gray-400">Correo</dt>
+                                            <dd class="min-w-0 truncate text-gray-700">{{ $usuarioActual->email }}</dd>
+                                        </div>
+                                        @if (filled($usuarioActual->cargo))
+                                            <div class="flex gap-3">
+                                                <dt class="w-16 shrink-0 text-gray-400">Cargo</dt>
+                                                <dd class="min-w-0 truncate text-gray-700">{{ $usuarioActual->cargo }}</dd>
+                                            </div>
+                                        @endif
+                                        @if (filled($usuarioActual->telefono))
+                                            <div class="flex gap-3">
+                                                <dt class="w-16 shrink-0 text-gray-400">Teléfono</dt>
+                                                <dd class="min-w-0 truncate text-gray-700">{{ $usuarioActual->telefono }}</dd>
+                                            </div>
+                                        @endif
+                                        <div class="flex gap-3">
+                                            <dt class="w-16 shrink-0 text-gray-400">Estudio</dt>
+                                            <dd class="min-w-0 truncate text-gray-700">{{ $estudioNombre }}</dd>
+                                        </div>
+                                        @if ($usuarioActual->esCumpleanosHoy())
+                                            <div class="pt-0.5 text-gray-600">Hoy es su cumpleaños.</div>
+                                        @endif
+                                    </dl>
+
+                                    <div class="border-t border-gray-100 p-1.5">
+                                        <a href="{{ route('perfil.edit') }}"
+                                           @click="abierto = false"
+                                           class="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                                            Mi perfil
+                                        </a>
+                                        <form action="{{ route('logout') }}" method="POST">
+                                            @csrf
+                                            <button type="submit"
+                                                    title="Cerrar Sesión"
+                                                    class="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs font-medium text-gray-700 hover:bg-rose-50 hover:text-rose-700 cursor-pointer">
+                                                Cerrar sesión
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
                         @endif
                     </div>
                 </div>

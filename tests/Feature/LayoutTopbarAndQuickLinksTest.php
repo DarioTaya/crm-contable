@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\CronogramaSunat;
 use App\Models\Estudio;
 use App\Models\QuickLink;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -45,6 +47,13 @@ class LayoutTopbarAndQuickLinksTest extends TestCase
             'rol' => 'asistente',
             'activo' => true,
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
     }
 
     public function test_topbar_renders_consultas_rapidas_menu_with_official_links_and_db_links(): void
@@ -200,5 +209,57 @@ class LayoutTopbarAndQuickLinksTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['url']);
+    }
+
+    public function test_topbar_cronograma_muestra_pdt_621_y_sire_desde_la_base(): void
+    {
+        Carbon::setTestNow('2026-10-02 09:00:00');
+
+        CronogramaSunat::create([
+            'anio' => 2026,
+            'tipo' => 'pdt_621',
+            'mes' => 1,
+            'periodo' => '01-2026',
+            'digito_0' => '2026-02-16',
+            'digito_1' => '2026-02-17',
+            'digito_2_3' => '2026-02-18',
+            'digito_4_5' => '2026-02-19',
+            'digito_6_7' => '2026-02-20',
+            'digito_8_9' => '2026-02-23',
+            'buenos_contribuyentes' => '2026-02-24',
+        ]);
+        CronogramaSunat::create([
+            'anio' => 2026,
+            'tipo' => 'pdt_621',
+            'mes' => 9,
+            'periodo' => '09-2026',
+            'digito_0' => '2026-10-16',
+        ]);
+        CronogramaSunat::create([
+            'anio' => 2026,
+            'tipo' => 'sire',
+            'mes' => 1,
+            'periodo' => '01-2026',
+            'digito_0' => '2026-02-13',
+            'buenos_contribuyentes' => '2026-02-23',
+        ]);
+
+        $response = $this->actingAs($this->admin)->get(route('dashboard'));
+
+        $response->assertSeeInOrder([
+            'title="Cronograma SUNAT"',
+            'Consultas Rápidas',
+            'Cuenta de Carlos Administrador',
+        ], false);
+        $response->assertSee('Cronograma SUNAT 2026');
+        $response->assertSee('PDT 621');
+        $response->assertSee('SIRE');
+        $response->assertSee('Último dígito del RUC');
+        $response->assertSee('Buenos');
+        $response->assertSee('16 Feb');
+        $response->assertSee('13 Feb');
+        $response->assertSee('Período en liquidación', false);
+        $response->assertSee('Setiembre');
+        $response->assertDontSee('balance_mensual');
     }
 }

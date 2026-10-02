@@ -30,16 +30,16 @@
         aria-controls="selector-empresa-panel"
         title="{{ $empresa ? $empresa->razon_social.' · RUC '.$empresa->ruc : 'Seleccionar empresa' }}"
         :title="empresa ? (empresa.razon_social + ' · RUC ' + empresa.ruc) : 'Seleccionar empresa'"
-        class="flex h-9 w-full min-w-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-1.5 text-left shadow-xs transition hover:border-brand-300 hover:bg-brand-50/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40"
+        class="flex h-8 w-full min-w-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-1.5 text-left shadow-xs transition hover:border-brand-300 hover:bg-brand-50/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40"
         :class="abierto ? 'border-brand-400 bg-brand-50/60 ring-2 ring-brand-500/20' : ''"
     >
-        <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700">
             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
             </svg>
         </span>
         <span class="min-w-0 flex-1">
-            <span class="block truncate text-[12px] font-semibold leading-tight text-gray-900" x-text="empresa ? empresa.razon_social : 'Seleccionar empresa'">
+            <span class="block truncate text-[11px] font-semibold leading-tight text-gray-900" x-text="empresa ? empresa.razon_social : 'Seleccionar empresa'">
                 {{ $empresa?->razon_social ?? 'Seleccionar empresa' }}
             </span>
             <span class="mt-0.5 block truncate font-mono text-[10px] leading-tight tabular-nums text-gray-500" x-text="empresa ? empresa.ruc : 'Busca por nombre o RUC'">

@@ -256,4 +256,47 @@ class CronogramaSunatService
             ->orderBy('mes')
             ->get();
     }
+
+    /**
+     * PDT 621 y SIRE del ejercicio que se consulta desde la barra superior.
+     *
+     * Usa el año en curso. Si ese ejercicio aún no está cargado, toma el último
+     * cronograma PDT 621 guardado en la misma base de la ficha de cronogramas.
+     *
+     * @return array{
+     *     anio: int,
+     *     pdt_621: Collection<int, CronogramaSunat>,
+     *     sire: Collection<int, CronogramaSunat>,
+     *     periodo_pdt: string,
+     *     periodo_sire: string
+     * }
+     */
+    public function paraBarraSuperior(): array
+    {
+        $anio = (int) now()->year;
+        $hayEjercicio = CronogramaSunat::query()
+            ->where('anio', $anio)
+            ->where('tipo', 'pdt_621')
+            ->exists();
+
+        if (! $hayEjercicio) {
+            $ultimo = CronogramaSunat::query()->where('tipo', 'pdt_621')->max('anio');
+            $anio = $ultimo ? (int) $ultimo : $anio;
+        }
+
+        $filas = CronogramaSunat::query()
+            ->where('anio', $anio)
+            ->whereIn('tipo', ['pdt_621', 'sire'])
+            ->orderBy('mes')
+            ->get()
+            ->groupBy('tipo');
+
+        return [
+            'anio' => $anio,
+            'pdt_621' => $filas->get('pdt_621', new Collection)->values(),
+            'sire' => $filas->get('sire', new Collection)->values(),
+            'periodo_pdt' => $this->obtenerPeriodoEnCurso('pdt_621'),
+            'periodo_sire' => $this->obtenerPeriodoEnCurso('sire'),
+        ];
+    }
 }

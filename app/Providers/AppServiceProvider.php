@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\AlertaBuzon;
 use App\Models\QuickLink;
+use App\Services\CronogramaSunatService;
 use App\Services\Navegacion\SelectorEmpresa;
 use App\Services\SunatBuzonSyncService;
 use Illuminate\Support\Facades\Schema;
@@ -39,6 +40,18 @@ class AppServiceProvider extends ServiceProvider
                 Schema::hasTable('quick_links')
                     ? QuickLink::where('activo', true)->orderBy('orden')->orderBy('id')->get()
                     : collect(),
+            );
+            $view->with(
+                'cronogramaBarra',
+                Schema::hasTable('cronogramas_sunat')
+                    ? app(CronogramaSunatService::class)->paraBarraSuperior()
+                    : [
+                        'anio' => (int) now()->year,
+                        'pdt_621' => collect(),
+                        'sire' => collect(),
+                        'periodo_pdt' => now()->format('m-Y'),
+                        'periodo_sire' => now()->format('m-Y'),
+                    ],
             );
         });
     }
