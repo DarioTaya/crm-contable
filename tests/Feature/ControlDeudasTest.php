@@ -774,7 +774,7 @@ class ControlDeudasTest extends TestCase
         $response->assertDontSee('Validez interna sujeta a cotejo con la Clave SOL');
 
         // 2. Línea de separación de firmas tiene holgura y altura adecuada
-        $response->assertSee('margin-top: 50px', false);
+        $response->assertSee('margin-top: 18mm', false);
         $response->assertSee('border-t border-slate-800 pt-2', false);
         $response->assertSee('Conformidad del Contribuyente');
 

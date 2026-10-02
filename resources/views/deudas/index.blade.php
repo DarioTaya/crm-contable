@@ -119,34 +119,27 @@
         titulo="Reporte de Impuestos Pendientes de Pago (SUNAT)"
         subtitulo="Estado de Obligaciones Tributarias, Fraccionamientos y Cuotas Pendientes de Regularización"
         badge="Estado de Cuenta Tributario">
-        {{-- Resumen ejecutivo ultra-compacto y formal para impresión / PDF (1 sola línea) --}}
-        <div class="mt-2 grid grid-cols-3 gap-2 rounded-lg border border-slate-300 bg-slate-50/90 p-1.5 text-center text-xs">
-            <div class="border-r border-slate-200/90 pr-2">
-                <p class="text-[8.5px] uppercase font-bold text-slate-500 tracking-wider">Total Impuestos Declarados</p>
-                <p class="text-xs sm:text-sm font-black text-slate-900 font-mono mt-0.5" x-text="formatoSoles(totalDeudaFiltrada)">
+        <div class="reporte-resumen">
+            <div class="reporte-resumen__col">
+                <p class="reporte-resumen__etiqueta">Total Impuestos Declarados</p>
+                <p class="reporte-resumen__monto" x-text="formatoSoles(totalDeudaFiltrada)">
                     S/ {{ number_format($totalDeudaHistorica, 2) }}
                 </p>
-                <p class="text-[8px] text-slate-500 mt-0.5">
-                    <span class="font-semibold text-slate-700" x-text="deudasVisiblesCount + ' obligaciones registradas'"></span>
-                </p>
+                <p class="reporte-resumen__nota" x-text="deudasVisiblesCount + ' obligaciones registradas'"></p>
             </div>
-            <div class="border-r border-slate-200/90 px-2">
-                <p class="text-[8.5px] uppercase font-bold text-emerald-700 tracking-wider">Total Pagado / Amortizado</p>
-                <p class="text-xs sm:text-sm font-black text-emerald-800 font-mono mt-0.5" x-text="formatoSoles(totalRecaudadoFiltrado)">
+            <div class="reporte-resumen__col reporte-resumen__col--pagado">
+                <p class="reporte-resumen__etiqueta">Total Pagado / Amortizado</p>
+                <p class="reporte-resumen__monto" x-text="formatoSoles(totalRecaudadoFiltrado)">
                     S/ {{ number_format($totalRecaudado, 2) }}
                 </p>
-                <p class="text-[8px] text-emerald-700 mt-0.5 font-medium">
-                    <span class="font-bold font-mono" x-text="porcentajeRecaudadoGeneral + '% amortizado a SUNAT'"></span>
-                </p>
+                <p class="reporte-resumen__nota" x-text="porcentajeRecaudadoGeneral + '% amortizado a SUNAT'"></p>
             </div>
-            <div class="pl-2">
-                <p class="text-[8.5px] uppercase font-bold text-rose-700 tracking-wider">Saldo Pendiente de Pago</p>
-                <p class="text-xs sm:text-sm font-black text-rose-700 font-mono mt-0.5" x-text="formatoSoles(totalSaldoFiltrado)">
+            <div class="reporte-resumen__col reporte-resumen__col--pendiente">
+                <p class="reporte-resumen__etiqueta">Saldo Pendiente de Pago</p>
+                <p class="reporte-resumen__monto" x-text="formatoSoles(totalSaldoFiltrado)">
                     S/ {{ number_format($totalSaldoPorCobrar, 2) }}
                 </p>
-                <p class="text-[8px] text-rose-600 mt-0.5 font-medium">
-                    <span class="font-bold font-mono" x-text="(100 - porcentajeRecaudadoGeneral) + '% por regularizar ante SUNAT'"></span>
-                </p>
+                <p class="reporte-resumen__nota" x-text="(100 - porcentajeRecaudadoGeneral) + '% por regularizar ante SUNAT'"></p>
             </div>
         </div>
     </x-reportes.membrete>
@@ -737,7 +730,7 @@
     </div>
 
     {{-- ═══════════════════════════════ PIE DE PÁGINA PARA IMPRESIÓN (FIRMAS Y CONFORMIDAD) ═══════════════════════════════ --}}
-    <div class="hidden print-only" style="break-inside: avoid; page-break-inside: avoid; margin-top: 50px;">
+    <div class="hidden print-only" style="break-inside: avoid; page-break-inside: avoid; margin-top: 18mm;">
         <div class="grid grid-cols-2 gap-16 text-center text-xs">
             <div class="flex flex-col items-center">
                 <div class="w-64 border-t border-slate-800 pt-2">
