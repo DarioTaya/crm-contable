@@ -39,9 +39,13 @@ class TipoTributoSunatTest extends TestCase
 
     public function test_renta_del_regimen_y_codigos_anteriores_caen_en_su_declaracion(): void
     {
-        $this->assertSame(TipoTributoSunat::RentaMype, TipoTributoSunat::rentaDelRegimen(RegimenTributario::Mype));
+        $this->assertSame(TipoTributoSunat::RentaMype, TipoTributoSunat::rentaDelRegimen(RegimenTributario::Rmt));
+        $this->assertSame(TipoTributoSunat::RentaMype, TipoTributoSunat::rentaDelRegimen('RMT'));
+        $this->assertSame(TipoTributoSunat::RentaMype, TipoTributoSunat::rentaDelRegimen('MYPE'));
         $this->assertSame(TipoTributoSunat::RentaEspecial, TipoTributoSunat::rentaDelRegimen('RER'));
-        $this->assertSame(TipoTributoSunat::RentaGeneral, TipoTributoSunat::rentaDelRegimen(RegimenTributario::General));
+        $this->assertSame(TipoTributoSunat::RentaGeneral, TipoTributoSunat::rentaDelRegimen(RegimenTributario::Rg));
+        $this->assertSame(TipoTributoSunat::RentaGeneral, TipoTributoSunat::rentaDelRegimen('RG'));
+        $this->assertSame(TipoTributoSunat::RentaGeneral, TipoTributoSunat::rentaDelRegimen('GENERAL'));
         $this->assertNull(TipoTributoSunat::rentaDelRegimen(RegimenTributario::Rus));
         $this->assertNull(TipoTributoSunat::rentaDelRegimen(null));
 

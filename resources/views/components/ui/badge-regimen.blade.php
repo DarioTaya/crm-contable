@@ -8,7 +8,7 @@
 @php
     $regimen = $regimen instanceof \App\Enums\RegimenTributario
         ? $regimen
-        : \App\Enums\RegimenTributario::tryFrom((string) $regimen);
+        : \App\Enums\RegimenTributario::tryFromNormalizado((string) $regimen);
 @endphp
 
 @if ($regimen)

@@ -48,7 +48,7 @@ enum TipoTributoSunat: string
             self::Igv18 => 'IGV 18%',
             self::Igv105 => 'IGV 10.5%',
             self::RentaEspecial => 'Renta RER 1.5%',
-            self::RentaMype => 'Renta MYPE 1%',
+            self::RentaMype => 'Renta RMT 1%',
             self::RentaGeneral => 'Renta General',
             self::RentaRegularizacion => 'Renta Regularización',
             self::RentaCuarta => 'Renta 4ta',
@@ -97,8 +97,9 @@ enum TipoTributoSunat: string
 
         return match ($norm) {
             'RER' => self::RentaEspecial,
-            'GENERAL', 'RG' => self::RentaGeneral,
+            'RG', 'GENERAL' => self::RentaGeneral,
             'RUS', 'NRUS' => null,
+            'RMT', 'MYPE' => self::RentaMype,
             default => self::RentaMype,
         };
     }

@@ -372,7 +372,7 @@
                         </div>
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wider text-gray-400">Régimen Tributario</dt>
-                            <dd class="mt-1 text-sm text-gray-900" title="{{ $cliente->regimen_tributario?->nombreOficial() }}">{{ $cliente->regimen_tributario?->value }}</dd>
+                            <dd class="mt-1 text-sm font-medium text-gray-900" title="{{ $cliente->regimen_tributario?->nombreOficial() }}">{{ $cliente->regimen_tributario?->etiquetaCompleta() ?? '—' }}</dd>
                         </div>
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wider text-gray-400">Correo</dt>
@@ -628,7 +628,7 @@
                                         class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20">
                                     @foreach (\App\Enums\RegimenTributario::cases() as $reg)
                                         <option value="{{ $reg->value }}" @selected(old('regimen_tributario', $cliente->regimen_tributario?->value) === $reg->value)>
-                                            {{ $reg->value }} — {{ $reg->nombreOficial() }}
+                                            {{ $reg->etiquetaCompleta() }}
                                         </option>
                                     @endforeach
                                 </select>

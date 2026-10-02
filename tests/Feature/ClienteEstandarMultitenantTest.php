@@ -71,7 +71,7 @@ class ClienteEstandarMultitenantTest extends TestCase
         $cliente = Cliente::create([
             'razon_social' => 'SIN ESTUDIO EXPLICITO SAC',
             'ruc' => '20999999999',
-            'regimen_tributario' => RegimenTributario::Mype,
+            'regimen_tributario' => RegimenTributario::Rmt,
             'estado' => EstadoCliente::Activo,
         ]);
 
@@ -133,12 +133,12 @@ class ClienteEstandarMultitenantTest extends TestCase
 
     public function test_solo_los_regimenes_con_libros_electronicos_llevan_balances(): void
     {
-        $conBalances = Cliente::factory()->paraEstudio($this->estudioA)->regimen(RegimenTributario::General)->create();
+        $conBalances = Cliente::factory()->paraEstudio($this->estudioA)->regimen(RegimenTributario::Rg)->create();
         $sinBalances = Cliente::factory()->paraEstudio($this->estudioA)->regimen(RegimenTributario::Rus)->create();
 
         $this->assertTrue($conBalances->llevaBalances());
         $this->assertFalse($sinBalances->llevaBalances());
-        $this->assertSame(['MYPE', 'General'], RegimenTributario::valoresConLibrosElectronicos());
+        $this->assertSame(['RMT', 'RG'], RegimenTributario::valoresConLibrosElectronicos());
     }
 
     public function test_el_regimen_invalido_es_rechazado_por_la_validacion(): void

@@ -245,7 +245,7 @@ class CronogramaSunatTest extends TestCase
 
         $response->assertRedirect();
         $this->assertTrue($cliente->fresh()->es_buen_contribuyente);
-        $this->assertSame(RegimenTributario::General, $cliente->fresh()->regimen_tributario);
+        $this->assertSame(RegimenTributario::Rg, $cliente->fresh()->regimen_tributario);
     }
 
     public function test_dashboard_uses_cronograma_period_and_shows_alertas(): void

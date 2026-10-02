@@ -38,6 +38,7 @@ class Estudio extends Model
         'ciudad',
         'logo_path',
         'isotipo_path',
+        'logo_reportes_path',
         'sidebar_display',
         'activo',
         'configuracion',
@@ -81,6 +82,27 @@ class Estudio extends Model
     }
 
     /**
+     * URL pública del logotipo para documentos e impresión (fondo claro), o null si no se ha subido.
+     */
+    public function logoReportesUrl(): ?string
+    {
+        if (! empty($this->logo_reportes_path) && Storage::disk('public')->exists($this->logo_reportes_path)) {
+            return asset('storage/'.$this->logo_reportes_path);
+        }
+
+        return null;
+    }
+
+    /**
+     * Logotipo preferente para documentos impresos, membretes y PDFs.
+     * Prioriza el logotipo para fondo claro y recurre al logotipo principal.
+     */
+    public function logoDocumentosUrl(): ?string
+    {
+        return $this->logoReportesUrl() ?? $this->logoUrl();
+    }
+
+    /**
      * Nombre original del archivo del logotipo o nombre base guardado.
      */
     public function logoNombreOriginal(): ?string
@@ -90,6 +112,18 @@ class Estudio extends Model
         }
 
         return $this->logo_path ? basename($this->logo_path) : null;
+    }
+
+    /**
+     * Nombre original del archivo del logotipo para reportes o nombre base guardado.
+     */
+    public function logoReportesNombreOriginal(): ?string
+    {
+        if (! empty($this->configuracion['logo_reportes_nombre_original'])) {
+            return $this->configuracion['logo_reportes_nombre_original'];
+        }
+
+        return $this->logo_reportes_path ? basename($this->logo_reportes_path) : null;
     }
 
     /**

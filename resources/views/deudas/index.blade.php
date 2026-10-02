@@ -22,9 +22,11 @@
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
-            color: #000000 !important;
+            color: #0f172a !important;
             width: 100% !important;
             max-width: 100% !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
 
         .print-only {
@@ -34,40 +36,68 @@
         .print-table {
             width: 100% !important;
             border-collapse: collapse !important;
-            font-size: 9.5pt !important;
+            font-size: 8.5pt !important;
         }
 
         .print-table th,
         .print-table td {
             border: 1px solid #cbd5e1 !important;
-            padding: 5px 7px !important;
+            padding: 4px 6px !important;
             color: #0f172a !important;
         }
 
         .print-table th {
-            background-color: #f1f5f9 !important;
+            background-color: #f8fafc !important;
             font-weight: 700 !important;
             text-transform: uppercase !important;
-            font-size: 8pt !important;
-            letter-spacing: 0.05em !important;
+            font-size: 7.5pt !important;
+            letter-spacing: 0.04em !important;
+        }
+
+        .print-table thead {
+            display: table-header-group !important;
+        }
+
+        .print-table tfoot {
+            display: table-footer-group !important;
         }
 
         .print-table tr {
             page-break-inside: avoid !important;
+            break-inside: avoid !important;
         }
 
         .print-badge {
             border: 1px solid #94a3b8 !important;
             background: #f8fafc !important;
             color: #0f172a !important;
-            padding: 1px 4px !important;
+            padding: 0.5px 3px !important;
             border-radius: 3px !important;
-            font-size: 8pt !important;
+            font-size: 7.5pt !important;
             font-weight: 600 !important;
         }
 
+        .abonos-subtable {
+            width: 100% !important;
+            border-collapse: collapse !important;
+        }
+
+        .abonos-subtable th {
+            background-color: #f1f5f9 !important;
+            border: 1px solid #cbd5e1 !important;
+            padding: 3px 5px !important;
+            font-size: 7pt !important;
+            color: #334155 !important;
+        }
+
+        .abonos-subtable td {
+            border: 1px solid #e2e8f0 !important;
+            padding: 3px 5px !important;
+            font-size: 7.5pt !important;
+        }
+
         @page {
-            margin: 1cm 0.8cm;
+            margin: 5mm 6mm;
             size: landscape;
         }
     }
@@ -86,27 +116,36 @@
 
     {{-- ═══════════════════════════════ MEMBRETE OFICIAL PARA IMPRESIÓN (PDF) ═══════════════════════════════ --}}
     <x-reportes.membrete
-        titulo="Reporte Consolidado de Deudas Tributarias (SUNAT)"
-        subtitulo="Seguimiento de Fraccionamientos, Cuotas de IGV Justo y Obligaciones Mensuales Pendientes"
-        badge="Documento de Auditoría y Cobranza">
-        {{-- Resumen ejecutivo en impresión --}}
-        <div class="mt-4 grid grid-cols-3 gap-3 border border-gray-300 rounded p-2.5 text-center bg-gray-50">
-            <div>
-                <p class="text-[9px] uppercase font-bold text-gray-500 tracking-wider">Deuda Histórica Registrada</p>
-                <p class="text-sm font-black text-gray-900 font-mono mt-0.5" x-text="formatoSoles(totalDeudaFiltrada)">
+        titulo="Reporte de Impuestos Pendientes de Pago (SUNAT)"
+        subtitulo="Estado de Obligaciones Tributarias, Fraccionamientos y Cuotas Pendientes de Regularización"
+        badge="Estado de Cuenta Tributario">
+        {{-- Resumen ejecutivo ultra-compacto y formal para impresión / PDF (1 sola línea) --}}
+        <div class="mt-2 grid grid-cols-3 gap-2 rounded-lg border border-slate-300 bg-slate-50/90 p-1.5 text-center text-xs">
+            <div class="border-r border-slate-200/90 pr-2">
+                <p class="text-[8.5px] uppercase font-bold text-slate-500 tracking-wider">Total Impuestos Declarados</p>
+                <p class="text-xs sm:text-sm font-black text-slate-900 font-mono mt-0.5" x-text="formatoSoles(totalDeudaFiltrada)">
                     S/ {{ number_format($totalDeudaHistorica, 2) }}
                 </p>
-            </div>
-            <div>
-                <p class="text-[9px] uppercase font-bold text-gray-600 tracking-wider">Total Recaudado / Amortizado</p>
-                <p class="text-sm font-black text-gray-900 font-mono mt-0.5" x-text="formatoSoles(totalRecaudadoFiltrado)">
-                    S/ {{ number_format($totalRecaudado, 2) }}
+                <p class="text-[8px] text-slate-500 mt-0.5">
+                    <span class="font-semibold text-slate-700" x-text="deudasVisiblesCount + ' obligaciones registradas'"></span>
                 </p>
             </div>
-            <div>
-                <p class="text-[9px] uppercase font-bold text-red-700 tracking-wider">Saldo Pendiente por Cobrar</p>
-                <p class="text-sm font-black text-red-700 font-mono mt-0.5" x-text="formatoSoles(totalSaldoFiltrado)">
+            <div class="border-r border-slate-200/90 px-2">
+                <p class="text-[8.5px] uppercase font-bold text-emerald-700 tracking-wider">Total Pagado / Amortizado</p>
+                <p class="text-xs sm:text-sm font-black text-emerald-800 font-mono mt-0.5" x-text="formatoSoles(totalRecaudadoFiltrado)">
+                    S/ {{ number_format($totalRecaudado, 2) }}
+                </p>
+                <p class="text-[8px] text-emerald-700 mt-0.5 font-medium">
+                    <span class="font-bold font-mono" x-text="porcentajeRecaudadoGeneral + '% amortizado a SUNAT'"></span>
+                </p>
+            </div>
+            <div class="pl-2">
+                <p class="text-[8.5px] uppercase font-bold text-rose-700 tracking-wider">Saldo Pendiente de Pago</p>
+                <p class="text-xs sm:text-sm font-black text-rose-700 font-mono mt-0.5" x-text="formatoSoles(totalSaldoFiltrado)">
                     S/ {{ number_format($totalSaldoPorCobrar, 2) }}
+                </p>
+                <p class="text-[8px] text-rose-600 mt-0.5 font-medium">
+                    <span class="font-bold font-mono" x-text="(100 - porcentajeRecaudadoGeneral) + '% por regularizar ante SUNAT'"></span>
                 </p>
             </div>
         </div>
@@ -127,7 +166,7 @@
                 </span>
             </div>
             <p class="mt-1 text-xs text-gray-500">
-                Auditoría financiera de cuotas tributarias con amortizaciones parciales y seguimiento de saldos en tiempo real.
+                Control y seguimiento de obligaciones tributarias con amortizaciones parciales y saldos pendientes con SUNAT.
             </p>
         </div>
 
@@ -177,12 +216,12 @@
     </div>
 
     {{-- ═══════════════════════════════ TARJETAS DE RESUMEN FINANCIERO (Mercury / Stripe) ═══════════════════════════════ --}}
-    <div class="mb-6 relative z-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {{-- Total Deuda Histórica --}}
+    <div class="no-print mb-6 relative z-10 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {{-- Total Impuestos Declarados --}}
         <div class="relative overflow-hidden rounded-2xl border border-gray-200/90 bg-white p-5 shadow-xs transition hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-[11px] uppercase font-bold text-gray-500 tracking-wider">Deuda Histórica Total</p>
+                    <p class="text-[11px] uppercase font-bold text-gray-500 tracking-wider">Total Impuestos Declarados</p>
                     <p class="text-2xl sm:text-3xl font-black text-gray-900 mt-1 font-mono tracking-tight">
                         <span x-text="formatoSoles(totalDeudaFiltrada)">S/ {{ number_format($totalDeudaHistorica, 2) }}</span>
                     </p>
@@ -194,16 +233,16 @@
                 </div>
             </div>
             <div class="mt-3 flex items-center justify-between text-[11px] text-gray-500 border-t border-gray-100 pt-2.5">
-                <span>Total pasivo registrado</span>
+                <span>Obligaciones registradas</span>
                 <span class="font-bold text-gray-700" x-text="deudasVisiblesCount + ' obligaciones'"></span>
             </div>
         </div>
 
-        {{-- Total Recaudado / Amortizado --}}
+        {{-- Total Pagado / Amortizado --}}
         <div class="relative overflow-hidden rounded-2xl border border-emerald-200/90 bg-white p-5 shadow-xs transition hover:shadow-md">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-[11px] uppercase font-bold text-emerald-600 tracking-wider">Total Recaudado / Pagado</p>
+                    <p class="text-[11px] uppercase font-bold text-emerald-600 tracking-wider">Total Pagado / Amortizado</p>
                     <p class="text-2xl sm:text-3xl font-black text-emerald-700 mt-1 font-mono tracking-tight">
                         <span x-text="formatoSoles(totalRecaudadoFiltrado)">S/ {{ number_format($totalRecaudado, 2) }}</span>
                     </p>
@@ -215,16 +254,16 @@
                 </div>
             </div>
             <div class="mt-3 flex items-center justify-between text-[11px] text-emerald-600 border-t border-emerald-100/70 pt-2.5">
-                <span>Porcentaje amortizado</span>
+                <span>Amortizado a SUNAT</span>
                 <span class="font-black font-mono" x-text="porcentajeRecaudadoGeneral + '%'"></span>
             </div>
         </div>
 
-        {{-- Saldo Pendiente Por Cobrar --}}
+        {{-- Saldo Pendiente de Pago --}}
         <div class="relative overflow-hidden rounded-2xl border border-rose-200/90 bg-white p-5 shadow-xs transition hover:shadow-md ring-1 ring-rose-500/10">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-[11px] uppercase font-bold text-rose-600 tracking-wider">Saldo Pendiente Por Cobrar</p>
+                    <p class="text-[11px] uppercase font-bold text-rose-600 tracking-wider">Saldo Pendiente de Pago</p>
                     <p class="text-2xl sm:text-3xl font-black text-rose-700 mt-1 font-mono tracking-tight">
                         <span x-text="formatoSoles(totalSaldoFiltrado)">S/ {{ number_format($totalSaldoPorCobrar, 2) }}</span>
                     </p>
@@ -236,8 +275,8 @@
                 </div>
             </div>
             <div class="mt-3 flex items-center justify-between text-[11px] text-rose-600 border-t border-rose-100/70 pt-2.5">
-                <span>Riesgo en cobranza</span>
-                <span class="font-black font-mono" x-text="(100 - porcentajeRecaudadoGeneral) + '% por amortizar'"></span>
+                <span>Pendiente de amortizar</span>
+                <span class="font-black font-mono" x-text="(100 - porcentajeRecaudadoGeneral) + '% por regularizar ante SUNAT'"></span>
             </div>
         </div>
     </div>
@@ -464,8 +503,8 @@
                             <th class="py-3 px-3 text-center">Periodo</th>
                             <th class="py-3 px-3 text-left">Tipo de Tributo (SUNAT)</th>
                             <th class="py-3 px-3 text-center">Vencimiento</th>
-                            <th class="py-3 px-3 text-right">Deuda Original</th>
-                            <th class="py-3 px-3 text-right">Total Abonado</th>
+                            <th class="py-3 px-3 text-right">Importe Declarado</th>
+                            <th class="py-3 px-3 text-right">Total Pagado</th>
                             <th class="py-3 px-4 text-right">Saldo Pendiente</th>
                             <th class="no-print py-3 px-3 text-center action-cell">Acciones</th>
                         </tr>
@@ -612,7 +651,8 @@
                         {{-- ═══════════════ ACORDEÓN: HISTORIAL DE PAGOS DE ESTA DEUDA ═══════════════ --}}
                         <tr x-show="isExpanded({{ $deuda->id }}) && esDeudaVisible({{ $deuda->id }})"
                             x-cloak
-                            class="no-print bg-slate-50/80 border-b border-gray-200 transition-all">
+                            :class="{'no-print': !isExpanded({{ $deuda->id }}) || !esDeudaVisible({{ $deuda->id }})}"
+                            class="bg-slate-50/80 border-b border-gray-200 transition-all">
                             <td colspan="8" class="p-0">
                                 <div class="px-6 py-4 border-t border-dashed border-gray-200">
                                     {{-- Tabla interna de abonos --}}
@@ -629,14 +669,14 @@
 
                                         <template x-if="(getDeudaLive({{ $deuda->id }})?.abonos?.length || 0) > 0">
                                             <div class="rounded-xl border border-gray-200 overflow-hidden bg-white shadow-2xs">
-                                                <table class="w-full text-left text-xs">
+                                                <table class="w-full text-left text-xs abonos-subtable">
                                                     <thead>
                                                         <tr class="bg-gray-100/80 border-b border-gray-200 text-gray-600 font-bold uppercase text-[10px] tracking-wider">
                                                             <th class="py-2 px-3 text-center w-12">N°</th>
                                                             <th class="py-2 px-3">Fecha de Pago</th>
                                                             <th class="py-2 px-3 text-right">Monto Abonado</th>
                                                             <th class="py-2 px-4">Observación / Referencia</th>
-                                                            <th class="py-2 px-3 text-center w-24">Acción</th>
+                                                            <th class="py-2 px-3 text-center w-24 no-print action-cell">Acción</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody class="divide-y divide-gray-100">
@@ -649,7 +689,7 @@
                                                                     <span x-text="abono.observacion || 'Sin observación especificada'"
                                                                           :class="{'text-gray-400 italic': !abono.observacion}"></span>
                                                                 </td>
-                                                                <td class="py-2.5 px-3 text-center">
+                                                                <td class="py-2.5 px-3 text-center no-print action-cell">
                                                                     <button
                                                                         @click="eliminarAbono({{ $deuda->id }}, abono.id, abono.monto_formateado)"
                                                                         type="button"
@@ -677,7 +717,7 @@
                     <tfoot>
                         <tr class="bg-gray-100/90 border-t-2 border-gray-300 font-bold text-xs text-gray-900">
                             <td colspan="4" class="py-3 px-4 uppercase text-[11px] tracking-wider text-gray-700">
-                                Total General Consolidado (Visible)
+                                Total General Consolidado
                             </td>
                             <td class="py-3 px-3 text-right font-mono" x-text="formatoSoles(totalDeudaFiltrada)">
                                 S/ {{ number_format($totalDeudaHistorica, 2) }}
@@ -696,25 +736,24 @@
         @endif
     </div>
 
-    {{-- ═══════════════════════════════ PIE DE PÁGINA PARA IMPRESIÓN (FIRMAS) ═══════════════════════════════ --}}
-    <div class="hidden print-only mt-12 pt-6">
+    {{-- ═══════════════════════════════ PIE DE PÁGINA PARA IMPRESIÓN (FIRMAS Y CONFORMIDAD) ═══════════════════════════════ --}}
+    <div class="hidden print-only" style="break-inside: avoid; page-break-inside: avoid; margin-top: 50px;">
         <div class="grid grid-cols-2 gap-16 text-center text-xs">
-            <div>
-                <div class="border-t border-gray-900 mx-12 pt-2">
-                    <p class="font-bold uppercase text-gray-900">{{ auth()->user()?->name ?? 'Contador Responsable' }}</p>
-                    <p class="text-[10px] text-gray-600">Área de Contabilidad y Tributación</p>
+            <div class="flex flex-col items-center">
+                <div class="w-64 border-t border-slate-800 pt-2">
+                    <p class="font-bold uppercase text-slate-900 text-[10.5px] tracking-tight">{{ auth()->user()?->name ?? 'Contador Responsable' }}</p>
+                    <p class="text-[9px] text-slate-600 font-medium">Asesoría Contable y Tributaria</p>
+                    <p class="text-[8px] text-slate-500 font-mono">{{ auth()->user()?->estudio?->nombre ?? 'Estudio Contable' }}</p>
                 </div>
             </div>
-            <div>
-                <div class="border-t border-gray-900 mx-12 pt-2">
-                    <p class="font-bold uppercase text-gray-900">Revisión / Auditoría Externa</p>
-                    <p class="text-[10px] text-gray-600">Conformidad de Obligaciones Tributarias</p>
+            <div class="flex flex-col items-center">
+                <div class="w-64 border-t border-slate-800 pt-2">
+                    <p class="font-bold uppercase text-slate-900 text-[10.5px] tracking-tight">Conformidad del Contribuyente</p>
+                    <p class="text-[9px] text-slate-600 font-medium">Firma y Sello de Recepción</p>
+                    <p class="text-[8px] text-slate-500">Control de Obligaciones SUNAT</p>
                 </div>
             </div>
         </div>
-        <p class="text-center text-[9px] text-gray-400 mt-8">
-            Reporte generado automáticamente desde CRM Contable &bull; Validez interna sujeta a cotejo con fichas SOL y buzón SUNAT.
-        </p>
     </div>
 
     {{-- ═══════════════════════════════ MODAL ENTERPRISE: REGISTRAR ABONO ═══════════════════════════════ --}}
@@ -872,6 +911,7 @@ function controlDeudas(initialDeudas, clientesConDeuda, totalDeudaHistorica, tot
         venceDesde: '',
         venceHasta: '',
         expandedRows: [],
+        fechaHoraImpresion: '',
 
         // Estado del Modal de Abonos
         showModal: false,
@@ -891,6 +931,11 @@ function controlDeudas(initialDeudas, clientesConDeuda, totalDeudaHistorica, tot
         abonoObs: '',
 
         init() {
+            this.actualizarFechaHoraImpresion();
+            window.addEventListener('beforeprint', () => {
+                this.actualizarFechaHoraImpresion();
+            });
+
             const motor = window.FiltrosControlDeudas;
             if (!motor) {
                 return;
@@ -1402,9 +1447,38 @@ function controlDeudas(initialDeudas, clientesConDeuda, totalDeudaHistorica, tot
             }
         },
 
+        actualizarFechaHoraImpresion() {
+            const ahora = new Date();
+            const dia = String(ahora.getDate()).padStart(2, '0');
+            const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+            const anio = ahora.getFullYear();
+
+            let horas = ahora.getHours();
+            const minutos = String(ahora.getMinutes()).padStart(2, '0');
+            const ampm = horas >= 12 ? 'PM' : 'AM';
+            horas = horas % 12;
+            horas = horas ? horas : 12;
+            const horasStr = String(horas).padStart(2, '0');
+
+            this.fechaHoraImpresion = `${dia}/${mes}/${anio} ${horasStr}:${minutos} ${ampm}`;
+        },
+
         // Imprimir / Exportar a PDF
         imprimirReporte() {
-            window.print();
+            this.actualizarFechaHoraImpresion();
+            const tituloPrevio = document.title;
+            const ahora = new Date();
+            const dia = String(ahora.getDate()).padStart(2, '0');
+            const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+            const anio = ahora.getFullYear();
+            document.title = `Reporte_Impuestos_Pendientes_SUNAT_${dia}_${mes}_${anio}`;
+
+            this.$nextTick(() => {
+                window.print();
+                setTimeout(() => {
+                    document.title = tituloPrevio;
+                }, 1000);
+            });
         }
     };
 }

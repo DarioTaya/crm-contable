@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ControlImpuestos\CalculadorLiquidacionService;
 use App\Traits\BelongsToEstudioViaCliente;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -29,7 +30,11 @@ class LiquidacionPeriodo extends Model
         'igv_compras',
         'igv_saldo_favor_anterior',
         'igv_retenciones',
+        'igv_retenciones_saldo_anterior',
+        'igv_retenciones_saldo_siguiente',
         'igv_percepciones',
+        'igv_percepciones_saldo_anterior',
+        'igv_percepciones_saldo_siguiente',
         'igv_saldo_favor_siguiente',
         'igv_resultante_pagar',
         'renta_base_ingresos',
@@ -37,8 +42,18 @@ class LiquidacionPeriodo extends Model
         'renta_calculada',
         'renta_saldo_favor_anterior',
         'renta_compensacion_itan',
+        'renta_itan_saldo_anterior',
+        'renta_itan_saldo_siguiente',
         'renta_retenciones',
         'renta_resultante_pagar',
+        'renta_saldo_favor_siguiente',
+        'plame_essalud_base',
+        'plame_essalud_a_pagar',
+        'plame_onp_a_pagar',
+        'plame_renta_4ta_base',
+        'plame_renta_4ta_a_pagar',
+        'plame_renta_5ta_a_pagar',
+        'plame_afp_a_pagar',
         'notas_liquidacion',
     ];
 
@@ -56,7 +71,11 @@ class LiquidacionPeriodo extends Model
             'igv_compras' => 'decimal:2',
             'igv_saldo_favor_anterior' => 'decimal:2',
             'igv_retenciones' => 'decimal:2',
+            'igv_retenciones_saldo_anterior' => 'decimal:2',
+            'igv_retenciones_saldo_siguiente' => 'decimal:2',
             'igv_percepciones' => 'decimal:2',
+            'igv_percepciones_saldo_anterior' => 'decimal:2',
+            'igv_percepciones_saldo_siguiente' => 'decimal:2',
             'igv_saldo_favor_siguiente' => 'decimal:2',
             'igv_resultante_pagar' => 'decimal:2',
             'renta_base_ingresos' => 'decimal:2',
@@ -64,8 +83,18 @@ class LiquidacionPeriodo extends Model
             'renta_calculada' => 'decimal:2',
             'renta_saldo_favor_anterior' => 'decimal:2',
             'renta_compensacion_itan' => 'decimal:2',
+            'renta_itan_saldo_anterior' => 'decimal:2',
+            'renta_itan_saldo_siguiente' => 'decimal:2',
             'renta_retenciones' => 'decimal:2',
             'renta_resultante_pagar' => 'decimal:2',
+            'renta_saldo_favor_siguiente' => 'decimal:2',
+            'plame_essalud_base' => 'decimal:2',
+            'plame_essalud_a_pagar' => 'decimal:2',
+            'plame_onp_a_pagar' => 'decimal:2',
+            'plame_renta_4ta_base' => 'decimal:2',
+            'plame_renta_4ta_a_pagar' => 'decimal:2',
+            'plame_renta_5ta_a_pagar' => 'decimal:2',
+            'plame_afp_a_pagar' => 'decimal:2',
         ];
     }
 
@@ -80,62 +109,10 @@ class LiquidacionPeriodo extends Model
     }
 
     /**
-     * Recalcula la determinación de IGV y Renta conforme a la técnica del PDT 621.
+     * Recalcula la determinación de IGV, Renta y PLAME conforme a la técnica oficial SUNAT.
      */
-    public function recalcularDeterminacion(): void
+    public function recalcularDeterminacion(?Cliente $cliente = null): void
     {
-        // 1. IGV: Si es zona de Selva (Ley de Amazonía 27037), no genera débito ni pago de IGV
-        if ($this->es_zona_selva) {
-            $this->igv_ventas = 0.00;
-            $this->igv_resultante_pagar = 0.00;
-            $this->igv_saldo_favor_siguiente = 0.00;
-        } else {
-            // Débito y Crédito estándar
-            if ((float) $this->ventas_base > 0 && (float) $this->igv_ventas <= 0) {
-                $this->igv_ventas = round((float) $this->ventas_base * 0.18, 2);
-            }
-            if ((float) $this->compras_base > 0 && (float) $this->igv_compras <= 0) {
-                $this->igv_compras = round((float) $this->compras_base * 0.18, 2);
-            }
-
-            $debito = (float) ($this->igv_ventas ?? 0);
-            $credito = (float) ($this->igv_compras ?? 0);
-            $saldoAnterior = (float) ($this->igv_saldo_favor_anterior ?? 0);
-
-            $diferencia = $debito - $credito - $saldoAnterior;
-
-            if ($diferencia > 0) {
-                $retenciones = (float) ($this->igv_retenciones ?? 0);
-                $percepciones = (float) ($this->igv_percepciones ?? 0);
-                $pagar = max(0.00, round($diferencia - $retenciones - $percepciones, 2));
-
-                $this->igv_resultante_pagar = $pagar;
-                $this->igv_saldo_favor_siguiente = 0.00;
-            } else {
-                $this->igv_resultante_pagar = 0.00;
-                $this->igv_saldo_favor_siguiente = round(abs($diferencia), 2);
-            }
-        }
-
-        // 2. Renta: Ingresos netos del mes (Ventas gravadas + Ventas no gravadas)
-        $totalVentas = (float) $this->ventas_base + (float) $this->ventas_no_gravadas;
-        if ((float) $this->renta_base_ingresos <= 0 && $totalVentas > 0) {
-            $this->renta_base_ingresos = round($totalVentas, 2);
-        }
-
-        if ((float) $this->renta_base_ingresos > 0 && (float) $this->renta_calculada <= 0 && (float) $this->renta_tasa > 0) {
-            $tasa = (float) $this->renta_tasa;
-            // Si viene en porcentaje ej 1.0 ó 1.5, convertir
-            $factor = $tasa > 0.1 ? ($tasa / 100) : $tasa;
-            $this->renta_calculada = round((float) $this->renta_base_ingresos * $factor, 2);
-        }
-
-        $rentaBruta = (float) ($this->renta_calculada ?? 0);
-        $compensacionSaldo = (float) ($this->renta_saldo_favor_anterior ?? 0);
-        $compensacionItan = (float) ($this->renta_compensacion_itan ?? 0);
-        $retenciones3ra = (float) ($this->renta_retenciones ?? 0);
-
-        $rentaNeto = max(0.00, round($rentaBruta - $compensacionSaldo - $compensacionItan - $retenciones3ra, 2));
-        $this->renta_resultante_pagar = $rentaNeto;
+        app(CalculadorLiquidacionService::class)->determinar($this, $cliente);
     }
 }

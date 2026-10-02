@@ -217,4 +217,74 @@ class EstudioBrandingTest extends TestCase
         $response->assertStatus(422);
         $response->assertJsonValidationErrors(['logo']);
     }
+
+    public function test_admin_can_upload_and_delete_logo_reportes(): void
+    {
+        Storage::fake('public');
+
+        $file = UploadedFile::fake()->image('logo_reportes_impresion.png', 500, 200);
+
+        $payload = [
+            'razon_social' => 'Grupo DC Soluciones SAC',
+            'ruc' => '20601234567',
+            'representante' => 'Sebastian Taya Yucra',
+            'frecuencia_cron_horas' => 6,
+            'nivel_alerta_whatsapp' => 'Solo Altas',
+            'logo_reportes' => $file,
+        ];
+
+        $response = $this->actingAs($this->admin)->post(route('ajustes.update'), $payload, [
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure(['logo_reportes_url', 'logo_reportes_nombre']);
+
+        $this->estudio->refresh();
+        $this->assertNotNull($this->estudio->logo_reportes_path);
+        Storage::disk('public')->assertExists($this->estudio->logo_reportes_path);
+        $this->assertNotNull($this->estudio->logoReportesUrl());
+        $this->assertSame($this->estudio->logoReportesUrl(), $this->estudio->logoDocumentosUrl());
+
+        // Ahora eliminarlo
+        $deletePayload = [
+            'razon_social' => 'Grupo DC Soluciones SAC',
+            'ruc' => '20601234567',
+            'representante' => 'Sebastian Taya Yucra',
+            'frecuencia_cron_horas' => 6,
+            'nivel_alerta_whatsapp' => 'Solo Altas',
+            'eliminar_logo_reportes' => true,
+        ];
+
+        $deleteResponse = $this->actingAs($this->admin)->post(route('ajustes.update'), $deletePayload, [
+            'Accept' => 'application/json',
+        ]);
+
+        $deleteResponse->assertStatus(200);
+        $this->estudio->refresh();
+        $this->assertNull($this->estudio->logo_reportes_path);
+        $this->assertNull($this->estudio->logoReportesUrl());
+    }
+
+    public function test_estudio_logo_documentos_url_prioritizes_logo_reportes_over_standard_logo(): void
+    {
+        Storage::fake('public');
+
+        $logoPath = 'estudios/logos/1/dark_logo.png';
+        $reportesPath = 'estudios/logos_reportes/1/light_logo.png';
+
+        Storage::disk('public')->put($logoPath, 'dummy-dark');
+        Storage::disk('public')->put($reportesPath, 'dummy-light');
+
+        $this->estudio->update([
+            'logo_path' => $logoPath,
+            'logo_reportes_path' => $reportesPath,
+        ]);
+
+        $this->assertSame($this->estudio->logoReportesUrl(), $this->estudio->logoDocumentosUrl());
+
+        // Si se quita el de reportes, recurre al estándar
+        $this->estudio->update(['logo_reportes_path' => null]);
+        $this->assertSame($this->estudio->logoUrl(), $this->estudio->logoDocumentosUrl());
+    }
 }

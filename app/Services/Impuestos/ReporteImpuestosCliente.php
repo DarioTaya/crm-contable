@@ -112,7 +112,7 @@ class ReporteImpuestosCliente
         return Operacion::query()
             ->where('cliente_id', $cliente->id)
             ->whereIn('periodo', $periodos)
-            ->with(['deudasTributarias.abonos', 'abonosDeuda'])
+            ->with(['deudasTributarias.abonos', 'abonosDeuda', 'liquidacionPeriodo'])
             ->get()
             ->keyBy('periodo');
     }
@@ -135,53 +135,86 @@ class ReporteImpuestosCliente
     }
 
     /**
-     * @return list<array{codigo: string, monto: float, vencimiento: ?string, es_igv_justo: bool, pagos: list<array<string, mixed>>}>
+     * @return list<array{codigo: string, monto: float, vencimiento: ?string, es_igv_justo: bool, pagos: list<array<string, mixed>>, es_declarado?: bool, es_zona_selva?: bool, saldo_favor?: float}>
      */
     private function lineasDe(Operacion $operacion): array
     {
         $deudas = $operacion->deudasTributarias;
+        $liq = $operacion->liquidacionPeriodo;
+
+        $lineas = [];
 
         if ($deudas->isEmpty()) {
             $monto = (float) ($operacion->monto_deuda_inicial ?? 0);
-            if ($monto <= 0 && $operacion->abonosDeuda->isEmpty()) {
-                return [];
+            if ($monto > 0 || $operacion->abonosDeuda->isNotEmpty()) {
+                $codigo = $operacion->tributo_codigo ?: TipoTributoSunat::Igv18->value;
+                $lineas[] = [
+                    'codigo' => $codigo,
+                    'monto' => $monto,
+                    'vencimiento' => $operacion->vencimiento_deuda?->format('Y-m-d'),
+                    'es_igv_justo' => $codigo === TipoTributoSunat::Igv18->value && (bool) $operacion->es_igv_justo,
+                    'pagos' => $this->pagosDe($operacion->abonosDeuda),
+                ];
+            }
+        } else {
+            $deudasLista = $deudas->values();
+            $ids = $deudasLista->map(fn (DeudaTributaria $deuda): int => (int) $deuda->id)->all();
+            $huerfanos = $operacion->abonosDeuda->filter(
+                fn (AbonoDeuda $abono): bool => $abono->deuda_tributaria_id === null
+                    || ! in_array((int) $abono->deuda_tributaria_id, $ids, true)
+            );
+
+            foreach ($deudasLista as $deuda) {
+                $lineas[] = [
+                    'codigo' => (string) $deuda->tributo_codigo,
+                    'monto' => (float) $deuda->monto_deuda_inicial,
+                    'vencimiento' => $deuda->vencimiento_deuda?->format('Y-m-d'),
+                    'es_igv_justo' => (bool) $deuda->es_igv_justo,
+                    'pagos' => $this->pagosDe($deuda->abonos),
+                ];
             }
 
-            $codigo = $operacion->tributo_codigo ?: TipoTributoSunat::Igv18->value;
-
-            return [[
-                'codigo' => $codigo,
-                'monto' => $monto,
-                'vencimiento' => $operacion->vencimiento_deuda?->format('Y-m-d'),
-                'es_igv_justo' => $codigo === TipoTributoSunat::Igv18->value && (bool) $operacion->es_igv_justo,
-                'pagos' => $this->pagosDe($operacion->abonosDeuda),
-            ]];
+            if ($huerfanos->isNotEmpty()) {
+                $destino = $this->indiceDestino($lineas, $operacion->tributo_codigo);
+                if ($destino !== null) {
+                    $lineas[$destino]['pagos'] = $this->pagosDe(
+                        $deudasLista[$destino]->abonos->concat($huerfanos)->unique('id')
+                    );
+                }
+            }
         }
 
-        $deudasLista = $deudas->values();
-        $ids = $deudasLista->map(fn (DeudaTributaria $deuda): int => (int) $deuda->id)->all();
-        $huerfanos = $operacion->abonosDeuda->filter(
-            fn (AbonoDeuda $abono): bool => $abono->deuda_tributaria_id === null
-                || ! in_array((int) $abono->deuda_tributaria_id, $ids, true)
-        );
+        // Si existe liquidación guardada, incorporar informativamente los tributos determinados con saldo a favor o en cero
+        if ($liq) {
+            $codigosExistentes = array_column($lineas, 'codigo');
 
-        $lineas = [];
-        foreach ($deudasLista as $deuda) {
-            $lineas[] = [
-                'codigo' => (string) $deuda->tributo_codigo,
-                'monto' => (float) $deuda->monto_deuda_inicial,
-                'vencimiento' => $deuda->vencimiento_deuda?->format('Y-m-d'),
-                'es_igv_justo' => (bool) $deuda->es_igv_justo,
-                'pagos' => $this->pagosDe($deuda->abonos),
-            ];
-        }
+            // IGV 1011
+            if (! in_array(TipoTributoSunat::Igv18->value, $codigosExistentes, true) && (float) $liq->igv_resultante_pagar <= 0) {
+                $lineas[] = [
+                    'codigo' => TipoTributoSunat::Igv18->value,
+                    'monto' => 0.0,
+                    'vencimiento' => null,
+                    'es_igv_justo' => false,
+                    'pagos' => [],
+                    'es_declarado' => true,
+                    'es_zona_selva' => (bool) $liq->es_zona_selva,
+                    'saldo_favor' => (float) $liq->igv_saldo_favor_siguiente,
+                ];
+            }
 
-        if ($huerfanos->isNotEmpty()) {
-            $destino = $this->indiceDestino($lineas, $operacion->tributo_codigo);
-            if ($destino !== null) {
-                $lineas[$destino]['pagos'] = $this->pagosDe(
-                    $deudasLista[$destino]->abonos->concat($huerfanos)->unique('id')
-                );
+            // Renta del régimen
+            $rentaTributo = TipoTributoSunat::rentaDelRegimen($operacion->cliente?->regimen_tributario);
+            if ($rentaTributo && ! in_array($rentaTributo->value, $codigosExistentes, true) && (float) $liq->renta_resultante_pagar <= 0) {
+                $lineas[] = [
+                    'codigo' => $rentaTributo->value,
+                    'monto' => 0.0,
+                    'vencimiento' => null,
+                    'es_igv_justo' => false,
+                    'pagos' => [],
+                    'es_declarado' => true,
+                    'es_zona_selva' => false,
+                    'saldo_favor' => (float) $liq->renta_saldo_favor_siguiente,
+                ];
             }
         }
 
@@ -283,6 +316,35 @@ class ReporteImpuestosCliente
             }
 
             if ($this->centavos($linea['monto']) <= 0) {
+                if (! empty($linea['es_declarado'])) {
+                    $etiquetaSituacion = 'Declarado';
+                    if (! empty($linea['es_zona_selva'])) {
+                        $etiquetaSituacion = 'Exonerado (Selva)';
+                    } elseif (! empty($linea['saldo_favor']) && $linea['saldo_favor'] > 0) {
+                        $etiquetaSituacion = 'Saldo a favor (S/ '.number_format($linea['saldo_favor'], 2).')';
+                    }
+
+                    $periodos[] = [
+                        'periodo' => $periodo,
+                        'etiqueta' => self::MESES[$mes]['corto'].'-'.substr((string) $anio, -2),
+                        'mes' => self::MESES[$mes]['nombre'],
+                        'registrado' => true,
+                        'situacion' => 'al_dia',
+                        'situacion_etiqueta' => $etiquetaSituacion,
+                        'debe' => false,
+                        'es_igv_justo' => false,
+                        'determinado' => $this->soles(0),
+                        'vencimiento' => null,
+                        'cantidad_pagos' => 0,
+                        'pagos' => [],
+                        'fecha_cancelacion' => null,
+                        'saldo' => $this->soles(0),
+                        'pagado' => $this->soles(0),
+                    ];
+
+                    continue;
+                }
+
                 $periodos[] = $this->filaVacia($periodo, $anio, $mes, $esBaja, $linea['pagos']);
 
                 continue;

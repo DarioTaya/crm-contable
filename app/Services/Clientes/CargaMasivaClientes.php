@@ -262,8 +262,8 @@ class CargaMasivaClientes
         return match ($normalizado) {
             'rus', 'nrus', 'nuevo rus', 'nuevo regimen unico simplificado', 'regimen unico simplificado' => RegimenTributario::Rus->value,
             'rer', 'regimen especial', 'regimen especial de renta' => RegimenTributario::Rer->value,
-            'mype', 'rmt', 'regimen mype', 'regimen mype tributario' => RegimenTributario::Mype->value,
-            'general', 'rg', 'regimen general' => RegimenTributario::General->value,
+            'mype', 'rmt', 'regimen mype', 'regimen mype tributario' => RegimenTributario::Rmt->value,
+            'general', 'rg', 'regimen general' => RegimenTributario::Rg->value,
             default => null,
         };
     }
@@ -409,8 +409,8 @@ class CargaMasivaClientes
         $regimen = $this->canonRegimen($regimenCrudo);
         if ($regimen === null) {
             $errores[] = $regimenCrudo === ''
-                ? 'Indique el régimen: NRUS, RER, RMT o General. SUNAT no lo informa en el padrón del RUC.'
-                : 'El régimen "'.$regimenCrudo.'" no es válido. Use NRUS, RER, RMT o General.';
+                ? 'Indique el régimen: RUS, RER, RMT o RG. SUNAT no lo informa en el padrón del RUC.'
+                : 'El régimen "'.$regimenCrudo.'" no es válido. Use RUS, RER, RMT o RG.';
         }
 
         if ($correo !== '' && Validator::make(['correo' => $correo], ['correo' => ['email', 'max:255']])->fails()) {

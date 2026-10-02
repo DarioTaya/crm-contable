@@ -422,7 +422,7 @@ class ControlDeudasTest extends TestCase
         $response = $this->get(route('control_deudas.index'));
         $response->assertOk();
         $response->assertSee('IGV 18%');
-        $response->assertSee('Renta MYPE 1%');
+        $response->assertSee('Renta RMT 1%');
         $response->assertSee('EsSalud');
         $response->assertSee('800.00');
         $response->assertSee('200.00');
@@ -627,14 +627,14 @@ class ControlDeudasTest extends TestCase
 
         $tablero = $this->get(route('control_deudas.index'));
         $tablero->assertOk();
-        $tablero->assertSee('Renta MYPE 1%');
+        $tablero->assertSee('Renta RMT 1%');
         $tablero->assertSee('EsSalud');
         $tablero->assertDontSee('IGV 18%');
 
         $archivo = $this->get(route('control_deudas.archivadas'));
         $archivo->assertOk();
         $archivo->assertSee('IGV 18%');
-        $archivo->assertDontSee('Renta MYPE 1%');
+        $archivo->assertDontSee('Renta RMT 1%');
         $archivo->assertDontSee('EsSalud');
     }
 
@@ -733,6 +733,57 @@ class ControlDeudasTest extends TestCase
             $proceso->getExitCode(),
             $proceso->getOutput().$proceso->getErrorOutput(),
         );
+    }
+
+    public function test_pantalla_y_reporte_impresion_usan_terminologia_amigable_y_excluyen_tarjetas_duplicadas(): void
+    {
+        $response = $this->get(route('control_deudas.index'));
+        $response->assertOk();
+
+        // 1. Terminología amigable y orientada a cliente/contador
+        $response->assertSee('Total Pagado / Amortizado');
+        $response->assertSee('Saldo Pendiente de Pago');
+        $response->assertDontSee('Total Recaudado / Pagado');
+        $response->assertDontSee('Saldo Pendiente Por Cobrar');
+
+        // 2. Título humanizado y profesional para el reporte PDF / impresión
+        $response->assertSee('Reporte de Impuestos Pendientes de Pago (SUNAT)');
+        $response->assertSee('Estado de Cuenta Tributario');
+        $response->assertDontSee('Reporte Consolidado de Deudas Tributarias (SUNAT)');
+
+        // 3. Tarjetas interactivas en pantalla tienen no-print para no duplicarse en PDF
+        $response->assertSee('no-print mb-6 relative z-10 grid grid-cols-1 gap-4 sm:grid-cols-3', false);
+    }
+
+    public function test_reporte_impresion_cumple_con_especificaciones_de_diseno_y_firmas(): void
+    {
+        Operacion::create([
+            'estudio_id' => $this->estudio->id,
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '08-2026',
+            'tiene_deuda' => true,
+            'monto_deuda_inicial' => 1500.00,
+            'vencimiento_deuda' => '2026-09-30',
+        ]);
+
+        $response = $this->get(route('control_deudas.index'));
+        $response->assertOk();
+
+        // 1. La nota legal confidencial fue eliminada del pie de página
+        $response->assertDontSee('Reporte confidencial emitido desde el CRM Contable');
+        $response->assertDontSee('Validez interna sujeta a cotejo con la Clave SOL');
+
+        // 2. Línea de separación de firmas tiene holgura y altura adecuada
+        $response->assertSee('margin-top: 50px', false);
+        $response->assertSee('border-t border-slate-800 pt-2', false);
+        $response->assertSee('Conformidad del Contribuyente');
+
+        // 3. El acordeón de historial de pagos se imprime condicionalmente con :class
+        $response->assertSee(":class=\"{'no-print': !isExpanded(", false);
+        $response->assertSee('abonos-subtable', false);
+
+        // 4. Formato de hora en 12 horas con AM/PM dinámico
+        $response->assertSee('actualizarFechaHoraImpresion()', false);
     }
 
     private function rutaNode(): string

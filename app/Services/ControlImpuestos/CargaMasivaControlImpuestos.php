@@ -443,7 +443,7 @@ class CargaMasivaControlImpuestos
             if (count($rentasEnFila) > 1) {
                 $errores[] = [
                     'fila' => $numero,
-                    'mensaje' => "Fila {$numero}: no puede ingresar más de un tributo de renta mensual (RER, MYPE, General) para el mismo periodo.",
+                    'mensaje' => "Fila {$numero}: no puede ingresar más de un tributo de renta mensual (RER, RMT, RG) para el mismo periodo.",
                 ];
 
                 continue;

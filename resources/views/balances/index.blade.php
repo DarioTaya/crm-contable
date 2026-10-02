@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', "Control de Balances {$anio} — Régimen MYPE y General")
+@section('title', "Control de Balances {$anio} — Régimen RMT y RG")
 @section('header', 'Control de Balances')
 
 @section('content')
@@ -10,11 +10,11 @@
             <div class="flex items-center gap-3">
                 <h2 class="text-2xl font-bold tracking-tight text-gray-900">Control de Balances {{ $anio }}</h2>
                 <span class="rounded bg-indigo-100 border border-indigo-300 px-2 py-0.5 text-xs font-bold text-indigo-800">
-                    MYPE &bull; General
+                    RMT &bull; RG
                 </span>
             </div>
             <p class="mt-0.5 text-xs text-gray-500">
-                Balances mensuales del PLE para MYPE y General, y DJ Anual {{ $anio - 1 }}. SUNAT concede tres meses de atraso máximo.
+                Balances mensuales del PLE para RMT y RG, y DJ Anual {{ $anio - 1 }}. SUNAT concede tres meses de atraso máximo.
             </p>
         </div>
 
@@ -112,10 +112,10 @@
                  });
              }
          }">
-        {{-- KPI 1: Empresas MYPE / General --}}
+        {{-- KPI 1: Empresas RMT / RG --}}
         <div class="rounded-lg border border-gray-300 bg-white px-3.5 py-2 shadow-xs flex items-center justify-between">
             <div>
-                <p class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Empresas MYPE/General</p>
+                <p class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Empresas RMT / RG</p>
                 <p class="text-lg font-black text-gray-900 leading-tight" x-text="totalClientes">{{ $totalClientes }}</p>
             </div>
             <span class="text-xl">📊</span>
@@ -180,7 +180,7 @@
                             <span class="inline-flex h-5 min-w-[22px] px-1 items-center justify-center rounded bg-gray-300/80 border border-gray-400/60 text-[10px] font-mono font-black text-gray-800 shrink-0" title="Número Correlativo Original">N°</span>
                             <div class="min-w-0 flex-1">
                                 <span class="block text-[11px] font-black uppercase tracking-wider text-gray-800 truncate">CLIENTE / RUC</span>
-                                <span class="block text-[9px] font-normal text-gray-500">MYPE &bull; General</span>
+                                <span class="block text-[9px] font-normal text-gray-500">RMT &bull; RG</span>
                             </div>
                         </div>
                     </th>
@@ -211,7 +211,7 @@
             <tbody class="divide-y divide-gray-200 bg-white">
                 @forelse ($matrizClientes as $item)
                     @php
-                        $badgeColor = $item['cliente']->regimen_tributario === \App\Enums\RegimenTributario::General
+                        $badgeColor = ($item['cliente']->regimen_tributario === \App\Enums\RegimenTributario::Rg || $item['cliente']->regimen_tributario?->value === 'General')
                             ? 'bg-purple-100 text-purple-800 border-purple-200'
                             : 'bg-blue-100 text-blue-800 border-blue-200';
                     @endphp
@@ -503,7 +503,7 @@
                 @empty
                     <tr>
                         <td colspan="14" class="px-6 py-12 text-center text-gray-500">
-                            No hay clientes de régimen MYPE o General activos en el ejercicio fiscal {{ $anio }}.
+                            No hay clientes de régimen RMT o RG activos en el ejercicio fiscal {{ $anio }}.
                         </td>
                     </tr>
                 @endforelse
@@ -513,7 +513,7 @@
 
     {{-- Pie de Sábana --}}
     <div class="mt-3 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-400 gap-2 px-1">
-        <p>Mostrando {{ $totalClientes }} empresas con régimen MYPE o General &bull; 12 meses de balances + columna destacada DJ Anual {{ $anio - 1 }}.</p>
+        <p>Mostrando {{ $totalClientes }} empresas con régimen RMT o RG &bull; 12 meses de balances + columna destacada DJ Anual {{ $anio - 1 }}.</p>
         <p>Los cambios se guardan automáticamente por AJAX en tiempo real.</p>
     </div>
 

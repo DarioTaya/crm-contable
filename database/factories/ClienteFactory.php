@@ -92,7 +92,7 @@ class ClienteFactory extends Factory
      */
     public function conBalances(): static
     {
-        return $this->regimen(RegimenTributario::Mype);
+        return $this->regimen(RegimenTributario::Rmt);
     }
 
     public function buenContribuyente(): static

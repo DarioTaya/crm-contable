@@ -11,16 +11,22 @@ use App\Models\CronogramaSunat;
 use App\Models\DeudaTributaria;
 use App\Models\LiquidacionPeriodo;
 use App\Models\Operacion;
+use App\Services\ControlImpuestos\CalculadorLiquidacionService;
 use App\Services\ControlImpuestos\RegistrarTributoPeriodo;
 use App\Services\CronogramaSunatService;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ControlMensualController extends Controller
 {
-    public function __construct(private RegistrarTributoPeriodo $registroTributo) {}
+    public function __construct(
+        private RegistrarTributoPeriodo $registroTributo,
+        private CalculadorLiquidacionService $calculador,
+    ) {}
 
     /**
      * Muestra la Matriz Anual estilo Spreadsheet (Sábana de datos Excel).
@@ -52,19 +58,27 @@ class ControlMensualController extends Controller
             12 => ['corto' => 'DIC', 'nombre' => 'Diciembre'],
         ];
 
-        $kpis = $this->calcularKpis($anio);
+        $periodosAnio = $this->periodosDelAnio($anio);
+        $periodosConDiciembreAnterior = array_merge([sprintf('12-%d', $anio - 1)], $periodosAnio);
 
         // Cargar clientes vigentes en el año seleccionado ordenados por número.
-        // Se excluyen clientes que se retiraron ANTES del año en consulta.
+        // Se precarga diciembre del año anterior para arrastrar saldos a favor sin N+1 queries.
         $clientes = Cliente::query()
             ->vigentesEnEjercicio($anio)
-            ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $this->periodosDelAnio($anio))->with(['abonosDeuda', 'deudasTributarias.abonos', 'liquidacionPeriodo'])])
+            ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $periodosConDiciembreAnterior)->with(['abonosDeuda', 'deudasTributarias.abonos', 'liquidacionPeriodo'])])
             ->orderBy('numero')
             ->get();
 
-        $periodosAnio = $this->periodosDelAnio($anio);
+        $kpis = $this->calcularKpis($anio, $clientes);
+
         $cronogramasPdt = CronogramaSunat::query()
             ->where('tipo', 'pdt_621')
+            ->whereIn('periodo', $periodosAnio)
+            ->get()
+            ->keyBy('periodo');
+
+        $cronogramasSire = CronogramaSunat::query()
+            ->where('tipo', 'sire')
             ->whereIn('periodo', $periodosAnio)
             ->get()
             ->keyBy('periodo');
@@ -88,6 +102,13 @@ class ControlMensualController extends Controller
                 $vencimientoOficialPdt = $fechaOficialPdt?->format('Y-m-d') ?? '';
                 $vencimientoOficialPdtDmy = $fechaOficialPdt?->format('d/m/Y') ?? '';
 
+                $cronogramaSire = $cronogramasSire->get($periodo);
+                $fechaOficialSire = $cronogramaSire
+                    ? $cronogramaSire->getFechaPorDigito($cliente->ruc ?? $cliente->numero_documento, (bool) $cliente->es_buen_contribuyente)
+                    : null;
+                $vencimientoOficialSire = $fechaOficialSire?->format('Y-m-d') ?? '';
+                $vencimientoOficialSireDmy = $fechaOficialSire?->format('d/m/Y') ?? '';
+
                 $esBajaMes = ! $cliente->rindeEnPeriodo($periodo);
 
                 if ($esBajaMes) {
@@ -106,6 +127,8 @@ class ControlMensualController extends Controller
                         'notas' => 'Cliente no activo en este periodo (Baja del Estudio Contable)',
                         'vencimiento_oficial_pdt' => $vencimientoOficialPdt,
                         'vencimiento_oficial_pdt_dmy' => $vencimientoOficialPdtDmy,
+                        'vencimiento_oficial_sire' => $vencimientoOficialSire,
+                        'vencimiento_oficial_sire_dmy' => $vencimientoOficialSireDmy,
                     ];
 
                     continue;
@@ -127,7 +150,13 @@ class ControlMensualController extends Controller
 
                 $periodoAnterior = $m > 1 ? sprintf('%02d-%d', $m - 1, $anio) : sprintf('12-%d', $anio - 1);
                 $opAnterior = $opsMap->get($periodoAnterior);
-                $saldoFavorSugerido = (float) ($opAnterior?->liquidacionPeriodo?->igv_saldo_favor_siguiente ?? 0);
+                $liqAnterior = $opAnterior?->liquidacionPeriodo;
+
+                $saldoFavorSugerido = (float) ($liqAnterior?->igv_saldo_favor_siguiente ?? 0);
+                $retencionesSugeridas = (float) ($liqAnterior?->igv_retenciones_saldo_siguiente ?? 0);
+                $percepcionesSugeridas = (float) ($liqAnterior?->igv_percepciones_saldo_siguiente ?? 0);
+                $rentaSugerida = $m > 1 ? (float) ($liqAnterior?->renta_saldo_favor_siguiente ?? 0) : 0.00;
+                $itanSugerido = $m > 1 ? (float) ($liqAnterior?->renta_itan_saldo_siguiente ?? 0) : 0.00;
 
                 $liq = $op?->liquidacionPeriodo;
                 $liqData = $liq ? [
@@ -139,8 +168,12 @@ class ControlMensualController extends Controller
                     'compras_base' => (float) $liq->compras_base,
                     'igv_compras' => (float) $liq->igv_compras,
                     'igv_saldo_favor_anterior' => (float) $liq->igv_saldo_favor_anterior,
+                    'igv_retenciones_saldo_anterior' => (float) $liq->igv_retenciones_saldo_anterior,
                     'igv_retenciones' => (float) $liq->igv_retenciones,
+                    'igv_retenciones_saldo_siguiente' => (float) $liq->igv_retenciones_saldo_siguiente,
+                    'igv_percepciones_saldo_anterior' => (float) $liq->igv_percepciones_saldo_anterior,
                     'igv_percepciones' => (float) $liq->igv_percepciones,
+                    'igv_percepciones_saldo_siguiente' => (float) $liq->igv_percepciones_saldo_siguiente,
                     'igv_saldo_favor_siguiente' => (float) $liq->igv_saldo_favor_siguiente,
                     'igv_resultante_pagar' => (float) $liq->igv_resultante_pagar,
                     'renta_base_ingresos' => (float) $liq->renta_base_ingresos,
@@ -148,8 +181,18 @@ class ControlMensualController extends Controller
                     'renta_calculada' => (float) $liq->renta_calculada,
                     'renta_saldo_favor_anterior' => (float) $liq->renta_saldo_favor_anterior,
                     'renta_compensacion_itan' => (float) $liq->renta_compensacion_itan,
+                    'renta_itan_saldo_anterior' => (float) $liq->renta_itan_saldo_anterior,
+                    'renta_itan_saldo_siguiente' => (float) $liq->renta_itan_saldo_siguiente,
                     'renta_retenciones' => (float) $liq->renta_retenciones,
+                    'renta_saldo_favor_siguiente' => (float) $liq->renta_saldo_favor_siguiente,
                     'renta_resultante_pagar' => (float) $liq->renta_resultante_pagar,
+                    'plame_essalud_base' => (float) $liq->plame_essalud_base,
+                    'plame_essalud_a_pagar' => (float) $liq->plame_essalud_a_pagar,
+                    'plame_onp_a_pagar' => (float) $liq->plame_onp_a_pagar,
+                    'plame_renta_4ta_base' => (float) $liq->plame_renta_4ta_base,
+                    'plame_renta_4ta_a_pagar' => (float) $liq->plame_renta_4ta_a_pagar,
+                    'plame_renta_5ta_a_pagar' => (float) $liq->plame_renta_5ta_a_pagar,
+                    'plame_afp_a_pagar' => (float) $liq->plame_afp_a_pagar,
                     'notas_liquidacion' => (string) ($liq->notas_liquidacion ?? ''),
                 ] : null;
 
@@ -177,10 +220,16 @@ class ControlMensualController extends Controller
                     'vencimiento_deuda_dmy' => $op?->vencimiento_deuda ? $op->vencimiento_deuda->format('d/m/Y') : ($op?->es_igv_justo ? '' : $vencimientoOficialPdtDmy),
                     'vencimiento_oficial_pdt' => $vencimientoOficialPdt,
                     'vencimiento_oficial_pdt_dmy' => $vencimientoOficialPdtDmy,
+                    'vencimiento_oficial_sire' => $vencimientoOficialSire,
+                    'vencimiento_oficial_sire_dmy' => $vencimientoOficialSireDmy,
                     'saldo_pendiente' => $op ? $this->saldoDeudaMes($op) : 0,
                     'total_abonado' => $op ? $this->abonadoDeudaMes($op) : 0,
                     'operacion_id' => $op?->id,
                     'saldo_favor_anterior_sugerido' => $saldoFavorSugerido,
+                    'retenciones_saldo_anterior_sugerido' => $retencionesSugeridas,
+                    'percepciones_saldo_anterior_sugerido' => $percepcionesSugeridas,
+                    'renta_saldo_anterior_sugerido' => $rentaSugerida,
+                    'itan_saldo_anterior_sugerido' => $itanSugerido,
                     'liquidacion' => $liqData,
                     'deudas' => $op ? $this->arregloDeudas($op, $vencimientoOficialPdt, $vencimientoOficialPdtDmy) : [],
                     'abonos' => $op?->abonosDeuda ? $op->abonosDeuda->sortByDesc('fecha_pago')->map(fn ($abono) => [
@@ -258,9 +307,9 @@ class ControlMensualController extends Controller
     /**
      * Calcula los KPIs unificados para el año seleccionado.
      */
-    public function calcularKpis(int $anio): array
+    public function calcularKpis(int $anio, ?Collection $clientesExistentes = null): array
     {
-        $clientes = Cliente::query()
+        $clientes = $clientesExistentes ?? Cliente::query()
             ->vigentesEnEjercicio($anio)
             ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $this->periodosDelAnio($anio))])
             ->get();
@@ -631,14 +680,24 @@ class ControlMensualController extends Controller
             'compras_base' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'igv_compras' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'igv_saldo_favor_anterior' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_retenciones_saldo_anterior' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'igv_retenciones' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_percepciones_saldo_anterior' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'igv_percepciones' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'renta_base_ingresos' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'renta_tasa' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'renta_calculada' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'renta_saldo_favor_anterior' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'renta_compensacion_itan' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'renta_itan_saldo_anterior' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'renta_retenciones' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'plame_essalud_base' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'plame_essalud_a_pagar' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'plame_onp_a_pagar' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'plame_renta_4ta_base' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'plame_renta_4ta_a_pagar' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'plame_renta_5ta_a_pagar' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'plame_afp_a_pagar' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'renta_tributo_codigo' => ['nullable', 'string', 'max:20'],
             'vencimiento_deuda' => ['nullable', 'date'],
             'notas_liquidacion' => ['nullable', 'string', 'max:1000'],
@@ -650,154 +709,222 @@ class ControlMensualController extends Controller
             'periodo.regex' => 'El formato del periodo debe ser MM-AAAA.',
         ]);
 
-        $cliente = Cliente::findOrFail($validated['cliente_id']);
+        return DB::transaction(function () use ($validated, $request): JsonResponse {
+            $cliente = Cliente::findOrFail($validated['cliente_id']);
 
-        $operacion = Operacion::firstOrCreate(
-            [
+            $operacion = Operacion::firstOrCreate(
+                [
+                    'cliente_id' => $cliente->id,
+                    'periodo' => $validated['periodo'],
+                ],
+                [
+                    'estudio_id' => $cliente->estudio_id,
+                ]
+            );
+
+            if (! $operacion->estudio_id && $cliente->estudio_id) {
+                $operacion->estudio_id = $cliente->estudio_id;
+                $operacion->save();
+            }
+
+            $liquidacion = LiquidacionPeriodo::firstOrNew([
+                'operacion_id' => $operacion->id,
+            ]);
+
+            $liquidacion->fill([
+                'estudio_id' => $cliente->estudio_id,
                 'cliente_id' => $cliente->id,
                 'periodo' => $validated['periodo'],
-            ],
-            [
-                'estudio_id' => $cliente->estudio_id,
-            ]
-        );
+                'es_zona_selva' => $request->boolean('es_zona_selva'),
+                'ventas_base' => $validated['ventas_base'] ?? 0,
+                'igv_ventas' => $validated['igv_ventas'] ?? 0,
+                'ventas_no_gravadas' => $validated['ventas_no_gravadas'] ?? 0,
+                'compras_base' => $validated['compras_base'] ?? 0,
+                'igv_compras' => $validated['igv_compras'] ?? 0,
+                'igv_saldo_favor_anterior' => $validated['igv_saldo_favor_anterior'] ?? 0,
+                'igv_retenciones_saldo_anterior' => $validated['igv_retenciones_saldo_anterior'] ?? 0,
+                'igv_retenciones' => $validated['igv_retenciones'] ?? 0,
+                'igv_percepciones_saldo_anterior' => $validated['igv_percepciones_saldo_anterior'] ?? 0,
+                'igv_percepciones' => $validated['igv_percepciones'] ?? 0,
+                'renta_base_ingresos' => $validated['renta_base_ingresos'] ?? 0,
+                'renta_tasa' => $validated['renta_tasa'] ?? 0,
+                'renta_calculada' => $validated['renta_calculada'] ?? 0,
+                'renta_saldo_favor_anterior' => $validated['renta_saldo_favor_anterior'] ?? 0,
+                'renta_compensacion_itan' => $validated['renta_compensacion_itan'] ?? 0,
+                'renta_itan_saldo_anterior' => $validated['renta_itan_saldo_anterior'] ?? 0,
+                'renta_retenciones' => $validated['renta_retenciones'] ?? 0,
+                'plame_essalud_base' => $validated['plame_essalud_base'] ?? 0,
+                'plame_essalud_a_pagar' => $validated['plame_essalud_a_pagar'] ?? 0,
+                'plame_onp_a_pagar' => $validated['plame_onp_a_pagar'] ?? 0,
+                'plame_renta_4ta_base' => $validated['plame_renta_4ta_base'] ?? 0,
+                'plame_renta_4ta_a_pagar' => $validated['plame_renta_4ta_a_pagar'] ?? 0,
+                'plame_renta_5ta_a_pagar' => $validated['plame_renta_5ta_a_pagar'] ?? 0,
+                'plame_afp_a_pagar' => $validated['plame_afp_a_pagar'] ?? 0,
+                'notas_liquidacion' => $validated['notas_liquidacion'] ?? null,
+            ]);
 
-        if (! $operacion->estudio_id && $cliente->estudio_id) {
-            $operacion->estudio_id = $cliente->estudio_id;
-            $operacion->save();
-        }
+            $liquidacion->recalcularDeterminacion();
+            $liquidacion->save();
 
-        $liquidacion = LiquidacionPeriodo::firstOrNew([
-            'operacion_id' => $operacion->id,
-        ]);
+            // Propagación en cascada de arrastres de crédito a los siguientes meses del ejercicio
+            $this->calculador->propagarArrastreEnCascada($cliente, $validated['periodo']);
 
-        $liquidacion->fill([
-            'estudio_id' => $cliente->estudio_id,
-            'cliente_id' => $cliente->id,
-            'periodo' => $validated['periodo'],
-            'es_zona_selva' => $request->boolean('es_zona_selva'),
-            'ventas_base' => $validated['ventas_base'] ?? 0,
-            'igv_ventas' => $validated['igv_ventas'] ?? 0,
-            'ventas_no_gravadas' => $validated['ventas_no_gravadas'] ?? 0,
-            'compras_base' => $validated['compras_base'] ?? 0,
-            'igv_compras' => $validated['igv_compras'] ?? 0,
-            'igv_saldo_favor_anterior' => $validated['igv_saldo_favor_anterior'] ?? 0,
-            'igv_retenciones' => $validated['igv_retenciones'] ?? 0,
-            'igv_percepciones' => $validated['igv_percepciones'] ?? 0,
-            'renta_base_ingresos' => $validated['renta_base_ingresos'] ?? 0,
-            'renta_tasa' => $validated['renta_tasa'] ?? 0,
-            'renta_calculada' => $validated['renta_calculada'] ?? 0,
-            'renta_saldo_favor_anterior' => $validated['renta_saldo_favor_anterior'] ?? 0,
-            'renta_compensacion_itan' => $validated['renta_compensacion_itan'] ?? 0,
-            'renta_retenciones' => $validated['renta_retenciones'] ?? 0,
-            'notas_liquidacion' => $validated['notas_liquidacion'] ?? null,
-        ]);
-
-        $liquidacion->recalcularDeterminacion();
-        $liquidacion->save();
-
-        $cronogramaService = app(CronogramaSunatService::class);
-        $fechaOficialPdt = $cronogramaService->obtenerFechaVencimiento('pdt_621', $validated['periodo'], $cliente);
-        if (! $fechaOficialPdt) {
-            [$mesP, $anioP] = explode('-', $validated['periodo']);
-            $fechaOficialPdt = Carbon::create((int) $anioP, (int) $mesP, 1)->addMonth()->setDay(20);
-        }
-        $vencimientoOficialPdt = $fechaOficialPdt->format('Y-m-d');
-        $vencimientoOficialPdtDmy = $fechaOficialPdt->format('d/m/Y');
-
-        if ($request->boolean('actualizar_deudas', true)) {
-            // Vencimiento de IGV
-            $vencimientoIgv = $vencimientoOficialPdt;
-            if ($operacion->es_igv_justo) {
+            $cronogramaService = app(CronogramaSunatService::class);
+            $fechaOficialPdt = $cronogramaService->obtenerFechaVencimiento('pdt_621', $validated['periodo'], $cliente);
+            if (! $fechaOficialPdt) {
                 [$mesP, $anioP] = explode('-', $validated['periodo']);
-                $fechaBase = Carbon::create((int) $anioP, (int) $mesP, 1)->addMonths(3);
-                $periodoDestino = $fechaBase->format('m-Y');
-                $fechaProrrogada = $cronogramaService->obtenerFechaVencimiento('pdt_621', $periodoDestino, $cliente);
-                $vencimientoIgv = $fechaProrrogada ? $fechaProrrogada->format('Y-m-d') : $fechaBase->copy()->addMonth()->setDay(20)->format('Y-m-d');
+                $fechaOficialPdt = Carbon::create((int) $anioP, (int) $mesP, 1)->addMonth()->setDay(20);
+            }
+            $vencimientoOficialPdt = $fechaOficialPdt->format('Y-m-d');
+            $vencimientoOficialPdtDmy = $fechaOficialPdt->format('d/m/Y');
+
+            if ($request->boolean('actualizar_deudas', true)) {
+                // Vencimiento de IGV
+                $vencimientoIgv = $vencimientoOficialPdt;
+                if ($operacion->es_igv_justo) {
+                    [$mesP, $anioP] = explode('-', $validated['periodo']);
+                    $fechaBase = Carbon::create((int) $anioP, (int) $mesP, 1)->addMonths(3);
+                    $periodoDestino = $fechaBase->format('m-Y');
+                    $fechaProrrogada = $cronogramaService->obtenerFechaVencimiento('pdt_621', $periodoDestino, $cliente);
+                    $vencimientoIgv = $fechaProrrogada ? $fechaProrrogada->format('Y-m-d') : $fechaBase->copy()->addMonth()->setDay(20)->format('Y-m-d');
+                }
+
+                // 1. IGV (1011) - Si es Zona Selva (Ley 27037), no genera deuda de IGV
+                $deudaIgv = $operacion->deudasTributarias()->where('tributo_codigo', '1011')->first();
+                if (! $liquidacion->es_zona_selva && (float) $liquidacion->igv_resultante_pagar > 0) {
+                    $vencIgvFinal = $validated['vencimiento_deuda']
+                        ?? ($deudaIgv?->vencimiento_deuda?->format('Y-m-d') ?: $vencimientoIgv);
+
+                    $this->registroTributo->registrar($operacion, [
+                        'deuda_id' => $deudaIgv?->id,
+                        'tributo_codigo' => '1011',
+                        'monto_deuda_inicial' => $liquidacion->igv_resultante_pagar,
+                        'vencimiento_deuda' => $vencIgvFinal,
+                        'es_igv_justo' => (bool) $operacion->es_igv_justo,
+                        'permitir_ajuste_abono' => true,
+                    ]);
+                } elseif ($deudaIgv && $deudaIgv->abonos()->doesntExist()) {
+                    $deudaIgv->delete();
+                } elseif ($deudaIgv && (float) $liquidacion->igv_resultante_pagar == 0) {
+                    $totalAbonado = (float) $deudaIgv->abonos()->sum('monto');
+                    $deudaIgv->monto_deuda_inicial = $totalAbonado;
+                    $deudaIgv->save();
+                }
+
+                // 2. Renta (3121, 3111, 3031)
+                $rentaCodigo = $validated['renta_tributo_codigo'] ?? null;
+                $rentaTributo = $rentaCodigo
+                    ? TipoTributoSunat::tryFrom($rentaCodigo)
+                    : TipoTributoSunat::rentaDelRegimen($cliente->regimen_tributario);
+
+                if (! $rentaTributo) {
+                    $rentaTributo = TipoTributoSunat::RentaMype;
+                }
+
+                $deudaRenta = $operacion->deudasTributarias()->where('tributo_codigo', $rentaTributo->value)->first();
+                if ((float) $liquidacion->renta_resultante_pagar > 0) {
+                    $vencRentaFinal = $deudaRenta?->vencimiento_deuda?->format('Y-m-d') ?: $vencimientoOficialPdt;
+
+                    $this->registroTributo->registrar($operacion, [
+                        'deuda_id' => $deudaRenta?->id,
+                        'tributo_codigo' => $rentaTributo->value,
+                        'monto_deuda_inicial' => $liquidacion->renta_resultante_pagar,
+                        'vencimiento_deuda' => $vencRentaFinal,
+                        'permitir_ajuste_abono' => true,
+                    ]);
+                } elseif ($deudaRenta && $deudaRenta->abonos()->doesntExist()) {
+                    $deudaRenta->delete();
+                } elseif ($deudaRenta && (float) $liquidacion->renta_resultante_pagar == 0) {
+                    $totalAbonado = (float) $deudaRenta->abonos()->sum('monto');
+                    $deudaRenta->monto_deuda_inicial = $totalAbonado;
+                    $deudaRenta->save();
+                }
+
+                // 3. Tributos de Planilla y Retenciones (PLAME PDT 601)
+                $tributosPlame = [
+                    '5210' => (float) $liquidacion->plame_essalud_a_pagar,
+                    '5310' => (float) $liquidacion->plame_onp_a_pagar,
+                    '3042' => (float) $liquidacion->plame_renta_4ta_a_pagar,
+                    '3052' => (float) $liquidacion->plame_renta_5ta_a_pagar,
+                    'AFP' => (float) $liquidacion->plame_afp_a_pagar,
+                ];
+
+                foreach ($tributosPlame as $codPlame => $montoPlame) {
+                    $deudaPlame = $operacion->deudasTributarias()->where('tributo_codigo', $codPlame)->first();
+                    if ($montoPlame > 0) {
+                        $vencPlame = $deudaPlame?->vencimiento_deuda?->format('Y-m-d') ?: $vencimientoOficialPdt;
+                        $this->registroTributo->registrar($operacion, [
+                            'deuda_id' => $deudaPlame?->id,
+                            'tributo_codigo' => $codPlame,
+                            'monto_deuda_inicial' => $montoPlame,
+                            'vencimiento_deuda' => $vencPlame,
+                            'permitir_ajuste_abono' => true,
+                        ]);
+                    } elseif ($deudaPlame && $deudaPlame->abonos()->doesntExist()) {
+                        $deudaPlame->delete();
+                    } elseif ($deudaPlame && $montoPlame == 0) {
+                        $totalAbonado = (float) $deudaPlame->abonos()->sum('monto');
+                        $deudaPlame->monto_deuda_inicial = $totalAbonado;
+                        $deudaPlame->save();
+                    }
+                }
+
+                $operacion->refrescarResumenDeudas();
             }
 
-            // 1. IGV (1011) - Si es Zona Selva (Ley 27037), no genera deuda de IGV
-            $deudaIgv = $operacion->deudasTributarias()->where('tributo_codigo', '1011')->first();
-            if (! $liquidacion->es_zona_selva && (float) $liquidacion->igv_resultante_pagar > 0) {
-                $vencIgvFinal = $validated['vencimiento_deuda']
-                    ?? ($deudaIgv?->vencimiento_deuda?->format('Y-m-d') ?: $vencimientoIgv);
+            $anio = (int) explode('-', $validated['periodo'])[1];
 
-                $this->registroTributo->registrar($operacion, [
-                    'deuda_id' => $deudaIgv?->id,
-                    'tributo_codigo' => '1011',
-                    'monto_deuda_inicial' => $liquidacion->igv_resultante_pagar,
-                    'vencimiento_deuda' => $vencIgvFinal,
-                    'es_igv_justo' => (bool) $operacion->es_igv_justo,
-                ]);
-            } elseif ($deudaIgv && $deudaIgv->abonos()->doesntExist()) {
-                $deudaIgv->delete();
-            }
-
-            // 2. Renta (3121, 3111, 3031)
-            $rentaCodigo = $validated['renta_tributo_codigo'] ?? null;
-            $rentaTributo = $rentaCodigo
-                ? TipoTributoSunat::tryFrom($rentaCodigo)
-                : TipoTributoSunat::rentaDelRegimen($cliente->regimen_tributario);
-
-            if (! $rentaTributo) {
-                $rentaTributo = TipoTributoSunat::RentaMype;
-            }
-
-            $deudaRenta = $operacion->deudasTributarias()->where('tributo_codigo', $rentaTributo->value)->first();
-            if ((float) $liquidacion->renta_resultante_pagar > 0) {
-                $vencRentaFinal = $deudaRenta?->vencimiento_deuda?->format('Y-m-d') ?: $vencimientoOficialPdt;
-
-                $this->registroTributo->registrar($operacion, [
-                    'deuda_id' => $deudaRenta?->id,
-                    'tributo_codigo' => $rentaTributo->value,
-                    'monto_deuda_inicial' => $liquidacion->renta_resultante_pagar,
-                    'vencimiento_deuda' => $vencRentaFinal,
-                ]);
-            } elseif ($deudaRenta && $deudaRenta->abonos()->doesntExist()) {
-                $deudaRenta->delete();
-            }
-
-            $operacion->refrescarResumenDeudas();
-        }
-
-        $anio = (int) explode('-', $validated['periodo'])[1];
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Liquidación y determinación tributaria guardada exitosamente.',
-            'operacion_id' => $operacion->id,
-            'liquidacion' => [
-                'id' => $liquidacion->id,
-                'es_zona_selva' => (bool) $liquidacion->es_zona_selva,
-                'ventas_base' => (float) $liquidacion->ventas_base,
-                'igv_ventas' => (float) $liquidacion->igv_ventas,
-                'ventas_no_gravadas' => (float) $liquidacion->ventas_no_gravadas,
-                'compras_base' => (float) $liquidacion->compras_base,
-                'igv_compras' => (float) $liquidacion->igv_compras,
-                'igv_saldo_favor_anterior' => (float) $liquidacion->igv_saldo_favor_anterior,
-                'igv_retenciones' => (float) $liquidacion->igv_retenciones,
-                'igv_percepciones' => (float) $liquidacion->igv_percepciones,
-                'igv_saldo_favor_siguiente' => (float) $liquidacion->igv_saldo_favor_siguiente,
-                'igv_resultante_pagar' => (float) $liquidacion->igv_resultante_pagar,
-                'renta_base_ingresos' => (float) $liquidacion->renta_base_ingresos,
-                'renta_tasa' => (float) $liquidacion->renta_tasa,
-                'renta_calculada' => (float) $liquidacion->renta_calculada,
-                'renta_saldo_favor_anterior' => (float) $liquidacion->renta_saldo_favor_anterior,
-                'renta_compensacion_itan' => (float) $liquidacion->renta_compensacion_itan,
-                'renta_retenciones' => (float) $liquidacion->renta_retenciones,
-                'renta_resultante_pagar' => (float) $liquidacion->renta_resultante_pagar,
-                'notas_liquidacion' => (string) ($liquidacion->notas_liquidacion ?? ''),
-            ],
-            'tiene_deuda' => $operacion->tiene_deuda,
-            'monto_deuda_inicial' => $operacion->monto_deuda_inicial,
-            'monto_deuda_inicial_formateado' => $operacion->monto_deuda_inicial_formateado,
-            'saldo_pendiente' => $this->saldoDeudaMes($operacion),
-            'saldo_pendiente_formateado' => 'S/ '.number_format($this->saldoDeudaMes($operacion), 2),
-            'total_abonado' => $operacion->total_abonado,
-            'total_abonado_formateado' => $operacion->total_abonado_formateado,
-            'deudas' => $this->arregloDeudas($operacion, $vencimientoOficialPdt, $vencimientoOficialPdtDmy),
-            'kpis' => $this->calcularKpis($anio),
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Liquidación y determinación tributaria guardada exitosamente.',
+                'operacion_id' => $operacion->id,
+                'liquidacion' => [
+                    'id' => $liquidacion->id,
+                    'es_zona_selva' => (bool) $liquidacion->es_zona_selva,
+                    'ventas_base' => (float) $liquidacion->ventas_base,
+                    'igv_ventas' => (float) $liquidacion->igv_ventas,
+                    'ventas_no_gravadas' => (float) $liquidacion->ventas_no_gravadas,
+                    'compras_base' => (float) $liquidacion->compras_base,
+                    'igv_compras' => (float) $liquidacion->igv_compras,
+                    'igv_saldo_favor_anterior' => (float) $liquidacion->igv_saldo_favor_anterior,
+                    'igv_retenciones_saldo_anterior' => (float) $liquidacion->igv_retenciones_saldo_anterior,
+                    'igv_retenciones' => (float) $liquidacion->igv_retenciones,
+                    'igv_retenciones_saldo_siguiente' => (float) $liquidacion->igv_retenciones_saldo_siguiente,
+                    'igv_percepciones_saldo_anterior' => (float) $liquidacion->igv_percepciones_saldo_anterior,
+                    'igv_percepciones' => (float) $liquidacion->igv_percepciones,
+                    'igv_percepciones_saldo_siguiente' => (float) $liquidacion->igv_percepciones_saldo_siguiente,
+                    'igv_saldo_favor_siguiente' => (float) $liquidacion->igv_saldo_favor_siguiente,
+                    'igv_resultante_pagar' => (float) $liquidacion->igv_resultante_pagar,
+                    'renta_base_ingresos' => (float) $liquidacion->renta_base_ingresos,
+                    'renta_tasa' => (float) $liquidacion->renta_tasa,
+                    'renta_calculada' => (float) $liquidacion->renta_calculada,
+                    'renta_saldo_favor_anterior' => (float) $liquidacion->renta_saldo_favor_anterior,
+                    'renta_compensacion_itan' => (float) $liquidacion->renta_compensacion_itan,
+                    'renta_itan_saldo_anterior' => (float) $liquidacion->renta_itan_saldo_anterior,
+                    'renta_itan_saldo_siguiente' => (float) $liquidacion->renta_itan_saldo_siguiente,
+                    'renta_retenciones' => (float) $liquidacion->renta_retenciones,
+                    'renta_saldo_favor_siguiente' => (float) $liquidacion->renta_saldo_favor_siguiente,
+                    'renta_resultante_pagar' => (float) $liquidacion->renta_resultante_pagar,
+                    'plame_essalud_base' => (float) $liquidacion->plame_essalud_base,
+                    'plame_essalud_a_pagar' => (float) $liquidacion->plame_essalud_a_pagar,
+                    'plame_onp_a_pagar' => (float) $liquidacion->plame_onp_a_pagar,
+                    'plame_renta_4ta_base' => (float) $liquidacion->plame_renta_4ta_base,
+                    'plame_renta_4ta_a_pagar' => (float) $liquidacion->plame_renta_4ta_a_pagar,
+                    'plame_renta_5ta_a_pagar' => (float) $liquidacion->plame_renta_5ta_a_pagar,
+                    'plame_afp_a_pagar' => (float) $liquidacion->plame_afp_a_pagar,
+                    'notas_liquidacion' => (string) ($liquidacion->notas_liquidacion ?? ''),
+                ],
+                'tiene_deuda' => $operacion->tiene_deuda,
+                'monto_deuda_inicial' => $operacion->monto_deuda_inicial,
+                'monto_deuda_inicial_formateado' => $operacion->monto_deuda_inicial_formateado,
+                'saldo_pendiente' => $this->saldoDeudaMes($operacion),
+                'saldo_pendiente_formateado' => 'S/ '.number_format($this->saldoDeudaMes($operacion), 2),
+                'total_abonado' => $operacion->total_abonado,
+                'total_abonado_formateado' => $operacion->total_abonado_formateado,
+                'deudas' => $this->arregloDeudas($operacion, $vencimientoOficialPdt, $vencimientoOficialPdtDmy),
+                'kpis' => $this->calcularKpis($anio),
+            ]);
+        });
     }
 
     /**
@@ -816,62 +943,67 @@ class ControlMensualController extends Controller
             'periodo.regex' => 'El formato del periodo debe ser MM-AAAA.',
         ]);
 
-        $cliente = Cliente::findOrFail($validated['cliente_id']);
+        return DB::transaction(function () use ($validated): JsonResponse {
+            $cliente = Cliente::findOrFail($validated['cliente_id']);
 
-        $operacion = Operacion::where('cliente_id', $cliente->id)
-            ->where('periodo', $validated['periodo'])
-            ->first();
+            $operacion = Operacion::where('cliente_id', $cliente->id)
+                ->where('periodo', $validated['periodo'])
+                ->first();
 
-        if ($operacion) {
-            // Eliminar la liquidación guardada si existe
-            $operacion->liquidacionPeriodo()?->delete();
+            if ($operacion) {
+                // Eliminar la liquidación guardada si existe
+                $operacion->liquidacionPeriodo()?->delete();
 
-            // Eliminar deudas PDT 621 (IGV 1011 y Renta: 3121, 3111, 3031, etc.) que no tengan abonos
-            $codigosPdt = ['1011', '1016', '3121', '3111', '3031', '3011'];
-            $deudasPdt = $operacion->deudasTributarias()
-                ->whereIn('tributo_codigo', $codigosPdt)
-                ->get();
+                // Eliminar deudas de liquidación que no tengan abonos (PDT 621 y PLAME 601)
+                $codigosLiquidacion = ['1011', '1016', '3121', '3111', '3031', '3011', '5210', '5310', '3042', '3052', 'AFP'];
+                $deudasLiquidacion = $operacion->deudasTributarias()
+                    ->whereIn('tributo_codigo', $codigosLiquidacion)
+                    ->get();
 
-            foreach ($deudasPdt as $deuda) {
-                if ($deuda->abonos()->doesntExist()) {
-                    $deuda->delete();
-                } else {
-                    // Si ya tenía abonos, su deuda inicial queda ajustada al monto abonado para mantener balance limpio
-                    $totalAbonado = (float) $deuda->abonos()->sum('monto');
-                    $deuda->monto_deuda_inicial = $totalAbonado;
-                    $deuda->save();
+                foreach ($deudasLiquidacion as $deuda) {
+                    if ($deuda->abonos()->doesntExist()) {
+                        $deuda->delete();
+                    } else {
+                        // Si ya tenía abonos, su deuda inicial queda ajustada al monto abonado para mantener balance limpio
+                        $totalAbonado = (float) $deuda->abonos()->sum('monto');
+                        $deuda->monto_deuda_inicial = $totalAbonado;
+                        $deuda->save();
+                    }
                 }
+
+                $operacion->refrescarResumenDeudas();
+
+                // Recalcular arrastres en cascada para meses posteriores
+                $this->calculador->propagarArrastreEnCascada($cliente, $validated['periodo']);
             }
 
-            $operacion->refrescarResumenDeudas();
-        }
+            $anio = (int) explode('-', $validated['periodo'])[1];
 
-        $anio = (int) explode('-', $validated['periodo'])[1];
+            $cronogramaService = app(CronogramaSunatService::class);
+            $fechaOficialPdt = $cronogramaService->obtenerFechaVencimiento('pdt_621', $validated['periodo'], $cliente);
+            if (! $fechaOficialPdt) {
+                [$mesP, $anioP] = explode('-', $validated['periodo']);
+                $fechaOficialPdt = Carbon::create((int) $anioP, (int) $mesP, 1)->addMonth()->setDay(20);
+            }
+            $vencimientoOficialPdt = $fechaOficialPdt->format('Y-m-d');
+            $vencimientoOficialPdtDmy = $fechaOficialPdt->format('d/m/Y');
 
-        $cronogramaService = app(CronogramaSunatService::class);
-        $fechaOficialPdt = $cronogramaService->obtenerFechaVencimiento('pdt_621', $validated['periodo'], $cliente);
-        if (! $fechaOficialPdt) {
-            [$mesP, $anioP] = explode('-', $validated['periodo']);
-            $fechaOficialPdt = Carbon::create((int) $anioP, (int) $mesP, 1)->addMonth()->setDay(20);
-        }
-        $vencimientoOficialPdt = $fechaOficialPdt->format('Y-m-d');
-        $vencimientoOficialPdtDmy = $fechaOficialPdt->format('d/m/Y');
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Hoja de liquidación y tributos pendientes restablecidos a cero correctamente.',
-            'operacion_id' => $operacion?->id,
-            'liquidacion' => null,
-            'tiene_deuda' => (bool) ($operacion?->tiene_deuda ?? false),
-            'monto_deuda_inicial' => $operacion ? $this->montoDeudaMes($operacion) : 0,
-            'monto_deuda_inicial_formateado' => $operacion ? $operacion->monto_deuda_inicial_formateado : 'S/ 0.00',
-            'saldo_pendiente' => $operacion ? $this->saldoDeudaMes($operacion) : 0,
-            'saldo_pendiente_formateado' => 'S/ '.number_format($operacion ? $this->saldoDeudaMes($operacion) : 0, 2),
-            'total_abonado' => $operacion ? $operacion->total_abonado : 0,
-            'total_abonado_formateado' => $operacion ? $operacion->total_abonado_formateado : 'S/ 0.00',
-            'deudas' => $operacion ? $this->arregloDeudas($operacion, $vencimientoOficialPdt, $vencimientoOficialPdtDmy) : [],
-            'kpis' => $this->calcularKpis($anio),
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Hoja de liquidación y tributos pendientes restablecidos correctamente.',
+                'operacion_id' => $operacion?->id,
+                'liquidacion' => null,
+                'tiene_deuda' => (bool) ($operacion?->tiene_deuda ?? false),
+                'monto_deuda_inicial' => $operacion ? $this->montoDeudaMes($operacion) : 0,
+                'monto_deuda_inicial_formateado' => $operacion ? $operacion->monto_deuda_inicial_formateado : 'S/ 0.00',
+                'saldo_pendiente' => $operacion ? $this->saldoDeudaMes($operacion) : 0,
+                'saldo_pendiente_formateado' => 'S/ '.number_format($operacion ? $this->saldoDeudaMes($operacion) : 0, 2),
+                'total_abonado' => $operacion ? $operacion->total_abonado : 0,
+                'total_abonado_formateado' => $operacion ? $operacion->total_abonado_formateado : 'S/ 0.00',
+                'deudas' => $operacion ? $this->arregloDeudas($operacion, $vencimientoOficialPdt, $vencimientoOficialPdtDmy) : [],
+                'kpis' => $this->calcularKpis($anio),
+            ]);
+        });
     }
 
     /**

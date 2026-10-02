@@ -72,6 +72,7 @@ class ReporteImpuestosClienteTest extends TestCase
             'medio_pago' => 'detracciones',
         ]);
 
+        $this->flushSession();
         $this->get(route('control_deudas.index'))->assertDontSee('LIBRO IGV SAC');
     }
 
@@ -202,7 +203,7 @@ class ReporteImpuestosClienteTest extends TestCase
         $response->assertSee('Sin registrar');
         $response->assertSee('Sin pagos');
         $response->assertSee('IGV 18%');
-        $response->assertSee('Renta MYPE 1%');
+        $response->assertSee('Renta RMT 1%');
         $response->assertSee('EsSalud');
         $response->assertSee('ONP');
         $response->assertSee('Renta 4ta');
@@ -227,7 +228,7 @@ class ReporteImpuestosClienteTest extends TestCase
         $response = $this->get(route('clientes.operaciones', $cliente));
 
         $response->assertSee('NRUS no presenta PDT 621');
-        $response->assertDontSee('Renta MYPE');
+        $response->assertDontSee('Renta RMT');
         $response->assertDontSee('IGV 18%');
     }
 

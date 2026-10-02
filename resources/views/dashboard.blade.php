@@ -500,7 +500,7 @@
                 </div>
                 <h4 class="text-base font-bold text-gray-900">Balances al día</h4>
                 <p class="mt-1 max-w-sm text-sm text-gray-500">
-                    Los clientes de MYPE y Régimen General no tienen balances mensuales vencidos ni pendientes en el plazo del PLE.
+                    Los clientes de RMT y Régimen General (RG) no tienen balances mensuales vencidos ni pendientes en el plazo del PLE.
                 </p>
             </div>
         @else

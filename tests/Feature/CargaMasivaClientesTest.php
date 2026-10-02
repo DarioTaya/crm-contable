@@ -238,11 +238,11 @@ class CargaMasivaClientesTest extends TestCase
         $nrus->assertJsonPath('filas.0.errores', []);
 
         $rmt = $this->postJson(route('clientes.carga_masiva.leer'), ['contenido' => $coma]);
-        $rmt->assertJsonPath('filas.0.regimen', 'MYPE');
+        $rmt->assertJsonPath('filas.0.regimen', 'RMT');
         $rmt->assertJsonPath('filas.0.correo', 'hola@estudio.pe');
 
         $general = $this->postJson(route('clientes.carga_masiva.leer'), ['contenido' => $tab]);
-        $general->assertJsonPath('filas.0.regimen', 'General');
+        $general->assertJsonPath('filas.0.regimen', 'RG');
 
         $archivo = UploadedFile::fake()->createWithContent('clientes.csv', $puntoYComa);
         $subido = $this->post(route('clientes.carga_masiva.leer'), [
@@ -462,7 +462,7 @@ class CargaMasivaClientesTest extends TestCase
      * @param  array<string, mixed>  $extra
      * @return array<string, mixed>
      */
-    private function fila(string $ruc, string $regimen = 'MYPE', array $extra = []): array
+    private function fila(string $ruc, string $regimen = 'RMT', array $extra = []): array
     {
         return array_merge([
             'ruc' => $ruc,

@@ -222,9 +222,11 @@
                 @forelse ($matrizClientes as $item)
                     @php
                         $colores = [
+                            'RMT'     => 'bg-blue-100 text-blue-800 border-blue-200',
                             'MYPE'    => 'bg-blue-100 text-blue-800 border-blue-200',
                             'RER'     => 'bg-amber-100 text-amber-800 border-amber-200',
                             'RUS'     => 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                            'RG'      => 'bg-purple-100 text-purple-800 border-purple-200',
                             'General' => 'bg-purple-100 text-purple-800 border-purple-200',
                         ];
                         $badgeColor = $colores[$item['cliente']->regimen_tributario?->value] ?? 'bg-gray-100 text-gray-800 border-gray-200';
@@ -617,10 +619,10 @@
                                                                             <div class="min-w-0">
                                                                                 <p class="text-xs font-bold text-blue-950 flex items-center gap-1.5 truncate">
                                                                                     <span>Hoja de Liquidación PDT 621</span>
-                                                                                    <span class="text-[9px] font-semibold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded-full">Arrastres & Compensaciones</span>
+                                                                                    <span class="text-[9px] font-semibold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded-full">PDT 621 · IGV y Renta 3ra</span>
                                                                                 </p>
                                                                                 <p class="text-[10px] text-blue-800/80 truncate">
-                                                                                    Determina IGV y Renta con saldo anterior, retenciones, percepciones e ITAN
+                                                                                    Determina IGV y Renta 3ra con arrastre automático de saldos a favor, retenciones, percepciones e ITAN
                                                                                 </p>
                                                                             </div>
                                                                         </div>
@@ -665,7 +667,7 @@
                                                                             </button>
                                                                         </div>
 
-                                                                        {{-- Selector de Sub-pestañas: IGV vs Renta --}}
+                                                                        {{-- Selector de Sub-pestañas: IGV vs RTA 3RA --}}
                                                                         <div class="flex rounded-lg bg-slate-100 p-0.5 text-xs font-bold border border-slate-200/70">
                                                                             <button type="button" @click="tabLiquidacion = 'igv'"
                                                                                     class="flex-1 py-1.5 text-center rounded-md transition text-xs"
@@ -678,7 +680,7 @@
                                                                             <button type="button" @click="tabLiquidacion = 'renta'"
                                                                                     class="flex-1 py-1.5 text-center rounded-md transition text-xs"
                                                                                     :class="tabLiquidacion === 'renta' ? 'bg-white text-indigo-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 font-medium'">
-                                                                                <span>Renta Mensual</span>
+                                                                                <span>RTA 3RA</span>
                                                                                 <span class="ml-1 text-[10px]"
                                                                                       :class="liquidacion.renta_resultante_pagar > 0 ? 'text-rose-600 font-bold' : 'text-emerald-600'"
                                                                                       x-text="liquidacion.renta_resultante_pagar > 0 ? '· Pagar S/ ' + formatearNumeroConComas(liquidacion.renta_resultante_pagar) : (limpiarMoneda(liquidacion.renta_base_ingresos) > 0 ? '· S/ 0.00' : '')"></span>
@@ -746,35 +748,100 @@
 
                                                                             {{-- Deducciones de IGV (Ocultas si es Selva) --}}
                                                                             <div x-show="!liquidacion.es_zona_selva" class="rounded-lg border border-slate-200 bg-slate-50/70 p-2 space-y-2">
-                                                                                <span class="block text-[10px] font-bold text-slate-700 uppercase tracking-wider">3. Arrastre y Deducciones</span>
+                                                                                <div class="flex items-center justify-between">
+                                                                                    <span class="block text-[10px] font-bold text-slate-700 uppercase tracking-wider">3. Arrastre y Deducciones</span>
+                                                                                    <span class="text-[9px] text-slate-500">Separación estricta de saldos SUNAT</span>
+                                                                                </div>
 
-                                                                                {{-- Saldo a favor mes anterior con botón inteligente M-1 --}}
-                                                                                <div>
-                                                                                    <div class="flex items-center justify-between gap-1 mb-0.5">
-                                                                                        <label class="text-[9px] text-slate-600 font-medium">Saldo Favor Periodo Anterior (Casilla 145)</label>
-                                                                                        <button type="button" x-show="saldoFavorSugerido > 0"
-                                                                                                @click="aplicarSaldoAnteriorSugerido()"
-                                                                                                class="text-[9px] font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-1.5 py-0.2 rounded transition">
-                                                                                            + Traer M-1 (S/ <span x-text="formatearNumeroConComas(saldoFavorSugerido)"></span>)
-                                                                                        </button>
+                                                                                {{-- Saldo a favor mes anterior (Crédito Fiscal Casilla 145) --}}
+                                                                                <div class="rounded-md bg-white p-2 border border-slate-200/80">
+                                                                                    <div class="flex items-center justify-between gap-1 mb-1">
+                                                                                        <label class="text-[9.5px] text-slate-700 font-bold">Saldo Favor Periodo Anterior (Casilla 145)</label>
+                                                                                        <div class="flex items-center gap-1">
+                                                                                            <span x-show="saldoFavorSugerido > 0" class="text-[8.5px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200" title="Arrastre automático del crédito fiscal de M-1">
+                                                                                                Auto M-1: S/ <span x-text="formatearNumeroConComas(saldoFavorSugerido)"></span>
+                                                                                            </span>
+                                                                                            <button type="button" x-show="saldoFavorSugerido > 0"
+                                                                                                    @click="aplicarSaldoAnteriorSugerido()"
+                                                                                                    class="text-[8px] text-emerald-600 hover:text-emerald-800 underline" title="Recargar saldo de M-1">
+                                                                                                Reaplicar
+                                                                                            </button>
+                                                                                        </div>
                                                                                     </div>
                                                                                     <input type="text" inputmode="decimal" x-model="liquidacion.igv_saldo_favor_anterior"
                                                                                            @input="liquidacion.igv_saldo_favor_anterior = formatearMilesInput($event); recalcularTotalesLiquidacion()"
                                                                                            placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                 </div>
 
-                                                                                <div class="grid grid-cols-2 gap-2">
-                                                                                    <div>
-                                                                                        <label class="text-[9px] text-slate-600 font-medium block">Retenciones (Cas. 179)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_retenciones"
-                                                                                               @input="liquidacion.igv_retenciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                {{-- Retenciones de IGV (Casillas 168, 179 y 164) --}}
+                                                                                <div class="rounded-md bg-white p-2 border border-slate-200/80 space-y-1.5">
+                                                                                    <div class="flex items-center justify-between">
+                                                                                        <span class="text-[9.5px] font-bold text-slate-700">Retenciones de IGV</span>
+                                                                                        <span class="text-[9px] font-mono text-blue-700 font-bold" x-show="liquidacion.igv_retenciones_saldo_siguiente > 0">
+                                                                                            Pasa M+1 (Cas. 164): S/ <span x-text="formatearNumeroConComas(liquidacion.igv_retenciones_saldo_siguiente)"></span>
+                                                                                        </span>
                                                                                     </div>
-                                                                                    <div>
-                                                                                        <label class="text-[9px] text-slate-600 font-medium block">Percepciones (Cas. 171)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_percepciones"
-                                                                                               @input="liquidacion.igv_percepciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                    <div class="grid grid-cols-2 gap-2">
+                                                                                        <div>
+                                                                                            <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                                                                <label class="text-[9px] text-slate-600 font-medium truncate">Saldo Ant. (Cas. 168)</label>
+                                                                                                <div class="flex items-center gap-1">
+                                                                                                    <span x-show="retencionesSugeridas > 0" class="text-[8px] font-bold text-blue-700 bg-blue-100 px-1 py-0.2 rounded" title="Arrastre automático de retenciones de M-1">
+                                                                                                        Auto M-1
+                                                                                                    </span>
+                                                                                                    <button type="button" x-show="retencionesSugeridas > 0"
+                                                                                                            @click="aplicarRetencionesSugeridas()"
+                                                                                                            class="text-[8px] text-blue-600 hover:text-blue-800 underline" title="Recargar retenciones de M-1">
+                                                                                                        ↺
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.igv_retenciones_saldo_anterior"
+                                                                                                   @input="liquidacion.igv_retenciones_saldo_anterior = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <label class="text-[9px] text-slate-600 font-medium block mb-0.5 truncate">Del Periodo (Cas. 179)</label>
+                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.igv_retenciones"
+                                                                                                   @input="liquidacion.igv_retenciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {{-- Percepciones de IGV (Casillas 171, Del Mes y 166) --}}
+                                                                                <div class="rounded-md bg-white p-2 border border-slate-200/80 space-y-1.5">
+                                                                                    <div class="flex items-center justify-between">
+                                                                                        <span class="text-[9.5px] font-bold text-slate-700">Percepciones de IGV</span>
+                                                                                        <span class="text-[9px] font-mono text-amber-700 font-bold" x-show="liquidacion.igv_percepciones_saldo_siguiente > 0">
+                                                                                            Pasa M+1 (Cas. 166): S/ <span x-text="formatearNumeroConComas(liquidacion.igv_percepciones_saldo_siguiente)"></span>
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    <div class="grid grid-cols-2 gap-2">
+                                                                                        <div>
+                                                                                            <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                                                                <label class="text-[9px] text-slate-600 font-medium truncate">Saldo Ant. (Cas. 171)</label>
+                                                                                                <div class="flex items-center gap-1">
+                                                                                                    <span x-show="percepcionesSugeridas > 0" class="text-[8px] font-bold text-amber-700 bg-amber-100 px-1 py-0.2 rounded" title="Arrastre automático de percepciones de M-1">
+                                                                                                        Auto M-1
+                                                                                                    </span>
+                                                                                                    <button type="button" x-show="percepcionesSugeridas > 0"
+                                                                                                            @click="aplicarPercepcionesSugeridas()"
+                                                                                                            class="text-[8px] text-amber-600 hover:text-amber-800 underline" title="Recargar percepciones de M-1">
+                                                                                                        ↺
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.igv_percepciones_saldo_anterior"
+                                                                                                   @input="liquidacion.igv_percepciones_saldo_anterior = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <label class="text-[9px] text-slate-600 font-medium block mb-0.5 truncate">Del Periodo (Facturas/DSI)</label>
+                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.igv_percepciones"
+                                                                                                   @input="liquidacion.igv_percepciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -791,12 +858,22 @@
                                                                                            :class="liquidacion.es_zona_selva ? 'text-emerald-800' : (liquidacion.igv_resultante_pagar > 0 ? 'text-rose-700' : (liquidacion.igv_saldo_favor_siguiente > 0 ? 'text-emerald-700' : 'text-slate-700'))"
                                                                                            x-text="liquidacion.es_zona_selva ? 'S/ 0.00 (Exonerado)' : ('S/ ' + formatearNumeroConComas(liquidacion.igv_resultante_pagar > 0 ? liquidacion.igv_resultante_pagar : liquidacion.igv_saldo_favor_siguiente))"></p>
                                                                                     </div>
-                                                                                    <span x-show="!liquidacion.es_zona_selva && liquidacion.igv_resultante_pagar > 0" class="text-[10px] font-bold text-rose-700 bg-rose-100/90 px-2 py-0.5 rounded-md border border-rose-200">
-                                                                                        Tributo 1011
-                                                                                    </span>
-                                                                                    <span x-show="liquidacion.es_zona_selva" class="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-200">
-                                                                                        Amazonía
-                                                                                    </span>
+                                                                                    <div class="flex flex-col items-end gap-1">
+                                                                                        <span x-show="!liquidacion.es_zona_selva && liquidacion.igv_resultante_pagar > 0" class="text-[10px] font-bold text-rose-700 bg-rose-100/90 px-2 py-0.5 rounded-md border border-rose-200">
+                                                                                            Tributo 1011
+                                                                                        </span>
+                                                                                        <span x-show="liquidacion.es_zona_selva" class="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-200">
+                                                                                            Amazonía
+                                                                                        </span>
+                                                                                        <div class="flex items-center gap-1">
+                                                                                            <span x-show="liquidacion.igv_retenciones_saldo_siguiente > 0" class="text-[8.5px] font-bold text-blue-700 bg-blue-100 px-1 rounded" title="Retenciones acumuladas que pasan a Casilla 168 del mes siguiente">
+                                                                                                Ret. M+1: S/ <span x-text="formatearNumeroConComas(liquidacion.igv_retenciones_saldo_siguiente)"></span>
+                                                                                            </span>
+                                                                                            <span x-show="liquidacion.igv_percepciones_saldo_siguiente > 0" class="text-[8.5px] font-bold text-amber-700 bg-amber-100 px-1 rounded" title="Percepciones acumuladas que pasan a Casilla 171 del mes siguiente">
+                                                                                                Perc. M+1: S/ <span x-text="formatearNumeroConComas(liquidacion.igv_percepciones_saldo_siguiente)"></span>
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
                                                                         </div>
@@ -854,26 +931,72 @@
 
                                                                             {{-- Compensaciones de Renta --}}
                                                                             <div class="rounded-lg border border-slate-200 bg-slate-50/70 p-2 space-y-2">
-                                                                                <span class="block text-[10px] font-bold text-slate-700 uppercase tracking-wider">2. Compensaciones y Créditos</span>
+                                                                                <span class="block text-[10px] font-bold text-slate-700 uppercase tracking-wider">2. Compensaciones, ITAN y Créditos</span>
                                                                                 <div>
-                                                                                    <label class="text-[9px] text-slate-600 font-medium block">Saldo Favor Ejercicio Anterior / DJ Anual 710 (Cas. 109)</label>
+                                                                                    <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                                                        <label class="text-[9px] text-slate-600 font-medium">Saldo Favor Ejercicio Anterior / DJ Anual 710 (Cas. 109)</label>
+                                                                                        <div class="flex items-center gap-1">
+                                                                                            <span x-show="rentaSugeridaM1 > 0" class="text-[8.5px] font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.2 rounded" title="Arrastre automático de saldo de renta M-1">
+                                                                                                Auto M-1: S/ <span x-text="formatearNumeroConComas(rentaSugeridaM1)"></span>
+                                                                                            </span>
+                                                                                            <button type="button" x-show="rentaSugeridaM1 > 0"
+                                                                                                    @click="aplicarRentaSugeridaM1()"
+                                                                                                    class="text-[8px] text-indigo-600 hover:text-indigo-800 underline" title="Recargar saldo de M-1">
+                                                                                                Reaplicar
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
                                                                                     <input type="text" inputmode="decimal" x-model="liquidacion.renta_saldo_favor_anterior"
                                                                                            @input="liquidacion.renta_saldo_favor_anterior = formatearMilesInput($event); recalcularTotalesLiquidacion()"
                                                                                            placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                 </div>
-                                                                                <div class="grid grid-cols-2 gap-2">
-                                                                                    <div>
-                                                                                        <label class="text-[9px] text-slate-600 font-medium block">Compensación ITAN (Cas. 111)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.renta_compensacion_itan"
-                                                                                               @input="liquidacion.renta_compensacion_itan = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+
+                                                                                {{-- Bloque ITAN: Arrastre automático con opción de edición voluntaria (Ley 28424 Art. 8) --}}
+                                                                                <div class="rounded-md bg-white p-2 border border-slate-200/80 space-y-1.5">
+                                                                                    <div class="flex items-center justify-between">
+                                                                                        <span class="text-[9.5px] font-bold text-slate-700">Crédito ITAN (Ley 28424)</span>
+                                                                                        <span class="text-[9px] font-mono text-purple-700 font-bold" x-show="liquidacion.renta_itan_saldo_siguiente > 0" title="Saldo ITAN disponible que pasa a M+1">
+                                                                                            Pasa M+1: S/ <span x-text="formatearNumeroConComas(liquidacion.renta_itan_saldo_siguiente)"></span>
+                                                                                        </span>
                                                                                     </div>
-                                                                                    <div>
-                                                                                        <label class="text-[9px] text-slate-600 font-medium block">Retenciones 3ra Cat. (Cas. 113)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.renta_retenciones"
-                                                                                               @input="liquidacion.renta_retenciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                    <div class="grid grid-cols-2 gap-2">
+                                                                                        <div>
+                                                                                            <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                                                                <label class="text-[9px] text-slate-600 font-medium truncate">ITAN Disp. M-1</label>
+                                                                                                <div class="flex items-center gap-1">
+                                                                                                    <span x-show="itanSugeridoM1 > 0" class="text-[8px] font-bold text-purple-700 bg-purple-100 px-1 py-0.2 rounded" title="Saldo disponible arrastrado de M-1">Auto M-1</span>
+                                                                                                    <button type="button" x-show="itanSugeridoM1 > 0"
+                                                                                                            @click="aplicarItanSugeridoM1()"
+                                                                                                            class="text-[8px] text-purple-600 hover:text-purple-800 underline" title="Recargar ITAN disponible de M-1">
+                                                                                                        ↺
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.renta_itan_saldo_anterior"
+                                                                                                   @input="liquidacion.renta_itan_saldo_anterior = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition">
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                                                                <label class="text-[9px] text-slate-600 font-medium truncate">Compensación ITAN (Cas. 111)</label>
+                                                                                                <button type="button" x-show="limpiarMoneda(liquidacion.renta_itan_saldo_anterior) > 0"
+                                                                                                        @click="aplicarCompensacionItanTotal()"
+                                                                                                        class="text-[8px] font-bold text-purple-700 hover:text-purple-900 underline" title="Compensar el pago a cuenta con el ITAN disponible">
+                                                                                                    Aplicar
+                                                                                                </button>
+                                                                                            </div>
+                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.renta_compensacion_itan"
+                                                                                                   @input="liquidacion.renta_compensacion_itan = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition">
+                                                                                        </div>
                                                                                     </div>
+                                                                                </div>
+
+                                                                                <div>
+                                                                                    <label class="text-[9px] text-slate-600 font-medium block mb-0.5">Retenciones 3ra Cat. (Cas. 113)</label>
+                                                                                    <input type="text" inputmode="decimal" x-model="liquidacion.renta_retenciones"
+                                                                                           @input="liquidacion.renta_retenciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                           placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                 </div>
                                                                             </div>
 
@@ -884,20 +1007,29 @@
                                                                                     <div>
                                                                                         <p class="text-[9px] font-bold uppercase tracking-wider"
                                                                                            :class="liquidacion.renta_resultante_pagar > 0 ? 'text-rose-700' : 'text-emerald-700'">
-                                                                                            Importe a Pagar de Renta (Cas. 302)
+                                                                                            <span x-show="liquidacion.renta_resultante_pagar > 0">Importe a Pagar de Renta (Cas. 302)</span>
+                                                                                            <span x-show="!(liquidacion.renta_resultante_pagar > 0)">
+                                                                                                <span x-show="liquidacion.renta_saldo_favor_siguiente > 0">Saldo a Favor para Mes Siguiente (Cas. 109)</span>
+                                                                                                <span x-show="!(liquidacion.renta_saldo_favor_siguiente > 0)">Pago a Cuenta de Renta S/ 0.00</span>
+                                                                                            </span>
                                                                                         </p>
                                                                                         <p class="text-sm font-black mt-0.5 font-mono"
                                                                                            :class="liquidacion.renta_resultante_pagar > 0 ? 'text-rose-700' : 'text-emerald-700'"
-                                                                                           x-text="'S/ ' + formatearNumeroConComas(liquidacion.renta_resultante_pagar)"></p>
+                                                                                           x-text="'S/ ' + formatearNumeroConComas(liquidacion.renta_resultante_pagar > 0 ? liquidacion.renta_resultante_pagar : liquidacion.renta_saldo_favor_siguiente)"></p>
                                                                                     </div>
-                                                                                    <span x-show="liquidacion.renta_resultante_pagar > 0" class="text-[10px] font-bold text-indigo-700 bg-indigo-100/90 px-2 py-0.5 rounded-md border border-indigo-200"
-                                                                                          x-text="'Tributo ' + rentaCodigoSugerido()">
-                                                                                    </span>
+                                                                                    <div class="flex flex-col items-end gap-1">
+                                                                                        <span x-show="liquidacion.renta_resultante_pagar > 0" class="text-[10px] font-bold text-indigo-700 bg-indigo-100/90 px-2 py-0.5 rounded-md border border-indigo-200"
+                                                                                              x-text="'Tributo ' + rentaCodigoSugerido()">
+                                                                                        </span>
+                                                                                        <span x-show="liquidacion.renta_saldo_favor_siguiente > 0" class="text-[8.5px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded">
+                                                                                            Saldo no agotado M+1
+                                                                                        </span>
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
                                                                         </div>
 
-                                                                        {{-- Pie del Acordeón: Nota y Botones de Acción --}}
+                                                                        {{-- Pie del Acordeón PDT 621: Nota y Botones de Acción --}}
                                                                         <div class="pt-1 space-y-2 border-t border-slate-100">
                                                                             <input type="text" x-model="liquidacion.notas_liquidacion"
                                                                                    placeholder="Nota contable interna (ej: Prórroga acogida, saldo compensado, exoneración...)"
@@ -907,7 +1039,7 @@
                                                                                 <div class="flex items-center gap-2 flex-1">
                                                                                     <button type="button" @click="guardarLiquidacion(true)" :disabled="savingLiquidacion"
                                                                                             class="flex-1 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs disabled:opacity-50 transition shadow-xs"
-                                                                                            x-text="savingLiquidacion ? 'Guardando...' : (guardadoLiquidacionExitoso ? '¡Liquidación guardada y deudas actualizadas!' : '💾 Guardar y Actualizar Tributos')">
+                                                                                            x-text="savingLiquidacion ? 'Guardando...' : (guardadoLiquidacionExitoso ? '¡Liquidación guardada y deudas actualizadas!' : '💾 Guardar y Actualizar PDT 621')">
                                                                                     </button>
                                                                                     <button type="button" @click="guardarLiquidacion(false)" :disabled="savingLiquidacion"
                                                                                             title="Guarda la liquidación sin alterar las deudas inferiores"
@@ -924,6 +1056,151 @@
                                                                                     <span>Limpiar</span>
                                                                                 </button>
                                                                             </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                {{-- ACORDEÓN: HOJA DE LIQUIDACIÓN PDT 601 (PLAME) --}}
+                                                                <div x-show="bloque.id === 'pdt_601'" class="rounded-xl border border-purple-200 bg-gradient-to-b from-purple-50/70 to-slate-50 overflow-hidden shadow-2xs">
+                                                                    {{-- Botón Cabecera del Acordeón PLAME --}}
+                                                                    <button type="button" @click="panelLiquidacionPlameAbierto = !panelLiquidacionPlameAbierto; if (panelLiquidacionPlameAbierto) encuadrarMenuDJ()"
+                                                                            class="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-purple-100/50 transition">
+                                                                        <div class="flex items-center gap-2 min-w-0">
+                                                                            <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-purple-600 text-white text-[11px] font-black">👥</span>
+                                                                            <div class="min-w-0">
+                                                                                <p class="text-xs font-bold text-purple-950 flex items-center gap-1.5 truncate">
+                                                                                    <span>Hoja de Liquidación PDT 601</span>
+                                                                                    <span class="text-[9px] font-semibold text-purple-700 bg-purple-100 px-1.5 py-0.2 rounded-full">PLAME · Planilla Mensual</span>
+                                                                                </p>
+                                                                                <p class="text-[10px] text-purple-800/80 truncate">
+                                                                                    Determina EsSalud (piso RMV 2026: S/ 1,130), ONP, AFP y Retenciones de 4ta y 5ta Cat.
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="flex items-center gap-1.5 shrink-0">
+                                                                            <span x-show="totalPlamePagar() > 0" class="text-[9px] font-bold bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded border border-purple-200">
+                                                                                Pagar: S/ <span x-text="formatearNumeroConComas(totalPlamePagar())"></span>
+                                                                            </span>
+                                                                            <svg class="h-4 w-4 text-purple-700 transition" :class="panelLiquidacionPlameAbierto ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                                                            </svg>
+                                                                        </div>
+                                                                    </button>
+
+                                                                    {{-- Contenedor Desplegable de la Hoja de Liquidación PLAME --}}
+                                                                    <div x-show="panelLiquidacionPlameAbierto" class="border-t border-purple-200/80 p-3 space-y-3 bg-white">
+                                                                        {{-- Seguridad Social / Aportes Empleador --}}
+                                                                        <div class="rounded-lg border border-slate-200 bg-slate-50/70 p-2 space-y-2">
+                                                                            <div class="flex items-center justify-between">
+                                                                                <span class="block text-[10px] font-bold text-slate-700 uppercase tracking-wider">1. EsSalud (Tributo 5210)</span>
+                                                                                <span class="text-[8.5px] font-bold text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded border border-purple-200">Piso legal RMV 2026: S/ 101.70</span>
+                                                                            </div>
+                                                                            <div class="grid grid-cols-2 gap-2">
+                                                                                <div>
+                                                                                    <label class="text-[9px] text-slate-600 font-medium block">Base Imponible Planilla (Cas. 502/503)</label>
+                                                                                    <input type="text" inputmode="decimal" x-model="liquidacion.plame_essalud_base"
+                                                                                           @input="liquidacion.plame_essalud_base = formatearMilesInput($event); onPlameEssaludBaseInput()"
+                                                                                           placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition">
+                                                                                    <span class="text-[8px] text-slate-500 mt-0.5 block">9% de S/ 1,130.00 = S/ 101.70 mín.</span>
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label class="text-[9px] text-slate-600 font-medium block">Aporte EsSalud a Pagar (9%)</label>
+                                                                                    <input type="text" inputmode="decimal" x-model="liquidacion.plame_essalud_a_pagar"
+                                                                                           @input="liquidacion.plame_essalud_a_pagar = formatearMilesInput($event)"
+                                                                                           placeholder="0.00" class="w-full rounded border border-purple-200 bg-white py-1 px-1.5 text-xs font-mono font-bold text-purple-950 shadow-2xs hover:border-purple-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition">
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {{-- Retenciones al Trabajador (ONP, Renta 4ta, 5ta, AFP) --}}
+                                                                        <div class="rounded-lg border border-slate-200 bg-slate-50/70 p-2 space-y-2">
+                                                                            <span class="block text-[10px] font-bold text-slate-700 uppercase tracking-wider">2. Pensiones y Retenciones</span>
+                                                                            
+                                                                            <div class="grid grid-cols-2 gap-2">
+                                                                                <div>
+                                                                                    <label class="text-[9px] text-slate-600 font-medium block">ONP 13% (Tributo 5310)</label>
+                                                                                    <input type="text" inputmode="decimal" x-model="liquidacion.plame_onp_a_pagar"
+                                                                                           @input="liquidacion.plame_onp_a_pagar = formatearMilesInput($event)"
+                                                                                           placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label class="text-[9px] text-slate-600 font-medium block">AFP Net / Previsión Privada</label>
+                                                                                    <input type="text" inputmode="decimal" x-model="liquidacion.plame_afp_a_pagar"
+                                                                                           @input="liquidacion.plame_afp_a_pagar = formatearMilesInput($event)"
+                                                                                           placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {{-- Honorarios 4ta y Planilla 5ta --}}
+                                                                            <div class="grid grid-cols-3 gap-2">
+                                                                                <div>
+                                                                                    <label class="text-[9px] text-slate-600 font-medium block">Base RxH (4ta Cat.)</label>
+                                                                                    <input type="text" inputmode="decimal" x-model="liquidacion.plame_renta_4ta_base"
+                                                                                           @input="liquidacion.plame_renta_4ta_base = formatearMilesInput($event); onPlameRenta4taBaseInput()"
+                                                                                           placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition">
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label class="text-[9px] text-slate-600 font-medium block">Ret. 4ta 8% (Trib. 3042)</label>
+                                                                                    <input type="text" inputmode="decimal" x-model="liquidacion.plame_renta_4ta_a_pagar"
+                                                                                           @input="liquidacion.plame_renta_4ta_a_pagar = formatearMilesInput($event)"
+                                                                                           placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition">
+                                                                                </div>
+                                                                                <div>
+                                                                                    <label class="text-[9px] text-slate-600 font-medium block">Renta 5ta (Trib. 3052)</label>
+                                                                                    <input type="text" inputmode="decimal" x-model="liquidacion.plame_renta_5ta_a_pagar"
+                                                                                           @input="liquidacion.plame_renta_5ta_a_pagar = formatearMilesInput($event)"
+                                                                                           placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500 focus:outline-none transition">
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {{-- Tarjeta Resumen Total PLAME --}}
+                                                                        <div class="rounded-xl p-2.5 border"
+                                                                             :class="totalPlamePagar() > 0 ? 'bg-purple-50 border-purple-200' : 'bg-slate-50 border-slate-200'">
+                                                                            <div class="flex items-center justify-between gap-2">
+                                                                                <div>
+                                                                                    <p class="text-[9px] font-bold uppercase tracking-wider text-purple-900">
+                                                                                        Total Tributos y Aportes PLAME
+                                                                                    </p>
+                                                                                    <p class="text-sm font-black mt-0.5 font-mono text-purple-900"
+                                                                                       x-text="'S/ ' + formatearNumeroConComas(totalPlamePagar())"></p>
+                                                                                </div>
+                                                                                <div class="flex flex-col items-end gap-1">
+                                                                                    <span class="text-[10px] font-bold text-purple-700 bg-purple-100/90 px-2 py-0.5 rounded-md border border-purple-200">
+                                                                                        PDT 601
+                                                                                    </span>
+                                                                                    <div class="flex items-center gap-1 flex-wrap justify-end">
+                                                                                        <span x-show="limpiarMoneda(liquidacion.plame_essalud_a_pagar) > 0" class="text-[8px] font-bold text-purple-700 bg-purple-100 px-1 rounded">5210</span>
+                                                                                        <span x-show="limpiarMoneda(liquidacion.plame_onp_a_pagar) > 0" class="text-[8px] font-bold text-blue-700 bg-blue-100 px-1 rounded">5310</span>
+                                                                                        <span x-show="limpiarMoneda(liquidacion.plame_afp_a_pagar) > 0" class="text-[8px] font-bold text-indigo-700 bg-indigo-100 px-1 rounded">AFP</span>
+                                                                                        <span x-show="limpiarMoneda(liquidacion.plame_renta_4ta_a_pagar) > 0" class="text-[8px] font-bold text-amber-700 bg-amber-100 px-1 rounded">3042</span>
+                                                                                        <span x-show="limpiarMoneda(liquidacion.plame_renta_5ta_a_pagar) > 0" class="text-[8px] font-bold text-rose-700 bg-rose-100 px-1 rounded">3052</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {{-- Pie del Acordeón PLAME: Botones de Acción --}}
+                                                                        <div class="pt-1 flex items-center justify-between gap-2 border-t border-slate-100">
+                                                                            <div class="flex items-center gap-2 flex-1">
+                                                                                <button type="button" @click="guardarLiquidacion(true)" :disabled="savingLiquidacion"
+                                                                                        class="flex-1 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs disabled:opacity-50 transition shadow-xs"
+                                                                                        x-text="savingLiquidacion ? 'Guardando...' : (guardadoLiquidacionExitoso ? '¡PLAME guardado y tributos actualizados!' : '💾 Guardar y Actualizar PLAME')">
+                                                                                </button>
+                                                                                <button type="button" @click="guardarLiquidacion(false)" :disabled="savingLiquidacion"
+                                                                                        title="Guarda la liquidación sin alterar las deudas inferiores"
+                                                                                        class="py-1.5 px-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-[11px] transition">
+                                                                                    Solo Hoja
+                                                                                </button>
+                                                                            </div>
+                                                                            <button type="button" @click="limpiarHojaLiquidacion()" :disabled="savingLiquidacion"
+                                                                                    title="Restablecer o limpiar la liquidación a cero"
+                                                                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-slate-200 transition shrink-0">
+                                                                                <svg class="h-3.5 w-3.5 text-slate-400 group-hover:text-rose-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                                                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                                                                </svg>
+                                                                                <span>Limpiar</span>
+                                                                            </button>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -1311,12 +1588,17 @@
                 nuevaFecha: new Date().toISOString().split('T')[0],
                 nuevaObs: '',
 
-                // --- Hoja de Liquidación PDT 621 ---
+                // --- Hoja de Liquidación Tributaria (PDT 621 & PLAME 601) ---
                 panelLiquidacionAbierto: false,
+                panelLiquidacionPlameAbierto: false,
                 tabLiquidacion: 'igv',
                 savingLiquidacion: false,
                 guardadoLiquidacionExitoso: false,
                 saldoFavorSugerido: 0,
+                retencionesSugeridas: 0,
+                percepcionesSugeridas: 0,
+                rentaSugeridaM1: 0,
+                itanSugeridoM1: 0,
                 liquidacion: {
                     es_zona_selva: false,
                     ventas_base: '',
@@ -1325,17 +1607,31 @@
                     compras_base: '',
                     igv_compras: '',
                     igv_saldo_favor_anterior: '',
+                    igv_retenciones_saldo_anterior: '',
                     igv_retenciones: '',
+                    igv_retenciones_saldo_siguiente: 0,
+                    igv_percepciones_saldo_anterior: '',
                     igv_percepciones: '',
+                    igv_percepciones_saldo_siguiente: 0,
                     igv_saldo_favor_siguiente: 0,
                     igv_resultante_pagar: 0,
                     renta_base_ingresos: '',
                     renta_tasa: 1.0,
                     renta_calculada: '',
                     renta_saldo_favor_anterior: '',
+                    renta_itan_saldo_anterior: '',
                     renta_compensacion_itan: '',
+                    renta_itan_saldo_siguiente: 0,
                     renta_retenciones: '',
+                    renta_saldo_favor_siguiente: 0,
                     renta_resultante_pagar: 0,
+                    plame_essalud_base: '',
+                    plame_essalud_a_pagar: '',
+                    plame_onp_a_pagar: '',
+                    plame_renta_4ta_base: '',
+                    plame_renta_4ta_a_pagar: '',
+                    plame_renta_5ta_a_pagar: '',
+                    plame_afp_a_pagar: '',
                     notas_liquidacion: '',
                 },
 
@@ -1374,6 +1670,7 @@
                     this.$watch('openDJ', (abierto) => {
                         if (!abierto) {
                             this.panelLiquidacionAbierto = false;
+                            this.panelLiquidacionPlameAbierto = false;
                             this.deudas.forEach((deuda) => this.revertirCampos(deuda));
                             this.deudas = this.deudas.filter((deuda) => this.deudaPersistida(deuda));
                             this.deudaAbiertaKey = null;
@@ -1483,6 +1780,7 @@
                 abrirMenuDJ(ancla) {
                     this.hoverDeuda = false;
                     this.panelLiquidacionAbierto = false;
+                    this.panelLiquidacionPlameAbierto = false;
                     this.deudaAbiertaKey = null;
                     this.openDJ = !this.openDJ;
                     if (this.openDJ) {
@@ -1498,6 +1796,7 @@
                     this.hoverDeuda = false;
                     this.activeTab = tabName;
                     this.panelLiquidacionAbierto = false;
+                    this.panelLiquidacionPlameAbierto = false;
                     this.deudaAbiertaKey = null;
                     this.openDJ = true;
                     this.sincronizarDesdeMes();
@@ -2518,14 +2817,18 @@
                     }
                 },
 
-                // --- Métodos de Hoja de Liquidación PDT 621 ---
+                // --- Métodos de Hoja de Liquidación Tributaria (PDT 621 & PLAME 601) ---
                 inicializarLiquidacion() {
                     const mes = this.meses[this.mesIdx];
                     this.saldoFavorSugerido = parseFloat(mes?.saldo_favor_anterior_sugerido || 0);
+                    this.retencionesSugeridas = parseFloat(mes?.retenciones_saldo_anterior_sugerido || 0);
+                    this.percepcionesSugeridas = parseFloat(mes?.percepciones_saldo_anterior_sugerido || 0);
+                    this.rentaSugeridaM1 = parseFloat(mes?.renta_saldo_anterior_sugerido || 0);
+                    this.itanSugeridoM1 = parseFloat(mes?.itan_saldo_anterior_sugerido || 0);
 
                     let tasaPorDefecto = 1.0;
                     const reg = (this.regimen || '').toUpperCase();
-                    if (reg === 'RER' || reg === 'GENERAL') {
+                    if (reg === 'RER' || reg === 'GENERAL' || reg === 'RG') {
                         tasaPorDefecto = 1.5;
                     }
 
@@ -2534,6 +2837,27 @@
 
                     if (mes && mes.liquidacion) {
                         const l = mes.liquidacion;
+                        // Arrastre 100% automático: si en base de datos el saldo anterior guardado es 0 o vacío, pero existe saldo sugerido M-1, jalarlo automáticamente
+                        const sfAnterior = (parseFloat(l.igv_saldo_favor_anterior || 0) > 0)
+                            ? l.igv_saldo_favor_anterior
+                            : this.saldoFavorSugerido;
+
+                        const retAnterior = (parseFloat(l.igv_retenciones_saldo_anterior || 0) > 0)
+                            ? l.igv_retenciones_saldo_anterior
+                            : this.retencionesSugeridas;
+
+                        const percAnterior = (parseFloat(l.igv_percepciones_saldo_anterior || 0) > 0)
+                            ? l.igv_percepciones_saldo_anterior
+                            : this.percepcionesSugeridas;
+
+                        const rentaAnt = (parseFloat(l.renta_saldo_favor_anterior || 0) > 0)
+                            ? l.renta_saldo_favor_anterior
+                            : this.rentaSugeridaM1;
+
+                        const itanAnt = (parseFloat(l.renta_itan_saldo_anterior || 0) > 0)
+                            ? l.renta_itan_saldo_anterior
+                            : this.itanSugeridoM1;
+
                         this.liquidacion = {
                             es_zona_selva: !!l.es_zona_selva,
                             ventas_base: l.ventas_base > 0 ? this.formatearNumeroConComas(l.ventas_base) : '',
@@ -2541,21 +2865,36 @@
                             ventas_no_gravadas: l.ventas_no_gravadas > 0 ? this.formatearNumeroConComas(l.ventas_no_gravadas) : '',
                             compras_base: l.compras_base > 0 ? this.formatearNumeroConComas(l.compras_base) : '',
                             igv_compras: l.igv_compras > 0 ? this.formatearNumeroConComas(l.igv_compras) : (l.es_zona_selva ? '0.00' : ''),
-                            igv_saldo_favor_anterior: l.igv_saldo_favor_anterior > 0 ? this.formatearNumeroConComas(l.igv_saldo_favor_anterior) : '',
+                            igv_saldo_favor_anterior: sfAnterior > 0 ? this.formatearNumeroConComas(sfAnterior) : '',
+                            igv_retenciones_saldo_anterior: retAnterior > 0 ? this.formatearNumeroConComas(retAnterior) : '',
                             igv_retenciones: l.igv_retenciones > 0 ? this.formatearNumeroConComas(l.igv_retenciones) : '',
+                            igv_retenciones_saldo_siguiente: parseFloat(l.igv_retenciones_saldo_siguiente || 0),
+                            igv_percepciones_saldo_anterior: percAnterior > 0 ? this.formatearNumeroConComas(percAnterior) : '',
                             igv_percepciones: l.igv_percepciones > 0 ? this.formatearNumeroConComas(l.igv_percepciones) : '',
+                            igv_percepciones_saldo_siguiente: parseFloat(l.igv_percepciones_saldo_siguiente || 0),
                             igv_saldo_favor_siguiente: parseFloat(l.igv_saldo_favor_siguiente || 0),
                             igv_resultante_pagar: parseFloat(l.igv_resultante_pagar || 0),
                             renta_base_ingresos: l.renta_base_ingresos > 0 ? this.formatearNumeroConComas(l.renta_base_ingresos) : '',
                             renta_tasa: l.renta_tasa > 0 ? l.renta_tasa : tasaPorDefecto,
                             renta_calculada: l.renta_calculada > 0 ? this.formatearNumeroConComas(l.renta_calculada) : '',
-                            renta_saldo_favor_anterior: l.renta_saldo_favor_anterior > 0 ? this.formatearNumeroConComas(l.renta_saldo_favor_anterior) : '',
+                            renta_saldo_favor_anterior: rentaAnt > 0 ? this.formatearNumeroConComas(rentaAnt) : '',
+                            renta_itan_saldo_anterior: itanAnt > 0 ? this.formatearNumeroConComas(itanAnt) : '',
                             renta_compensacion_itan: l.renta_compensacion_itan > 0 ? this.formatearNumeroConComas(l.renta_compensacion_itan) : '',
+                            renta_itan_saldo_siguiente: parseFloat(l.renta_itan_saldo_siguiente || 0),
                             renta_retenciones: l.renta_retenciones > 0 ? this.formatearNumeroConComas(l.renta_retenciones) : '',
+                            renta_saldo_favor_siguiente: parseFloat(l.renta_saldo_favor_siguiente || 0),
                             renta_resultante_pagar: parseFloat(l.renta_resultante_pagar || 0),
+                            plame_essalud_base: l.plame_essalud_base > 0 ? this.formatearNumeroConComas(l.plame_essalud_base) : '',
+                            plame_essalud_a_pagar: l.plame_essalud_a_pagar > 0 ? this.formatearNumeroConComas(l.plame_essalud_a_pagar) : '',
+                            plame_onp_a_pagar: l.plame_onp_a_pagar > 0 ? this.formatearNumeroConComas(l.plame_onp_a_pagar) : '',
+                            plame_renta_4ta_base: l.plame_renta_4ta_base > 0 ? this.formatearNumeroConComas(l.plame_renta_4ta_base) : '',
+                            plame_renta_4ta_a_pagar: l.plame_renta_4ta_a_pagar > 0 ? this.formatearNumeroConComas(l.plame_renta_4ta_a_pagar) : '',
+                            plame_renta_5ta_a_pagar: l.plame_renta_5ta_a_pagar > 0 ? this.formatearNumeroConComas(l.plame_renta_5ta_a_pagar) : '',
+                            plame_afp_a_pagar: l.plame_afp_a_pagar > 0 ? this.formatearNumeroConComas(l.plame_afp_a_pagar) : '',
                             notas_liquidacion: l.notas_liquidacion || '',
                         };
                     } else {
+                        // Mes no inicializado: Arrastre 100% automático desde M-1
                         this.liquidacion = {
                             es_zona_selva: esSelvaSugerido,
                             ventas_base: '',
@@ -2563,18 +2902,32 @@
                             ventas_no_gravadas: '',
                             compras_base: '',
                             igv_compras: esSelvaSugerido ? '0.00' : '',
-                            igv_saldo_favor_anterior: '',
+                            igv_saldo_favor_anterior: this.saldoFavorSugerido > 0 ? this.formatearNumeroConComas(this.saldoFavorSugerido) : '',
+                            igv_retenciones_saldo_anterior: this.retencionesSugeridas > 0 ? this.formatearNumeroConComas(this.retencionesSugeridas) : '',
                             igv_retenciones: '',
+                            igv_retenciones_saldo_siguiente: 0,
+                            igv_percepciones_saldo_anterior: this.percepcionesSugeridas > 0 ? this.formatearNumeroConComas(this.percepcionesSugeridas) : '',
                             igv_percepciones: '',
+                            igv_percepciones_saldo_siguiente: 0,
                             igv_saldo_favor_siguiente: 0,
                             igv_resultante_pagar: 0,
                             renta_base_ingresos: '',
                             renta_tasa: tasaPorDefecto,
                             renta_calculada: '',
-                            renta_saldo_favor_anterior: '',
+                            renta_saldo_favor_anterior: this.rentaSugeridaM1 > 0 ? this.formatearNumeroConComas(this.rentaSugeridaM1) : '',
+                            renta_itan_saldo_anterior: this.itanSugeridoM1 > 0 ? this.formatearNumeroConComas(this.itanSugeridoM1) : '',
                             renta_compensacion_itan: '',
+                            renta_itan_saldo_siguiente: 0,
                             renta_retenciones: '',
+                            renta_saldo_favor_siguiente: 0,
                             renta_resultante_pagar: 0,
+                            plame_essalud_base: '',
+                            plame_essalud_a_pagar: '',
+                            plame_onp_a_pagar: '',
+                            plame_renta_4ta_base: '',
+                            plame_renta_4ta_a_pagar: '',
+                            plame_renta_5ta_a_pagar: '',
+                            plame_afp_a_pagar: '',
                             notas_liquidacion: '',
                         };
                     }
@@ -2631,6 +2984,8 @@
                         this.liquidacion.igv_compras = '0.00';
                         this.liquidacion.igv_resultante_pagar = 0;
                         this.liquidacion.igv_saldo_favor_siguiente = 0;
+                        this.liquidacion.igv_retenciones_saldo_siguiente = 0;
+                        this.liquidacion.igv_percepciones_saldo_siguiente = 0;
                     } else {
                         const base = this.limpiarMoneda(this.liquidacion.ventas_base);
                         this.liquidacion.igv_ventas = base > 0 ? this.formatearNumeroConComas(Math.round(base * 0.18 * 100) / 100) : '';
@@ -2646,40 +3001,97 @@
                         this.liquidacion.igv_compras = '0.00';
                         this.liquidacion.igv_resultante_pagar = 0;
                         this.liquidacion.igv_saldo_favor_siguiente = 0;
+                        this.liquidacion.igv_retenciones_saldo_siguiente = 0;
+                        this.liquidacion.igv_percepciones_saldo_siguiente = 0;
                     } else {
                         const debito = this.limpiarMoneda(this.liquidacion.igv_ventas);
                         const credito = this.limpiarMoneda(this.liquidacion.igv_compras);
                         const saldoAnterior = this.limpiarMoneda(this.liquidacion.igv_saldo_favor_anterior);
-                        const retenciones = this.limpiarMoneda(this.liquidacion.igv_retenciones);
-                        const percepciones = this.limpiarMoneda(this.liquidacion.igv_percepciones);
 
-                        const netoFiscal = debito - credito - saldoAnterior;
-                        if (netoFiscal > 0) {
-                            const porPagar = netoFiscal - retenciones - percepciones;
-                            if (porPagar > 0) {
-                                this.liquidacion.igv_resultante_pagar = Math.round(porPagar * 100) / 100;
-                                this.liquidacion.igv_saldo_favor_siguiente = 0;
-                            } else {
-                                this.liquidacion.igv_resultante_pagar = 0;
-                                this.liquidacion.igv_saldo_favor_siguiente = Math.round(Math.abs(porPagar) * 100) / 100;
-                            }
-                        } else {
+                        const retencionesMes = this.limpiarMoneda(this.liquidacion.igv_retenciones);
+                        const retencionesAnt = this.limpiarMoneda(this.liquidacion.igv_retenciones_saldo_anterior);
+                        const totalRetenciones = Math.round((retencionesAnt + retencionesMes) * 100) / 100;
+
+                        const percepcionesMes = this.limpiarMoneda(this.liquidacion.igv_percepciones);
+                        const percepcionesAnt = this.limpiarMoneda(this.liquidacion.igv_percepciones_saldo_anterior);
+                        const totalPercepciones = Math.round((percepcionesAnt + percepcionesMes) * 100) / 100;
+
+                        const netoFiscal = Math.round((debito - credito - saldoAnterior) * 100) / 100;
+
+                        if (netoFiscal < 0) {
+                            this.liquidacion.igv_saldo_favor_siguiente = Math.round(Math.abs(netoFiscal) * 100) / 100;
                             this.liquidacion.igv_resultante_pagar = 0;
-                            this.liquidacion.igv_saldo_favor_siguiente = Math.round((Math.abs(netoFiscal) + retenciones + percepciones) * 100) / 100;
+                            this.liquidacion.igv_retenciones_saldo_siguiente = totalRetenciones;
+                            this.liquidacion.igv_percepciones_saldo_siguiente = totalPercepciones;
+                        } else if (netoFiscal === 0) {
+                            this.liquidacion.igv_saldo_favor_siguiente = 0;
+                            this.liquidacion.igv_resultante_pagar = 0;
+                            this.liquidacion.igv_retenciones_saldo_siguiente = totalRetenciones;
+                            this.liquidacion.igv_percepciones_saldo_siguiente = totalPercepciones;
+                        } else {
+                            this.liquidacion.igv_saldo_favor_siguiente = 0;
+                            if (totalRetenciones >= netoFiscal) {
+                                this.liquidacion.igv_retenciones_saldo_siguiente = Math.round((totalRetenciones - netoFiscal) * 100) / 100;
+                                this.liquidacion.igv_percepciones_saldo_siguiente = totalPercepciones;
+                                this.liquidacion.igv_resultante_pagar = 0;
+                            } else {
+                                const resto = Math.round((netoFiscal - totalRetenciones) * 100) / 100;
+                                this.liquidacion.igv_retenciones_saldo_siguiente = 0;
+                                if (totalPercepciones >= resto) {
+                                    this.liquidacion.igv_percepciones_saldo_siguiente = Math.round((totalPercepciones - resto) * 100) / 100;
+                                    this.liquidacion.igv_resultante_pagar = 0;
+                                } else {
+                                    this.liquidacion.igv_percepciones_saldo_siguiente = 0;
+                                    this.liquidacion.igv_resultante_pagar = Math.round((resto - totalPercepciones) * 100) / 100;
+                                }
+                            }
                         }
                     }
 
-                    const ingresos = this.limpiarMoneda(this.liquidacion.renta_base_ingresos);
-                    const tasa = parseFloat(this.liquidacion.renta_tasa || 0);
-                    const rentaCalc = Math.round(ingresos * (tasa / 100) * 100) / 100;
-                    this.liquidacion.renta_calculada = rentaCalc > 0 ? this.formatearNumeroConComas(rentaCalc) : (ingresos > 0 ? '0.00' : '');
+                    const reg = (this.regimen || '').toUpperCase();
+                    const esRus = reg === 'RUS';
+                    const esRer = reg === 'RER';
 
-                    const compensaciones = this.limpiarMoneda(this.liquidacion.renta_saldo_favor_anterior)
-                        + this.limpiarMoneda(this.liquidacion.renta_compensacion_itan)
-                        + this.limpiarMoneda(this.liquidacion.renta_retenciones);
+                    if (esRus) {
+                        this.liquidacion.renta_base_ingresos = '';
+                        this.liquidacion.renta_calculada = '';
+                        this.liquidacion.renta_resultante_pagar = 0;
+                        this.liquidacion.renta_saldo_favor_siguiente = 0;
+                        this.liquidacion.renta_itan_saldo_siguiente = 0;
+                    } else {
+                        const ingresos = this.limpiarMoneda(this.liquidacion.renta_base_ingresos);
+                        const tasa = parseFloat(this.liquidacion.renta_tasa || (esRer ? 1.5 : 1.0));
+                        const rentaCalc = Math.round(ingresos * (tasa / 100) * 100) / 100;
+                        this.liquidacion.renta_calculada = rentaCalc > 0 ? this.formatearNumeroConComas(rentaCalc) : (ingresos > 0 ? '0.00' : '');
 
-                    const rentaPagar = Math.max(0, Math.round((rentaCalc - compensaciones) * 100) / 100);
-                    this.liquidacion.renta_resultante_pagar = rentaPagar;
+                        if (esRer) {
+                            const ret3ra = this.limpiarMoneda(this.liquidacion.renta_retenciones);
+                            this.liquidacion.renta_resultante_pagar = Math.max(0, Math.round((rentaCalc - ret3ra) * 100) / 100);
+                            this.liquidacion.renta_saldo_favor_siguiente = 0;
+                            this.liquidacion.renta_itan_saldo_siguiente = 0;
+                        } else {
+                            const saldoAnt = this.limpiarMoneda(this.liquidacion.renta_saldo_favor_anterior);
+                            const itanSaldoAnt = this.limpiarMoneda(this.liquidacion.renta_itan_saldo_anterior);
+                            const itanComp = this.limpiarMoneda(this.liquidacion.renta_compensacion_itan);
+                            const ret3ra = this.limpiarMoneda(this.liquidacion.renta_retenciones);
+
+                            // ITAN remanente para M+1 (Ley 28424 Art. 8)
+                            this.liquidacion.renta_itan_saldo_siguiente = Math.max(0, Math.round((itanSaldoAnt - itanComp) * 100) / 100);
+
+                            // Orden legal de aplicación de compensaciones en PDT 621:
+                            const totalComp = Math.round((saldoAnt + itanComp + ret3ra) * 100) / 100;
+
+                            if (totalComp >= rentaCalc) {
+                                this.liquidacion.renta_resultante_pagar = 0;
+                                const remanente = Math.round((totalComp - rentaCalc) * 100) / 100;
+                                // Casilla 109 saldo que pasa a siguiente mes (sólo remanente del saldo a favor del ejercicio)
+                                this.liquidacion.renta_saldo_favor_siguiente = Math.min(saldoAnt, remanente);
+                            } else {
+                                this.liquidacion.renta_resultante_pagar = Math.round((rentaCalc - totalComp) * 100) / 100;
+                                this.liquidacion.renta_saldo_favor_siguiente = 0;
+                            }
+                        }
+                    }
                 },
 
                 aplicarSaldoAnteriorSugerido() {
@@ -2689,10 +3101,82 @@
                     }
                 },
 
+                aplicarRetencionesSugeridas() {
+                    if (this.retencionesSugeridas > 0) {
+                        this.liquidacion.igv_retenciones_saldo_anterior = this.formatearNumeroConComas(this.retencionesSugeridas);
+                        this.recalcularTotalesLiquidacion();
+                    }
+                },
+
+                aplicarPercepcionesSugeridas() {
+                    if (this.percepcionesSugeridas > 0) {
+                        this.liquidacion.igv_percepciones_saldo_anterior = this.formatearNumeroConComas(this.percepcionesSugeridas);
+                        this.recalcularTotalesLiquidacion();
+                    }
+                },
+
+                aplicarRentaSugeridaM1() {
+                    if (this.rentaSugeridaM1 > 0) {
+                        this.liquidacion.renta_saldo_favor_anterior = this.formatearNumeroConComas(this.rentaSugeridaM1);
+                        this.recalcularTotalesLiquidacion();
+                    }
+                },
+
+                aplicarItanSugeridoM1() {
+                    if (this.itanSugeridoM1 > 0) {
+                        this.liquidacion.renta_itan_saldo_anterior = this.formatearNumeroConComas(this.itanSugeridoM1);
+                        this.recalcularTotalesLiquidacion();
+                    }
+                },
+
+                aplicarCompensacionItanTotal() {
+                    const itanDisp = this.limpiarMoneda(this.liquidacion.renta_itan_saldo_anterior);
+                    const rentaCalc = this.limpiarMoneda(this.liquidacion.renta_calculada);
+                    const saldoAnt = this.limpiarMoneda(this.liquidacion.renta_saldo_favor_anterior);
+                    const ret3ra = this.limpiarMoneda(this.liquidacion.renta_retenciones);
+
+                    // Deuda de renta pendiente antes de aplicar ITAN
+                    const deudaPrevia = Math.max(0, Math.round((rentaCalc - saldoAnt - ret3ra) * 100) / 100);
+                    const compensar = Math.min(itanDisp, deudaPrevia > 0 ? deudaPrevia : itanDisp);
+                    this.liquidacion.renta_compensacion_itan = compensar > 0 ? this.formatearNumeroConComas(compensar) : '';
+                    this.recalcularTotalesLiquidacion();
+                },
+
+                onPlameEssaludBaseInput() {
+                    const base = this.limpiarMoneda(this.liquidacion.plame_essalud_base);
+                    if (base > 0) {
+                        // En 2026, la RMV es S/ 1,130.00. El aporte legal mínimo de EsSalud (9%) es S/ 101.70
+                        const essalud = Math.round(Math.max(base * 0.09, 101.70) * 100) / 100;
+                        this.liquidacion.plame_essalud_a_pagar = this.formatearNumeroConComas(essalud);
+                    } else {
+                        this.liquidacion.plame_essalud_a_pagar = '';
+                    }
+                },
+
+                onPlameRenta4taBaseInput() {
+                    const base = this.limpiarMoneda(this.liquidacion.plame_renta_4ta_base);
+                    if (base > 0) {
+                        const renta4ta = Math.round(base * 0.08 * 100) / 100;
+                        this.liquidacion.plame_renta_4ta_a_pagar = this.formatearNumeroConComas(renta4ta);
+                    } else {
+                        this.liquidacion.plame_renta_4ta_a_pagar = '';
+                    }
+                },
+
+                totalPlamePagar() {
+                    return Math.round((
+                        this.limpiarMoneda(this.liquidacion.plame_essalud_a_pagar) +
+                        this.limpiarMoneda(this.liquidacion.plame_onp_a_pagar) +
+                        this.limpiarMoneda(this.liquidacion.plame_renta_4ta_a_pagar) +
+                        this.limpiarMoneda(this.liquidacion.plame_renta_5ta_a_pagar) +
+                        this.limpiarMoneda(this.liquidacion.plame_afp_a_pagar)
+                    ) * 100) / 100;
+                },
+
                 rentaCodigoSugerido() {
                     const reg = (this.regimen || '').toUpperCase();
                     if (reg === 'RER') return '3111';
-                    if (reg === 'GENERAL') return '3031';
+                    if (reg === 'GENERAL' || reg === 'RG') return '3031';
                     return '3121';
                 },
 
@@ -2713,14 +3197,24 @@
                             compras_base: this.limpiarMoneda(this.liquidacion.compras_base),
                             igv_compras: this.limpiarMoneda(this.liquidacion.igv_compras),
                             igv_saldo_favor_anterior: this.limpiarMoneda(this.liquidacion.igv_saldo_favor_anterior),
+                            igv_retenciones_saldo_anterior: this.limpiarMoneda(this.liquidacion.igv_retenciones_saldo_anterior),
                             igv_retenciones: this.limpiarMoneda(this.liquidacion.igv_retenciones),
+                            igv_percepciones_saldo_anterior: this.limpiarMoneda(this.liquidacion.igv_percepciones_saldo_anterior),
                             igv_percepciones: this.limpiarMoneda(this.liquidacion.igv_percepciones),
                             renta_base_ingresos: this.limpiarMoneda(this.liquidacion.renta_base_ingresos),
                             renta_tasa: parseFloat(this.liquidacion.renta_tasa || 0),
                             renta_calculada: this.limpiarMoneda(this.liquidacion.renta_calculada),
                             renta_saldo_favor_anterior: this.limpiarMoneda(this.liquidacion.renta_saldo_favor_anterior),
+                            renta_itan_saldo_anterior: this.limpiarMoneda(this.liquidacion.renta_itan_saldo_anterior),
                             renta_compensacion_itan: this.limpiarMoneda(this.liquidacion.renta_compensacion_itan),
                             renta_retenciones: this.limpiarMoneda(this.liquidacion.renta_retenciones),
+                            plame_essalud_base: this.limpiarMoneda(this.liquidacion.plame_essalud_base),
+                            plame_essalud_a_pagar: this.limpiarMoneda(this.liquidacion.plame_essalud_a_pagar),
+                            plame_onp_a_pagar: this.limpiarMoneda(this.liquidacion.plame_onp_a_pagar),
+                            plame_renta_4ta_base: this.limpiarMoneda(this.liquidacion.plame_renta_4ta_base),
+                            plame_renta_4ta_a_pagar: this.limpiarMoneda(this.liquidacion.plame_renta_4ta_a_pagar),
+                            plame_renta_5ta_a_pagar: this.limpiarMoneda(this.liquidacion.plame_renta_5ta_a_pagar),
+                            plame_afp_a_pagar: this.limpiarMoneda(this.liquidacion.plame_afp_a_pagar),
                             renta_tributo_codigo: this.rentaCodigoSugerido(),
                             vencimiento_deuda: this.vencimientoDeuda || null,
                             notas_liquidacion: this.liquidacion.notas_liquidacion || null,
@@ -2744,6 +3238,13 @@
                         }
 
                         this.meses[this.mesIdx].liquidacion = data.liquidacion;
+                        if (data.liquidacion) {
+                            this.liquidacion.renta_itan_saldo_siguiente = parseFloat(data.liquidacion.renta_itan_saldo_siguiente || 0);
+                            this.liquidacion.renta_saldo_favor_siguiente = parseFloat(data.liquidacion.renta_saldo_favor_siguiente || 0);
+                            this.liquidacion.igv_saldo_favor_siguiente = parseFloat(data.liquidacion.igv_saldo_favor_siguiente || 0);
+                            this.liquidacion.igv_retenciones_saldo_siguiente = parseFloat(data.liquidacion.igv_retenciones_saldo_siguiente || 0);
+                            this.liquidacion.igv_percepciones_saldo_siguiente = parseFloat(data.liquidacion.igv_percepciones_saldo_siguiente || 0);
+                        }
                         if (data.operacion_id) {
                             this.meses[this.mesIdx].operacion_id = data.operacion_id;
                         }
@@ -2767,9 +3268,9 @@
 
                 async limpiarHojaLiquidacion() {
                     const tieneLiquidacionGuardada = !!this.meses[this.mesIdx]?.liquidacion;
-                    const deudasPdt = (this.deudas || []).filter(d => this.declaracionDe(d) === 'pdt_621');
-                    const abonosTotales = deudasPdt.reduce((acc, d) => acc + (parseFloat(d.monto_abonado || 0)), 0);
-                    const deudasPendientes = deudasPdt.filter(d => parseFloat(d.saldo_pendiente || d.monto_deuda_inicial || 0) > 0);
+                    const deudasLiquidacion = (this.deudas || []).filter(d => ['1011', '1016', '3121', '3111', '3031', '3011', '5210', '5310', '3042', '3052', 'AFP'].includes(d.tributo_codigo));
+                    const abonosTotales = deudasLiquidacion.reduce((acc, d) => acc + (parseFloat(d.monto_abonado || 0)), 0);
+                    const deudasPendientes = deudasLiquidacion.filter(d => parseFloat(d.saldo_pendiente || d.monto_deuda_inicial || 0) > 0);
 
                     // Escenario 1: Solo está digitada en pantalla (no guardada en base de datos ni con deudas)
                     if (!tieneLiquidacionGuardada && deudasPendientes.length === 0) {
@@ -2777,12 +3278,12 @@
                         return;
                     }
 
-                    // Escenario 2: Hay datos guardados en base de datos o deudas PDT 621
+                    // Escenario 2: Hay datos guardados en base de datos o deudas PDT / PLAME
                     let mensajeConfirmacion = '¿Deseas restablecer la Hoja de Liquidación a cero?';
                     if (abonosTotales > 0) {
                         mensajeConfirmacion = '⚠️ Esta liquidación tiene tributos con pagos/abonos realizados (S/ ' + this.formatearNumeroConComas(abonosTotales) + '). Limpiar la hoja restablecerá los valores a cero pero conservará el historial de los pagos. ¿Deseas continuar?';
                     } else if (deudasPendientes.length > 0) {
-                        mensajeConfirmacion = '¿Deseas restablecer a cero la Hoja de Liquidación y eliminar los tributos pendientes de pago (IGV / Renta) generados para este mes?';
+                        mensajeConfirmacion = '¿Deseas restablecer a cero la Hoja de Liquidación y eliminar los tributos pendientes de pago (IGV, Renta y PLAME) generados para este mes?';
                     }
 
                     if (!confirm(mensajeConfirmacion)) {
@@ -2831,7 +3332,7 @@
 
                 resetearCamposLiquidacionLocal() {
                     const reg = (this.regimen || '').toUpperCase();
-                    let tasaPorDefecto = (reg === 'RER' || reg === 'GENERAL') ? 1.5 : 1.0;
+                    let tasaPorDefecto = (reg === 'RER' || reg === 'GENERAL' || reg === 'RG') ? 1.5 : 1.0;
                     const depto = (this.departamento || '').toUpperCase().trim();
                     const esSelvaSugerido = ['LORETO', 'UCAYALI', 'SAN MARTIN', 'SAN MARTÍN', 'AMAZONAS', 'MADRE DE DIOS'].includes(depto);
 
@@ -2843,17 +3344,31 @@
                         compras_base: '',
                         igv_compras: esSelvaSugerido ? '0.00' : '',
                         igv_saldo_favor_anterior: '',
+                        igv_retenciones_saldo_anterior: '',
                         igv_retenciones: '',
+                        igv_retenciones_saldo_siguiente: 0,
+                        igv_percepciones_saldo_anterior: '',
                         igv_percepciones: '',
+                        igv_percepciones_saldo_siguiente: 0,
                         igv_saldo_favor_siguiente: 0,
                         igv_resultante_pagar: 0,
                         renta_base_ingresos: '',
                         renta_tasa: tasaPorDefecto,
                         renta_calculada: '',
                         renta_saldo_favor_anterior: '',
+                        renta_itan_saldo_anterior: '',
                         renta_compensacion_itan: '',
+                        renta_itan_saldo_siguiente: 0,
                         renta_retenciones: '',
+                        renta_saldo_favor_siguiente: 0,
                         renta_resultante_pagar: 0,
+                        plame_essalud_base: '',
+                        plame_essalud_a_pagar: '',
+                        plame_onp_a_pagar: '',
+                        plame_renta_4ta_base: '',
+                        plame_renta_4ta_a_pagar: '',
+                        plame_renta_5ta_a_pagar: '',
+                        plame_afp_a_pagar: '',
                         notas_liquidacion: '',
                     };
                     this.recalcularTotalesLiquidacion();

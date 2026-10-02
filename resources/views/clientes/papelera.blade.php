@@ -103,9 +103,7 @@
                             {{-- RUC y Régimen --}}
                             <td class="px-6 py-4">
                                 <span class="block font-mono text-xs font-bold text-gray-800">{{ $cliente->ruc }}</span>
-                                <span class="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 mt-0.5">
-                                    {{ $cliente->regimen_tributario?->value }}
-                                </span>
+                                <x-ui.badge-regimen :regimen="$cliente->regimen_tributario" class="mt-0.5" />
                             </td>
 
                             {{-- Fecha de Eliminación --}}

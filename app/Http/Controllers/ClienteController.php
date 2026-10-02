@@ -90,6 +90,13 @@ class ClienteController extends Controller
             }
         }
 
+        if ($request->has('regimen_tributario') && is_string($request->input('regimen_tributario'))) {
+            $norm = RegimenTributario::tryFromNormalizado($request->input('regimen_tributario'));
+            if ($norm !== null) {
+                $request->merge(['regimen_tributario' => $norm->value]);
+            }
+        }
+
         $validated = $request->validate([
             // Datos Fiscales
             'razon_social' => ['required', 'string', 'max:255'],
@@ -648,6 +655,13 @@ class ClienteController extends Controller
      */
     public function updateDatosFiscales(Request $request, Cliente $cliente): RedirectResponse
     {
+        if ($request->has('regimen_tributario') && is_string($request->input('regimen_tributario'))) {
+            $norm = RegimenTributario::tryFromNormalizado($request->input('regimen_tributario'));
+            if ($norm !== null) {
+                $request->merge(['regimen_tributario' => $norm->value]);
+            }
+        }
+
         $validated = $request->validate([
             'regimen_tributario' => ['required', Rule::enum(RegimenTributario::class)],
             'correo' => ['nullable', 'email', 'max:255'],

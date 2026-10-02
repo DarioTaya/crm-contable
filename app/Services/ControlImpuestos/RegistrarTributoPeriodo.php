@@ -63,9 +63,13 @@ class RegistrarTributoPeriodo
 
         $abonado = $deuda ? (float) $deuda->abonos()->sum('monto') : 0;
         if ((float) $monto + 0.001 < $abonado) {
-            throw ValidationException::withMessages([
-                'monto_deuda_inicial' => 'El monto no puede ser menor que los pagos ya registrados de este tributo.',
-            ]);
+            if (! empty($datos['permitir_ajuste_abono'])) {
+                $monto = $abonado;
+            } else {
+                throw ValidationException::withMessages([
+                    'monto_deuda_inicial' => 'El monto no puede ser menor que los pagos ya registrados de este tributo.',
+                ]);
+            }
         }
 
         $esPrimera = $operacion->deudasTributarias()->doesntExist();

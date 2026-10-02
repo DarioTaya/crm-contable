@@ -59,6 +59,8 @@ class AjusteSistemaController extends Controller
             'eliminar_logo' => ['nullable', 'boolean'],
             'isotipo' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg,ico,gif,avif', 'max:5120'],
             'eliminar_isotipo' => ['nullable', 'boolean'],
+            'logo_reportes' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg,ico,gif,avif', 'max:5120'],
+            'eliminar_logo_reportes' => ['nullable', 'boolean'],
             'frecuencia_cron_horas' => ['required', 'integer', 'in:2,4,6,8,12'],
             'notificar_whatsapp' => ['boolean'],
             'nivel_alerta_whatsapp' => ['required', 'in:Todas,Solo Altas'],
@@ -100,6 +102,21 @@ class AjusteSistemaController extends Controller
             }
             $estudio->isotipo_path = $request->file('isotipo')->store('estudios/isotipos/'.$estudio->id, 'public');
             $configuracion['isotipo_nombre_original'] = $request->file('isotipo')->getClientOriginalName();
+        }
+
+        // Manejo de logotipo para documentos e impresión (fondo claro)
+        if ($request->boolean('eliminar_logo_reportes')) {
+            if ($estudio->logo_reportes_path && Storage::disk('public')->exists($estudio->logo_reportes_path)) {
+                Storage::disk('public')->delete($estudio->logo_reportes_path);
+            }
+            $estudio->logo_reportes_path = null;
+            unset($configuracion['logo_reportes_nombre_original']);
+        } elseif ($request->hasFile('logo_reportes')) {
+            if ($estudio->logo_reportes_path && Storage::disk('public')->exists($estudio->logo_reportes_path)) {
+                Storage::disk('public')->delete($estudio->logo_reportes_path);
+            }
+            $estudio->logo_reportes_path = $request->file('logo_reportes')->store('estudios/logos_reportes/'.$estudio->id, 'public');
+            $configuracion['logo_reportes_nombre_original'] = $request->file('logo_reportes')->getClientOriginalName();
         }
 
         $estudio->configuracion = $configuracion;
@@ -153,6 +170,8 @@ class AjusteSistemaController extends Controller
                 'logo_nombre' => $estudio->logoNombreOriginal(),
                 'isotipo_url' => $estudio->isotipo_path ? asset('storage/'.$estudio->isotipo_path) : null,
                 'isotipo_nombre' => $estudio->isotipoNombreOriginal(),
+                'logo_reportes_url' => $estudio->logoReportesUrl(),
+                'logo_reportes_nombre' => $estudio->logoReportesNombreOriginal(),
             ]);
         }
 

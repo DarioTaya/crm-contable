@@ -879,7 +879,7 @@ CSV;
         $csv = "ruc;periodo;3111;3121\n20111000995;01-2026;100;120\n";
         $this->aplicarPlantilla($csv)
             ->assertUnprocessable()
-            ->assertJsonPath('errores.0.mensaje', 'Fila 2: no puede ingresar más de un tributo de renta mensual (RER, MYPE, General) para el mismo periodo.');
+            ->assertJsonPath('errores.0.mensaje', 'Fila 2: no puede ingresar más de un tributo de renta mensual (RER, RMT, RG) para el mismo periodo.');
     }
 
     public function test_plantilla_csv_acepta_sinonimos_de_medio_de_pago(): void

@@ -115,7 +115,7 @@
                             <p class="text-base font-extrabold text-white tabular-nums">
                                 {{ ($totalClientes ?? 0) > 0 ? $totalClientes . ' clientes' : 'Padrón activo' }}
                             </p>
-                            <p class="text-[10px] text-slate-400 truncate">MYPE y General</p>
+                            <p class="text-[10px] text-slate-400 truncate">RMT y RG</p>
                         </div>
 
                         {{-- Métrica 3: Integración SIRE --}}

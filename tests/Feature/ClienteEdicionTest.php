@@ -34,7 +34,7 @@ class ClienteEdicionTest extends TestCase
         $response->assertSessionHas('success', 'Datos fiscales actualizados correctamente.');
 
         $cliente->refresh();
-        $this->assertSame(RegimenTributario::General, $cliente->regimen_tributario);
+        $this->assertSame(RegimenTributario::Rg, $cliente->regimen_tributario);
         $this->assertEquals('nuevo@empresa.pe', $cliente->correo);
         $this->assertEquals('911222333', $cliente->telefono);
     }

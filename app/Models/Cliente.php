@@ -90,6 +90,22 @@ class Cliente extends Model
     }
 
     /**
+     * Mutador de compatibilidad para el atributo regimen_tributario.
+     * Normaliza cadenas heredadas ('MYPE', 'General', etc.) a los valores oficiales del enum ('RMT', 'RG').
+     */
+    public function setRegimenTributarioAttribute(mixed $value): void
+    {
+        if ($value === null || $value === '') {
+            $this->attributes['regimen_tributario'] = null;
+
+            return;
+        }
+
+        $normalizado = RegimenTributario::tryFromNormalizado($value instanceof RegimenTributario ? $value->value : (string) $value);
+        $this->attributes['regimen_tributario'] = $normalizado?->value ?? ($value instanceof RegimenTributario ? $value->value : (string) $value);
+    }
+
+    /**
      * Scope para filtrar clientes activos en el estudio contable.
      */
     public function scopeActivos(Builder $query): Builder
