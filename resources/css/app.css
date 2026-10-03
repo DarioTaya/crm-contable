@@ -29,29 +29,32 @@
     --text-metric--letter-spacing: -0.02em;
 
     /* -------------------------------------------------------------------- Marca
-       Azul corporativo. Escala completa 50-950: la configuracion anterior solo
-       definia 6 pasos, por lo que brand-300/400/800/900 fallaban en silencio. */
-    --color-brand-50: #eff6ff;
-    --color-brand-100: #dbeafe;
-    --color-brand-200: #bfdbfe;
-    --color-brand-300: #93c5fd;
-    --color-brand-400: #60a5fa;
-    --color-brand-500: #3b82f6;
-    --color-brand-600: #2563eb;
-    --color-brand-700: #1d4ed8;
-    --color-brand-800: #1e40af;
-    --color-brand-900: #1e3a8a;
-    --color-brand-950: #172554;
+       El 500 es el acento (#00C2CB). El 600 es ese mismo tono oscurecido hasta
+       que el texto blanco de los botones cumple contraste. 50-200 son grises
+       de papel: el acento no tinta las paginas. La barra usa el color base. */
+    --color-brand-50: #f4f6f8;
+    --color-brand-100: #e8edf2;
+    --color-brand-200: #d5dde6;
+    --color-brand-300: #8ce4e8;
+    --color-brand-400: #38cfd6;
+    --color-brand-500: #00c2cb;
+    --color-brand-600: #008085;
+    --color-brand-700: #007175;
+    --color-brand-800: #0b132b;
+    --color-brand-900: #090f22;
+    --color-brand-950: #060a18;
 
     /* ------------------------------------------------------------------ Chrome
-       Superficies estructurales de la aplicacion (sidebar, topbar, lienzo). */
-    --color-sidebar: #0f172a;
-    --color-sidebar-hover: #1e293b;
-    --color-sidebar-active: #1d4ed8;
-    --color-sidebar-border: #1e293b;
-    --color-canvas: #f9fafb;
+       Superficies estructurales. El lienzo es gris claro, nunca un lavado del acento. */
+    --color-sidebar: #0b132b;
+    --color-sidebar-hover: #282f44;
+    --color-sidebar-active: #282f44;
+    --color-sidebar-border: #32394d;
+    --color-canvas: #f1f3f6;
     --color-surface: #ffffff;
     --color-hairline: #e5e7eb;
+    --color-accent: #00c2cb;
+    --color-ink: #0b132b;
 
     /* --------------------------------------------------------------- Semantica
        Intencion, no color. Una vista pide "peligro", no "rose". */
@@ -69,7 +72,10 @@
     --color-warning-600: #d97706;
     --color-warning-700: #b45309;
 
-    /* Oro del administrador. Solo el anillo de la cuenta, no un acento de interfaz. */
+    /* Oro del administrador. El anillo es el oro sobrio; el disco de la corona es el oro vivo del glifo. */
+    --color-gold-50: #f8f3e6;
+    --color-gold-100: #f0e4c4;
+    --color-gold-400: #f6c445;
     --color-gold-500: #c4a35a;
     --color-gold-600: #9a7424;
 
@@ -154,11 +160,11 @@
        Efecto de cristal translúcido de alta gama sobre el contenido sin desplazar la página */
     html[data-sidebar='collapsed'] .app-sidebar.is-hover-expanded {
         width: 15rem !important;
-        background-color: rgba(15, 23, 42, 0.90) !important;
+        background-color: color-mix(in srgb, var(--color-sidebar) 92%, transparent) !important;
         backdrop-filter: blur(16px) !important;
         -webkit-backdrop-filter: blur(16px) !important;
         border-right: 1px solid rgba(255, 255, 255, 0.12) !important;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 25px 0 rgba(15, 23, 42, 0.5) !important;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 25px 0 rgb(0 0 0 / 0.35) !important;
         z-index: 40;
     }
 
@@ -241,6 +247,19 @@
         outline: 2px solid var(--color-brand-500);
         outline-offset: 2px;
     }
+
+    input[type='checkbox'],
+    input[type='radio'] {
+        accent-color: var(--color-brand-500);
+    }
+}
+
+/* La barra superior es papel. El acento no puede convertirse en una linea sobre ella. */
+.app-topbar {
+    background-color: #ffffff;
+    border-top: 0;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: none;
 }
 
 @utility tabular {

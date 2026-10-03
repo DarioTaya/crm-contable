@@ -146,7 +146,7 @@
             <tbody class="divide-y divide-gray-100">
                 @forelse ($clientes as $cliente)
                     <tr class="transition hover:bg-gray-50/80 cliente-row"
-                        :class="estaSeleccionado('{{ $cliente->id }}') ? 'bg-brand-50/40' : ''"
+                        :class="estaSeleccionado('{{ $cliente->id }}') ? 'bg-slate-100' : ''"
                         data-cliente-ruc="{{ $cliente->ruc }}"
                         data-cliente-razon="{{ mb_strtolower($cliente->razon_social) }}"
                         x-show="coincide('{{ $cliente->ruc }}', '{{ addslashes(mb_strtolower($cliente->razon_social)) }}')">
@@ -266,8 +266,8 @@
                 @empty
                     <tr>
                         <td colspan="{{ auth()->user()?->isAdmin() ? 7 : 6 }}" class="px-6 py-12 text-center">
-                            <div class="mx-auto max-w-lg rounded-2xl border border-indigo-100 bg-gradient-to-b from-indigo-50/60 to-white p-8 shadow-xs">
-                                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-2xl text-white shadow-md shadow-indigo-200">
+                            <div class="mx-auto max-w-lg rounded-2xl border border-gray-200 bg-white p-8 shadow-xs">
+                                <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-ink text-2xl text-white shadow-md">
                                     🏢
                                 </div>
                                 <h3 class="mt-4 text-base font-bold text-gray-900">¡Bienvenido a tu CRM Contable!</h3>

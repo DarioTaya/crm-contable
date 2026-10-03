@@ -162,9 +162,10 @@
         }
     </style>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <x-marca.variables />
     @stack('head')
 </head>
-<body class="bg-gray-50 text-gray-800 antialiased">
+<body class="bg-canvas text-gray-800 antialiased">
     <div class="flex min-h-screen"
          x-data="{
              sidebarCollapsed: document.documentElement.dataset.sidebar === 'collapsed',
@@ -225,7 +226,7 @@
          }">
 
         {{-- ═══════════════════════════════════ SIDEBAR COLAPSABLE ═══════════════════════════════════ --}}
-        <aside class="app-sidebar fixed inset-y-0 left-0 z-30 flex flex-col bg-sidebar text-gray-300 select-none shadow-xl"
+        <aside class="app-sidebar fixed inset-y-0 left-0 z-30 flex flex-col bg-sidebar text-white/80 select-none shadow-xl"
                :class="{ 'is-hover-expanded': sidebarCollapsed && sidebarHovered }"
                @mouseenter="onMouseEnter()"
                @mouseleave="onMouseLeave()"
@@ -263,7 +264,7 @@
                                 <span class="block text-sm font-bold text-white leading-tight truncate group-hover:text-brand-300 transition">
                                     {{ $estudioNombre }}
                                 </span>
-                                <span class="block text-[11px] text-gray-400 truncate">
+                                <span class="block text-[11px] text-white/55 truncate">
                                     {{ \Illuminate\Support\Str::limit($estudioSubtitulo, 22) }}
                                 </span>
                             </div>
@@ -287,13 +288,13 @@
 
             {{-- Navegación --}}
             <nav class="mt-4 flex-1 space-y-1.5 px-2.5 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                <p data-sidebar-expanded-only class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Gestión</p>
+                <p data-sidebar-expanded-only class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-white/45">Gestión</p>
                 <div data-sidebar-collapsed-only class="my-2 border-t border-white/10 mx-1"></div>
 
                 <a href="{{ route('dashboard') }}"
                    title="Dashboard"
                    class="sidebar-nav-item group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-sidebar relative
-                          {{ request()->routeIs('dashboard') ? 'bg-brand-600/20 text-white font-semibold' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
+                          {{ request()->routeIs('dashboard') ? 'bg-white/10 text-white font-semibold' : 'text-white/90 hover:bg-sidebar-hover hover:text-white' }}">
                     {{-- Icono: Home / Dashboard --}}
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
@@ -304,7 +305,7 @@
                 <a href="{{ route('clientes.index') }}"
                    title="Clientes"
                    class="sidebar-nav-item group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-sidebar relative
-                          {{ request()->routeIs('clientes.*') ? 'bg-brand-600/20 text-white font-semibold' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
+                          {{ request()->routeIs('clientes.*') ? 'bg-white/10 text-white font-semibold' : 'text-white/90 hover:bg-sidebar-hover hover:text-white' }}">
                     {{-- Icono: Users --}}
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
@@ -315,7 +316,7 @@
                 <a href="{{ route('control.index') }}"
                    title="Control Impuestos"
                    class="sidebar-nav-item group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-sidebar relative
-                          {{ request()->routeIs('control.*') ? 'bg-brand-600/20 text-white font-semibold' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
+                          {{ request()->routeIs('control.*') ? 'bg-white/10 text-white font-semibold' : 'text-white/90 hover:bg-sidebar-hover hover:text-white' }}">
                     {{-- Icono: Calendar / Table Matrix --}}
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-3.75h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />
@@ -326,7 +327,7 @@
                 <a href="{{ route('control_deudas.index') }}"
                    title="Control de Deudas"
                    class="sidebar-nav-item group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-sidebar relative
-                          {{ request()->routeIs('control_deudas.*') ? 'bg-brand-600/20 text-white font-semibold' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
+                          {{ request()->routeIs('control_deudas.*') ? 'bg-white/10 text-white font-semibold' : 'text-white/90 hover:bg-sidebar-hover hover:text-white' }}">
                     {{-- Icono: Banknote / Debt --}}
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
@@ -337,7 +338,7 @@
                 <a href="{{ route('balances.index') }}"
                    title="Control Balances"
                    class="sidebar-nav-item group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-sidebar relative
-                          {{ request()->routeIs('balances.*') ? 'bg-brand-600/20 text-white font-semibold' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
+                          {{ request()->routeIs('balances.*') ? 'bg-white/10 text-white font-semibold' : 'text-white/90 hover:bg-sidebar-hover hover:text-white' }}">
                     {{-- Icono: Balance Scale --}}
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0 0 12 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 0 1-2.031.352 5.988 5.988 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971Zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 0 1-2.031.352 5.989 5.989 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971Z" />
@@ -348,7 +349,7 @@
                 <a href="{{ route('tipo-cambio.index') }}"
                    title="Tipo de Cambio"
                    class="sidebar-nav-item group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-sidebar relative
-                          {{ request()->routeIs('tipo-cambio.*') ? 'bg-brand-600/20 text-white font-semibold' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
+                          {{ request()->routeIs('tipo-cambio.*') ? 'bg-white/10 text-white font-semibold' : 'text-white/90 hover:bg-sidebar-hover hover:text-white' }}">
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
@@ -358,7 +359,7 @@
                 <a href="{{ route('alertas.index') }}"
                    title="Buzón de Alertas"
                    class="sidebar-nav-item group flex items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium transition-sidebar relative
-                          {{ request()->routeIs('alertas.*') ? 'bg-brand-600/20 text-white font-semibold' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
+                          {{ request()->routeIs('alertas.*') ? 'bg-white/10 text-white font-semibold' : 'text-white/90 hover:bg-sidebar-hover hover:text-white' }}">
                     <div class="flex items-center gap-2.5 min-w-0 sidebar-nav-inner">
                         {{-- Icono: Bell / Inbox --}}
                         <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -378,7 +379,7 @@
                 <a href="{{ route('comprobantes.index') }}"
                    title="Bóveda SIRE"
                    class="sidebar-nav-item group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-sidebar relative
-                          {{ request()->routeIs('comprobantes.*') ? 'bg-brand-600/20 text-white font-semibold' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
+                          {{ request()->routeIs('comprobantes.*') ? 'bg-white/10 text-white font-semibold' : 'text-white/90 hover:bg-sidebar-hover hover:text-white' }}">
                     {{-- Icono: Archive Box / Bóveda Documental --}}
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
@@ -389,7 +390,7 @@
                 <a href="{{ route('cpe.visor') }}"
                    title="Visor XML / Generador CPE"
                    class="sidebar-nav-item group flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-sidebar relative
-                          {{ request()->routeIs('cpe.*') ? 'bg-brand-600/20 text-white font-semibold' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
+                          {{ request()->routeIs('cpe.*') ? 'bg-white/10 text-white font-semibold' : 'text-white/90 hover:bg-sidebar-hover hover:text-white' }}">
                     {{-- Icono: Document Magnifying Glass / Printer --}}
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
@@ -404,7 +405,7 @@
                         @csrf
                         <button type="submit"
                                 title="Cerrar sesión"
-                                class="sidebar-nav-item group flex w-full items-center justify-start gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-sidebar-hover hover:text-rose-300 cursor-pointer select-none">
+                                class="sidebar-nav-item group flex w-full items-center justify-start gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-sidebar-hover hover:text-rose-300 cursor-pointer select-none">
                             <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
                             </svg>
@@ -513,7 +514,6 @@
                             @php
                                 $usuarioActual = auth()->user();
                                 $esAdmin = $usuarioActual->isAdmin();
-                                $fotoUrl = $usuarioActual->fotoPerfilUrl();
                                 $rolCuenta = $esAdmin ? 'Administrador' : 'Asistente';
                             @endphp
 
@@ -524,24 +524,11 @@
                                  @topbar-panel.window="if ($event.detail.panel !== 'cuenta') abierto = false">
                                 <button type="button"
                                         @click="abierto = !abierto; if (abierto) { $dispatch('topbar-panel', { panel: 'cuenta' }) }"
-                                        class="relative flex h-8 w-8 items-center justify-center rounded-full cursor-pointer"
+                                        class="relative inline-flex items-center justify-center overflow-visible rounded-full cursor-pointer"
                                         title="{{ $usuarioActual->name }}"
                                         aria-label="Cuenta de {{ $usuarioActual->name }}"
                                         :aria-expanded="abierto ? 'true' : 'false'">
-                                    @if ($fotoUrl)
-                                        <img src="{{ $fotoUrl }}"
-                                             alt=""
-                                             class="h-8 w-8 rounded-full object-cover ring-2 {{ $esAdmin ? 'ring-gold-500' : 'ring-blue-500' }}">
-                                    @else
-                                        <span class="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white ring-2 {{ $esAdmin ? 'ring-gold-500 bg-gold-600' : 'ring-blue-500 bg-blue-600' }}">
-                                            {{ $usuarioActual->iniciales() }}
-                                        </span>
-                                    @endif
-
-                                    <span class="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[8px] leading-none ring-2 ring-white {{ $esAdmin ? 'bg-gold-600' : 'bg-blue-600' }}"
-                                          title="{{ $rolCuenta }}">
-                                        {{ $esAdmin ? '👑' : '💼' }}
-                                    </span>
+                                    <x-cuenta.avatar :user="$usuarioActual" tamano="sm" />
                                 </button>
 
                                 <div x-show="abierto"
@@ -554,16 +541,10 @@
                                      x-transition:leave-end="opacity-0 translate-y-1"
                                      class="absolute right-0 z-50 mt-2 w-72 rounded-xl border border-gray-200 bg-white shadow-xl">
                                     <div class="flex items-center gap-3 px-3.5 py-3">
-                                        @if ($fotoUrl)
-                                            <img src="{{ $fotoUrl }}" alt="" class="h-11 w-11 shrink-0 rounded-full object-cover ring-2 {{ $esAdmin ? 'ring-gold-500' : 'ring-blue-500' }}">
-                                        @else
-                                            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ring-2 {{ $esAdmin ? 'ring-gold-500 bg-gold-600' : 'ring-blue-500 bg-blue-600' }}">
-                                                {{ $usuarioActual->iniciales() }}
-                                            </span>
-                                        @endif
+                                        <x-cuenta.avatar :user="$usuarioActual" tamano="md" />
                                         <div class="min-w-0">
                                             <p class="truncate text-sm font-semibold text-gray-900">{{ $usuarioActual->name }}</p>
-                                            <p class="mt-0.5 text-[11px] font-semibold {{ $esAdmin ? 'text-gold-600' : 'text-blue-600' }}">{{ $rolCuenta }}</p>
+                                            <p class="mt-0.5 text-[11px] font-semibold {{ $esAdmin ? 'text-gold-600' : 'text-slate-500' }}">{{ $rolCuenta }}</p>
                                         </div>
                                     </div>
 

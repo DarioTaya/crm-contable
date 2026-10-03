@@ -17,6 +17,9 @@
             ciudad: @js($estudio->ciudad ?? ''),
             sitio_web: @js($estudio->sitio_web ?? ''),
             sidebar_display: @js($estudio->sidebar_display ?? 'logo_nombre'),
+            color_base: @js($identidad->base),
+            color_acento: @js($identidad->acento),
+            tono_boton: @js($identidad->variables()['--color-brand-600']),
             logo_actual: @js($estudio->logoUrl()),
             logo_nombre_actual: @js($estudio->logoNombreOriginal()),
             isotipo_actual: @js($estudio->isotipo_path ? asset('storage/'.$estudio->isotipo_path) : null),
@@ -490,6 +493,59 @@
                             </svg>
                             <span>Estos datos encabezan automáticamente todos los reportes impresos, avisos de cobranza tributaria y fichas exportadas a clientes.</span>
                         </div>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-gray-200 bg-white shadow-xs p-6 space-y-5">
+                    <div class="border-b border-gray-100 pb-4">
+                        <h3 class="text-sm font-bold text-gray-900">Colores de la interfaz</h3>
+                        <p class="text-[11px] text-gray-500 mt-0.5">La barra lateral usa el color base. Los botones, el foco y las casillas usan el acento. El fondo de trabajo se mantiene en gris claro.</p>
+                    </div>
+
+                    <div class="overflow-hidden rounded-xl border border-gray-200">
+                        <div class="flex min-h-28">
+                            <div class="flex w-36 shrink-0 flex-col gap-2 p-3 text-white" :style="{ backgroundColor: form.color_base }">
+                                <p class="text-[10px] font-semibold uppercase tracking-wider text-white/60">Menú</p>
+                                <p class="rounded-md bg-white/10 px-2 py-1.5 text-[11px] font-semibold">Clientes</p>
+                                <p class="rounded-md px-2 py-1.5 text-[11px] text-white/80">Deudas</p>
+                            </div>
+                            <div class="flex flex-1 flex-col justify-between bg-canvas p-4">
+                                <div class="rounded-lg border border-gray-200 bg-white p-3">
+                                    <p class="text-[11px] font-semibold text-gray-900">Fondo de trabajo</p>
+                                    <p class="mt-0.5 text-[10px] text-gray-500">Gris claro, sin teñir con el acento.</p>
+                                </div>
+                                <div class="mt-3 flex items-center gap-2">
+                                    <span class="inline-flex items-center rounded-lg px-3 py-1.5 text-[11px] font-semibold text-white" :style="{ backgroundColor: tonoBoton }">Guardar</span>
+                                    <span class="inline-flex h-4 w-4 rounded-full ring-2 ring-white" :style="{ backgroundColor: form.color_acento }" title="Acento"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-semibold text-gray-800" for="color_base">Color de la barra</label>
+                            <div class="flex items-center gap-2">
+                                <input id="color_base" type="color" x-model="form.color_base" class="h-10 w-12 cursor-pointer rounded-lg border border-gray-300 bg-white p-1">
+                                <input type="text" x-model="form.color_base" maxlength="7" spellcheck="false" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 font-mono text-xs uppercase text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500" placeholder="#0B132B">
+                            </div>
+                            <p class="text-[10px] text-gray-400">Debe ser oscuro para que el menú se lea en blanco. Por defecto #0B132B.</p>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-semibold text-gray-800" for="color_acento">Color de acento</label>
+                            <div class="flex items-center gap-2">
+                                <input id="color_acento" type="color" x-model="form.color_acento" class="h-10 w-12 cursor-pointer rounded-lg border border-gray-300 bg-white p-1">
+                                <input type="text" x-model="form.color_acento" maxlength="7" spellcheck="false" class="w-full rounded-xl border border-gray-300 px-3.5 py-2.5 font-mono text-xs uppercase text-gray-900 shadow-xs focus:border-brand-500 focus:ring-brand-500" placeholder="#00C2CB">
+                            </div>
+                            <p class="text-[10px] text-gray-400">Se usa en botones y foco. Por defecto #00C2CB. No pinta el fondo de las páginas.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="text-[11px] text-rose-600" x-text="errorMarca" x-show="errorMarca"></p>
+                        <button type="button" @click="restablecerMarca()" class="ml-auto text-[11px] font-semibold text-gray-500 hover:text-gray-800">
+                            Restablecer colores de marca
+                        </button>
                     </div>
                 </div>
             </div>
@@ -971,6 +1027,13 @@
         function panelAjustes(initialData) {
             return {
                 tabActiva: 'perfil',
+                tonoBoton: initialData.tono_boton || '#008085',
+                errorMarca: '',
+                marcaTimer: null,
+                init() {
+                    this.$watch('form.color_base', () => this.programarVistaMarca());
+                    this.$watch('form.color_acento', () => this.programarVistaMarca());
+                },
                 form: {
                     razon_social: initialData.razon_social || '',
                     nombre_comercial: initialData.nombre_comercial || '',
@@ -984,6 +1047,8 @@
                     ciudad: initialData.ciudad || '',
                     sitio_web: initialData.sitio_web || '',
                     sidebar_display: initialData.sidebar_display || 'logo_nombre',
+                    color_base: initialData.color_base || '#0B132B',
+                    color_acento: initialData.color_acento || '#00C2CB',
                     logo_actual: initialData.logo_actual || null,
                     logo_nombre_actual: initialData.logo_nombre_actual || null,
                     isotipo_actual: initialData.isotipo_actual || null,
@@ -1300,6 +1365,59 @@
                     }
                 },
 
+                programarVistaMarca() {
+                    clearTimeout(this.marcaTimer);
+                    const base = (this.form.color_base || '').trim();
+                    const acento = (this.form.color_acento || '').trim();
+                    if (!/^#[0-9A-Fa-f]{6}$/.test(base) || !/^#[0-9A-Fa-f]{6}$/.test(acento)) {
+                        return;
+                    }
+                    this.marcaTimer = setTimeout(() => this.previsualizarMarca(), 160);
+                },
+
+                async previsualizarMarca() {
+                    const params = new URLSearchParams({
+                        color_base: this.form.color_base,
+                        color_acento: this.form.color_acento,
+                    });
+
+                    try {
+                        const respuesta = await fetch(`{{ route('ajustes.marca') }}?${params.toString()}`, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                        });
+                        const data = await respuesta.json();
+                        if (!respuesta.ok) {
+                            this.errorMarca = data.message || 'Ese color no se puede aplicar.';
+                            return;
+                        }
+                        this.errorMarca = '';
+                        this.aplicarVariablesMarca(data.variables);
+                    } catch (err) {
+                        this.errorMarca = 'No se pudo previsualizar la marca.';
+                    }
+                },
+
+                aplicarVariablesMarca(variables) {
+                    if (!variables) {
+                        return;
+                    }
+                    Object.entries(variables).forEach(([nombre, valor]) => {
+                        document.documentElement.style.setProperty(nombre, valor);
+                    });
+                    if (variables['--color-brand-600']) {
+                        this.tonoBoton = variables['--color-brand-600'];
+                    }
+                },
+
+                restablecerMarca() {
+                    this.form.color_base = '#0B132B';
+                    this.form.color_acento = '#00C2CB';
+                    this.errorMarca = '';
+                },
+
                 aplicarMarcaEnBarra(data) {
                     const raiz = document.querySelector('[data-marca-sidebar]');
                     if (!raiz) {
@@ -1361,6 +1479,8 @@
                         formData.append('ciudad', this.form.ciudad || '');
                         formData.append('sitio_web', this.form.sitio_web || '');
                         formData.append('sidebar_display', this.form.sidebar_display || 'logo_nombre');
+                        formData.append('color_base', this.form.color_base || '#0B132B');
+                        formData.append('color_acento', this.form.color_acento || '#00C2CB');
                         formData.append('frecuencia_cron_horas', this.form.frecuencia_cron_horas);
                         formData.append('notificar_whatsapp', this.form.notificar_whatsapp ? '1' : '0');
                         formData.append('nivel_alerta_whatsapp', this.form.nivel_alerta_whatsapp);
@@ -1426,6 +1546,7 @@
                         }
 
                         this.aplicarMarcaEnBarra(data);
+                        this.aplicarVariablesMarca(data.marca);
                         this.lanzarToast('¡Ajustes Actualizados!', data.message || 'La configuración se guardó correctamente.', 'success');
                     } catch (err) {
                         console.error('Error al guardar ajustes:', err);

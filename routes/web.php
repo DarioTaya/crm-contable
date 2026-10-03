@@ -179,6 +179,7 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
 
         // Ajustes del Sistema & Configuración de Bots
         Route::get('/ajustes', [AjusteSistemaController::class, 'index'])->name('ajustes.index');
+        Route::get('/ajustes/marca', [AjusteSistemaController::class, 'previsualizarMarca'])->name('ajustes.marca');
         Route::post('/ajustes', [AjusteSistemaController::class, 'update'])->name('ajustes.update');
         Route::post('/ajustes/test-whatsapp', [AjusteSistemaController::class, 'testWhatsApp'])->name('ajustes.test-whatsapp');
         Route::get('/ajustes/whatsapp-status', [AjusteSistemaController::class, 'whatsappStatus'])->name('ajustes.whatsapp-status');

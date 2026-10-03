@@ -9,7 +9,7 @@
     {{-- Encabezado --}}
     <div class="flex items-center justify-between border-b border-gray-200 pb-5">
         <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 border border-purple-200 text-purple-700 shadow-xs">
+            <div class="flex h-10 w-10 items-center justify-center rounded-xl shadow-xs {{ $user->isAdmin() ? 'bg-gold-50 border border-gold-500/40 text-gold-600' : 'bg-slate-50 border border-slate-200 text-slate-600' }}">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                 </svg>
@@ -21,8 +21,9 @@
         </div>
         <div>
             <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold shadow-xs
-                {{ $user->isAdmin() ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-blue-50 text-blue-700 border border-blue-200' }}">
-                {{ $user->isAdmin() ? '👑 Administrador' : '👷 Asistente Contable' }}
+                {{ $user->isAdmin() ? 'bg-gold-50 text-gold-600 border border-gold-500/40' : 'bg-slate-50 text-slate-600 border border-slate-200' }}">
+                <x-cuenta.insignia :admin="$user->isAdmin()" tamano="sm" />
+                {{ $user->isAdmin() ? 'Administrador' : 'Asistente contable' }}
             </span>
         </div>
     </div>
@@ -78,30 +79,21 @@
                 <input type="hidden" name="eliminar_foto" :value="eliminarFoto ? '1' : '0'">
 
                 {{-- Sección Foto de Perfil / Avatar Premium --}}
-                <div class="flex items-center gap-4 p-3 rounded-2xl bg-gray-50 border border-gray-150 mb-3">
+                <div class="flex items-center gap-4 p-3 rounded-2xl bg-gray-50 border border-gray-200 mb-3">
                     <div class="relative shrink-0">
-                        {{-- Imagen con vista previa --}}
                         <template x-if="previewUrl">
-                            <img :src="previewUrl" alt="Vista previa" class="h-16 w-16 rounded-full object-cover ring-2 ring-brand-500 shadow-sm">
+                            <img :src="previewUrl" alt="Vista previa" class="h-16 w-16 rounded-full object-cover ring-2 shadow-sm {{ $user->isAdmin() ? 'ring-gold-500' : 'ring-slate-300' }}">
                         </template>
                         <template x-if="!previewUrl && fotoActual && !eliminarFoto">
-                            <img :src="fotoActual" alt="{{ $user->name }}" class="h-16 w-16 rounded-full object-cover ring-2 {{ $user->isAdmin() ? 'ring-purple-500' : 'ring-blue-500' }} shadow-sm">
+                            <img :src="fotoActual" alt="{{ $user->name }}" class="h-16 w-16 rounded-full object-cover ring-2 shadow-sm {{ $user->isAdmin() ? 'ring-gold-500' : 'ring-slate-300' }}">
                         </template>
                         <template x-if="(!previewUrl && !fotoActual) || (!previewUrl && eliminarFoto)">
-                            <div class="flex h-16 w-16 items-center justify-center rounded-full font-bold text-lg text-white shadow-sm ring-2 {{ $user->isAdmin() ? 'ring-purple-500 bg-gradient-to-tr from-purple-600 to-indigo-600' : 'ring-blue-500 bg-gradient-to-tr from-blue-600 to-cyan-600' }}">
+                            <div class="flex h-16 w-16 items-center justify-center rounded-full font-bold text-lg text-white shadow-sm ring-2 {{ $user->isAdmin() ? 'ring-gold-500 bg-gold-600' : 'ring-slate-300 bg-slate-600' }}">
                                 {{ $user->iniciales() }}
                             </div>
                         </template>
 
-                        {{-- Distintivo de Rol Elegante --}}
-                        <span class="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full text-white ring-2 ring-white shadow-xs text-[10px] {{ $user->isAdmin() ? 'bg-purple-600' : 'bg-blue-600' }}"
-                              title="{{ $user->isAdmin() ? 'Administrador' : 'Asistente' }}">
-                            @if ($user->isAdmin())
-                                👑
-                            @else
-                                💼
-                            @endif
-                        </span>
+                        <x-cuenta.insignia :admin="$user->isAdmin()" tamano="lg" class="absolute -bottom-1 -right-1" />
                     </div>
 
                     <div class="min-w-0 flex-1 space-y-1">

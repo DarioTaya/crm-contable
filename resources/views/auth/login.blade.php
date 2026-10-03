@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="es" class="h-full bg-slate-950">
+<html lang="es" class="h-full bg-sidebar">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acceso al Sistema — {{ $estudio?->nombreParaMostrar() ?? 'DeContador CRM' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <x-marca.variables />
 </head>
-<body class="h-full bg-slate-950 text-slate-900 antialiased selection:bg-brand-500 selection:text-white"
+<body class="h-full bg-sidebar text-slate-900 antialiased selection:bg-sidebar selection:text-white"
       x-data="{ showPass: false, modalRegistro: false }">
 
     @php
@@ -24,12 +25,9 @@
         {{-- ═════════════════════════════════════════════════════════════════════════
              COLUMNA IZQUIERDA: SHOWCASE PREMIUM SAAS - NÚCLEO OPERATIVO CONTABLE
              ═════════════════════════════════════════════════════════════════════════ --}}
-        <div class="relative flex-1 bg-gradient-to-br from-slate-950 via-slate-900 to-brand-950 text-white flex flex-col justify-between p-8 sm:p-12 lg:p-16 overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-800/80">
+        <div class="relative flex-1 bg-sidebar text-white flex flex-col justify-between p-8 sm:p-12 lg:p-16 overflow-hidden border-b lg:border-b-0 lg:border-r border-white/10">
 
-            {{-- Resplandores y Mallas Ambientales de Alta Gama --}}
-            <div class="pointer-events-none absolute -top-48 -left-48 w-[500px] h-[500px] rounded-full bg-brand-600/15 blur-[120px]"></div>
-            <div class="pointer-events-none absolute top-1/2 -right-40 w-96 h-96 rounded-full bg-blue-500/10 blur-[100px]"></div>
-            <div class="pointer-events-none absolute -bottom-40 left-1/4 w-[450px] h-[450px] rounded-full bg-indigo-600/15 blur-[120px]"></div>
+            <div class="pointer-events-none absolute -top-48 -left-48 w-[420px] h-[420px] rounded-full bg-brand-500/10 blur-[120px]"></div>
 
             {{-- Cabecera de Marca --}}
             <div class="relative z-10 flex items-center justify-between">
@@ -66,7 +64,7 @@
                     </div>
 
                     <h1 class="text-3xl sm:text-4xl lg:text-[2.75rem] font-extrabold tracking-tight text-white leading-[1.12]">
-                        El estándar de control inteligente para tu <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-300 via-blue-200 to-indigo-200">estudio contable.</span>
+                        El estándar de control inteligente para tu <span class="text-brand-300">estudio contable.</span>
                     </h1>
 
                     <p class="text-sm sm:text-base text-slate-300 leading-relaxed max-w-lg">

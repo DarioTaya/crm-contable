@@ -3,10 +3,12 @@
 namespace App\Providers;
 
 use App\Models\AlertaBuzon;
+use App\Models\Estudio;
 use App\Models\QuickLink;
 use App\Services\CronogramaSunatService;
 use App\Services\Navegacion\SelectorEmpresa;
 use App\Services\SunatBuzonSyncService;
+use App\Support\IdentidadMarca;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -26,6 +28,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        View::composer('components.marca.variables', function ($view) {
+            $this->compartirIdentidadMarca($view);
+        });
+
         View::composer('layouts.app', function ($view) {
             $view->with(
                 'alertasPendientesCount',
@@ -58,5 +64,23 @@ class AppServiceProvider extends ServiceProvider
                     ],
             );
         });
+    }
+
+    /**
+     * Publica la paleta del estudio para que el layout pinte la marca sin consultar la base desde Blade.
+     */
+    private function compartirIdentidadMarca(\Illuminate\View\View $view): void
+    {
+        if (array_key_exists('identidadMarca', $view->getData())) {
+            return;
+        }
+
+        $estudio = auth()->user()?->estudio;
+
+        if ($estudio === null && Schema::hasTable('estudios')) {
+            $estudio = Estudio::query()->orderBy('id')->first();
+        }
+
+        $view->with('identidadMarca', IdentidadMarca::desdeEstudio($estudio));
     }
 }

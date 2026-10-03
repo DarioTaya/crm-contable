@@ -6,10 +6,12 @@ use App\Models\AjusteSistema;
 use App\Models\Estudio;
 use App\Models\QuickLink;
 use App\Services\WhatsAppService;
+use App\Support\IdentidadMarca;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class AjusteSistemaController extends Controller
@@ -33,8 +35,34 @@ class AjusteSistemaController extends Controller
         );
 
         $enlacesRapidos = QuickLink::orderBy('orden')->orderBy('id')->get();
+        $identidad = IdentidadMarca::desdeEstudio($estudio);
 
-        return view('ajustes.index', compact('ajustes', 'estudio', 'enlacesRapidos'));
+        return view('ajustes.index', compact('ajustes', 'estudio', 'enlacesRapidos', 'identidad'));
+    }
+
+    /**
+     * Devuelve la paleta calculada para que Ajustes pueda mostrarla antes de guardarla.
+     */
+    public function previsualizarMarca(Request $request): JsonResponse
+    {
+        $base = (string) $request->query('color_base', IdentidadMarca::BASE);
+        $acento = (string) $request->query('color_acento', IdentidadMarca::ACENTO);
+        $problema = IdentidadMarca::problema($base, $acento);
+        $baseNormalizada = IdentidadMarca::normalizar($base);
+        $acentoNormalizado = IdentidadMarca::normalizar($acento);
+
+        if ($problema !== null || $baseNormalizada === null || $acentoNormalizado === null) {
+            return response()->json([
+                'message' => $problema !== null ? reset($problema) : 'El color de marca no es válido.',
+                'errors' => $problema ?? ['color_base' => ['El color de marca no es válido.']],
+            ], 422);
+        }
+
+        $marca = new IdentidadMarca($baseNormalizada, $acentoNormalizado);
+
+        return response()->json([
+            'variables' => $marca->variables(),
+        ]);
     }
 
     /**
@@ -58,6 +86,8 @@ class AjusteSistemaController extends Controller
             'direccion' => ['nullable', 'string', 'max:255'],
             'ciudad' => ['nullable', 'string', 'max:100'],
             'sidebar_display' => ['nullable', 'in:logo_nombre,logo_solo,nombre_solo'],
+            'color_base' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'color_acento' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'logo' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg,ico,gif,avif', 'max:5120'],
             'eliminar_logo' => ['nullable', 'boolean'],
             'isotipo' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg,ico,gif,avif', 'max:5120'],
@@ -67,6 +97,9 @@ class AjusteSistemaController extends Controller
             'frecuencia_cron_horas' => ['required', 'integer', 'in:2,4,6,8,12'],
             'notificar_whatsapp' => ['boolean'],
             'nivel_alerta_whatsapp' => ['required', 'in:Todas,Solo Altas'],
+        ], [
+            'color_base.regex' => 'El color de la barra debe ser un hexadecimal de 6 dígitos, por ejemplo #0B132B.',
+            'color_acento.regex' => 'El color de acento debe ser un hexadecimal de 6 dígitos, por ejemplo #00C2CB.',
         ]);
 
         $nombre = $validated['nombre'] ?? $validated['razon_social'] ?? 'Estudio Contable';
@@ -76,6 +109,23 @@ class AjusteSistemaController extends Controller
         $user = auth()->user();
         $estudio = $user?->estudio ?? Estudio::firstOrCreate(['id' => $user?->estudio_id ?? 1], ['nombre' => $nombre]);
         $configuracion = $estudio->configuracion ?? [];
+
+        if ($request->exists('color_base') || $request->exists('color_acento')) {
+            $colorBase = (string) ($validated['color_base'] ?? ($configuracion['color_base'] ?? IdentidadMarca::BASE));
+            $colorAcento = (string) ($validated['color_acento'] ?? ($configuracion['color_acento'] ?? IdentidadMarca::ACENTO));
+            $problema = IdentidadMarca::problema($colorBase, $colorAcento);
+            $colorBase = IdentidadMarca::normalizar($colorBase);
+            $colorAcento = IdentidadMarca::normalizar($colorAcento);
+
+            if ($problema !== null || $colorBase === null || $colorAcento === null) {
+                throw ValidationException::withMessages($problema ?? [
+                    'color_base' => 'El color de marca no es válido.',
+                ]);
+            }
+
+            $configuracion['color_base'] = $colorBase;
+            $configuracion['color_acento'] = $colorAcento;
+        }
 
         // Manejo de logotipo completo (barra extendida)
         if ($request->boolean('eliminar_logo')) {
@@ -175,6 +225,7 @@ class AjusteSistemaController extends Controller
                 'isotipo_nombre' => $estudio->isotipoNombreOriginal(),
                 'logo_reportes_url' => $estudio->logoReportesUrl(),
                 'logo_reportes_nombre' => $estudio->logoReportesNombreOriginal(),
+                'marca' => IdentidadMarca::desdeEstudio($estudio)->variables(),
             ]);
         }
 

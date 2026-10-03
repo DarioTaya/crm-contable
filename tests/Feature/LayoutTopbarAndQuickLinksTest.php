@@ -93,15 +93,17 @@ class LayoutTopbarAndQuickLinksTest extends TestCase
         $responseAdmin = $this->actingAs($this->admin)->get(route('dashboard'));
         $responseAdmin->assertOk();
         $responseAdmin->assertSee(route('perfil.edit'));
-        $responseAdmin->assertSee('CA'); // Iniciales de Carlos Administrador
-        $responseAdmin->assertSee('👑'); // Badge de Administrador
+        $responseAdmin->assertSee('CA');
+        $responseAdmin->assertSee('data-insignia-rol="administrador"', false);
+        $responseAdmin->assertSee('ring-gold-500', false);
+        $responseAdmin->assertSee('👑', false);
 
-        // 2. Asistente (Briefcase / Asistente role indicator)
+        // 2. Asistente (insignia de rol, sin corona)
         $responseAsistente = $this->actingAs($this->asistente)->get(route('dashboard'));
         $responseAsistente->assertOk();
         $responseAsistente->assertSee(route('perfil.edit'));
-        $responseAsistente->assertSee('AA'); // Iniciales de Ana Asistente
-        $responseAsistente->assertSee('💼'); // Badge de Asistente
+        $responseAsistente->assertSee('AA');
+        $responseAsistente->assertSee('data-insignia-rol="asistente"', false);
     }
 
     public function test_admin_can_view_quick_links_crud_in_ajustes(): void

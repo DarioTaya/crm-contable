@@ -114,7 +114,7 @@
                             role="tab"
                             @click="elegir('{{ $clave }}')"
                             :aria-selected="tipo === '{{ $clave }}' ? 'true' : 'false'"
-                            :class="tipo === '{{ $clave }}' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'"
+                            :class="tipo === '{{ $clave }}' ? 'bg-brand-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'"
                             class="flex-1 rounded-md px-1.5 py-1 text-center text-[11px] font-semibold whitespace-nowrap transition cursor-pointer"
                         >{{ $etiqueta }}</button>
                     @endforeach
@@ -126,8 +126,8 @@
                     @if ($clave === 'balance_mensual')
                         <table class="w-full border-collapse text-[11px] leading-none">
                             <thead class="sticky top-0 z-10">
-                                <tr class="bg-slate-800 text-white">
-                                    <th scope="col" class="border-r border-slate-700 px-2 py-1.5 text-left text-[10px] font-semibold">Período</th>
+                                <tr class="bg-sidebar text-white">
+                                    <th scope="col" class="border-r border-white/10 px-2 py-1.5 text-left text-[10px] font-semibold">Período</th>
                                     <th scope="col" class="px-2 py-1.5 text-center text-[10px] font-semibold">Fecha límite</th>
                                 </tr>
                             </thead>
@@ -138,7 +138,7 @@
                                     @endphp
                                     <tr @class([
                                         'border-t border-slate-200',
-                                        'bg-brand-50' => $esActivo,
+                                        'bg-brand-500/10' => $esActivo,
                                         'odd:bg-white even:bg-slate-50' => ! $esActivo,
                                     ]) @if ($esActivo) title="Período en liquidación" @endif>
                                         <th scope="row" @class([
@@ -158,12 +158,12 @@
                     @else
                         <table class="w-full border-collapse text-[11px] leading-none">
                             <thead class="sticky top-0 z-10">
-                                <tr class="bg-slate-800 text-white">
-                                    <th rowspan="2" scope="col" class="border-r border-slate-700 px-2 py-1.5 text-left text-[10px] font-semibold">Período</th>
-                                    <th colspan="6" scope="colgroup" class="border-b border-slate-700 px-1 py-1.5 text-center text-[10px] font-semibold tracking-wide">Último dígito del RUC</th>
-                                    <th rowspan="2" scope="col" class="border-l border-slate-700 px-1.5 py-1.5 text-center text-[10px] font-semibold leading-tight">Buenos<br>contribuyentes</th>
+                                <tr class="bg-sidebar text-white">
+                                    <th rowspan="2" scope="col" class="border-r border-white/10 px-2 py-1.5 text-left text-[10px] font-semibold">Período</th>
+                                    <th colspan="6" scope="colgroup" class="border-b border-white/10 px-1 py-1.5 text-center text-[10px] font-semibold tracking-wide">Último dígito del RUC</th>
+                                    <th rowspan="2" scope="col" class="border-l border-white/10 px-1.5 py-1.5 text-center text-[10px] font-semibold leading-tight">Buenos<br>contribuyentes</th>
                                 </tr>
-                                <tr class="bg-slate-700 text-white">
+                                <tr class="bg-sidebar-hover text-white">
                                     @foreach ($columnas as $etiqueta)
                                         <th scope="col" class="px-1 py-1 text-center text-[10px] font-medium">{{ $etiqueta }}</th>
                                     @endforeach
@@ -177,7 +177,7 @@
                                     @endphp
                                     <tr @class([
                                         'border-t border-slate-200',
-                                        'bg-brand-50' => $esActivo,
+                                        'bg-brand-500/10' => $esActivo,
                                         'odd:bg-white even:bg-slate-50' => ! $esActivo,
                                     ]) @if ($esActivo) title="Período en liquidación" @endif>
                                         <th scope="row" @class([
