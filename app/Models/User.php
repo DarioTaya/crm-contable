@@ -14,6 +14,13 @@ use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable
 {
+    /**
+     * Roles que puede tener un miembro del estudio.
+     *
+     * @var list<string>
+     */
+    public const ROLES = ['admin', 'contador', 'asistente'];
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
@@ -109,6 +116,35 @@ class User extends Authenticatable
     }
 
     /**
+     * Determina si el usuario tiene rol de contador.
+     */
+    public function isContador(): bool
+    {
+        return $this->rol === 'contador';
+    }
+
+    /**
+     * El administrador ve toda la cartera del estudio. Contador y asistente
+     * operan únicamente los clientes que se les asignan.
+     */
+    public function operaCarteraAsignada(): bool
+    {
+        return ! $this->isAdmin();
+    }
+
+    /**
+     * Nombre corto del rol, tal como se muestra en la cuenta y en el equipo.
+     */
+    public function etiquetaRol(): string
+    {
+        return match ($this->rol) {
+            'admin' => 'Administrador',
+            'contador' => 'Contador',
+            default => 'Asistente contable',
+        };
+    }
+
+    /**
      * Determina si hoy es el cumpleaños del usuario.
      */
     public function esCumpleanosHoy(): bool
@@ -129,7 +165,11 @@ class User extends Authenticatable
             return $this->cargo;
         }
 
-        return $this->isAdmin() ? 'Administrador General' : 'Asistente Contable';
+        return match ($this->rol) {
+            'admin' => 'Administrador General',
+            'contador' => 'Contador',
+            default => 'Asistente Contable',
+        };
     }
 
     /**

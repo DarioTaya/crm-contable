@@ -47,6 +47,16 @@ class UserFactory extends Factory
     }
 
     /**
+     * Define rol de contador.
+     */
+    public function contador(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'rol' => 'contador',
+        ]);
+    }
+
+    /**
      * Define usuario inactivo.
      */
     public function inactivo(): static

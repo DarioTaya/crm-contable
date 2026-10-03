@@ -12,7 +12,7 @@
         'lg' => ['caja' => 'h-16 w-16', 'texto' => 'text-lg'],
     ];
     $medida = $medidas[$tamano] ?? $medidas['sm'];
-    $anillo = $esAdmin ? 'ring-brand-500' : 'ring-slate-300';
+    $anillo = $esAdmin ? 'ring-ink' : 'ring-slate-300';
     $fondo = $esAdmin ? 'bg-gold-600' : 'bg-slate-600';
 @endphp
 
@@ -27,5 +27,5 @@
         </span>
     @endif
 
-    <x-cuenta.insignia :admin="$esAdmin" :tamano="$tamano" class="absolute -bottom-0.5 -right-0.5" />
+    <x-cuenta.insignia :rol="$user->rol" :tamano="$tamano" class="absolute -bottom-0.5 -right-0.5" />
 </span>

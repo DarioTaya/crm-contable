@@ -22,7 +22,7 @@
     </div>
 
     {{-- Tarjetas Resumen --}}
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs">
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Total Usuarios</span>
@@ -51,14 +51,23 @@
 
         <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs">
             <div class="flex items-center justify-between">
-                <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Asistentes Contables</span>
-                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 0 0 .75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 0 0-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0 1 12 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 0 1-.673-.38m0 0A2.18 2.18 0 0 1 3 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 0 1 3.413-.387m7.5 0V5.25A2.25 2.25 0 0 0 13.5 3h-3a2.25 2.25 0 0 0-2.25 2.25v.894m7.5 0a48.667 48.667 0 0 0-7.5 0M12 12.75h.008v.008H12v-.008Z" />
-                    </svg>
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Contadores</span>
+                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 text-base">
+                    🧑
                 </span>
             </div>
-            <p class="mt-2 text-2xl font-bold text-emerald-700">{{ $usuarios->where('rol', 'asistente')->count() }}</p>
+            <p class="mt-2 text-2xl font-bold text-emerald-700">{{ $usuarios->where('rol', 'contador')->count() }}</p>
+            <p class="mt-1 text-xs text-gray-500">Contabilidad de su cartera</p>
+        </div>
+
+        <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs">
+            <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Asistentes Contables</span>
+                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-700 text-base">
+                    👷
+                </span>
+            </div>
+            <p class="mt-2 text-2xl font-bold text-blue-700">{{ $usuarios->where('rol', 'asistente')->count() }}</p>
             <p class="mt-1 text-xs text-gray-500">Operación sobre cartera asignada</p>
         </div>
     </div>
@@ -86,7 +95,7 @@
                                     <a href="{{ route('usuarios.show', $user) }}"
                                        title="Ver Perfil de {{ $user->name }}"
                                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-white shadow-xs transition-transform hover:scale-105
-                                        {{ $user->isAdmin() ? 'bg-purple-600' : 'bg-brand-600' }}"
+                                        {{ $user->isAdmin() ? 'bg-purple-600' : ($user->isContador() ? 'bg-emerald-600' : 'bg-blue-600') }}"
                                        style="{{ $user->isAdmin() ? 'background-color: #9333ea; color: #ffffff;' : 'background-color: #2563eb; color: #ffffff;' }}">
                                         {{ $user->iniciales() }}
                                     </a>
@@ -125,6 +134,10 @@
                                     @if ($user->isAdmin())
                                         <span class="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700 border border-purple-200/60 shadow-xs">
                                             👑 Administrador
+                                        </span>
+                                    @elseif ($user->isContador())
+                                        <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200/60 shadow-xs">
+                                            🧑 Contador
                                         </span>
                                     @else
                                         <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200/60 shadow-xs">

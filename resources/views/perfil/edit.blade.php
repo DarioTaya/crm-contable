@@ -21,9 +21,9 @@
         </div>
         <div>
             <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold shadow-xs
-                {{ $user->isAdmin() ? 'bg-gold-50 text-gold-600 border border-gold-500/40' : 'bg-slate-50 text-slate-600 border border-slate-200' }}">
-                <x-cuenta.insignia :admin="$user->isAdmin()" tamano="sm" />
-                {{ $user->isAdmin() ? 'Administrador' : 'Asistente contable' }}
+                {{ $user->isAdmin() ? 'bg-gold-50 text-gold-600 border border-gold-500/40' : ($user->isContador() ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-50 text-slate-600 border border-slate-200') }}">
+                <x-cuenta.insignia :rol="$user->rol" tamano="sm" />
+                {{ $user->etiquetaRol() }}
             </span>
         </div>
     </div>
@@ -82,18 +82,18 @@
                 <div class="flex items-center gap-4 p-3 rounded-2xl bg-gray-50 border border-gray-200 mb-3">
                     <div class="relative shrink-0">
                         <template x-if="previewUrl">
-                            <img :src="previewUrl" alt="Vista previa" class="h-16 w-16 rounded-full object-cover ring-2 shadow-sm {{ $user->isAdmin() ? 'ring-brand-500' : 'ring-slate-300' }}">
+                            <img :src="previewUrl" alt="Vista previa" class="h-16 w-16 rounded-full object-cover ring-2 shadow-sm {{ $user->isAdmin() ? 'ring-ink' : 'ring-slate-300' }}">
                         </template>
                         <template x-if="!previewUrl && fotoActual && !eliminarFoto">
-                            <img :src="fotoActual" alt="{{ $user->name }}" class="h-16 w-16 rounded-full object-cover ring-2 shadow-sm {{ $user->isAdmin() ? 'ring-brand-500' : 'ring-slate-300' }}">
+                            <img :src="fotoActual" alt="{{ $user->name }}" class="h-16 w-16 rounded-full object-cover ring-2 shadow-sm {{ $user->isAdmin() ? 'ring-ink' : 'ring-slate-300' }}">
                         </template>
                         <template x-if="(!previewUrl && !fotoActual) || (!previewUrl && eliminarFoto)">
-                            <div class="flex h-16 w-16 items-center justify-center rounded-full font-bold text-lg text-white shadow-sm ring-2 {{ $user->isAdmin() ? 'ring-brand-500 bg-gold-600' : 'ring-slate-300 bg-slate-600' }}">
+                            <div class="flex h-16 w-16 items-center justify-center rounded-full font-bold text-lg text-white shadow-sm ring-2 {{ $user->isAdmin() ? 'ring-ink bg-gold-600' : 'ring-slate-300 bg-slate-600' }}">
                                 {{ $user->iniciales() }}
                             </div>
                         </template>
 
-                        <x-cuenta.insignia :admin="$user->isAdmin()" tamano="lg" class="absolute -bottom-1 -right-1" />
+                        <x-cuenta.insignia :rol="$user->rol" tamano="lg" class="absolute -bottom-1 -right-1" />
                     </div>
 
                     <div class="min-w-0 flex-1 space-y-1">

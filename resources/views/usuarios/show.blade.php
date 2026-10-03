@@ -120,6 +120,10 @@
                             <span class="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700 border border-purple-200">
                                 👑 Administrador
                             </span>
+                        @elseif ($usuario->isContador())
+                            <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
+                                🧑 Contador
+                            </span>
                         @else
                             <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200">
                                 👷 Asistente Contable
@@ -372,7 +376,7 @@
                     <p class="text-xs text-gray-500 mt-0.5">Empresas clientes que este usuario puede consultar y gestionar.</p>
                 </div>
 
-                @if ($usuario->isAsistente())
+                @if ($usuario->operaCarteraAsignada())
                     <button type="button" @click="modoEdicion = true" class="text-xs font-semibold text-brand-600 hover:text-brand-700 cursor-pointer self-start sm:self-auto">
                         Gestionar Cartera
                     </button>
@@ -655,8 +659,9 @@
                             <select name="rol"
                                     x-model="rol"
                                     class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
-                                <option value="asistente">👷 Asistente Contable (Opera solo clientes asignados)</option>
-                                <option value="admin">👑 Administrador / Titular (Control total del sistema)</option>
+                            <option value="asistente">👷 Asistente Contable (Opera solo clientes asignados)</option>
+                            <option value="contador">🧑 Contador (Lleva los clientes asignados)</option>
+                            <option value="admin">👑 Administrador / Titular (Control total del sistema)</option>
                             </select>
                         @endif
                     </div>
@@ -665,7 +670,7 @@
 
             {{-- Bloque 2: Cartera de Clientes Asignados (Si el rol es Asistente) --}}
             <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-xs space-y-4"
-                 x-show="rol === 'asistente'"
+                 x-show="rol === 'asistente' || rol === 'contador'"
                  x-transition>
                 <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-3">
                     <div>
@@ -673,7 +678,7 @@
                             <span class="flex h-6 w-6 items-center justify-center rounded-md bg-brand-50 text-brand-600 text-xs font-bold">2</span>
                             <span>Asignación de Cartera de Clientes</span>
                         </h3>
-                        <p class="text-xs text-gray-500 mt-0.5">Seleccione los clientes que este asistente podrá ver y gestionar.</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Seleccione los clientes que este usuario podrá ver y gestionar.</p>
                     </div>
 
                     <div class="flex items-center gap-2">

@@ -202,33 +202,48 @@
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-700 mb-2">
                     Rol en el Estudio <span class="text-rose-500">*</span>
                 </label>
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div class="grid grid-cols-1 gap-3">
                     {{-- Rol Asistente --}}
-                    <label class="relative flex cursor-pointer rounded-xl border p-4 shadow-xs transition"
+                    <label class="relative flex min-w-0 cursor-pointer rounded-xl border p-4 shadow-xs transition"
                            :class="rol === 'asistente' ? 'border-brand-600 bg-brand-50/40 ring-2 ring-brand-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'">
                         <input type="radio" name="rol" value="asistente" x-model="rol" class="sr-only">
-                        <div class="flex items-start gap-3">
-                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-700 font-bold">
+                        <div class="flex w-full min-w-0 items-start gap-3">
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-lg leading-none">
                                 👷
                             </span>
-                            <div>
+                            <div class="min-w-0 flex-1">
                                 <span class="block text-sm font-bold text-gray-900">Asistente Contable</span>
-                                <span class="block text-xs text-gray-500 mt-0.5">Opera únicamente los clientes asignados en su cartera. No puede eliminar clientes ni modificar ajustes del sistema.</span>
+                                <span class="mt-0.5 block text-xs leading-5 text-gray-500">Opera únicamente los clientes asignados en su cartera. No puede eliminar clientes ni modificar ajustes del sistema.</span>
+                            </div>
+                        </div>
+                    </label>
+
+                    {{-- Rol Contador --}}
+                    <label class="relative flex min-w-0 cursor-pointer rounded-xl border p-4 shadow-xs transition"
+                           :class="rol === 'contador' ? 'border-emerald-600 bg-emerald-50/40 ring-2 ring-emerald-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'">
+                        <input type="radio" name="rol" value="contador" x-model="rol" class="sr-only">
+                        <div class="flex w-full min-w-0 items-start gap-3">
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-lg leading-none">
+                                🧑
+                            </span>
+                            <div class="min-w-0 flex-1">
+                                <span class="block text-sm font-bold text-gray-900">Contador</span>
+                                <span class="mt-0.5 block text-xs leading-5 text-gray-500">Lleva la contabilidad de los clientes asignados a su cartera. No administra el equipo ni la configuración del estudio.</span>
                             </div>
                         </div>
                     </label>
 
                     {{-- Rol Administrador --}}
-                    <label class="relative flex cursor-pointer rounded-xl border p-4 shadow-xs transition"
+                    <label class="relative flex min-w-0 cursor-pointer rounded-xl border p-4 shadow-xs transition"
                            :class="rol === 'admin' ? 'border-purple-600 bg-purple-50/40 ring-2 ring-purple-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'">
                         <input type="radio" name="rol" value="admin" x-model="rol" class="sr-only">
-                        <div class="flex items-start gap-3">
-                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-purple-700 font-bold">
+                        <div class="flex w-full min-w-0 items-start gap-3">
+                            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-lg leading-none">
                                 👑
                             </span>
-                            <div>
+                            <div class="min-w-0 flex-1">
                                 <span class="block text-sm font-bold text-gray-900">Administrador / Titular</span>
-                                <span class="block text-xs text-gray-500 mt-0.5">Control absoluto del estudio. Ve todos los clientes, gestiona el equipo, configura scrapers y bots del sistema.</span>
+                                <span class="mt-0.5 block text-xs leading-5 text-gray-500">Control absoluto del estudio. Ve todos los clientes, gestiona el equipo, configura scrapers y bots del sistema.</span>
                             </div>
                         </div>
                     </label>
@@ -238,7 +253,7 @@
 
         {{-- Asignación de Cartera de Clientes --}}
         <div class="rounded-2xl border border-gray-200 bg-white p-6 shadow-xs space-y-4"
-             x-show="rol === 'asistente'"
+             x-show="rol === 'asistente' || rol === 'contador'"
              x-transition>
             <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-3">
                 <div>
@@ -246,7 +261,7 @@
                         <span class="flex h-6 w-6 items-center justify-center rounded-md bg-brand-50 text-brand-600 text-xs font-bold">2</span>
                         <span>Asignación de Cartera de Clientes</span>
                     </h3>
-                    <p class="text-xs text-gray-500 mt-0.5">Seleccione los clientes que este asistente podrá ver y operar.</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Seleccione los clientes que este usuario podrá ver y operar.</p>
                 </div>
 
                 {{-- Acciones Rápidas Selección --}}

@@ -199,8 +199,8 @@ class ClienteController extends Controller
             return $cliente;
         });
 
-        // Si quien crea el cliente es un asistente, auto-asignarlo a su cartera
-        if (auth()->user()?->isAsistente()) {
+        // Quien no administra el estudio solo conserva los clientes de su cartera.
+        if (auth()->user()?->operaCarteraAsignada()) {
             $cliente->asistentes()->syncWithoutDetaching([auth()->id()]);
         }
 

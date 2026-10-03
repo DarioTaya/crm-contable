@@ -346,6 +346,40 @@ class AuthAndRbacTest extends TestCase
         $this->assertTrue($nuevoUsuario->clientes->contains($this->clienteNoAsignado));
     }
 
+    public function test_admin_creates_contador_and_assigns_clients(): void
+    {
+        $response = $this->actingAs($this->admin)->post(route('usuarios.store'), [
+            'name' => 'Lucia Contadora',
+            'email' => 'lucia@estudio.com',
+            'telefono' => '999111222',
+            'password' => 'password123',
+            'rol' => 'contador',
+            'clientes' => [$this->clienteAsignado->id],
+        ]);
+
+        $response->assertRedirect(route('usuarios.index'));
+        $this->assertDatabaseHas('users', ['email' => 'lucia@estudio.com', 'rol' => 'contador']);
+
+        $contador = User::where('email', 'lucia@estudio.com')->first();
+        $this->assertTrue($contador->isContador());
+        $this->assertFalse($contador->isAdmin());
+        $this->assertTrue($contador->clientes->contains($this->clienteAsignado));
+
+        $this->actingAs($contador)->get(route('clientes.show', $this->clienteAsignado))->assertOk();
+        $this->actingAs($contador)->get(route('clientes.show', $this->clienteNoAsignado))->assertForbidden();
+        $this->actingAs($contador)->get(route('usuarios.index'))->assertForbidden();
+    }
+
+    public function test_create_user_form_offers_contador_role(): void
+    {
+        $response = $this->actingAs($this->admin)->get(route('usuarios.create'));
+
+        $response->assertOk();
+        $response->assertSee('value="contador"', false);
+        $response->assertSee('Contador');
+        $response->assertSee('👷', false);
+    }
+
     public function test_estudio_scope_isolates_data_between_different_studios(): void
     {
         // Crear cliente en Estudio 2

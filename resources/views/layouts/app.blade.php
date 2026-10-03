@@ -514,7 +514,12 @@
                             @php
                                 $usuarioActual = auth()->user();
                                 $esAdmin = $usuarioActual->isAdmin();
-                                $rolCuenta = $esAdmin ? 'Administrador' : 'Asistente';
+                                $rolCuenta = $usuarioActual->etiquetaRol();
+                                $tonoRol = match ($usuarioActual->rol) {
+                                    'admin' => 'text-gold-600',
+                                    'contador' => 'text-emerald-700',
+                                    default => 'text-slate-500',
+                                };
                             @endphp
 
                             <div x-data="{ abierto: false }"
@@ -544,7 +549,7 @@
                                         <x-cuenta.avatar :user="$usuarioActual" tamano="md" />
                                         <div class="min-w-0">
                                             <p class="truncate text-sm font-semibold text-gray-900">{{ $usuarioActual->name }}</p>
-                                            <p class="mt-0.5 text-[11px] font-semibold {{ $esAdmin ? 'text-gold-600' : 'text-slate-500' }}">{{ $rolCuenta }}</p>
+                                            <p class="mt-0.5 text-[11px] font-semibold {{ $tonoRol }}">{{ $rolCuenta }}</p>
                                         </div>
                                     </div>
 

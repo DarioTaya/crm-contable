@@ -281,7 +281,7 @@ class CargaMasivaClientes
                     $cliente = Cliente::create($atributos);
                     $cliente->credencial()->create($credencial);
                     $usuario = Auth::user();
-                    if ($usuario?->isAsistente()) {
+                    if ($usuario?->operaCarteraAsignada()) {
                         $cliente->asistentes()->syncWithoutDetaching([$usuario->id]);
                     }
 

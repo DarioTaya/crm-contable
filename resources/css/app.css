@@ -72,7 +72,7 @@
     --color-warning-600: #d97706;
     --color-warning-700: #b45309;
 
-    /* Oro del administrador. El anillo es el oro sobrio; el disco de la corona es el oro vivo del glifo. */
+    /* Oro del administrador. Solo el disco de la corona. El marco de la foto es el azul noche. */
     --color-gold-50: #f8f3e6;
     --color-gold-100: #f0e4c4;
     --color-gold-400: #f6c445;

@@ -241,7 +241,7 @@ class Cliente extends Model
      * scopes automáticamente.
      *
      * Exige que el cliente pertenezca al estudio en curso y, cuando quien opera
-     * es un asistente, que además figure en su cartera asignada. Sin esta
+     * no es administrador, que además figure en su cartera asignada. Sin esta
      * restricción un `exists:clientes,id` corriente acepta el identificador de
      * cualquier cliente de la instalación.
      */
@@ -252,7 +252,7 @@ class Cliente extends Model
         return Rule::exists('clientes', 'id')->where(function (QueryBuilder $query) use ($user) {
             $query->where('estudio_id', self::estudioActualId())->whereNull('deleted_at');
 
-            if ($user?->isAsistente()) {
+            if ($user?->operaCarteraAsignada()) {
                 $query->whereIn('id', function (QueryBuilder $asignados) use ($user) {
                     $asignados->select('cliente_id')
                         ->from('cliente_user')

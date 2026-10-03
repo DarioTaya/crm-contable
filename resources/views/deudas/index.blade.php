@@ -282,7 +282,7 @@
     </x-reportes.membrete>
 
     {{-- ═══════════════════════════════ ENCABEZADO DE PANTALLA (Stripe / Mercury Style) ═══════════════════════════════ --}}
-    <div class="no-print mb-6 relative z-40 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="no-print mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <div class="flex items-center gap-2.5">
                 <h2 class="text-2xl font-black tracking-tight text-gray-900">Control de Deudas</h2>

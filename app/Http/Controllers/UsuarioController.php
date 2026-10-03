@@ -22,7 +22,7 @@ class UsuarioController extends Controller
 
         $usuarios = User::where('estudio_id', $estudioId)
             ->withCount('clientes')
-            ->orderByRaw("CASE WHEN rol = 'admin' THEN 1 ELSE 2 END")
+            ->orderByRaw("CASE rol WHEN 'admin' THEN 1 WHEN 'contador' THEN 2 ELSE 3 END")
             ->orderBy('name')
             ->get();
 
@@ -58,7 +58,7 @@ class UsuarioController extends Controller
             'fecha_cese' => ['nullable', 'date'],
             'direccion' => ['nullable', 'string', 'max:255'],
             'password' => ['required', 'string', 'min:6'],
-            'rol' => ['required', Rule::in(['admin', 'asistente'])],
+            'rol' => ['required', Rule::in(User::ROLES)],
             'clientes' => ['nullable', 'array'],
             'clientes.*' => ['integer', Rule::exists('clientes', 'id')->where('estudio_id', $estudioId)],
         ]);
@@ -145,7 +145,7 @@ class UsuarioController extends Controller
             'fecha_cese' => ['nullable', 'date'],
             'direccion' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:6'],
-            'rol' => ['required', Rule::in(['admin', 'asistente'])],
+            'rol' => ['required', Rule::in(User::ROLES)],
             'activo' => ['required', 'boolean'],
             'clientes' => ['nullable', 'array'],
             'clientes.*' => ['integer', Rule::exists('clientes', 'id')->where('estudio_id', $currentEstudioId)],

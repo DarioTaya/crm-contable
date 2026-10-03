@@ -95,7 +95,7 @@ class LayoutTopbarAndQuickLinksTest extends TestCase
         $responseAdmin->assertSee(route('perfil.edit'));
         $responseAdmin->assertSee('CA');
         $responseAdmin->assertSee('data-insignia-rol="administrador"', false);
-        $responseAdmin->assertSee('ring-brand-500', false);
+        $responseAdmin->assertSee('ring-ink', false);
         $responseAdmin->assertSee('👑', false);
 
         // 2. Asistente (insignia de rol, sin corona)
@@ -104,6 +104,8 @@ class LayoutTopbarAndQuickLinksTest extends TestCase
         $responseAsistente->assertSee(route('perfil.edit'));
         $responseAsistente->assertSee('AA');
         $responseAsistente->assertSee('data-insignia-rol="asistente"', false);
+        $responseAsistente->assertSee('👷', false);
+        $responseAsistente->assertDontSee('data-insignia-rol="administrador"', false);
     }
 
     public function test_admin_can_view_quick_links_crud_in_ajustes(): void
