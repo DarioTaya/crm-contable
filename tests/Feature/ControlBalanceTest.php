@@ -114,8 +114,8 @@ class ControlBalanceTest extends TestCase
 
             $response->assertOk();
             $response->assertSee('Periodo en apertura');
-            $response->assertSee('Junio de 2026');
-            $response->assertSee('30/09/2026');
+            $response->assertSee('Mayo de 2026');
+            $response->assertSee('01/09/2026');
             $response->assertSee('Abierto');
             $response->assertSee('3 meses');
         });

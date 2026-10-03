@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Artisan;
 
 class CronogramaSunatService
 {
+    public function __construct(
+        private PlazoAtrasoLibrosService $plazosAtraso,
+    ) {}
+
     /**
      * Obtiene el período tributario activo que se encuentra en fase de vencimiento/declaración.
      *
@@ -46,10 +50,9 @@ class CronogramaSunatService
             return $porFechaGeneral->periodo;
         }
 
-        // R.S. N.° 234-2006/SUNAT: el libro del mes M se cierra, como máximo,
-        // dentro de los tres meses siguientes. En setiembre se abre junio.
+        // Anexo 2 de la R.S. N.° 234-2006/SUNAT: tres meses desde el primer día hábil del mes siguiente.
         if ($tipo === 'balance_mensual') {
-            return $fecha->copy()->subMonthsNoOverflow(3)->format('m-Y');
+            return $this->plazosAtraso->periodoQueVenceEn($fecha);
         }
 
         return $fecha->format('m-Y');
@@ -197,7 +200,7 @@ class CronogramaSunatService
                 'tipo' => 'sire',
                 'mes' => $pdt->mes,
                 'periodo' => $pdt->periodo,
-                'descripcion' => "Registros Electrónicos SIRE - Período {$pdt->mes_nombre} {$anio}",
+                'descripcion' => "Registros Electrónicos SIRE - Período {$pdt->nombre_mes} {$anio}",
             ];
 
             foreach ($camposDigitos as $campo) {
@@ -309,5 +312,75 @@ class CronogramaSunatService
         $cronograma['periodo_balance_anual'] = $this->obtenerPeriodoEnCurso('balance_anual');
 
         return $cronograma;
+    }
+
+    public function inicioPlazoBalanceMensual(int $mes, int $anio): Carbon
+    {
+        return $this->plazosAtraso->primerDiaHabilDelMesSiguiente($mes, $anio);
+    }
+
+    public function sincronizarBalancesMensuales(int $anio): int
+    {
+        foreach ($this->plazosAtraso->fechasDelEjercicio($anio) as $mes => $fecha) {
+            $periodo = sprintf('%02d-%d', $mes, $anio);
+
+            CronogramaSunat::updateOrCreate(
+                [
+                    'anio' => $anio,
+                    'tipo' => 'balance_mensual',
+                    'periodo' => $periodo,
+                ],
+                [
+                    'mes' => $mes,
+                    'fecha_vencimiento_general' => $fecha->toDateString(),
+                    'descripcion' => "Libro Diario y Libro Mayor {$periodo}. Plazo máximo de atraso: 3 meses.",
+                ]
+            );
+        }
+
+        return 12;
+    }
+
+    /**
+     * Sustituye solo las fechas del sembrado anterior. Una fecha ya corregida a mano se conserva.
+     *
+     * @param  array<int, string>  $fechasAnteriores
+     */
+    public function corregirBalancesSembrados(int $anio, array $fechasAnteriores): void
+    {
+        foreach ($this->plazosAtraso->fechasDelEjercicio($anio) as $mes => $fecha) {
+            $periodo = sprintf('%02d-%d', $mes, $anio);
+            $nueva = $fecha->toDateString();
+            $registro = CronogramaSunat::query()
+                ->where('anio', $anio)
+                ->where('tipo', 'balance_mensual')
+                ->where('periodo', $periodo)
+                ->first();
+
+            if (! $registro) {
+                CronogramaSunat::create([
+                    'anio' => $anio,
+                    'tipo' => 'balance_mensual',
+                    'periodo' => $periodo,
+                    'mes' => $mes,
+                    'fecha_vencimiento_general' => $nueva,
+                    'descripcion' => "Libro Diario y Libro Mayor {$periodo}. Plazo máximo de atraso: 3 meses.",
+                ]);
+
+                continue;
+            }
+
+            $actual = $registro->fecha_vencimiento_general?->toDateString();
+
+            if ($actual !== null && $actual !== $nueva && $actual !== ($fechasAnteriores[$mes] ?? null)) {
+                continue;
+            }
+
+            $registro->update([
+                'mes' => $mes,
+                'fecha_vencimiento_general' => $nueva,
+                'descripcion' => "Libro Diario y Libro Mayor {$periodo}. Plazo máximo de atraso: 3 meses.",
+            ]);
+        }
     }
 }

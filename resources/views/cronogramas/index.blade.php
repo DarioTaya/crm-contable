@@ -109,6 +109,18 @@
                     </button>
                 @endif
 
+                @if ($tipo === 'balance_mensual')
+                    <button type="button"
+                            @click="calcularBalances()"
+                            :disabled="guardando"
+                            class="inline-flex items-center gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3.5 py-2 text-xs font-bold text-amber-800 hover:bg-amber-100 shadow-xs transition disabled:opacity-50">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                        </svg>
+                        <span>Calcular plazo legal</span>
+                    </button>
+                @endif
+
                 @if ($anio === 2026)
                     <button type="button"
                             @click="restablecerOficial()"
@@ -139,58 +151,28 @@
         </div>
 
         {{-- ════════════════════ PESTAÑAS DE MODALIDAD / TIPO DE OBLIGACIÓN ════════════════════ --}}
-        <div class="border-b border-gray-200">
-            <nav class="-mb-px flex space-x-6 overflow-x-auto pb-1" aria-label="Tabs">
-                <a href="{{ route('cronogramas.index', ['anio' => $anio, 'tipo' => 'pdt_621']) }}"
-                   class="whitespace-nowrap flex items-center gap-2 border-b-2 py-3 px-1 text-sm font-semibold transition-colors
-                          {{ $tipo === 'pdt_621' ? 'border-brand-600 text-brand-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                    </svg>
-                    <span>Obligaciones Mensuales (PDT 621 / IGV - Renta)</span>
-                    <span class="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-bold text-brand-700 border border-brand-200">
-                        {{ $totales['pdt_621'] }} períodos
-                    </span>
-                </a>
-
-                <a href="{{ route('cronogramas.index', ['anio' => $anio, 'tipo' => 'sire']) }}"
-                   class="whitespace-nowrap flex items-center gap-2 border-b-2 py-3 px-1 text-sm font-semibold transition-colors
-                          {{ $tipo === 'sire' ? 'border-purple-600 text-purple-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
-                    </svg>
-                    <span>Registros Electrónicos (SIRE - RCE y RVIE)</span>
-                    <span class="rounded-full bg-purple-50 px-2 py-0.5 text-[11px] font-bold text-purple-700 border border-purple-200">
-                        {{ $totales['sire'] }} períodos
-                    </span>
-                </a>
-
-                <a href="{{ route('cronogramas.index', ['anio' => $anio, 'tipo' => 'balance_mensual']) }}"
-                   class="whitespace-nowrap flex items-center gap-2 border-b-2 py-3 px-1 text-sm font-semibold transition-colors
-                          {{ $tipo === 'balance_mensual' ? 'border-amber-600 text-amber-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0 0 12 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 0 1-2.031.352 5.988 5.988 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L18.75 4.971Zm-16.5.52c.99-.203 1.99-.377 3-.52m0 0 2.62 10.726c.122.499-.106 1.028-.589 1.202a5.989 5.989 0 0 1-2.031.352 5.989 5.989 0 0 1-2.031-.352c-.483-.174-.711-.703-.59-1.202L5.25 4.971Z" />
-                    </svg>
-                    <span>Balances Mensuales (Atraso Máximo 3 Meses)</span>
-                    <span class="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-700 border border-amber-200">
-                        {{ $totales['balance_mensual'] }}
-                    </span>
-                </a>
-
-                <a href="{{ route('cronogramas.index', ['anio' => $anio, 'tipo' => 'balance_anual']) }}"
-                   class="whitespace-nowrap flex items-center gap-2 border-b-2 py-3 px-1 text-sm font-semibold transition-colors
-                          {{ $tipo === 'balance_anual' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }}">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
-                    </svg>
-                    <span>Balance Anual (DJ Anual Renta)</span>
-                    <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700 border border-emerald-200">
-                        Anual
-                    </span>
-                </a>
-            </nav>
-        </div>
+        <nav class="grid grid-cols-2 gap-2 lg:grid-cols-4" aria-label="Tipos de cronograma">
+            <a href="{{ route('cronogramas.index', ['anio' => $anio, 'tipo' => 'pdt_621']) }}"
+               class="rounded-xl border px-3 py-2.5 text-center text-sm font-semibold transition
+                      {{ $tipo === 'pdt_621' ? 'border-brand-300 bg-brand-50 text-brand-700 shadow-xs' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900' }}">
+                PDT 621 y PLAME
+            </a>
+            <a href="{{ route('cronogramas.index', ['anio' => $anio, 'tipo' => 'sire']) }}"
+               class="rounded-xl border px-3 py-2.5 text-center text-sm font-semibold transition
+                      {{ $tipo === 'sire' ? 'border-purple-300 bg-purple-50 text-purple-700 shadow-xs' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900' }}">
+                SIRE - RCE y RVIE
+            </a>
+            <a href="{{ route('cronogramas.index', ['anio' => $anio, 'tipo' => 'balance_mensual']) }}"
+               class="rounded-xl border px-3 py-2.5 text-center text-sm font-semibold transition
+                      {{ $tipo === 'balance_mensual' ? 'border-amber-300 bg-amber-50 text-amber-800 shadow-xs' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900' }}">
+                Balances mensuales
+            </a>
+            <a href="{{ route('cronogramas.index', ['anio' => $anio, 'tipo' => 'balance_anual']) }}"
+               class="rounded-xl border px-3 py-2.5 text-center text-sm font-semibold transition
+                      {{ $tipo === 'balance_anual' ? 'border-emerald-300 bg-emerald-50 text-emerald-800 shadow-xs' : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900' }}">
+                Balance anual (Rta. 3ra)
+            </a>
+        </nav>
 
         {{-- ════════════════════ BANNER INFORMATIVO CONTEXTUAL ════════════════════ --}}
         <div class="rounded-2xl border p-4 bg-white shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4"
@@ -215,13 +197,13 @@
                 <div>
                     <h3 class="text-sm font-bold text-gray-900">
                         @if ($tipo === 'pdt_621')
-                            Cronograma Oficial de Obligaciones Tributarias Mensuales — SUNAT {{ $anio }}
+                            PDT 621 y PLAME
                         @elseif ($tipo === 'sire')
-                            Cronograma de Generación de Registros Electrónicos SIRE (RVIE y RCE) — SUNAT {{ $anio }}
+                            SIRE - RCE y RVIE
                         @elseif ($tipo === 'balance_mensual')
-                            Plazo Máximo de Atraso de Balances y Libros Contables (R.S. 234-2006/SUNAT)
+                            Balances mensuales
                         @else
-                            Declaración Jurada Anual del Impuesto a la Renta {{ $anio }}
+                            Balance anual (Rta. 3ra)
                         @endif
                     </h3>
                     <p class="text-xs text-gray-600 mt-0.5">
@@ -230,7 +212,7 @@
                         @elseif ($tipo === 'sire')
                             Por normativa oficial de SUNAT, la presentación de los registros electrónicos RVIE y RCE vence <strong>exactamente un (1) día hábil antes</strong> de la fecha del PDT 621.
                         @elseif ($tipo === 'balance_mensual')
-                            El atraso máximo permitido por SUNAT para los libros y registros contables es de <strong>tres (3) meses</strong> siguientes al mes de las operaciones.
+                            Tres meses desde el primer día hábil del mes siguiente (anexo 2 de la R.S. N.° 234-2006/SUNAT, según la R.S. N.° 000257-2025/SUNAT). Si ese día es inhábil para SUNAT, corre al siguiente día hábil. Puede corregir una fecha y guardarla.
                         @else
                             Vencimiento general y por último dígito para la Declaración Anual de Impuesto a la Renta.
                         @endif
@@ -248,9 +230,9 @@
 
         {{-- ════════════════════ MATRIZ INTERACTIVA EDITABLE ════════════════════ --}}
         <form id="formCronograma" @submit.prevent="guardarCambios">
-            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 text-left text-xs">
+            <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs {{ $tipo === 'balance_mensual' ? 'max-w-lg' : '' }}">
+                <div class="{{ $tipo === 'balance_mensual' ? 'overflow-hidden' : 'overflow-x-auto' }}">
+                    <table class="{{ $tipo === 'balance_mensual' ? 'w-full table-fixed' : 'min-w-full' }} divide-y divide-gray-200 text-left text-xs">
                         <thead class="bg-gray-50 text-[11px] font-bold uppercase tracking-wider text-gray-600">
                             <tr>
                                 <th scope="col" class="py-3 px-4 sticky left-0 bg-gray-50 z-10 w-44">
@@ -258,11 +240,11 @@
                                 </th>
 
                                 @if ($tipo === 'balance_mensual')
-                                    <th scope="col" class="py-3 px-4 text-center">
-                                        Fecha Límite Legal (Atraso Máximo 3 Meses)
-                                    </th>
                                     <th scope="col" class="py-3 px-4">
-                                        Detalle de Obligación
+                                        Inicio del plazo
+                                    </th>
+                                    <th scope="col" class="py-3 px-4 text-center">
+                                        Fecha límite
                                     </th>
                                 @else
                                     <th scope="col" class="py-3 px-3 text-center w-28 bg-gray-100/60">Dígito 0</th>
@@ -294,7 +276,9 @@
                                     <td class="py-3 px-4 sticky left-0 z-10 font-sans {{ $esPeriodoActivo ? 'bg-blue-50/90 font-bold text-brand-900' : 'bg-white font-semibold text-gray-900' }}">
                                         <div class="flex items-center gap-2">
                                             <span>{{ $cronograma->periodo }}</span>
-                                            <span class="text-xs font-normal text-gray-500">({{ $cronograma->mes_nombre }})</span>
+                                            @if ($cronograma->mes)
+                                                <span class="text-xs font-normal text-gray-500">({{ $cronograma->nombre_mes }})</span>
+                                            @endif
                                             @if ($esPeriodoActivo)
                                                 <span class="inline-flex items-center rounded bg-blue-600 px-1.5 py-0.5 text-[9px] font-black uppercase text-white shadow-xs">
                                                     Activo
@@ -304,19 +288,14 @@
                                     </td>
 
                                     @if ($tipo === 'balance_mensual')
-                                        {{-- Fecha Límite General para Balances Mensuales --}}
-                                        <td class="py-2.5 px-4 text-center">
+                                        <td class="py-2 px-4 font-sans text-xs text-gray-600">
+                                            {{ $iniciosBalance[$cronograma->id] ?? '—' }}
+                                        </td>
+                                        <td class="py-2 px-4 text-center">
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][fecha_vencimiento_general]"
                                                    value="{{ $cronograma->fecha_vencimiento_general ? $cronograma->fecha_vencimiento_general->format('Y-m-d') : '' }}"
-                                                   class="w-44 rounded-lg border border-gray-300 py-1.5 px-2 text-center text-xs font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
-                                        </td>
-                                        <td class="py-2.5 px-4 font-sans text-xs text-gray-600">
-                                            <input type="text"
-                                                   name="cronogramas[{{ $index }}][descripcion]"
-                                                   value="{{ $cronograma->descripcion }}"
-                                                   placeholder="Descripción legal o nota..."
-                                                   class="w-full rounded-lg border border-gray-200 py-1.5 px-3 text-xs text-gray-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-full rounded-lg border border-gray-300 py-1.5 px-2 text-center text-xs font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
                                     @else
                                         {{-- Dígito 0 --}}
@@ -324,7 +303,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][digito_0]"
                                                    value="{{ $cronograma->digito_0 ? $cronograma->digito_0->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-full rounded-lg border border-gray-300 py-1.5 px-2 text-center text-xs font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
 
                                         {{-- Dígito 1 --}}
@@ -332,7 +311,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][digito_1]"
                                                    value="{{ $cronograma->digito_1 ? $cronograma->digito_1->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-full rounded-lg border border-gray-300 py-1.5 px-2 text-center text-xs font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
 
                                         {{-- Dígitos 2 y 3 --}}
@@ -340,7 +319,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][digito_2_3]"
                                                    value="{{ $cronograma->digito_2_3 ? $cronograma->digito_2_3->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-full rounded-lg border border-gray-300 py-1.5 px-2 text-center text-xs font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
 
                                         {{-- Dígitos 4 y 5 --}}
@@ -348,7 +327,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][digito_4_5]"
                                                    value="{{ $cronograma->digito_4_5 ? $cronograma->digito_4_5->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-full rounded-lg border border-gray-300 py-1.5 px-2 text-center text-xs font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
 
                                         {{-- Dígitos 6 y 7 --}}
@@ -356,7 +335,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][digito_6_7]"
                                                    value="{{ $cronograma->digito_6_7 ? $cronograma->digito_6_7->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-full rounded-lg border border-gray-300 py-1.5 px-2 text-center text-xs font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
 
                                         {{-- Dígitos 8 y 9 --}}
@@ -364,7 +343,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][digito_8_9]"
                                                    value="{{ $cronograma->digito_8_9 ? $cronograma->digito_8_9->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                   class="w-full rounded-lg border border-gray-300 py-1.5 px-2 text-center text-xs font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                         </td>
 
                                         {{-- Buenos Contribuyentes / UESP --}}
@@ -372,7 +351,7 @@
                                             <input type="date"
                                                    name="cronogramas[{{ $index }}][buenos_contribuyentes]"
                                                    value="{{ $cronograma->buenos_contribuyentes ? $cronograma->buenos_contribuyentes->format('Y-m-d') : '' }}"
-                                                   class="w-full rounded-lg border border-emerald-300 py-1 px-1.5 text-center text-[11px] font-semibold text-emerald-900 bg-emerald-50/60 shadow-xs focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500">
+                                                   class="w-full rounded-lg border border-emerald-300 py-1.5 px-2 text-center text-xs font-semibold text-emerald-900 bg-emerald-50/60 shadow-xs focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500">
                                         </td>
 
                                         @if ($tipo === 'balance_anual')
@@ -380,7 +359,7 @@
                                                 <input type="date"
                                                        name="cronogramas[{{ $index }}][fecha_vencimiento_general]"
                                                        value="{{ $cronograma->fecha_vencimiento_general ? $cronograma->fecha_vencimiento_general->format('Y-m-d') : '' }}"
-                                                       class="w-full rounded-lg border border-gray-300 py-1 px-1.5 text-center text-[11px] font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                                                       class="w-full rounded-lg border border-gray-300 py-1.5 px-2 text-center text-xs font-medium text-gray-800 shadow-xs focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
                                             </td>
                                         @endif
                                     @endif
@@ -551,6 +530,38 @@
                             setTimeout(() => window.location.reload(), 900);
                         } else {
                             this.notificar('error', 'Error', data.message || 'No se pudo generar el cronograma SIRE.');
+                        }
+                    } catch (error) {
+                        this.notificar('error', 'Error', 'Ocurrió un fallo en la solicitud.');
+                    } finally {
+                        this.guardando = false;
+                    }
+                },
+
+                async calcularBalances() {
+                    if (!confirm('¿Calcular el plazo legal de balances mensuales de ' + this.anio + '?\nSe reemplazan las 12 fechas. Después puede corregir una y guardarla.')) {
+                        return;
+                    }
+
+                    this.guardando = true;
+                    try {
+                        const response = await fetch('{{ route('cronogramas.calcular-balances') }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': this.csrfToken,
+                                'Content-Type': 'application/json',
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({ anio: this.anio })
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok && data.success) {
+                            this.notificar('success', 'Plazo calculado', data.message);
+                            setTimeout(() => window.location.reload(), 900);
+                        } else {
+                            this.notificar('error', 'Error', data.message || 'No se pudo calcular el plazo.');
                         }
                     } catch (error) {
                         this.notificar('error', 'Error', 'Ocurrió un fallo en la solicitud.');

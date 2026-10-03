@@ -6,6 +6,7 @@ use App\Enums\RegimenTributario;
 use App\Models\Cliente;
 use App\Models\CronogramaSunat;
 use App\Services\CronogramaSunatService;
+use App\Services\PlazoAtrasoLibrosService;
 use Carbon\Carbon;
 use Database\Seeders\CronogramaSunatSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -68,6 +69,14 @@ class CronogramaSunatTest extends TestCase
         $this->assertEquals('2026-09-16', $pdtAgo->digito_1->format('Y-m-d'));
         $this->assertEquals('2026-09-22', $pdtAgo->digito_8_9->format('Y-m-d'));
         $this->assertEquals('2026-09-23', $pdtAgo->buenos_contribuyentes->format('Y-m-d'));
+
+        $balanceEnero = CronogramaSunat::query()
+            ->where('tipo', 'balance_mensual')
+            ->where('periodo', '01-2026')
+            ->first();
+
+        $this->assertNotNull($balanceEnero);
+        $this->assertSame('2026-05-04', $balanceEnero->fecha_vencimiento_general->format('Y-m-d'));
     }
 
     public function test_obtener_periodo_en_curso_resolves_august_in_september(): void
@@ -87,18 +96,18 @@ class CronogramaSunatTest extends TestCase
     {
         $this->seed(CronogramaSunatSeeder::class);
 
-        $junio = $this->service->obtenerPeriodoEnCurso('balance_mensual', Carbon::create(2026, 9, 23));
-        $octubre = $this->service->obtenerPeriodoEnCurso('balance_mensual', Carbon::create(2027, 1, 15));
+        $mayo = $this->service->obtenerPeriodoEnCurso('balance_mensual', Carbon::create(2026, 9, 23));
+        $setiembre = $this->service->obtenerPeriodoEnCurso('balance_mensual', Carbon::create(2027, 1, 15));
 
-        $this->assertSame('06-2026', $junio);
-        $this->assertSame('10-2026', $octubre);
+        $this->assertSame('05-2026', $mayo);
+        $this->assertSame('09-2026', $setiembre);
     }
 
     public function test_monthly_balance_period_falls_back_to_three_months_without_a_schedule(): void
     {
         $periodo = $this->service->obtenerPeriodoEnCurso('balance_mensual', Carbon::create(2026, 9, 23));
 
-        $this->assertSame('06-2026', $periodo);
+        $this->assertSame('05-2026', $periodo);
     }
 
     public function test_obtener_fecha_vencimiento_by_client_ruc_digit_and_buen_contribuyente(): void
@@ -193,17 +202,22 @@ class CronogramaSunatTest extends TestCase
         $responsePdt = $this->get(route('cronogramas.index'));
         $responsePdt->assertOk();
         $responsePdt->assertSee('Cronograma Oficial SUNAT 2026');
-        $responsePdt->assertSee('Obligaciones Mensuales (PDT 621 / IGV - Renta)');
+        $responsePdt->assertSee('PDT 621 y PLAME');
+        $responsePdt->assertDontSee('Obligaciones Mensuales (PDT 621 / IGV - Renta)');
 
         // GET index SIRE
         $responseSire = $this->get(route('cronogramas.index', ['tipo' => 'sire']));
         $responseSire->assertOk();
-        $responseSire->assertSee('Registros Electrónicos (SIRE - RCE y RVIE)');
+        $responseSire->assertSee('SIRE - RCE y RVIE');
 
         // GET index Balances Mensuales
         $responseBalances = $this->get(route('cronogramas.index', ['tipo' => 'balance_mensual']));
         $responseBalances->assertOk();
-        $responseBalances->assertSee('Balances Mensuales (Atraso Máximo 3 Meses)');
+        $responseBalances->assertSee('Balances mensuales');
+        $responseBalances->assertSee('Balance anual (Rta. 3ra)');
+        $responseBalances->assertSee('2026-05-04');
+        $responseBalances->assertSee('02/02/2026');
+        $responseBalances->assertDontSee('Fecha Límite Legal');
 
         // POST update dates
         $registro = CronogramaSunat::first();
@@ -224,6 +238,77 @@ class CronogramaSunatTest extends TestCase
             'anio' => 2026,
         ]);
         $responseAuto->assertRedirect();
+    }
+
+    public function test_calcular_balances_guarda_el_plazo_legal_del_ejercicio_indicado(): void
+    {
+        $registro = CronogramaSunat::create([
+            'anio' => 2026,
+            'tipo' => 'balance_mensual',
+            'mes' => 1,
+            'periodo' => '01-2026',
+            'fecha_vencimiento_general' => '2026-04-30',
+        ]);
+
+        $this->postJson(route('cronogramas.calcular-balances'), ['anio' => 2026])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $this->assertSame('2026-05-04', $registro->fresh()->fecha_vencimiento_general->format('Y-m-d'));
+        $this->assertDatabaseHas('cronogramas_sunat', [
+            'anio' => 2026,
+            'tipo' => 'balance_mensual',
+            'periodo' => '12-2026',
+            'fecha_vencimiento_general' => '2027-04-05',
+        ]);
+    }
+
+    public function test_un_ejercicio_nuevo_de_balances_nace_con_el_plazo_legal(): void
+    {
+        $this->get(route('cronogramas.index', ['anio' => 2027, 'tipo' => 'balance_mensual']))
+            ->assertOk()
+            ->assertSee('Balances mensuales');
+
+        $esperada = app(PlazoAtrasoLibrosService::class)->fechaLimite(1, 2027)->toDateString();
+
+        $this->assertDatabaseHas('cronogramas_sunat', [
+            'anio' => 2027,
+            'tipo' => 'balance_mensual',
+            'periodo' => '01-2027',
+            'fecha_vencimiento_general' => $esperada,
+        ]);
+    }
+
+    public function test_la_correccion_del_sembrado_conserva_una_fecha_editada(): void
+    {
+        CronogramaSunat::create([
+            'anio' => 2026,
+            'tipo' => 'balance_mensual',
+            'mes' => 1,
+            'periodo' => '01-2026',
+            'fecha_vencimiento_general' => '2026-05-10',
+        ]);
+        CronogramaSunat::create([
+            'anio' => 2026,
+            'tipo' => 'balance_mensual',
+            'mes' => 2,
+            'periodo' => '02-2026',
+            'fecha_vencimiento_general' => '2026-05-29',
+        ]);
+
+        $this->service->corregirBalancesSembrados(2026, [
+            1 => '2026-04-30',
+            2 => '2026-05-29',
+        ]);
+
+        $this->assertDatabaseHas('cronogramas_sunat', [
+            'periodo' => '01-2026',
+            'fecha_vencimiento_general' => '2026-05-10',
+        ]);
+        $this->assertDatabaseHas('cronogramas_sunat', [
+            'periodo' => '02-2026',
+            'fecha_vencimiento_general' => '2026-06-02',
+        ]);
     }
 
     public function test_cliente_update_datos_fiscales_saves_es_buen_contribuyente(): void

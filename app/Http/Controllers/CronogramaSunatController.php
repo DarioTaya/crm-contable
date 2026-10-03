@@ -29,14 +29,35 @@ class CronogramaSunatController extends Controller
             $tipo = 'pdt_621';
         }
 
-        $aniosDisponibles = [2025, 2026, 2027, 2028];
+        $aniosDisponibles = range(2025, max(2028, (int) now()->year + 2));
+        if (! in_array($anio, $aniosDisponibles, true)) {
+            $aniosDisponibles[] = $anio;
+            sort($aniosDisponibles);
+        }
 
         $cronogramas = $this->cronogramaService->obtenerCronograma($anio, $tipo);
 
         // Si no existen registros para este año y tipo, inicializar estructura vacía para edición directa
         if ($cronogramas->isEmpty()) {
-            $this->inicializarEstructuraAnio($anio, $tipo);
+            if ($tipo === 'balance_mensual') {
+                $this->cronogramaService->sincronizarBalancesMensuales($anio);
+            } else {
+                $this->inicializarEstructuraAnio($anio, $tipo);
+            }
             $cronogramas = $this->cronogramaService->obtenerCronograma($anio, $tipo);
+        }
+
+        $iniciosBalance = [];
+        if ($tipo === 'balance_mensual') {
+            foreach ($cronogramas as $cronograma) {
+                if (! $cronograma->mes) {
+                    continue;
+                }
+
+                $iniciosBalance[$cronograma->id] = $this->cronogramaService
+                    ->inicioPlazoBalanceMensual((int) $cronograma->mes, (int) $cronograma->anio)
+                    ->format('d/m/Y');
+            }
         }
 
         $periodoActivo = $this->cronogramaService->obtenerPeriodoEnCurso($tipo);
@@ -54,7 +75,8 @@ class CronogramaSunatController extends Controller
             'tipo',
             'aniosDisponibles',
             'periodoActivo',
-            'totales'
+            'totales',
+            'iniciosBalance'
         ));
     }
 
@@ -126,6 +148,31 @@ class CronogramaSunatController extends Controller
         $actualizados = $this->cronogramaService->autogenerarSireDesdePdt($anio);
 
         $mensaje = "Se auto-generaron con éxito {$actualizados} períodos del cronograma SIRE (1 día hábil previo a PDT 621).";
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => $mensaje,
+                'actualizados' => $actualizados,
+            ]);
+        }
+
+        return back()->with('success', $mensaje);
+    }
+
+    /**
+     * Calcula las doce fechas de balances mensuales del ejercicio y las guarda.
+     */
+    public function calcularBalances(Request $request): JsonResponse|RedirectResponse
+    {
+        $anio = (int) $request->input('anio', now()->year);
+
+        if ($anio < 2000 || $anio > 2100) {
+            abort(422, 'El ejercicio indicado no es válido.');
+        }
+
+        $actualizados = $this->cronogramaService->sincronizarBalancesMensuales($anio);
+        $mensaje = "Se calcularon {$actualizados} plazos de balances mensuales {$anio} (3 meses desde el primer día hábil del mes siguiente).";
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([

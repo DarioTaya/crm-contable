@@ -30,7 +30,7 @@
         aria-controls="selector-empresa-panel"
         title="{{ $empresa ? $empresa->razon_social.' · RUC '.$empresa->ruc : 'Seleccionar empresa' }}"
         :title="empresa ? (empresa.razon_social + ' · RUC ' + empresa.ruc) : 'Seleccionar empresa'"
-        class="flex h-8 shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-1.5 text-left shadow-xs transition hover:border-brand-300 hover:bg-brand-50/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40"
+        class="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-1.5 text-left shadow-xs transition hover:border-brand-300 hover:bg-brand-50/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40"
         :class="abierto ? 'border-brand-400 bg-brand-50/60 ring-2 ring-brand-500/20' : ''"
     >
         <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700">

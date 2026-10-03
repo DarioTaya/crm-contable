@@ -349,7 +349,7 @@ class DashboardTest extends TestCase
         ControlBalance::create([
             'cliente_id' => $alDia->id,
             'anio' => 2026,
-            'meses' => ['6' => 'Declarado'],
+            'meses' => ['5' => 'Declarado'],
         ]);
 
         Cliente::create([
@@ -368,7 +368,7 @@ class DashboardTest extends TestCase
         ControlBalance::create([
             'cliente_id' => $enProceso->id,
             'anio' => 2026,
-            'meses' => ['6' => 'Procesando'],
+            'meses' => ['5' => 'Procesando'],
         ]);
 
         Cliente::create([
@@ -385,8 +385,8 @@ class DashboardTest extends TestCase
             $response->assertOk();
             $response->assertSee('Avance Impuestos');
             $response->assertSee('Avance Balances');
-            $response->assertSee('Junio de 2026');
-            $response->assertSee('30/09/2026');
+            $response->assertSee('Mayo de 2026');
+            $response->assertSee('01/09/2026');
             $response->assertSee('plazo PLE 3 meses');
             $response->assertSee('Pendientes (1)');
             $response->assertSee('En Proceso (1)');
@@ -397,7 +397,7 @@ class DashboardTest extends TestCase
             $this->assertSame(1, $avance['procesando']);
             $this->assertSame(1, $avance['pendientes']);
             $this->assertSame(3, $avance['total']);
-            $this->assertSame('06-2026', $avance['periodo']);
+            $this->assertSame('05-2026', $avance['periodo']);
         });
     }
 
@@ -523,17 +523,13 @@ class DashboardTest extends TestCase
             $nombres = $alertas->map(fn (array $alerta): string => $alerta['cliente']->razon_social);
 
             $this->assertTrue($nombres->contains('BALANCE VENCIDO SAC'));
-            $this->assertTrue($nombres->contains('BALANCE DE JUNIO SAC'));
+            $this->assertFalse($nombres->contains('BALANCE DE JUNIO SAC'));
             $this->assertFalse($nombres->contains('BALANCE COMPLETO SAC'));
             $this->assertFalse($nombres->contains('RUS SIN LIBROS SAC'));
 
             $alertaVencida = $alertas->first(fn (array $alerta): bool => $alerta['cliente']->razon_social === 'BALANCE VENCIDO SAC');
             $this->assertSame('vencido', $alertaVencida['estado_critico']['estado']);
             $this->assertSame([5], array_column($alertaVencida['meses'], 'mes'));
-
-            $alertaJunio = $alertas->first(fn (array $alerta): bool => $alerta['cliente']->razon_social === 'BALANCE DE JUNIO SAC');
-            $this->assertSame('al_dia', $alertaJunio['estado_critico']['estado']);
-            $this->assertSame([6], array_column($alertaJunio['meses'], 'mes'));
         });
     }
 

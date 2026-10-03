@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\CronogramaSunat;
+use App\Services\CronogramaSunatService;
 use Illuminate\Database\Seeder;
 
 class CronogramaSunatSeeder extends Seeder
@@ -106,40 +107,11 @@ class CronogramaSunatSeeder extends Seeder
     }
 
     /**
-     * Cronograma de Balances Mensuales (Libros Diario / Mayor - Plazo máximo de atraso 3 meses).
+     * Balances mensuales: tres meses desde el primer día hábil del mes siguiente.
      */
     private function seedBalancesMensualesAno2026(): void
     {
-        $balances2026 = [
-            1 => '2026-04-30',
-            2 => '2026-05-29',
-            3 => '2026-06-30',
-            4 => '2026-07-31',
-            5 => '2026-08-31',
-            6 => '2026-09-30',
-            7 => '2026-10-30',
-            8 => '2026-11-30',
-            9 => '2026-12-31',
-            10 => '2027-01-29',
-            11 => '2027-02-26',
-            12 => '2027-03-31',
-        ];
-
-        foreach ($balances2026 as $mes => $fecha) {
-            $periodo = sprintf('%02d-2026', $mes);
-            CronogramaSunat::updateOrCreate(
-                [
-                    'anio' => 2026,
-                    'tipo' => 'balance_mensual',
-                    'periodo' => $periodo,
-                ],
-                [
-                    'mes' => $mes,
-                    'fecha_vencimiento_general' => $fecha,
-                    'descripcion' => "Balance Mensual {$periodo} (Plazo 3 meses)",
-                ]
-            );
-        }
+        app(CronogramaSunatService::class)->sincronizarBalancesMensuales(2026);
     }
 
     /**

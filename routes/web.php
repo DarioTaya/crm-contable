@@ -153,6 +153,7 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
     Route::get('/cronogramas', [CronogramaSunatController::class, 'index'])->name('cronogramas.index');
     Route::post('/cronogramas/update', [CronogramaSunatController::class, 'update'])->name('cronogramas.update');
     Route::post('/cronogramas/autogenerar-sire', [CronogramaSunatController::class, 'autogenerarSire'])->name('cronogramas.autogenerar-sire');
+    Route::post('/cronogramas/calcular-balances', [CronogramaSunatController::class, 'calcularBalances'])->name('cronogramas.calcular-balances');
     Route::post('/cronogramas/restablecer', [CronogramaSunatController::class, 'restablecer'])->name('cronogramas.restablecer');
 
     // Perfil del Usuario en Sesión (Disponible para cualquier rol)
