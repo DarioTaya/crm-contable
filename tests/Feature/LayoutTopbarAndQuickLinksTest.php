@@ -95,7 +95,7 @@ class LayoutTopbarAndQuickLinksTest extends TestCase
         $responseAdmin->assertSee(route('perfil.edit'));
         $responseAdmin->assertSee('CA');
         $responseAdmin->assertSee('data-insignia-rol="administrador"', false);
-        $responseAdmin->assertSee('ring-gold-500', false);
+        $responseAdmin->assertSee('ring-brand-500', false);
         $responseAdmin->assertSee('👑', false);
 
         // 2. Asistente (insignia de rol, sin corona)

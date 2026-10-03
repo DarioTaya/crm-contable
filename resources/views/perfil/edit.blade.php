@@ -82,13 +82,13 @@
                 <div class="flex items-center gap-4 p-3 rounded-2xl bg-gray-50 border border-gray-200 mb-3">
                     <div class="relative shrink-0">
                         <template x-if="previewUrl">
-                            <img :src="previewUrl" alt="Vista previa" class="h-16 w-16 rounded-full object-cover ring-2 shadow-sm {{ $user->isAdmin() ? 'ring-gold-500' : 'ring-slate-300' }}">
+                            <img :src="previewUrl" alt="Vista previa" class="h-16 w-16 rounded-full object-cover ring-2 shadow-sm {{ $user->isAdmin() ? 'ring-brand-500' : 'ring-slate-300' }}">
                         </template>
                         <template x-if="!previewUrl && fotoActual && !eliminarFoto">
-                            <img :src="fotoActual" alt="{{ $user->name }}" class="h-16 w-16 rounded-full object-cover ring-2 shadow-sm {{ $user->isAdmin() ? 'ring-gold-500' : 'ring-slate-300' }}">
+                            <img :src="fotoActual" alt="{{ $user->name }}" class="h-16 w-16 rounded-full object-cover ring-2 shadow-sm {{ $user->isAdmin() ? 'ring-brand-500' : 'ring-slate-300' }}">
                         </template>
                         <template x-if="(!previewUrl && !fotoActual) || (!previewUrl && eliminarFoto)">
-                            <div class="flex h-16 w-16 items-center justify-center rounded-full font-bold text-lg text-white shadow-sm ring-2 {{ $user->isAdmin() ? 'ring-gold-500 bg-gold-600' : 'ring-slate-300 bg-slate-600' }}">
+                            <div class="flex h-16 w-16 items-center justify-center rounded-full font-bold text-lg text-white shadow-sm ring-2 {{ $user->isAdmin() ? 'ring-brand-500 bg-gold-600' : 'ring-slate-300 bg-slate-600' }}">
                                 {{ $user->iniciales() }}
                             </div>
                         </template>

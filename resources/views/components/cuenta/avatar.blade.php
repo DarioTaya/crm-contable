@@ -12,7 +12,7 @@
         'lg' => ['caja' => 'h-16 w-16', 'texto' => 'text-lg'],
     ];
     $medida = $medidas[$tamano] ?? $medidas['sm'];
-    $anillo = $esAdmin ? 'ring-gold-500' : 'ring-slate-300';
+    $anillo = $esAdmin ? 'ring-brand-500' : 'ring-slate-300';
     $fondo = $esAdmin ? 'bg-gold-600' : 'bg-slate-600';
 @endphp
 

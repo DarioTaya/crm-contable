@@ -5,7 +5,7 @@
 
 @php
     $corona = [
-        'sm' => ['disco' => 'h-4 w-4', 'glifo' => 'text-xs'],
+        'sm' => ['disco' => 'h-3.5 w-3.5', 'glifo' => 'text-[9px]'],
         'md' => ['disco' => 'h-5 w-5', 'glifo' => 'text-sm'],
         'lg' => ['disco' => 'h-6 w-6', 'glifo' => 'text-base'],
     ];
