@@ -22,7 +22,7 @@
         <div>
             <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold shadow-xs
                 {{ $user->isAdmin() ? 'bg-gold-50 text-gold-600 border border-gold-500/40' : ($user->isContador() ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-50 text-slate-600 border border-slate-200') }}">
-                <x-cuenta.insignia :rol="$user->rol" tamano="sm" />
+                <x-cuenta.insignia :rol="$user->rol" :variante="$user->insigniaClave()" tamano="sm" />
                 {{ $user->etiquetaRol() }}
             </span>
         </div>
@@ -59,6 +59,8 @@
                       previewUrl: null,
                       eliminarFoto: false,
                       fotoActual: @js($user->fotoPerfilUrl()),
+                      insignia: @js(old('insignia', $user->insigniaClave())),
+                      insigniaTocada: true,
                       seleccionarFoto(e) {
                           const file = e.target.files[0];
                           if (file) {
@@ -93,7 +95,9 @@
                             </div>
                         </template>
 
-                        <x-cuenta.insignia :rol="$user->rol" tamano="lg" class="absolute -bottom-1 -right-1" />
+                        @foreach (\App\Models\User::INSIGNIAS as $claveInsignia)
+                            <x-cuenta.insignia :rol="$user->rol" :variante="$claveInsignia" tamano="sm" class="absolute -bottom-0.5 -right-0.5" x-show="insignia === '{{ $claveInsignia }}'" x-cloak />
+                        @endforeach
                     </div>
 
                     <div class="min-w-0 flex-1 space-y-1">
@@ -127,6 +131,8 @@
                         </div>
                     </div>
                 </div>
+
+                <x-cuenta.selector-insignia :fijo="$user->rol" />
 
                 <div>
                     <label class="block font-semibold text-gray-700 mb-1">Nombre Completo</label>

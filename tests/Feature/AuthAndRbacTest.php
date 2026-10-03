@@ -364,7 +364,13 @@ class AuthAndRbacTest extends TestCase
         $this->assertTrue($contador->isContador());
         $this->assertFalse($contador->isAdmin());
         $this->assertTrue($contador->clientes->contains($this->clienteAsignado));
+        $this->assertSame('hombre', $contador->insignia);
+        $this->assertSame('👨‍💼', $contador->emojiInsignia());
 
+        $this->actingAs($contador)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('data-insignia-variante="hombre"', false)
+            ->assertSee('👨‍💼', false);
         $this->actingAs($contador)->get(route('clientes.show', $this->clienteAsignado))->assertOk();
         $this->actingAs($contador)->get(route('clientes.show', $this->clienteNoAsignado))->assertForbidden();
         $this->actingAs($contador)->get(route('usuarios.index'))->assertForbidden();
@@ -378,6 +384,10 @@ class AuthAndRbacTest extends TestCase
         $response->assertSee('value="contador"', false);
         $response->assertSee('Contador');
         $response->assertSee('👷', false);
+        $response->assertSee('Persona con corbata');
+        $response->assertSee('value="hombre"', false);
+        $response->assertSee('value="mujer"', false);
+        $response->assertSee('value="mixto"', false);
     }
 
     public function test_estudio_scope_isolates_data_between_different_studios(): void

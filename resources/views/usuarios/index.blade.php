@@ -53,7 +53,7 @@
             <div class="flex items-center justify-between">
                 <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">Contadores</span>
                 <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 text-base">
-                    🧑
+                    👨‍💼
                 </span>
             </div>
             <p class="mt-2 text-2xl font-bold text-emerald-700">{{ $usuarios->where('rol', 'contador')->count() }}</p>
@@ -133,15 +133,15 @@
                                 <div>
                                     @if ($user->isAdmin())
                                         <span class="inline-flex items-center gap-1.5 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700 border border-purple-200/60 shadow-xs">
-                                            👑 Administrador
+                                            {{ $user->emojiInsignia() }} Administrador
                                         </span>
                                     @elseif ($user->isContador())
                                         <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200/60 shadow-xs">
-                                            🧑 Contador
+                                            {{ $user->emojiInsignia() }} Contador
                                         </span>
                                     @else
                                         <span class="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200/60 shadow-xs">
-                                            👷 Asistente
+                                            {{ $user->emojiInsignia() }} Asistente
                                         </span>
                                     @endif
                                     <span class="block text-[11px] text-gray-500 font-medium mt-1 truncate max-w-[140px]">

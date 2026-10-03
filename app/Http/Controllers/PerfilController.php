@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -39,6 +40,7 @@ class PerfilController extends Controller
             'direccion' => ['nullable', 'string', 'max:255'],
             'foto_perfil' => ['nullable', 'file', 'image', 'mimes:jpeg,png,jpg,webp,gif,avif', 'max:5120'],
             'eliminar_foto' => ['nullable', 'boolean'],
+            'insignia' => ['nullable', Rule::in(User::INSIGNIAS)],
         ]);
 
         if ($request->boolean('eliminar_foto')) {
@@ -62,6 +64,7 @@ class PerfilController extends Controller
             'fecha_nacimiento' => $validated['fecha_nacimiento'] ?? null,
             'direccion' => $validated['direccion'] ?? null,
             'foto_perfil' => $user->foto_perfil,
+            'insignia' => $validated['insignia'] ?? $user->insigniaClave(),
         ]);
 
         return redirect()->route('perfil.edit')->with('success', 'Tus datos de perfil han sido actualizados.');

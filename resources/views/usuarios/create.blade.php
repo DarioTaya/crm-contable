@@ -33,8 +33,17 @@
 
     <form action="{{ route('usuarios.store') }}" method="POST"
           x-data="{
-              rol: '{{ old('rol', 'asistente') }}',
+              rol: @js(old('rol', 'asistente')),
+              insignia: @js(old('insignia', old('rol') === 'contador' ? 'hombre' : 'mixto')),
+              insigniaTocada: @js(old('insignia') !== null),
+              marcas: @js(\App\Models\User::emojisPorRol()),
+              detalles: @js(\App\Models\User::detallesPorRol()),
               filtroCliente: '',
+              alElegirRol(nuevo) {
+                  if (! this.insigniaTocada) {
+                      this.insignia = nuevo === 'contador' ? 'hombre' : 'mixto';
+                  }
+              },
               seleccionarTodos() {
                   document.querySelectorAll('.check-cliente').forEach(el => el.checked = true);
               },
@@ -206,7 +215,7 @@
                     {{-- Rol Asistente --}}
                     <label class="relative flex min-w-0 cursor-pointer rounded-xl border p-4 shadow-xs transition"
                            :class="rol === 'asistente' ? 'border-brand-600 bg-brand-50/40 ring-2 ring-brand-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'">
-                        <input type="radio" name="rol" value="asistente" x-model="rol" class="sr-only">
+                        <input type="radio" name="rol" value="asistente" x-model="rol" @change="alElegirRol('asistente')" class="sr-only">
                         <div class="flex w-full min-w-0 items-start gap-3">
                             <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-lg leading-none">
                                 👷
@@ -221,10 +230,10 @@
                     {{-- Rol Contador --}}
                     <label class="relative flex min-w-0 cursor-pointer rounded-xl border p-4 shadow-xs transition"
                            :class="rol === 'contador' ? 'border-emerald-600 bg-emerald-50/40 ring-2 ring-emerald-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'">
-                        <input type="radio" name="rol" value="contador" x-model="rol" class="sr-only">
+                        <input type="radio" name="rol" value="contador" x-model="rol" @change="alElegirRol('contador')" class="sr-only">
                         <div class="flex w-full min-w-0 items-start gap-3">
                             <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-lg leading-none">
-                                🧑
+                                👨‍💼
                             </span>
                             <div class="min-w-0 flex-1">
                                 <span class="block text-sm font-bold text-gray-900">Contador</span>
@@ -236,7 +245,7 @@
                     {{-- Rol Administrador --}}
                     <label class="relative flex min-w-0 cursor-pointer rounded-xl border p-4 shadow-xs transition"
                            :class="rol === 'admin' ? 'border-purple-600 bg-purple-50/40 ring-2 ring-purple-500/20' : 'border-gray-200 bg-white hover:bg-gray-50'">
-                        <input type="radio" name="rol" value="admin" x-model="rol" class="sr-only">
+                        <input type="radio" name="rol" value="admin" x-model="rol" @change="alElegirRol('admin')" class="sr-only">
                         <div class="flex w-full min-w-0 items-start gap-3">
                             <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-lg leading-none">
                                 👑
@@ -248,6 +257,8 @@
                         </div>
                     </label>
                 </div>
+
+                <x-cuenta.selector-insignia />
             </div>
         </div>
 

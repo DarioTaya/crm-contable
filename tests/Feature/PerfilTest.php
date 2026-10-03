@@ -72,6 +72,30 @@ class PerfilTest extends TestCase
         $this->assertSame('999888777', $this->user->telefono);
     }
 
+    public function test_user_can_choose_one_of_three_badge_marks(): void
+    {
+        $response = $this->actingAs($this->user)->put(route('perfil.update'), [
+            'name' => 'Sebastian Taya',
+            'email' => 'sebastian@estudio.pe',
+            'insignia' => 'mujer',
+        ]);
+
+        $response->assertRedirect(route('perfil.edit'));
+        $this->user->refresh();
+        $this->assertSame('mujer', $this->user->insignia);
+
+        $this->actingAs($this->user)->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('data-insignia-variante="mujer"', false)
+            ->assertSee('👸', false);
+
+        $this->actingAs($this->user)->put(route('perfil.update'), [
+            'name' => 'Sebastian Taya',
+            'email' => 'sebastian@estudio.pe',
+            'insignia' => 'otro',
+        ])->assertSessionHasErrors('insignia');
+    }
+
     public function test_profile_update_validates_email_uniqueness_ignoring_self(): void
     {
         $otherUser = User::create([

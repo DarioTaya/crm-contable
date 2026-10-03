@@ -21,6 +21,13 @@ class User extends Authenticatable
      */
     public const ROLES = ['admin', 'contador', 'asistente'];
 
+    /**
+     * Variantes de la marca que se muestra sobre la foto.
+     *
+     * @var list<string>
+     */
+    public const INSIGNIAS = ['hombre', 'mujer', 'mixto'];
+
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
@@ -38,6 +45,7 @@ class User extends Authenticatable
         'password',
         'password_plain',
         'rol',
+        'insignia',
         'activo',
         'telefono',
         'fecha_nacimiento',
@@ -142,6 +150,89 @@ class User extends Authenticatable
             'contador' => 'Contador',
             default => 'Asistente contable',
         };
+    }
+
+    /**
+     * Tres marcas por rol: hombre, mujer y una opción para cualquiera.
+     * El contador usa personas de traje; la de hombre lleva corbata.
+     *
+     * @return array<string, array<string, array{emoji: string, etiqueta: string, detalle: string}>>
+     */
+    public static function catalogoInsignias(): array
+    {
+        return [
+            'admin' => [
+                'hombre' => ['emoji' => '🤴', 'etiqueta' => 'Hombre', 'detalle' => 'Para él'],
+                'mujer' => ['emoji' => '👸', 'etiqueta' => 'Mujer', 'detalle' => 'Para ella'],
+                'mixto' => ['emoji' => '👑', 'etiqueta' => 'Mixto', 'detalle' => 'Para cualquiera'],
+            ],
+            'contador' => [
+                'hombre' => ['emoji' => '👨‍💼', 'etiqueta' => 'Hombre', 'detalle' => 'Persona con corbata'],
+                'mujer' => ['emoji' => '👩‍💼', 'etiqueta' => 'Mujer', 'detalle' => 'Persona de traje'],
+                'mixto' => ['emoji' => '🤵', 'etiqueta' => 'Mixto', 'detalle' => 'Para cualquiera'],
+            ],
+            'asistente' => [
+                'hombre' => ['emoji' => '👷‍♂️', 'etiqueta' => 'Hombre', 'detalle' => 'Para él'],
+                'mujer' => ['emoji' => '👷‍♀️', 'etiqueta' => 'Mujer', 'detalle' => 'Para ella'],
+                'mixto' => ['emoji' => '👷', 'etiqueta' => 'Mixto', 'detalle' => 'Para cualquiera'],
+            ],
+        ];
+    }
+
+    /**
+     * Mapa rol → variante → emoji, para la vista previa en el formulario.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public static function emojisPorRol(): array
+    {
+        $mapa = [];
+
+        foreach (self::catalogoInsignias() as $rol => $opciones) {
+            foreach ($opciones as $clave => $opcion) {
+                $mapa[$rol][$clave] = $opcion['emoji'];
+            }
+        }
+
+        return $mapa;
+    }
+
+    /**
+     * @return array<string, array<string, string>>
+     */
+    public static function detallesPorRol(): array
+    {
+        $mapa = [];
+
+        foreach (self::catalogoInsignias() as $rol => $opciones) {
+            foreach ($opciones as $clave => $opcion) {
+                $mapa[$rol][$clave] = $opcion['detalle'];
+            }
+        }
+
+        return $mapa;
+    }
+
+    public static function emojiDe(string $rol, string $variante): string
+    {
+        $catalogo = self::catalogoInsignias();
+        $rol = array_key_exists($rol, $catalogo) ? $rol : 'asistente';
+        $variante = in_array($variante, self::INSIGNIAS, true) ? $variante : 'mixto';
+
+        return $catalogo[$rol][$variante]['emoji'];
+    }
+
+    /**
+     * Variante guardada, o la mixta cuando el valor no es una de las tres.
+     */
+    public function insigniaClave(): string
+    {
+        return in_array($this->insignia, self::INSIGNIAS, true) ? $this->insignia : 'mixto';
+    }
+
+    public function emojiInsignia(): string
+    {
+        return self::emojiDe((string) $this->rol, $this->insigniaClave());
     }
 
     /**

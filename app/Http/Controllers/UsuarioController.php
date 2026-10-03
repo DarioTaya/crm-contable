@@ -59,6 +59,7 @@ class UsuarioController extends Controller
             'direccion' => ['nullable', 'string', 'max:255'],
             'password' => ['required', 'string', 'min:6'],
             'rol' => ['required', Rule::in(User::ROLES)],
+            'insignia' => ['nullable', Rule::in(User::INSIGNIAS)],
             'clientes' => ['nullable', 'array'],
             'clientes.*' => ['integer', Rule::exists('clientes', 'id')->where('estudio_id', $estudioId)],
         ]);
@@ -77,6 +78,7 @@ class UsuarioController extends Controller
             'password' => Hash::make($validated['password']),
             'password_plain' => $validated['password'],
             'rol' => $validated['rol'],
+            'insignia' => $validated['insignia'] ?? ($validated['rol'] === 'contador' ? 'hombre' : 'mixto'),
             'activo' => true,
         ]);
 
@@ -146,6 +148,7 @@ class UsuarioController extends Controller
             'direccion' => ['nullable', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:6'],
             'rol' => ['required', Rule::in(User::ROLES)],
+            'insignia' => ['nullable', Rule::in(User::INSIGNIAS)],
             'activo' => ['required', 'boolean'],
             'clientes' => ['nullable', 'array'],
             'clientes.*' => ['integer', Rule::exists('clientes', 'id')->where('estudio_id', $currentEstudioId)],
@@ -172,6 +175,7 @@ class UsuarioController extends Controller
             'fecha_cese' => $validated['fecha_cese'] ?? null,
             'direccion' => $validated['direccion'] ?? null,
             'rol' => $validated['rol'],
+            'insignia' => $validated['insignia'] ?? $usuario->insigniaClave(),
             'activo' => (bool) $validated['activo'],
         ];
 

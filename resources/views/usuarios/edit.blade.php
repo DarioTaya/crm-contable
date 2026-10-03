@@ -33,7 +33,11 @@
 
     <form action="{{ route('usuarios.update', $usuario) }}" method="POST"
           x-data="{
-              rol: '{{ old('rol', $usuario->rol) }}',
+              rol: @js(old('rol', $usuario->rol)),
+              insignia: @js(old('insignia', $usuario->insigniaClave())),
+              insigniaTocada: true,
+              marcas: @js(\App\Models\User::emojisPorRol()),
+              detalles: @js(\App\Models\User::detallesPorRol()),
               filtroCliente: '',
               seleccionarTodos() {
                   document.querySelectorAll('.check-cliente').forEach(el => el.checked = true);
@@ -160,11 +164,13 @@
                                 x-model="rol"
                                 class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
                             <option value="asistente">👷 Asistente Contable (Opera solo clientes asignados)</option>
-                            <option value="contador">🧑 Contador (Lleva los clientes asignados)</option>
+                            <option value="contador">👨‍💼 Contador (Lleva los clientes asignados)</option>
                             <option value="admin">👑 Administrador / Titular (Control total del sistema)</option>
                         </select>
                     @endif
                 </div>
+
+                <x-cuenta.selector-insignia class="sm:col-span-2" />
             </div>
         </div>
 

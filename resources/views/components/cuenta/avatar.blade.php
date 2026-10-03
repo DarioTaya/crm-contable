@@ -27,5 +27,5 @@
         </span>
     @endif
 
-    <x-cuenta.insignia :rol="$user->rol" :tamano="$tamano" class="absolute -bottom-0.5 -right-0.5" />
+    <x-cuenta.insignia :rol="$user->rol" :variante="$user->insigniaClave()" :tamano="$tamano" class="absolute -bottom-0.5 -right-0.5" />
 </span>

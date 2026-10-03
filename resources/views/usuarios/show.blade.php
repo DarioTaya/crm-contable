@@ -7,7 +7,11 @@
 <div class="max-w-5xl mx-auto space-y-6"
      x-data="{
          modoEdicion: {{ (($modoEdicion ?? false) || $errors->any()) ? 'true' : 'false' }},
-         rol: '{{ old('rol', $usuario->rol) }}',
+         rol: @js(old('rol', $usuario->rol)),
+         insignia: @js(old('insignia', $usuario->insigniaClave())),
+         insigniaTocada: true,
+         marcas: @js(\App\Models\User::emojisPorRol()),
+         detalles: @js(\App\Models\User::detallesPorRol()),
          filtroCliente: '',
          filtroClienteVisualizacion: '',
          seleccionarTodos() {
@@ -118,15 +122,15 @@
                         {{-- Insignia de Rol --}}
                         @if ($usuario->isAdmin())
                             <span class="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-semibold text-purple-700 border border-purple-200">
-                                👑 Administrador
+                                {{ $usuario->emojiInsignia() }} Administrador
                             </span>
                         @elseif ($usuario->isContador())
                             <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
-                                🧑 Contador
+                                {{ $usuario->emojiInsignia() }} Contador
                             </span>
                         @else
                             <span class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 border border-blue-200">
-                                👷 Asistente Contable
+                                {{ $usuario->emojiInsignia() }} Asistente Contable
                             </span>
                         @endif
 
@@ -660,11 +664,13 @@
                                     x-model="rol"
                                     class="w-full rounded-xl border border-gray-300 bg-white py-2 px-3.5 text-sm text-gray-900 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none">
                             <option value="asistente">👷 Asistente Contable (Opera solo clientes asignados)</option>
-                            <option value="contador">🧑 Contador (Lleva los clientes asignados)</option>
+                            <option value="contador">👨‍💼 Contador (Lleva los clientes asignados)</option>
                             <option value="admin">👑 Administrador / Titular (Control total del sistema)</option>
                             </select>
                         @endif
                     </div>
+
+                    <x-cuenta.selector-insignia class="sm:col-span-2" />
                 </div>
             </div>
 
