@@ -72,6 +72,7 @@ class AjusteSistemaTest extends TestCase
         $response->assertSee('Integración WhatsApp');
         $response->assertSee('Beta');
         $response->assertSee('Grupo DC Soluciones Contables SAC');
+        $this->assertSame(1, substr_count($response->getContent(), 'Guardar Ajustes del Sistema'));
     }
 
     public function test_ajustes_update_via_ajax_persists_changes_and_returns_json(): void

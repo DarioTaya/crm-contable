@@ -81,23 +81,6 @@
                     </div>
                 </div>
             </div>
-
-            {{-- Botón de Acción Superior --}}
-            <div class="flex items-center">
-                <button type="button"
-                        @click="guardarAjustes()"
-                        :disabled="guardando"
-                        class="inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 text-xs font-bold shadow-xs transition disabled:opacity-50 active:scale-95 cursor-pointer">
-                    <svg x-show="!guardando" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                    </svg>
-                    <svg x-show="guardando" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span x-text="guardando ? 'Guardando Ajustes...' : 'Guardar Ajustes del Sistema'"></span>
-                </button>
-            </div>
         </div>
 
         {{-- ════════════════════ NAVEGACIÓN POR PESTAÑAS (TABS HUB) ════════════════════ --}}
@@ -965,35 +948,19 @@
                 </div>
             </div>
 
-            {{-- ════════════════════ BARRA DE ACCIÓN INFERIOR PEGAJOSA (STICKY SAVE BAR) ════════════════════ --}}
-            <div x-show="tabActiva !== 'enlaces'"
-                 class="sticky bottom-4 z-30 mt-8 rounded-2xl border border-gray-200/90 bg-white/95 px-5 py-3.5 shadow-xl backdrop-blur-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-all">
-                <div class="flex items-center gap-2.5">
-                    <span class="relative flex h-2.5 w-2.5">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-600"></span>
-                    </span>
-                    <p class="text-xs text-gray-700">
-                        <span class="font-semibold text-gray-500">Configuración activa:</span>
-                        <strong class="font-bold text-gray-900" x-text="tabActiva === 'perfil' ? 'Identidad & Marca' : (tabActiva === 'rpa' ? 'Motor RPA SUNAT' : 'Integración WhatsApp')"></strong>
-                    </p>
-                    <span class="hidden md:inline-block text-[11px] text-gray-400">· Guarda para aplicar los cambios a nivel general en el CRM</span>
-                </div>
-
-                <div class="flex items-center justify-end gap-3">
-                    <button type="submit"
-                            :disabled="guardando"
-                            class="inline-flex items-center gap-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white px-5 py-2.5 text-xs font-bold shadow-md transition disabled:opacity-50 active:scale-95 cursor-pointer">
-                        <svg x-show="!guardando" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                        </svg>
-                        <svg x-show="guardando" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span x-text="guardando ? 'Guardando Ajustes...' : 'Guardar Ajustes del Sistema'"></span>
-                    </button>
-                </div>
+            <div x-show="tabActiva !== 'enlaces'" class="flex justify-end border-t border-gray-200 pt-5">
+                <button type="submit"
+                        :disabled="guardando"
+                        class="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-brand-700 disabled:opacity-50 active:scale-95 cursor-pointer">
+                    <svg x-show="!guardando" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                    </svg>
+                    <svg x-show="guardando" class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span x-text="guardando ? 'Guardando Ajustes...' : 'Guardar Ajustes del Sistema'"></span>
+                </button>
             </div>
 
         </form>
@@ -1333,6 +1300,43 @@
                     }
                 },
 
+                aplicarMarcaEnBarra(data) {
+                    const raiz = document.querySelector('[data-marca-sidebar]');
+                    if (!raiz) {
+                        return;
+                    }
+
+                    const display = data.estudio?.sidebar_display || this.form.sidebar_display || 'logo_nombre';
+                    const logoUrl = data.logo_url || null;
+                    const isotipoUrl = data.isotipo_url || logoUrl;
+                    const mostrarLogo = display !== 'nombre_solo';
+                    const logo = raiz.querySelector('[data-marca-logo]');
+                    const isotipo = raiz.querySelector('[data-marca-isotipo]');
+                    const estructuraCambia = raiz.dataset.marcaDisplay !== display
+                        || (mostrarLogo && Boolean(logoUrl) !== Boolean(logo))
+                        || (mostrarLogo && Boolean(isotipoUrl) !== Boolean(isotipo));
+
+                    if (estructuraCambia) {
+                        window.location.reload();
+                        return;
+                    }
+
+                    const fresco = function (url) {
+                        if (!url) {
+                            return url;
+                        }
+                        const separador = url.includes('?') ? '&' : '?';
+                        return url + separador + 'v=' + Date.now();
+                    };
+
+                    if (logo && logoUrl) {
+                        logo.src = fresco(logoUrl);
+                    }
+                    if (isotipo && isotipoUrl) {
+                        isotipo.src = fresco(isotipoUrl);
+                    }
+                },
+
                 async guardarAjustes() {
                     if (this.guardando) return;
                     this.guardando = true;
@@ -1421,6 +1425,7 @@
                             this.eliminarLogoReportes = false;
                         }
 
+                        this.aplicarMarcaEnBarra(data);
                         this.lanzarToast('¡Ajustes Actualizados!', data.message || 'La configuración se guardó correctamente.', 'success');
                     } catch (err) {
                         console.error('Error al guardar ajustes:', err);

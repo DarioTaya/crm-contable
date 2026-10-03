@@ -206,17 +206,21 @@
              },
 
              handleSidebarClick(event) {
-                 const link = event.target.closest('a');
-                 if (link && this.sidebarCollapsed) {
-                     // Si el menú estaba encogido y el usuario hizo clic en cualquier enlace,
-                     // la navegación debe llevarlo a la página con el menú permanentemente abierto.
-                     this.sidebarCollapsed = false;
-                     this.sidebarHovered = false;
-                     document.documentElement.dataset.sidebar = 'open';
-                     try {
-                         localStorage.setItem('crm-sidebar', 'open');
-                     } catch (e) {}
+                 const control = event.target.closest('a, button, input, select, textarea, label');
+                 if (control) {
+                     const link = event.target.closest('a');
+                     if (link && this.sidebarCollapsed) {
+                         this.sidebarCollapsed = false;
+                         this.sidebarHovered = false;
+                         document.documentElement.dataset.sidebar = 'open';
+                         try {
+                             localStorage.setItem('crm-sidebar', 'open');
+                         } catch (e) {}
+                     }
+                     return;
                  }
+
+                 this.toggleSidebar();
              }
          }">
 
@@ -237,30 +241,19 @@
                 $estudioIniciales = $currentEstudio ? $currentEstudio->iniciales() : 'EC';
             @endphp
 
-            {{-- Header de la Barra Lateral: Botón Hamburguesa (a la izquierda, alineado con los iconos) + Logo / Marca --}}
-            <div class="sidebar-header flex h-16 items-center border-b border-white/10 px-3.5 gap-2">
-                {{-- Botón Toggle de la Barra Lateral (Menú Hamburguesa sutil de estilo CRM) --}}
-                <button type="button"
-                        @click.stop="toggleSidebar()"
-                        :title="sidebarCollapsed ? 'Fijar menú abierto' : 'Encoger barra lateral'"
-                        data-sidebar-expanded-only
-                        class="sidebar-hamburger flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors opacity-75 hover:opacity-100 shrink-0 focus:outline-none focus:ring-1 focus:ring-brand-500/50"
-                        aria-label="Alternar menú lateral">
-                    {{-- Icono de Menú Hamburguesa elegante y sutil (3 barras) --}}
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                    </svg>
-                </button>
-
+            {{-- Header de la Barra Lateral: Logo / Marca. El botón de encoger vive en la cabecera. --}}
+            <div class="sidebar-header flex h-16 items-center border-b border-white/10 px-3.5">
                 <a href="{{ route('dashboard') }}"
                    title="{{ $estudioNombre }} - Ir al Dashboard"
+                   data-marca-sidebar
+                   data-marca-display="{{ $estudioDisplay }}"
                    class="group flex items-center min-w-0 flex-1 hover:opacity-90 transition rounded-lg p-1 focus:outline-none focus:ring-2 focus:ring-brand-500/50">
 
                     {{-- Vista 1: Barra Lateral Extendida (Muestra el Logotipo Completo o Nombre) --}}
                     <div data-sidebar-expanded-only class="flex items-center gap-2.5 min-w-0">
                         @if ($estudioDisplay !== 'nombre_solo' && $estudioLogoUrl)
                             <div class="flex h-7 max-h-7 items-center">
-                                <img src="{{ $estudioLogoUrl }}" alt="{{ $estudioNombre }}" class="h-6.5 max-h-7 w-auto max-w-[130px] object-contain">
+                                <img data-marca-logo src="{{ $estudioLogoUrl }}" alt="{{ $estudioNombre }}" class="h-6.5 max-h-7 w-auto max-w-[130px] object-contain">
                             </div>
                         @else
                             <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white font-black text-xs shadow-md tracking-wider">
@@ -281,7 +274,7 @@
                     <div data-sidebar-collapsed-only class="flex items-center justify-center">
                         @if ($estudioDisplay !== 'nombre_solo' && $estudioIsotipoUrl)
                             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/10 p-1 shadow-md overflow-hidden border border-white/15">
-                                <img src="{{ $estudioIsotipoUrl }}" alt="{{ $estudioNombre }}" class="h-full w-full object-contain rounded">
+                                <img data-marca-isotipo src="{{ $estudioIsotipoUrl }}" alt="{{ $estudioNombre }}" class="h-full w-full object-contain rounded">
                             </div>
                         @else
                             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-600 text-white font-black text-sm shadow-md tracking-wider">
@@ -432,8 +425,18 @@
                 data-empresa-id="{{ $empresaActiva?->id ?? '' }}"
             >
                 <div class="w-full flex items-center justify-between gap-2 min-w-0">
-                    {{-- Lado Izquierdo: Spacer para centrado balanceado --}}
-                    <div class="hidden sm:flex items-center min-w-0 flex-1 justify-start"></div>
+                    {{-- Lado izquierdo: encoger o abrir la barra lateral, al extremo opuesto de la foto --}}
+                    <div class="flex items-center min-w-0 flex-1 justify-start">
+                        <button type="button"
+                                @click.stop="toggleSidebar()"
+                                :title="sidebarCollapsed ? 'Abrir menú' : 'Encoger barra lateral'"
+                                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200/80 bg-white text-gray-600 shadow-2xs transition hover:bg-gray-100 hover:text-gray-900 cursor-pointer"
+                                aria-label="Alternar menú lateral">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                            </svg>
+                        </button>
+                    </div>
 
                     {{-- Centro: Selector de Empresa (REGLA ESTRICTA: Sin modificar clases internas del selector) --}}
                     <div class="flex shrink-0 items-center justify-center">

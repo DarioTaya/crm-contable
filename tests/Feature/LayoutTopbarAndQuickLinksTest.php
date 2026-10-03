@@ -267,11 +267,13 @@ class LayoutTopbarAndQuickLinksTest extends TestCase
         $response = $this->actingAs($this->admin)->get(route('dashboard'));
 
         $response->assertSeeInOrder([
+            'aria-label="Alternar menú lateral"',
             'Consultas Rápidas',
             'title="Cronograma SUNAT"',
             'aria-label="Configuración"',
             'Cuenta de Carlos Administrador',
         ], false);
+        $response->assertDontSee('sidebar-hamburger', false);
         $response->assertSee('Cerrar sesión');
         $response->assertSee('Equipo y Usuarios');
         $response->assertSee('Ajustes del Estudio');
