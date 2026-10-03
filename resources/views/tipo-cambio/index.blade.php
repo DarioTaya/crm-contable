@@ -172,7 +172,7 @@
                 </p>
             @else
                 <div class="overflow-x-auto p-3 sm:p-4">
-                    <table class="w-full min-w-[640px] border-collapse text-left">
+                    <table class="w-full min-w-[640px] table-fixed border-collapse text-left">
                         <thead>
                             <tr>
                                 @foreach ($diasSemana as $diaSemana)
@@ -195,8 +195,11 @@
                                                 'text-gray-300' => ! $celda['del_mes'],
                                             ])>{{ $celda['dia'] }}</p>
                                             @if ($celda['compra'] && $celda['venta'])
-                                                <p class="mt-1.5 rounded-md bg-emerald-100 px-1 py-1 text-center text-[11px] font-semibold text-emerald-800">Compra {{ $celda['compra'] }}</p>
-                                                <p class="mt-1 rounded-md bg-sky-100 px-1 py-1 text-center text-[11px] font-semibold text-sky-800">Venta {{ $celda['venta'] }}</p>
+                                                <p class="mt-1.5 whitespace-nowrap rounded-md bg-emerald-100 px-1 py-1 text-center text-[11px] font-semibold text-emerald-800">Compra {{ $celda['compra'] }}</p>
+                                                <p class="mt-1 whitespace-nowrap rounded-md bg-sky-100 px-1 py-1 text-center text-[11px] font-semibold text-sky-800">Venta {{ $celda['venta'] }}</p>
+                                            @elseif ($celda['del_mes'])
+                                                <p class="invisible mt-1.5 whitespace-nowrap rounded-md px-1 py-1 text-center text-[11px] font-semibold" aria-hidden="true" data-reserva-dia>&nbsp;</p>
+                                                <p class="invisible mt-1 whitespace-nowrap rounded-md px-1 py-1 text-center text-[11px] font-semibold" aria-hidden="true">&nbsp;</p>
                                             @endif
                                         </td>
                                     @endforeach

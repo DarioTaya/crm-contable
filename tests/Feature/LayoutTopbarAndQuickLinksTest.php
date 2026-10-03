@@ -69,6 +69,8 @@ class LayoutTopbarAndQuickLinksTest extends TestCase
         $response = $this->actingAs($this->admin)->get(route('dashboard'));
 
         $response->assertOk();
+        $response->assertSee('app-topbar sticky top-0 z-[24] flex h-12 shrink-0', false);
+        $response->assertSee('IMPORTACIONES VIRGEN DE CHAPI SRL', false);
         $response->assertSee('Consultas Rápidas');
         $response->assertSee('Enlaces oficiales');
         $response->assertSee('SUNAT - Clave SOL Oficial');
@@ -267,8 +269,12 @@ class LayoutTopbarAndQuickLinksTest extends TestCase
         $response->assertSeeInOrder([
             'Consultas Rápidas',
             'title="Cronograma SUNAT"',
+            'aria-label="Configuración"',
             'Cuenta de Carlos Administrador',
         ], false);
+        $response->assertSee('Cerrar sesión');
+        $response->assertSee('Equipo y Usuarios');
+        $response->assertSee('Ajustes del Estudio');
         $response->assertSeeInOrder([
             'SIRE',
             'PDT 621',

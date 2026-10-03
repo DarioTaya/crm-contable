@@ -22,10 +22,12 @@ class TipoCambioSunatService
     private const TOKEN_CONSULTA = 'consulta';
 
     /**
-     * Tipo de cambio vigente publicado por SUNAT.
+     * Tipo de cambio vigente publicado por SUNAT, en el día de Lima.
      *
-     * Se reconsulta como máximo cada 15 minutos. Si SUNAT no responde,
-     * se conserva la última publicación guardada.
+     * Si el mes en curso ya tiene la cotización de hoy, esa manda aunque el
+     * archivo diario siga en el día anterior. Si hoy todavía no está publicado,
+     * se reutiliza la última consulta fresca (15 minutos) y, si SUNAT no
+     * responde, la última publicación guardada.
      *
      * @return array{
      *     fecha: string,
@@ -42,33 +44,59 @@ class TipoCambioSunatService
      */
     public function vigente(): ?array
     {
-        $url = $this->url();
-
-        if ($url === null) {
-            return null;
-        }
-
+        $hoy = now('America/Lima')->toDateString();
         $cacheado = Cache::get(self::CLAVE_VIGENTE);
 
-        if (is_array($cacheado) && $this->sigueFresco($cacheado)) {
-            return $this->esFallo($cacheado) ? $this->ultimoDisponible() : $cacheado;
+        if ($this->esLaCotizacionDeHoy($cacheado, $hoy) && $this->sigueFresco($cacheado)) {
+            return $cacheado;
         }
 
-        $fresco = $this->consultar($url);
+        $delDia = $this->cotizacionDelDia($hoy);
 
-        if ($fresco !== null) {
-            Cache::put(self::CLAVE_VIGENTE, $fresco, now()->addMinutes(15));
-            Cache::put(self::CLAVE_ULTIMO, $fresco, now()->addDays(7));
-
-            return $fresco;
+        if ($delDia !== null) {
+            return $this->recordar($delDia);
         }
 
-        Cache::put(self::CLAVE_VIGENTE, [
-            'fallo' => true,
-            'consultado_en' => now()->toIso8601String(),
-        ], now()->addMinutes(5));
+        $this->asegurarMesEnCurso();
+        $delDia = $this->cotizacionDelDia($hoy);
 
-        return $this->ultimoDisponible();
+        if ($delDia !== null) {
+            return $this->recordar($delDia);
+        }
+
+        if (is_array($cacheado) && ! $this->esFallo($cacheado) && $this->sigueFresco($cacheado)) {
+            return $cacheado;
+        }
+
+        $falloReciente = is_array($cacheado) && $this->esFallo($cacheado) && $this->sigueFresco($cacheado);
+        $url = $this->url();
+
+        if (! $falloReciente && $url !== null) {
+            $fresco = $this->consultar($url);
+
+            if ($fresco === null) {
+                Cache::put(self::CLAVE_VIGENTE, [
+                    'fallo' => true,
+                    'consultado_en' => now()->toIso8601String(),
+                ], now()->addMinutes(5));
+            } else {
+                $delDia = $this->cotizacionDelDia($hoy);
+
+                if ($delDia !== null) {
+                    return $this->recordar($delDia);
+                }
+
+                $guardada = $this->ultimaPublicacion($hoy);
+
+                if ($guardada !== null && $guardada['fecha_iso'] > $fresco['fecha_iso']) {
+                    return $this->recordar($guardada);
+                }
+
+                return $this->recordar($fresco);
+            }
+        }
+
+        return $this->ultimaPublicacion($hoy) ?? $this->ultimoDisponible();
     }
 
     /**
@@ -297,6 +325,146 @@ class TipoCambioSunatService
         return $texto;
     }
 
+    private function esLaCotizacionDeHoy(mixed $cacheado, string $hoy): bool
+    {
+        return is_array($cacheado)
+            && ! $this->esFallo($cacheado)
+            && ($cacheado['fecha_iso'] ?? '') === $hoy;
+    }
+
+    /**
+     * @return array{
+     *     fecha: string,
+     *     fecha_corta: string,
+     *     fecha_iso: string,
+     *     compra: float,
+     *     venta: float,
+     *     compra_texto: string,
+     *     venta_texto: string,
+     *     diferencia_texto: string,
+     *     moneda: string,
+     *     consultado_en: string
+     * }|null
+     */
+    private function cotizacionDelDia(string $hoy): ?array
+    {
+        $fila = TipoCambioSunat::query()->whereDate('fecha', $hoy)->first();
+
+        return $fila ? $this->presentarFila($fila) : null;
+    }
+
+    /**
+     * @return array{
+     *     fecha: string,
+     *     fecha_corta: string,
+     *     fecha_iso: string,
+     *     compra: float,
+     *     venta: float,
+     *     compra_texto: string,
+     *     venta_texto: string,
+     *     diferencia_texto: string,
+     *     moneda: string,
+     *     consultado_en: string
+     * }|null
+     */
+    private function ultimaPublicacion(string $hoy): ?array
+    {
+        $fila = TipoCambioSunat::query()
+            ->whereDate('fecha', '<=', $hoy)
+            ->orderByDesc('fecha')
+            ->first();
+
+        return $fila ? $this->presentarFila($fila) : null;
+    }
+
+    /**
+     * @param  array{
+     *     fecha: string,
+     *     fecha_corta: string,
+     *     fecha_iso: string,
+     *     compra: float,
+     *     venta: float,
+     *     compra_texto: string,
+     *     venta_texto: string,
+     *     diferencia_texto: string,
+     *     moneda: string,
+     *     consultado_en: string
+     * }  $publicado
+     * @return array{
+     *     fecha: string,
+     *     fecha_corta: string,
+     *     fecha_iso: string,
+     *     compra: float,
+     *     venta: float,
+     *     compra_texto: string,
+     *     venta_texto: string,
+     *     diferencia_texto: string,
+     *     moneda: string,
+     *     consultado_en: string
+     * }
+     */
+    private function recordar(array $publicado): array
+    {
+        Cache::put(self::CLAVE_VIGENTE, $publicado, now()->addMinutes(15));
+        Cache::put(self::CLAVE_ULTIMO, $publicado, now()->addDays(7));
+
+        return $publicado;
+    }
+
+    /**
+     * @return array{
+     *     fecha: string,
+     *     fecha_corta: string,
+     *     fecha_iso: string,
+     *     compra: float,
+     *     venta: float,
+     *     compra_texto: string,
+     *     venta_texto: string,
+     *     diferencia_texto: string,
+     *     moneda: string,
+     *     consultado_en: string
+     * }
+     */
+    private function presentarFila(TipoCambioSunat $fila): array
+    {
+        $fecha = Carbon::createFromFormat('!Y-m-d', $fila->fecha->toDateString(), 'America/Lima');
+
+        return $this->presentarTasas($fecha, (float) $fila->compra, (float) $fila->venta);
+    }
+
+    /**
+     * @return array{
+     *     fecha: string,
+     *     fecha_corta: string,
+     *     fecha_iso: string,
+     *     compra: float,
+     *     venta: float,
+     *     compra_texto: string,
+     *     venta_texto: string,
+     *     diferencia_texto: string,
+     *     moneda: string,
+     *     consultado_en: string
+     * }
+     */
+    private function presentarTasas(Carbon $fecha, float $compra, float $venta): array
+    {
+        $fecha = $fecha->copy()->locale('es');
+        $nombre = str_replace('septiembre', 'setiembre', $fecha->isoFormat('D [de] MMMM [de] YYYY'));
+
+        return [
+            'fecha' => $nombre,
+            'fecha_corta' => $fecha->format('d/m/Y'),
+            'fecha_iso' => $fecha->toDateString(),
+            'compra' => $compra,
+            'venta' => $venta,
+            'compra_texto' => $this->formatearTasa($compra),
+            'venta_texto' => $this->formatearTasa($venta),
+            'diferencia_texto' => $this->formatearTasa($venta - $compra),
+            'moneda' => 'USD/PEN',
+            'consultado_en' => now('America/Lima')->toIso8601String(),
+        ];
+    }
+
     private function url(): ?string
     {
         $url = trim((string) config('services.sunat.tipo_cambio_url'));
@@ -463,7 +631,7 @@ class TipoCambioSunatService
         }
 
         try {
-            $fecha = Carbon::createFromFormat('!d/m/Y', trim($partes[0]));
+            $fecha = Carbon::createFromFormat('!d/m/Y', trim($partes[0]), 'America/Lima');
         } catch (Throwable) {
             return null;
         }
@@ -475,21 +643,7 @@ class TipoCambioSunatService
             return null;
         }
 
-        $fecha = $fecha->locale('es');
-        $nombre = str_replace('septiembre', 'setiembre', $fecha->isoFormat('D [de] MMMM [de] YYYY'));
-
-        return [
-            'fecha' => $nombre,
-            'fecha_corta' => $fecha->format('d/m/Y'),
-            'fecha_iso' => $fecha->toDateString(),
-            'compra' => $compra,
-            'venta' => $venta,
-            'compra_texto' => $this->formatearTasa($compra),
-            'venta_texto' => $this->formatearTasa($venta),
-            'diferencia_texto' => $this->formatearTasa($venta - $compra),
-            'moneda' => 'USD/PEN',
-            'consultado_en' => now()->toIso8601String(),
-        ];
+        return $this->presentarTasas($fecha, $compra, $venta);
     }
 
     private function tasa(string $valor): ?float

@@ -8,6 +8,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -53,6 +54,57 @@ class TipoCambioSunatTest extends TestCase
             ->assertSee('3.356')
             ->assertSee('3.362')
             ->assertSee(route('tipo-cambio.index'));
+    }
+
+    public function test_dashboard_shows_todays_lima_rate_when_the_daily_file_still_has_yesterday(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-03 05:10:00', 'America/Lima'));
+        $this->publicarMes('02/10/2026|3.350|3.360|', [
+            ['fecPublica' => '02/10/2026', 'valTipo' => '3.350', 'codTipo' => 'C'],
+            ['fecPublica' => '02/10/2026', 'valTipo' => '3.360', 'codTipo' => 'V'],
+            ['fecPublica' => '03/10/2026', 'valTipo' => '3.370', 'codTipo' => 'C'],
+            ['fecPublica' => '03/10/2026', 'valTipo' => '3.380', 'codTipo' => 'V'],
+        ]);
+
+        $this->actingAs($this->usuario())
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('03/10/2026')
+            ->assertSee('3.370')
+            ->assertSee('3.380')
+            ->assertDontSee('3.350');
+    }
+
+    public function test_dashboard_ignores_a_fresh_cache_from_the_previous_lima_day(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-03 00:05:00', 'America/Lima'));
+        $this->publicar('02/10/2026|3.350|3.360|');
+        TipoCambioSunat::query()->create([
+            'fecha' => '2026-10-03',
+            'compra' => 3.370,
+            'venta' => 3.380,
+        ]);
+        Cache::put('sunat.tipo-cambio.vigente', [
+            'fecha' => '2 de octubre de 2026',
+            'fecha_corta' => '02/10/2026',
+            'fecha_iso' => '2026-10-02',
+            'compra' => 3.350,
+            'venta' => 3.360,
+            'compra_texto' => '3.350',
+            'venta_texto' => '3.360',
+            'diferencia_texto' => '0.010',
+            'moneda' => 'USD/PEN',
+            'consultado_en' => now()->toIso8601String(),
+        ], now()->addMinutes(15));
+
+        $this->actingAs($this->usuario())
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('03/10/2026')
+            ->assertSee('3.370')
+            ->assertDontSee('3.350');
+
+        Http::assertNothingSent();
     }
 
     public function test_dashboard_stays_available_when_sunat_does_not_publish(): void
@@ -137,7 +189,15 @@ class TipoCambioSunatTest extends TestCase
             ->assertSee('Este mes está vacío')
             ->assertDontSee('3.400');
 
-        Http::assertNotSent(fn (Request $request) => str_contains($request->url(), 'listarTipoCambio'));
+        Http::assertNotSent(function (Request $request) {
+            return str_contains($request->url(), 'listarTipoCambio')
+                && (int) ($request->data()['mes'] ?? -1) === 7;
+        });
+        Http::assertSent(function (Request $request) {
+            return str_contains($request->url(), 'listarTipoCambio')
+                && (int) $request->data()['anio'] === 2026
+                && (int) $request->data()['mes'] === 8;
+        });
         $this->assertFalse(
             TipoCambioSunat::query()->whereYear('fecha', 2026)->whereMonth('fecha', 8)->exists()
         );
@@ -204,6 +264,8 @@ class TipoCambioSunatTest extends TestCase
             ->get(route('tipo-cambio.index'))
             ->assertOk()
             ->assertSee('Historial de Setiembre de 2026')
+            ->assertSee('table-fixed', false)
+            ->assertSee('data-reserva-dia', false)
             ->assertSee('Este mes se completa solo')
             ->assertSeeInOrder(['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', '30', '31'])
             ->assertSeeInOrder(['Compra 3.350', 'Venta 3.362'])
@@ -211,11 +273,11 @@ class TipoCambioSunatTest extends TestCase
             ->assertDontSee('24/09/2026')
             ->assertDontSee('Octubre');
 
-        Http::assertSentCount(2);
+        Http::assertSentCount(1);
 
         $this->actingAs($usuario)->get(route('tipo-cambio.index'))->assertOk();
 
-        Http::assertSentCount(2);
+        Http::assertSentCount(1);
     }
 
     public function test_future_month_cannot_be_synced(): void

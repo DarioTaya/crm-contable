@@ -170,7 +170,6 @@
              sidebarCollapsed: document.documentElement.dataset.sidebar === 'collapsed',
              sidebarHovered: false,
              hoverTimer: null,
-             menuConfigOpen: false,
 
              get isExpanded() {
                  return !this.sidebarCollapsed || this.sidebarHovered;
@@ -186,12 +185,9 @@
 
              onMouseLeave() {
                  if (!this.sidebarCollapsed) return;
-                 if (this.menuConfigOpen) return;
                  clearTimeout(this.hoverTimer);
                  this.hoverTimer = setTimeout(() => {
-                     if (!this.menuConfigOpen) {
-                         this.sidebarHovered = false;
-                     }
+                     this.sidebarHovered = false;
                  }, 140);
              },
 
@@ -207,17 +203,6 @@
                  setTimeout(() => {
                      document.documentElement.classList.remove('sidebar-animating');
                  }, 250);
-             },
-
-             toggleMenuConfig() {
-                 this.menuConfigOpen = !this.menuConfigOpen;
-                 if (this.menuConfigOpen) {
-                     this.$nextTick(() => {
-                         if (window.ubicarMenuFlotante && this.$refs.panelConfig && this.$refs.btnConfig) {
-                             window.ubicarMenuFlotante(this.$refs.panelConfig, this.$refs.btnConfig);
-                         }
-                     });
-                 }
              },
 
              handleSidebarClick(event) {
@@ -420,91 +405,19 @@
                 </a>
             </nav>
 
-            {{-- Sección de Configuración Compacta con Menú Flotante Flyout --}}
-            <div class="pb-2 px-2.5">
+            <div class="px-2.5 pb-2">
                 <div class="border-t border-white/10 pt-2.5">
-                    {{-- Botón único "Configuración" --}}
-                    <button type="button"
-                            x-ref="btnConfig"
-                            @click.stop="toggleMenuConfig()"
-                            title="Configuración del Sistema"
-                            class="sidebar-nav-item w-full group flex items-center justify-start rounded-lg px-2.5 py-2 text-sm font-medium transition-colors cursor-pointer select-none
-                                   {{ (request()->routeIs('cronogramas.*') || request()->routeIs('usuarios.*') || request()->routeIs('ajustes.*')) ? 'bg-brand-600/25 text-white font-semibold ring-1 ring-brand-500/40' : 'text-gray-400 hover:bg-sidebar-hover hover:text-white' }}">
-                        <div class="flex items-center gap-2.5 min-w-0 sidebar-nav-inner">
-                            {{-- Icono de Engranaje / Configuración --}}
-                            <svg class="h-5 w-5 shrink-0 transition-transform duration-200 group-hover:rotate-45" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                    <form action="{{ route('logout') }}" method="POST">
+                        @csrf
+                        <button type="submit"
+                                title="Cerrar sesión"
+                                class="sidebar-nav-item group flex w-full items-center justify-start gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium text-gray-400 transition-colors hover:bg-sidebar-hover hover:text-rose-300 cursor-pointer select-none">
+                            <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
                             </svg>
-                            <span data-sidebar-expanded-only class="truncate whitespace-nowrap">Configuración</span>
-                        </div>
-                    </button>
-
-                    {{-- Miniventana Flotante Submenú (Estilo Bocadillo Bitrix24 100% Sólido y Continuo) --}}
-                    <div x-ref="panelConfig"
-                         x-show="menuConfigOpen"
-                         x-cloak
-                         data-menu-flotante
-                         data-separacion="14"
-                         @click.outside="if (!$el._clicInicioDentro) { menuConfigOpen = false; if (sidebarCollapsed && !sidebarHovered) { sidebarHovered = false; } }"
-                         class="fixed z-50 w-64 rounded-2xl border border-slate-700 bg-slate-900 p-2 shadow-2xl text-xs space-y-1"
-                         style="display: none;">
-
-                        {{-- Pico bocadillo continuo integrado con el contorno (Bitrix24) --}}
-                        <svg class="pointer-events-none absolute -bottom-[9px] left-[14px] z-30 w-5 h-[10px] overflow-visible" viewBox="0 0 20 10" fill="none">
-                            {{-- Polígono de relleno que cubre el borde inferior del contenedor, uniendo ambos fondos en uno solo sin líneas intermedias --}}
-                            <polygon points="-1,-3 21,-3 21,1 10,9.5 -1,1" fill="#0f172a" />
-                            {{-- Línea de contorno continuo que dibuja el pico conectado al borde de la caja --}}
-                            <path d="M 0 0.5 L 8.5 8 Q 10 9.5 11.5 8 L 20 0.5" stroke="#334155" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-                        </svg>
-
-                        {{-- Item 1: Cronograma SUNAT --}}
-                        <a href="{{ route('cronogramas.index') }}"
-                           @click="menuConfigOpen = false"
-                           class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition {{ request()->routeIs('cronogramas.*') ? 'bg-brand-600/30 text-white font-bold ring-1 ring-brand-500/50' : 'text-slate-300 hover:text-white hover:bg-slate-800' }}">
-                            <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-                                </svg>
-                            </div>
-                            <div class="min-w-0">
-                                <p class="font-bold leading-tight">Cronograma SUNAT</p>
-                                <p class="text-[10px] text-slate-400 leading-tight">Calendario de vencimientos</p>
-                            </div>
-                        </a>
-
-                        @if (auth()->user()?->isAdmin())
-                            {{-- Item 2: Equipo y Usuarios --}}
-                            <a href="{{ route('usuarios.index') }}"
-                               @click="menuConfigOpen = false"
-                               class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition {{ request()->routeIs('usuarios.*') ? 'bg-brand-600/30 text-white font-bold ring-1 ring-brand-500/50' : 'text-slate-300 hover:text-white hover:bg-slate-800' }}">
-                                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30">
-                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-                                    </svg>
-                                </div>
-                                <div class="min-w-0">
-                                    <p class="font-bold leading-tight">Equipo y Usuarios</p>
-                                    <p class="text-[10px] text-slate-400 leading-tight">Personal y asignación de clientes</p>
-                                </div>
-                            </a>
-
-                            {{-- Item 3: Ajustes del Estudio --}}
-                            <a href="{{ route('ajustes.index') }}"
-                               @click="menuConfigOpen = false"
-                               class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition {{ request()->routeIs('ajustes.*') ? 'bg-brand-600/30 text-white font-bold ring-1 ring-brand-500/50' : 'text-slate-300 hover:text-white hover:bg-slate-800' }}">
-                                <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-500/20 text-sky-400 border border-sky-500/30">
-                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
-                                    </svg>
-                                </div>
-                                <div class="min-w-0">
-                                    <p class="font-bold leading-tight">Ajustes del Estudio</p>
-                                    <p class="text-[10px] text-slate-400 leading-tight">Logo, RUC, RPA SUNAT y WhatsApp</p>
-                                </div>
-                            </a>
-                        @endif
-                    </div>
+                            <span data-sidebar-expanded-only class="truncate whitespace-nowrap">Cerrar sesión</span>
+                        </button>
+                    </form>
                 </div>
             </div>
 
@@ -514,7 +427,7 @@
         <main class="app-main flex-1 min-w-0 flex flex-col">
             {{-- Barra delgada de acceso rápido con espaciado respirable, selector central, consultas rápidas y avatar de usuario --}}
             <header
-                class="app-topbar sticky top-0 z-[24] flex h-11 shrink-0 items-center border-b border-gray-200 bg-white px-2.5 sm:px-4"
+                class="app-topbar sticky top-0 z-[24] flex h-12 shrink-0 items-center border-b border-gray-200 bg-white px-2.5 sm:px-4"
                 data-selector-empresa
                 data-empresa-id="{{ $empresaActiva?->id ?? '' }}"
             >
@@ -527,7 +440,7 @@
                         <x-navegacion.selector-empresa :empresa="$empresaActiva" />
                     </div>
 
-                    {{-- Lado Derecho: Consultas Rápidas, cronograma SUNAT y foto de la cuenta --}}
+                    {{-- Lado Derecho: Consultas Rápidas, cronograma, configuración y foto --}}
                     <div class="flex items-center justify-end gap-2.5 sm:gap-3 flex-1 min-w-0">
                         {{-- Consultas Rápidas --}}
                         <div x-data="{ abierto: false }"
@@ -589,6 +502,8 @@
                         </div>
 
                         <x-navegacion.cronograma-barra :cronograma="$cronogramaBarra" />
+
+                        <x-navegacion.menu-configuracion />
 
                         {{-- Cuenta: solo la foto en la barra. El detalle y el cierre de sesión van en el panel. --}}
                         @if (auth()->check())

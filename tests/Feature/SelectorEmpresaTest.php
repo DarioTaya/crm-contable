@@ -29,6 +29,7 @@ class SelectorEmpresaTest extends TestCase
 
         $response->assertSee('data-selector-empresa', false);
         $response->assertSee('data-empresa-id=""', false);
+        $response->assertSee('IMPORTACIONES VIRGEN DE CHAPI SRL', false);
         $response->assertSee('Seleccionar empresa');
         $response->assertSee('Buscar empresa...');
         $response->assertSee('+ Agregar empresa');
