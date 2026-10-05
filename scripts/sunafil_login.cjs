@@ -60,6 +60,7 @@ function cerrarNavegadorAnterior() {
     }
 
     try {
+        process.kill(pid, 0);
         if (process.platform === 'win32') {
             execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
         } else {
@@ -110,7 +111,6 @@ async function ocultarVentana(page) {
 
 async function mostrarVentanaNormal(page, ventana, browserName) {
     writeSignal('opening', { browser: browserName });
-    await new Promise((resolve) => setTimeout(resolve, 1200));
     try {
         const cdp = ventana?.cdp || await page.createCDPSession();
         const windowId = ventana?.windowId || (await cdp.send('Browser.getWindowForTarget')).windowId;
@@ -164,10 +164,30 @@ function getBrowserInfo() {
         return { path: process.env.PUPPETEER_EXECUTABLE_PATH, name: 'Personalizado' };
     }
 
+    const localAppData = process.env.LOCALAPPDATA || '';
+    const progFiles = process.env.ProgramFiles || 'C:\\Program Files';
+    const progFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+
+    const directCandidates = [
+        { path: path.join(progFiles, 'Google\\Chrome\\Application\\chrome.exe'), name: 'Google Chrome' },
+        { path: path.join(progFilesX86, 'Google\\Chrome\\Application\\chrome.exe'), name: 'Google Chrome' },
+        { path: path.join(localAppData, 'Google\\Chrome\\Application\\chrome.exe'), name: 'Google Chrome' },
+        { path: path.join(progFiles, 'Microsoft\\Edge\\Application\\msedge.exe'), name: 'Microsoft Edge' },
+        { path: path.join(progFilesX86, 'Microsoft\\Edge\\Application\\msedge.exe'), name: 'Microsoft Edge' },
+        { path: path.join(localAppData, 'Microsoft\\Edge\\Application\\msedge.exe'), name: 'Microsoft Edge' },
+        { path: path.join(progFiles, 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'), name: 'Brave' },
+        { path: path.join(localAppData, 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'), name: 'Brave' },
+    ];
+
+    for (const c of directCandidates) {
+        if (c.path && fs.existsSync(c.path)) {
+            return c;
+        }
+    }
+
     let browserPath = null;
     let browserName = 'Google Chrome';
 
-    // 1. Detección en milisegundos del navegador predeterminado de Windows en el Registro
     try {
         const stdout = execSync(
             'reg query "HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice" /v ProgId',
@@ -189,35 +209,6 @@ function getBrowserInfo() {
         }
     } catch (_) {}
 
-    // 2. Si no se resolvió por registro, usar lista de candidatos del sistema
-    if (!browserPath) {
-        const localAppData = process.env.LOCALAPPDATA || '';
-        const progFiles = process.env.ProgramFiles || 'C:\\Program Files';
-        const progFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
-
-        const candidates = [
-            path.join(progFiles, 'Google\\Chrome\\Application\\chrome.exe'),
-            path.join(progFilesX86, 'Google\\Chrome\\Application\\chrome.exe'),
-            path.join(localAppData, 'Google\\Chrome\\Application\\chrome.exe'),
-            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-            path.join(progFiles, 'Microsoft\\Edge\\Application\\msedge.exe'),
-            path.join(progFilesX86, 'Microsoft\\Edge\\Application\\msedge.exe'),
-            path.join(localAppData, 'Microsoft\\Edge\\Application\\msedge.exe'),
-            'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-            'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-            path.join(progFiles, 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
-            path.join(localAppData, 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
-        ];
-        for (const p of candidates) {
-            if (p && fs.existsSync(p)) {
-                browserPath = p;
-                break;
-            }
-        }
-    }
-
-    // 3. Determinar nombre amigable del navegador
     if (browserPath) {
         const lower = browserPath.toLowerCase();
         if (lower.includes('chrome')) browserName = 'Google Chrome';
@@ -257,13 +248,16 @@ const SUNAFIL_LOGIN_URL = 'https://casillaelectronica.sunafil.gob.pe/si.inbox/Lo
                 '--disable-blink-features=AutomationControlled',
                 '--window-position=-32000,-32000',
                 '--window-size=1100,700',
-                // Fuera de la pantalla, Chrome congela la pestaña y el login se
-                // arrastra. Estos tres interruptores la mantienen a full ritmo.
                 '--disable-backgrounding-occluded-windows',
                 '--disable-renderer-backgrounding',
                 '--disable-background-timer-throttling',
+                '--disable-features=Translate,OptimizationHints,MediaRouter',
+                '--disable-component-update',
+                '--disable-default-apps',
+                '--no-pings',
             ],
         };
+
 
         if (browserInfo.path) {
             launchOptions.executablePath = browserInfo.path;

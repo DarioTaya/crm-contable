@@ -60,12 +60,17 @@ function cerrarNavegadorAnterior() {
     }
 
     try {
+        // En Windows, verificar si el PID sigue activo antes de llamar a taskkill
+        // Si el proceso ya fue cerrado por el usuario, process.kill(pid, 0) lanza excepción instantáneamente (0ms)
+        process.kill(pid, 0);
         if (process.platform === 'win32') {
             execSync(`taskkill /F /T /PID ${pid}`, { stdio: 'ignore' });
         } else {
             process.kill(pid, 'SIGKILL');
         }
-    } catch (_) {}
+    } catch (_) {
+        // El proceso ya no existe, 0ms consumidos
+    }
 }
 
 function recordarNavegador(browser) {
@@ -135,7 +140,6 @@ async function ocultarVentana(page) {
 
 async function mostrarVentanaNormal(page, ventana, browserName) {
     writeSignal('opening', { browser: browserName });
-    await new Promise((resolve) => setTimeout(resolve, 1200));
     try {
         const cdp = ventana?.cdp || await page.createCDPSession();
         const windowId = ventana?.windowId || (await cdp.send('Browser.getWindowForTarget')).windowId;
@@ -170,18 +174,27 @@ async function pulsar(page, selector) {
 }
 
 /**
- * Espera a que se detenga la cadena de redirecciones del portal. SUNAT pasa por
- * varias URLs de api-seguridad antes de soltar el módulo pedido.
+ * Espera a que se complete la redirección del portal con sondeos rápidos de 150ms.
  */
-async function esperarEstabilidad(page, limiteMs = 25000) {
+async function esperarEstabilidad(page, limiteMs = 15000) {
     const fin = Date.now() + limiteMs;
     let anterior = '';
     let quietas = 0;
 
     while (Date.now() < fin) {
-        await new Promise((resolve) => setTimeout(resolve, 400));
+        await new Promise((resolve) => setTimeout(resolve, 150));
 
         const actual = page.url();
+        const enPasarela = actual.includes('api-seguridad') || actual.includes('autentica');
+
+        // Si ya aterrizó en la página de destino de SUNAT y no hay formulario pendiente:
+        if (!enPasarela) {
+            const pendiente = await page.$('#txtRuc, input[name="txtRuc"]').catch(() => null);
+            if (!pendiente) {
+                return;
+            }
+        }
+
         if (actual === anterior) {
             quietas++;
         } else {
@@ -189,7 +202,7 @@ async function esperarEstabilidad(page, limiteMs = 25000) {
             anterior = actual;
         }
 
-        if (quietas >= 3) {
+        if (quietas >= 2) {
             const pendiente = await page.$('#txtRuc, input[name="txtRuc"]').catch(() => null);
             if (!pendiente) {
                 return;
@@ -254,10 +267,32 @@ function getBrowserInfo() {
         return { path: process.env.PUPPETEER_EXECUTABLE_PATH, name: 'Personalizado' };
     }
 
+    const localAppData = process.env.LOCALAPPDATA || '';
+    const progFiles = process.env.ProgramFiles || 'C:\\Program Files';
+    const progFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+
+    // 1. Verificación directa en el sistema de archivos (0.01ms, instantáneo)
+    const directCandidates = [
+        { path: path.join(progFiles, 'Google\\Chrome\\Application\\chrome.exe'), name: 'Google Chrome' },
+        { path: path.join(progFilesX86, 'Google\\Chrome\\Application\\chrome.exe'), name: 'Google Chrome' },
+        { path: path.join(localAppData, 'Google\\Chrome\\Application\\chrome.exe'), name: 'Google Chrome' },
+        { path: path.join(progFiles, 'Microsoft\\Edge\\Application\\msedge.exe'), name: 'Microsoft Edge' },
+        { path: path.join(progFilesX86, 'Microsoft\\Edge\\Application\\msedge.exe'), name: 'Microsoft Edge' },
+        { path: path.join(localAppData, 'Microsoft\\Edge\\Application\\msedge.exe'), name: 'Microsoft Edge' },
+        { path: path.join(progFiles, 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'), name: 'Brave' },
+        { path: path.join(localAppData, 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'), name: 'Brave' },
+    ];
+
+    for (const c of directCandidates) {
+        if (c.path && fs.existsSync(c.path)) {
+            return c;
+        }
+    }
+
+    // 2. Si no se encontró en rutas fijas, consultar el Registro de Windows
     let browserPath = null;
     let browserName = 'Google Chrome';
 
-    // 1. Detección en milisegundos del navegador predeterminado de Windows en el Registro
     try {
         const stdout = execSync(
             'reg query "HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\http\\UserChoice" /v ProgId',
@@ -279,35 +314,6 @@ function getBrowserInfo() {
         }
     } catch (_) {}
 
-    // 2. Si no se resolvió por registro, usar lista de candidatos del sistema
-    if (!browserPath) {
-        const localAppData = process.env.LOCALAPPDATA || '';
-        const progFiles = process.env.ProgramFiles || 'C:\\Program Files';
-        const progFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
-
-        const candidates = [
-            path.join(progFiles, 'Google\\Chrome\\Application\\chrome.exe'),
-            path.join(progFilesX86, 'Google\\Chrome\\Application\\chrome.exe'),
-            path.join(localAppData, 'Google\\Chrome\\Application\\chrome.exe'),
-            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-            path.join(progFiles, 'Microsoft\\Edge\\Application\\msedge.exe'),
-            path.join(progFilesX86, 'Microsoft\\Edge\\Application\\msedge.exe'),
-            path.join(localAppData, 'Microsoft\\Edge\\Application\\msedge.exe'),
-            'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-            'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-            path.join(progFiles, 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
-            path.join(localAppData, 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
-        ];
-        for (const p of candidates) {
-            if (p && fs.existsSync(p)) {
-                browserPath = p;
-                break;
-            }
-        }
-    }
-
-    // 3. Determinar nombre amigable del navegador
     if (browserPath) {
         const lower = browserPath.toLowerCase();
         if (lower.includes('chrome')) browserName = 'Google Chrome';
@@ -352,6 +358,10 @@ const SUNAT_LOGIN_URL = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.h
                 '--disable-backgrounding-occluded-windows',
                 '--disable-renderer-backgrounding',
                 '--disable-background-timer-throttling',
+                '--disable-features=Translate,OptimizationHints,MediaRouter',
+                '--disable-component-update',
+                '--disable-default-apps',
+                '--no-pings',
             ],
         };
 
@@ -404,7 +414,6 @@ const SUNAT_LOGIN_URL = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.h
         await ocultarVentana(page);
 
         await autenticar(page);
-        await esperarEstabilidad(page);
 
         // A veces el portal se queda en su pasarela con el código OAuth en la
         // barra y no termina de soltar el módulo. Con la sesión ya creada,

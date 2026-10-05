@@ -2753,7 +2753,7 @@
                             this.hudAcceso.progreso = Math.min(92, this.hudAcceso.progreso + 4);
                             this.hudAcceso.faseTexto = 'La ventana se abre cuando la sesión ya está lista...';
                         }
-                    }, 550);
+                    }, 250);
 
                     try {
                         const res = await fetch(url, {

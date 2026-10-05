@@ -720,7 +720,7 @@
                         this.progreso = Math.min(92, this.progreso + 4);
                         this.faseTexto = 'La ventana se abre cuando la sesión ya está lista...';
                     }
-                }, 550);
+                }, 250);
 
                 try {
                     const res = await fetch(url, {

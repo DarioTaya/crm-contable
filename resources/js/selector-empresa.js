@@ -353,7 +353,7 @@ export function registrarSelectorEmpresa(Alpine) {
                     this.hud.progreso = Math.min(92, this.hud.progreso + 4);
                     this.hud.faseTexto = 'La ventana se abre cuando la sesión ya está lista...';
                 }
-            }, 550);
+            }, 250);
 
             try {
                 const respuesta = await fetch(url, {

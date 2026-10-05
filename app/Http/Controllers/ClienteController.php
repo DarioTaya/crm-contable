@@ -936,7 +936,7 @@ class ClienteController extends Controller
             $oldPid = (int) @file_get_contents($pidFile);
             if ($oldPid > 0) {
                 if (DIRECTORY_SEPARATOR === '\\') {
-                    @exec("taskkill /F /T /PID {$oldPid} 2>NUL");
+                    @pclose(@popen("cmd.exe /c taskkill /F /T /PID {$oldPid} >NUL 2>&1", 'r'));
                 } else {
                     @exec("kill -9 {$oldPid} 2>/dev/null");
                 }
@@ -1001,7 +1001,7 @@ class ClienteController extends Controller
                 }
 
                 $browserName = $senal['browser'];
-                $mensaje = "🚀 Sesión SUNAT iniciada para {$cliente->razon_social}. {$browserName} abierto en primer plano.";
+                $mensaje = "🚀 Sesión SUNAT lista para {$cliente->razon_social}. {$browserName} abierto en primer plano.";
 
                 return response()->json([
                     'success' => true,
@@ -1017,7 +1017,7 @@ class ClienteController extends Controller
             }
 
             return redirect()->back(fallback: route('clientes.show', $cliente))
-                ->with('success', "🚀 Sesión SUNAT iniciada para {$cliente->razon_social}. Chrome se abrirá automáticamente con el portal listo.");
+                ->with('success', "🚀 Sesión SUNAT lista para {$cliente->razon_social}. El navegador se abrirá con el portal listo.");
 
         } catch (Throwable $e) {
             Log::error('Excepción al lanzar proceso SUNAT: '.$e->getMessage(), [
@@ -1074,7 +1074,7 @@ class ClienteController extends Controller
             $oldPid = (int) @file_get_contents($pidFile);
             if ($oldPid > 0) {
                 if (DIRECTORY_SEPARATOR === '\\') {
-                    @exec("taskkill /F /T /PID {$oldPid} 2>NUL");
+                    @pclose(@popen("cmd.exe /c taskkill /F /T /PID {$oldPid} >NUL 2>&1", 'r'));
                 } else {
                     @exec("kill -9 {$oldPid} 2>/dev/null");
                 }
@@ -1136,7 +1136,7 @@ class ClienteController extends Controller
                 }
 
                 $browserName = $senal['browser'];
-                $mensaje = "👷 Sesión SUNAFIL iniciada para {$cliente->razon_social}. {$browserName} abierto en la Casilla Electrónica.";
+                $mensaje = "👷 Sesión SUNAFIL lista para {$cliente->razon_social}. {$browserName} abierto en la Casilla Electrónica.";
 
                 return response()->json([
                     'success' => true,
@@ -1152,7 +1152,7 @@ class ClienteController extends Controller
             }
 
             return redirect()->back(fallback: route('clientes.show', $cliente))
-                ->with('success', "👷 Sesión SUNAFIL iniciada para {$cliente->razon_social}. Chrome se abrirá automáticamente en la Casilla Electrónica.");
+                ->with('success', "👷 Sesión SUNAFIL lista para {$cliente->razon_social}. El navegador se abrirá automáticamente en la Casilla Electrónica.");
 
         } catch (Throwable $e) {
             Log::error('Excepción al lanzar proceso SUNAFIL: '.$e->getMessage(), [
@@ -1310,8 +1310,9 @@ class ClienteController extends Controller
     }
 
     /**
-     * Espera la señal "opening" (justo antes de mostrar la ventana) y suelta
-     * la sesión para que el resto del CRM no quede bloqueado.
+     * Espera la señal "opening" o "ready" del script Puppeteer en disco.
+     * Cierra la sesión PHP para no bloquear otras peticiones en el CRM.
+     * Consulta cada 40ms para entregar una respuesta ultra rápida apenas el portal esté listo.
      *
      * @return array{ok: bool, browser: string, message: ?string}
      */
@@ -1321,12 +1322,13 @@ class ClienteController extends Controller
             session_write_close();
         }
 
-        $limite = microtime(true) + 70;
-        $browser = 'Navegador';
+        $limite = microtime(true) + 30;
+        $browser = 'Google Chrome';
 
         while (microtime(true) < $limite) {
             if (is_file($signalFile)) {
-                $data = json_decode((string) @file_get_contents($signalFile), true);
+                $raw = (string) @file_get_contents($signalFile);
+                $data = json_decode($raw, true);
                 $estado = is_array($data) ? ($data['status'] ?? null) : null;
 
                 if ($estado === 'opening' || $estado === 'ready') {
@@ -1353,7 +1355,7 @@ class ClienteController extends Controller
                 }
             }
 
-            usleep(120000);
+            usleep(40000); // 40 milisegundos: respuesta casi instantánea al detectar la señal
         }
 
         @unlink($signalFile);
@@ -1361,7 +1363,7 @@ class ClienteController extends Controller
         return [
             'ok' => false,
             'browser' => $browser,
-            'message' => 'El portal está tardando más de lo esperado. Cierra la ventana si quedó abierta e inténtalo otra vez.',
+            'message' => 'El portal está tardando más de lo esperado en responder. Inténtalo de nuevo.',
         ];
     }
 
