@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AbonoDeuda;
 use App\Models\Cliente;
 use App\Models\ConstanciaDeclaracion;
 use App\Models\DeudaTributaria;
@@ -9,6 +10,7 @@ use App\Models\Estudio;
 use App\Models\LiquidacionPeriodo;
 use App\Models\Operacion;
 use App\Models\User;
+use App\Services\Catalogos\CatalogoSunat;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -94,10 +96,8 @@ class ImportarConstanciaDeclaracionTest extends TestCase
         $this->assertFalse($codigos->contains('igv_no_cuadra'));
         $this->assertFalse($codigos->contains('tributo_no_gestionado'));
 
-        $this->assertSame(2, ConstanciaDeclaracion::query()->count());
-        $constancia = ConstanciaDeclaracion::query()->first();
-        $this->assertNotNull($constancia);
-        Storage::disk('local')->assertExists($constancia->archivo_path);
+        $this->assertSame(0, ConstanciaDeclaracion::query()->count());
+        $this->assertSame([], Storage::disk('local')->allFiles());
     }
 
     public function test_el_importe_oficial_de_sunat_se_guarda_aunque_el_motor_calcule_otro(): void
@@ -177,7 +177,7 @@ class ImportarConstanciaDeclaracionTest extends TestCase
         $response->assertJsonPath('control.igv', 1900);
         $response->assertJsonPath('control.renta', 260);
         $this->assertTrue(collect($response->json('alertas'))->pluck('codigo')->contains('solo_constancia'));
-        $this->assertSame(1, ConstanciaDeclaracion::query()->count());
+        $this->assertSame(0, ConstanciaDeclaracion::query()->count());
     }
 
     public function test_ruc_distinto_bloquea_y_no_archiva(): void
@@ -364,8 +364,8 @@ TXT;
 
         $segunda->assertOk();
         $segunda->assertJsonPath('bloqueado', false);
-        $this->assertTrue(collect($segunda->json('alertas'))->pluck('codigo')->contains('archivo_repetido'));
-        $this->assertSame(1, ConstanciaDeclaracion::query()->count());
+        $this->assertFalse(collect($segunda->json('alertas'))->pluck('codigo')->contains('archivo_repetido'));
+        $this->assertSame(0, ConstanciaDeclaracion::query()->count());
     }
 
     public function test_essalud_bajo_el_piso_de_la_rmv_avisa(): void
@@ -503,6 +503,74 @@ TXT;
         $this->assertFalse($codigos->contains('igv_justo'));
         $this->assertFalse($codigos->contains('igv_distinto_al_motor'));
         $this->assertFalse($codigos->contains('renta_distinta_al_motor'));
+    }
+
+    public function test_qori_poracota_lee_compras_no_gravadas_y_registra_el_pago_con_detracciones(): void
+    {
+        app(CatalogoSunat::class)->sembrar($this->estudio->id);
+
+        $qori = Cliente::create([
+            'estudio_id' => $this->estudio->id,
+            'razon_social' => 'QORI PORACOTA S.A.C.',
+            'ruc' => '20614054230',
+            'regimen_tributario' => 'RMT',
+            'estado' => 'activo',
+        ]);
+
+        $detalle = UploadedFile::fake()->createWithContent(
+            'DETALLE PDT 621 ENE-26 qori.pdf',
+            (string) file_get_contents(base_path('DETALLE PDT 621 ENE-26 qori.pdf')),
+        );
+        $constancia = UploadedFile::fake()->createWithContent(
+            'CONSTANCIA PDT 621 ENE-26 qori.pdf',
+            (string) file_get_contents(base_path('CONSTANCIA PDT 621 ENE-26 qori.pdf')),
+        );
+
+        $respuesta = $this->post(route('control.liquidacion.importar'), [
+            'cliente_id' => $qori->id,
+            'periodo' => '01-2026',
+            'formulario' => '621',
+            'archivos' => [$detalle, $constancia],
+        ], ['Accept' => 'application/json']);
+
+        $respuesta->assertOk();
+        $respuesta->assertJsonPath('bloqueado', false);
+        $respuesta->assertJsonPath('campos.ventas_base', 23344);
+        $respuesta->assertJsonPath('campos.igv_ventas', 4202);
+        $respuesta->assertJsonPath('campos.compras_base', 9679);
+        $respuesta->assertJsonPath('campos.igv_compras', 1742);
+        $respuesta->assertJsonPath('campos.compras_internas_no_gravadas', 80);
+        $respuesta->assertJsonPath('campos.igv_percepciones', 54);
+        $respuesta->assertJsonPath('campos.renta_base_ingresos', 23344);
+        $respuesta->assertJsonPath('campos.renta_tasa', 1);
+        $respuesta->assertJsonPath('control.igv', 0);
+        $respuesta->assertJsonPath('control.renta', 233);
+        $respuesta->assertJsonPath('calculo.igv', 0);
+        $respuesta->assertJsonPath('calculo.renta', 233);
+        $respuesta->assertJsonPath('pagos_registrados', 1);
+        $this->assertFalse(collect($respuesta->json('alertas'))->pluck('codigo')->contains('ordenes_distintas'));
+        $this->assertSame(0, ConstanciaDeclaracion::query()->count());
+        $this->assertSame([], Storage::disk('local')->allFiles());
+
+        $deuda = DeudaTributaria::query()->where('tributo_codigo', '3121')->first();
+        $this->assertNotNull($deuda);
+        $this->assertSame(233.0, (float) $deuda->monto_deuda_inicial);
+        $abono = AbonoDeuda::query()->where('deuda_tributaria_id', $deuda->id)->first();
+        $this->assertNotNull($abono);
+        $this->assertSame(233.0, (float) $abono->monto);
+        $this->assertSame('detracciones', $abono->medio_pago);
+        $this->assertSame('2026-02-12', $abono->fecha_pago->toDateString());
+
+        $repetido = $this->post(route('control.liquidacion.importar'), [
+            'cliente_id' => $qori->id,
+            'periodo' => '01-2026',
+            'formulario' => '621',
+            'archivos' => [$constancia],
+        ], ['Accept' => 'application/json']);
+
+        $repetido->assertOk();
+        $this->assertTrue(collect($repetido->json('alertas'))->pluck('codigo')->contains('pago_ya_registrado'));
+        $this->assertSame(1, AbonoDeuda::query()->count());
     }
 
     public function test_invitado_recibe_401_al_importar(): void

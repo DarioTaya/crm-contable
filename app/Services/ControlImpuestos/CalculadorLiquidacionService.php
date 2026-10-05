@@ -90,7 +90,8 @@ class CalculadorLiquidacionService
                 (float) $liq->igv_compras
                 + (float) $liq->igv_compras_ley
                 + (float) $liq->igv_compras_mixtas
-                + (float) $liq->igv_importaciones,
+                + (float) $liq->igv_importaciones
+                + (float) $liq->igv_importaciones_mixtas,
                 2,
             );
             $saldoFavorAnterior = (float) $liq->igv_saldo_favor_anterior;

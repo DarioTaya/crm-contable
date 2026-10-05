@@ -18,7 +18,8 @@ final class LectorConstanciaSunat
      */
     private const CASILLAS = [
         '100', '101', '102', '103', '105', '106', '107', '108', '109', '110', '111',
-        '114', '115', '140', '145', '154', '155', '156', '157', '160', '164', '165', '168', '171',
+        '113', '114', '115', '116', '117', '119', '120', '122',
+        '140', '145', '154', '155', '156', '157', '160', '164', '165', '168', '171',
         '176', '179', '184', '185', '187', '188', '189', '301', '302', '303', '304',
         '305', '306', '307', '312', '317', '319', '324', '326', '327', '328',
     ];
@@ -56,6 +57,7 @@ final class LectorConstanciaSunat
         [$declaracion->tributos, $declaracion->essaludBase, $declaracion->renta4taBase, $declaracion->tributosRepetidos] = $this->tributos($normal, $codigosAdicionales);
         $declaracion->afp = $this->afp($normal);
         $declaracion->igvJusto = preg_match('/IGV\s+JUSTO.{0,80}SI\/NO\)?\??\s*SI\b/', $normal) === 1;
+        $declaracion->pagos = $this->pagos($normal);
         $declaracion->essaludBase ??= $this->baseEtiquetada($normal, 'REMUNERACION ASEGURABLE|BASE(?:\s+IMPONIBLE)?\s+ESSALUD');
         $declaracion->renta4taBase ??= $this->baseEtiquetada($normal, 'BASE(?:\s+IMPONIBLE)?\s+(?:DE\s+)?(?:CUARTA|4TA)|HONORARIOS');
         $this->inferirFormulario($declaracion);
@@ -81,6 +83,7 @@ final class LectorConstanciaSunat
         foreach ($declaraciones as $declaracion) {
             if ($declaracion->esBoleta && $declaracion->formulario === null) {
                 $base->boletasIgnoradas++;
+                $base->pagos = $this->unirPagos($base->pagos, $declaracion->pagos);
 
                 continue;
             }
@@ -122,6 +125,7 @@ final class LectorConstanciaSunat
             $base->essaludBase ??= $declaracion->essaludBase;
             $base->renta4taBase ??= $declaracion->renta4taBase;
             $base->tieneDetalle = $base->tieneDetalle || $declaracion->tieneDetalle;
+            $base->pagos = $this->unirPagos($base->pagos, $declaracion->pagos);
             $base->casillasRepetidas = array_values(array_unique([...$base->casillasRepetidas, ...$declaracion->casillasRepetidas]));
             $base->tributosRepetidos = array_values(array_unique([...$base->tributosRepetidos, ...$declaracion->tributosRepetidos]));
         }
@@ -266,6 +270,10 @@ final class LectorConstanciaSunat
 
     private function numeroOrden(string $texto): ?string
     {
+        if (preg_match('/DECLARACION\s+JURADA\s+ASOCIADA\s*:\s*(\d{6,15})\b/', $texto, $asociada) === 1) {
+            return $asociada[1];
+        }
+
         if (preg_match('/\b(?:NUMERO\s+DE\s+ORDEN|NRO\.?\s+DE\s+ORDEN|NRO\.?\s+ORDEN|N\s*ORDEN)(?:\s+(?:NUMERO\s+DE\s+ORDEN|NRO\.?\s+DE\s+ORDEN))?\s*[:\-]?\s*(\d{6,15})\b/', $texto, $coincidencia) !== 1) {
             return null;
         }
@@ -427,6 +435,76 @@ final class LectorConstanciaSunat
         }
 
         return $hay ? round($suma, 2) : null;
+    }
+
+    /**
+     * @return list<array{tributo: string, importe: float, medio_codigo: ?string, fecha: ?string, numero_operacion: ?string}>
+     */
+    private function pagos(string $texto): array
+    {
+        $pagos = [];
+        $bloques = preg_split('/(?=TRIBUTO\s*:)/', $texto) ?: [];
+        foreach ($bloques as $bloque) {
+            if (preg_match('/TRIBUTO\s*:\s*(\d{4})/', $bloque, $tributo) !== 1) {
+                continue;
+            }
+            if (preg_match('/IMPORTE\s+PAGADO\s*:\s*(?:S\/\.?\s*)?([\d.,]+)/', $bloque, $importe) !== 1) {
+                continue;
+            }
+            $monto = MontoTributario::parse($importe[1]);
+            if ($monto === null || $monto <= 0) {
+                continue;
+            }
+            if (preg_match('/MEDIO\s+DE\s+PAGO\s*:\s*(.+)/', $bloque, $medio) !== 1) {
+                continue;
+            }
+
+            $fecha = null;
+            if (preg_match('/FECHA\s+DE\s+PAGO\s*:\s*(\d{2}\/\d{2}\/\d{4})/', $bloque, $fechaPago) === 1) {
+                $fecha = $fechaPago[1];
+            }
+
+            $numero = null;
+            if (preg_match('/OPERACION\s+SUNAT\s*:\s*(\d+)/', $bloque, $operacion) === 1) {
+                $numero = ltrim($operacion[1], '0') ?: $operacion[1];
+            }
+
+            $textoMedio = trim($medio[1]);
+            $pagos[] = [
+                'tributo' => $tributo[1],
+                'importe' => $monto,
+                'medio_codigo' => str_contains($textoMedio, 'DETRACCION') ? 'detracciones' : null,
+                'fecha' => $fecha,
+                'numero_operacion' => $numero,
+            ];
+        }
+
+        return $pagos;
+    }
+
+    /**
+     * @param  list<array{tributo: string, importe: float, medio_codigo: ?string, fecha: ?string, numero_operacion: ?string}>  $actuales
+     * @param  list<array{tributo: string, importe: float, medio_codigo: ?string, fecha: ?string, numero_operacion: ?string}>  $nuevos
+     * @return list<array{tributo: string, importe: float, medio_codigo: ?string, fecha: ?string, numero_operacion: ?string}>
+     */
+    private function unirPagos(array $actuales, array $nuevos): array
+    {
+        foreach ($nuevos as $pago) {
+            $clave = ($pago['numero_operacion'] ?? '').'|'.$pago['tributo'].'|'.$pago['importe'];
+            $yaEsta = false;
+            foreach ($actuales as $existente) {
+                $claveExistente = ($existente['numero_operacion'] ?? '').'|'.$existente['tributo'].'|'.$existente['importe'];
+                if ($claveExistente === $clave) {
+                    $yaEsta = true;
+                    break;
+                }
+            }
+            if (! $yaEsta) {
+                $actuales[] = $pago;
+            }
+        }
+
+        return $actuales;
     }
 
     /**

@@ -27,7 +27,6 @@ class ConstanciaDeclaracionController extends Controller
             $request->string('periodo')->toString(),
             $request->string('formulario')->toString(),
             array_values($archivos),
-            $request->user(),
         ));
     }
 }

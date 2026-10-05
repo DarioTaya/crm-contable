@@ -69,4 +69,11 @@ class DeclaracionLeida
      * @var list<string>
      */
     public array $archivosIlegibles = [];
+
+    /**
+     * Pagos que vienen en la constancia (formulario 1662), no en las casillas.
+     *
+     * @var list<array{tributo: string, importe: float, medio_codigo: ?string, fecha: ?string, numero_operacion: ?string}>
+     */
+    public array $pagos = [];
 }

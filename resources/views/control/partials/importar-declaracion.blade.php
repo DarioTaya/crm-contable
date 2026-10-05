@@ -8,7 +8,7 @@
         <div class="min-w-0">
             <p class="text-[11px] font-bold {{ $esPlame ? 'text-purple-950' : 'text-blue-950' }}">Importar declaración SUNAT</p>
             <p class="text-[10px] leading-snug text-slate-600">
-                Suba la constancia de presentación y, si la tiene, el detalle de casillas. Puede soltar los dos juntos.
+                Suelte la constancia y el detalle juntos. El PDF solo se lee: no queda guardado. Si el pago fue con detracciones, se registra solo.
             </p>
         </div>
         <button type="button" @click="importacion['{{ $formulario }}'].abierta = false" class="px-1 font-bold leading-none text-slate-500 hover:text-slate-800" title="Cerrar">&times;</button>
@@ -39,7 +39,7 @@
         </template>
 
         <p x-show="importacion['{{ $formulario }}'].aplicada && importacion['{{ $formulario }}'].resultado && !importacion['{{ $formulario }}'].resultado.bloqueado" class="text-[10px] font-semibold text-emerald-800">
-            La hoja ya tiene los datos de SUNAT. Revise las alertas y pulse Guardar.
+            Montos leídos. Revise el cruce y pulse Guardar.
         </p>
 
         <label x-show="importacion['{{ $formulario }}'].resultado && !importacion['{{ $formulario }}'].resultado.bloqueado" class="flex items-center gap-1.5 text-[10px] text-slate-700">
