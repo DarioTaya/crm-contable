@@ -272,7 +272,7 @@ class LiquidacionTributariaCascadeTest extends TestCase
             'renta_base_ingresos' => 50000,
             'renta_tasa' => 1.0, // Renta calc = 500
             'renta_itan_saldo_anterior' => 1200, // ITAN pagado / disponible
-            'renta_compensacion_itan' => 300,    // Compensación voluntaria Cas. 111
+            'renta_compensacion_itan' => 300,    // Compensación voluntaria, casilla 328
             'actualizar_deudas' => true,
         ])->assertOk();
 

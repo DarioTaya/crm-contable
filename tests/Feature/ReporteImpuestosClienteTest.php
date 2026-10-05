@@ -172,7 +172,7 @@ class ReporteImpuestosClienteTest extends TestCase
         $pdt = collect($reporte['bloques'])->firstWhere('id', 'pdt_621');
         $plame = collect($reporte['bloques'])->firstWhere('id', 'pdt_601');
         $this->assertSame(['1011', '1016', '3111', '3121', '3031', '3081'], array_column($pdt['tributos'], 'codigo'));
-        $this->assertSame(['5210', '5310', 'AFP', '3052', '3042'], array_column($plame['tributos'], 'codigo'));
+        $this->assertSame(['5210', '5310', '6098', '3052', '3042'], array_column($plame['tributos'], 'codigo'));
         $html = $response->getContent();
         $fila = function (string $codigo) use ($html): string {
             $inicio = strpos($html, 'data-tributo="'.$codigo.'"');

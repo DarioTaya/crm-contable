@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\MedioPagoTributo;
+use App\Services\Catalogos\CatalogoSunat;
 use App\Traits\BelongsToEstudioViaCliente;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -45,8 +45,16 @@ class AbonoDeuda extends Model
         return [
             'monto' => 'decimal:2',
             'fecha_pago' => 'date',
-            'medio_pago' => MedioPagoTributo::class,
         ];
+    }
+
+    public function etiquetaMedioPago(): string
+    {
+        $codigo = $this->medio_pago;
+
+        return is_string($codigo) && $codigo !== ''
+            ? app(CatalogoSunat::class)->etiquetaMedio($codigo, $this->estudio_id)
+            : '';
     }
 
     /**

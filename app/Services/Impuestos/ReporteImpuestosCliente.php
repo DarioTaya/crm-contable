@@ -8,6 +8,7 @@ use App\Models\AbonoDeuda;
 use App\Models\Cliente;
 use App\Models\DeudaTributaria;
 use App\Models\Operacion;
+use App\Services\Catalogos\CatalogoSunat;
 use DateTimeImmutable;
 use Illuminate\Support\Collection;
 
@@ -65,7 +66,7 @@ class ReporteImpuestosCliente
             'con_deuda' => 0,
         ];
 
-        foreach (TipoTributoSunat::catalogoFormulario() as $bloque) {
+        foreach (app(CatalogoSunat::class)->catalogoFormulario($cliente->estudio_id) as $bloque) {
             $codigos = $this->codigosVisibles($cliente, $bloque['id'], $codigosConDatos);
             $tributos = [];
 
@@ -202,11 +203,11 @@ class ReporteImpuestosCliente
                 ];
             }
 
-            // Renta del régimen
-            $rentaTributo = TipoTributoSunat::rentaDelRegimen($operacion->cliente?->regimen_tributario);
-            if ($rentaTributo && ! in_array($rentaTributo->value, $codigosExistentes, true) && (float) $liq->renta_resultante_pagar <= 0) {
+            $rentaCodigo = $liq->renta_tributo_codigo
+                ?: app(CatalogoSunat::class)->codigoRentaDelRegimen($operacion->cliente?->regimen_tributario, $operacion->estudio_id);
+            if ($rentaCodigo && ! in_array($rentaCodigo, $codigosExistentes, true) && (float) $liq->renta_resultante_pagar <= 0) {
                 $lineas[] = [
-                    'codigo' => $rentaTributo->value,
+                    'codigo' => $rentaCodigo,
                     'monto' => 0.0,
                     'vencimiento' => null,
                     'es_igv_justo' => false,
@@ -244,11 +245,12 @@ class ReporteImpuestosCliente
         $pagos = [];
 
         foreach ($abonos as $abono) {
+            $etiquetaMedio = $abono->etiquetaMedioPago();
             $pagos[] = [
                 'id' => (int) $abono->id,
                 'monto' => (float) $abono->monto,
                 'fecha' => $abono->fecha_pago?->format('Y-m-d') ?? '',
-                'medio' => $abono->medio_pago?->etiqueta() ?? 'Sin clasificar',
+                'medio' => $etiquetaMedio !== '' ? $etiquetaMedio : 'Sin clasificar',
                 'observacion' => trim((string) ($abono->observacion ?? '')),
             ];
         }
@@ -264,12 +266,13 @@ class ReporteImpuestosCliente
      */
     private function codigosVisibles(Cliente $cliente, string $declaracion, array $codigosConDatos): array
     {
-        $catalogo = collect(TipoTributoSunat::catalogoFormulario())->firstWhere('id', $declaracion);
-        $orden = array_column($catalogo['tributos'] ?? [], 'codigo');
+        $catalogo = app(CatalogoSunat::class);
+        $bloque = collect($catalogo->catalogoFormulario($cliente->estudio_id))->firstWhere('id', $declaracion);
+        $orden = array_column($bloque['tributos'] ?? [], 'codigo');
 
         $conDatos = array_values(array_filter(
             $codigosConDatos,
-            fn (string $codigo): bool => TipoTributoSunat::declaracionDe($codigo) === $declaracion,
+            fn (string $codigo): bool => $catalogo->declaracionDe($codigo, $cliente->estudio_id) === $declaracion,
         ));
 
         $nrusSinPdt = $declaracion === 'pdt_621' && $cliente->regimen_tributario === RegimenTributario::Rus;
@@ -293,7 +296,7 @@ class ReporteImpuestosCliente
      */
     private function armarTributo(string $codigo, int $anio, array $lineas, ?string $mesBaja, string $hoy): array
     {
-        $enum = TipoTributoSunat::resolver($codigo);
+        $catalogo = app(CatalogoSunat::class);
         $periodos = [];
         $determinado = 0;
         $pagado = 0;
@@ -396,8 +399,8 @@ class ReporteImpuestosCliente
         return [
             'tributo' => [
                 'codigo' => $codigo,
-                'nombre' => $enum?->nombreCorto() ?? $codigo,
-                'descripcion' => $enum?->descripcion() ?? $codigo,
+                'nombre' => $catalogo->nombreCorto($codigo),
+                'descripcion' => $catalogo->nombre($codigo),
                 'periodos' => $periodos,
                 'tiene_importes' => $registrados > 0,
                 'totales' => [

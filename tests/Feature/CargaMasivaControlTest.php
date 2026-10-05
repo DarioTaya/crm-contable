@@ -345,7 +345,7 @@ class CargaMasivaControlTest extends TestCase
         $this->assertStringContainsString('PDT 601 PLAME (Pendiente, En proceso o Declarado; vacio no cambia)', $contenido);
         $this->assertStringContainsString('Honorarios RH (Debe o Pago; vacio no cambia)', $contenido);
         $this->assertStringContainsString('PAGOS', $contenido);
-        $this->assertStringContainsString('Codigo del tributo (el mismo codigo de la fila del mes: 1011, 5210, AFP u otro)', $contenido);
+        $this->assertStringContainsString('Codigo del tributo (el mismo codigo de la fila del mes: 1011, 5210, 6098 u otro)', $contenido);
         $this->assertStringContainsString('Fecha de pago (DD/MM/AAAA)', $contenido);
         $this->assertStringContainsString('Medio de pago (Detracciones, Caja, Bancos, Compensacion renta anual o Compensacion ITAN)', $contenido);
         $this->assertStringContainsString('Numero de operacion (opcional)', $contenido);
@@ -644,7 +644,7 @@ class CargaMasivaControlTest extends TestCase
 
         $abono = AbonoDeuda::query()->firstOrFail();
         $this->assertSame('2026-02-15', $abono->fecha_pago?->format('Y-m-d'));
-        $this->assertSame('bancos', $abono->medio_pago?->value);
+        $this->assertSame('bancos', $abono->medio_pago);
         $this->assertSame('OP-100', $abono->observacion);
         $this->assertSame('550.00', $abono->monto);
     }
@@ -894,9 +894,9 @@ CSV;
 
         $abonos = AbonoDeuda::query()->orderBy('fecha_pago')->get();
         $this->assertCount(3, $abonos);
-        $this->assertSame('caja', $abonos[0]->medio_pago?->value);
-        $this->assertSame('bancos', $abonos[1]->medio_pago?->value);
-        $this->assertSame('detracciones', $abonos[2]->medio_pago?->value);
+        $this->assertSame('caja', $abonos[0]->medio_pago);
+        $this->assertSame('bancos', $abonos[1]->medio_pago);
+        $this->assertSame('detracciones', $abonos[2]->medio_pago);
     }
 
     /**

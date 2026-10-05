@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\AlertaBuzon;
 use App\Models\Estudio;
 use App\Models\QuickLink;
+use App\Services\Catalogos\CatalogoSunat;
 use App\Services\CronogramaSunatService;
 use App\Services\Navegacion\SelectorEmpresa;
 use App\Services\SunatBuzonSyncService;
@@ -28,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        CatalogoSunat::olvidar();
+
         View::composer('components.marca.variables', function ($view) {
             $this->compartirIdentidadMarca($view);
         });

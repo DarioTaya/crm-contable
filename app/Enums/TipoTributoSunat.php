@@ -16,7 +16,7 @@ enum TipoTributoSunat: string
     case RentaQuinta = '3052';
     case EsSalud = '5210';
     case Onp = '5310';
-    case Afp = 'AFP';
+    case Afp = '6098';
     case Igv105 = '1016';
 
     /**
@@ -117,10 +117,6 @@ enum TipoTributoSunat: string
      */
     public function etiquetaSelector(): string
     {
-        if ($this === self::Afp) {
-            return 'AFP - APORTES AFP (PRIMA / FONDO / COMISIÓN)';
-        }
-
         return "{$this->value} {$this->descripcion()}";
     }
 
@@ -224,6 +220,7 @@ enum TipoTributoSunat: string
         return match ($codigo) {
             '3041' => self::RentaCuarta,
             '3051' => self::RentaQuinta,
+            'AFP' => self::Afp,
             default => self::tryFrom($codigo),
         };
     }

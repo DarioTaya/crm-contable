@@ -305,7 +305,7 @@
                                     <div class="flex items-center justify-between gap-1 px-1 w-full h-full relative">
 
                                         {{-- CONTROL 1: DJ (Declaración Jurada + Control de Deudas) --}}
-                                        <div x-data="controlCeldaDJ({{ $item['cliente']->id }}, {{ $idx }}, meses, @js($catalogoTributos), @js($item['cliente']->regimen_tributario?->value), @js(\App\Enums\TipoTributoSunat::rentaDelRegimen($item['cliente']->regimen_tributario)?->value), @js($item['cliente']->departamento))"
+                                        <div x-data="controlCeldaDJ({{ $item['cliente']->id }}, {{ $idx }}, meses, @js($catalogoTributos), @js($item['cliente']->regimen_tributario?->value), @js(app(\App\Services\Catalogos\CatalogoSunat::class)->codigoRentaDelRegimen($item['cliente']->regimen_tributario)), @js($item['cliente']->departamento), @js(app(\App\Services\Catalogos\CatalogoSunat::class)->codigosDeLiquidacion()))"
                                              class="relative flex-1 flex items-center justify-center">
                                             <button
                                                 type="button"
@@ -612,8 +612,10 @@
                                                                 {{-- ACORDEÓN: HOJA DE LIQUIDACIÓN TRIBUTARIA PDT 621 (IGV & RENTA) --}}
                                                                 <div x-show="bloque.id === 'pdt_621'" class="rounded-xl border border-blue-200 bg-gradient-to-b from-blue-50/70 to-slate-50 overflow-hidden shadow-2xs">
                                                                     {{-- Botón Cabecera del Acordeón --}}
-                                                                    <button type="button" @click="panelLiquidacionAbierto = !panelLiquidacionAbierto; if (panelLiquidacionAbierto) encuadrarMenuDJ()"
-                                                                            class="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-blue-100/50 transition">
+                                                                    <div role="button" tabindex="0" @click="panelLiquidacionAbierto = !panelLiquidacionAbierto; if (panelLiquidacionAbierto) encuadrarMenuDJ()"
+                                                                         @keydown.enter.prevent="panelLiquidacionAbierto = !panelLiquidacionAbierto; if (panelLiquidacionAbierto) encuadrarMenuDJ()"
+                                                                         @keydown.space.prevent="panelLiquidacionAbierto = !panelLiquidacionAbierto; if (panelLiquidacionAbierto) encuadrarMenuDJ()"
+                                                                         class="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-blue-100/50 transition cursor-pointer">
                                                                         <div class="flex items-center gap-2 min-w-0">
                                                                             <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white text-[11px] font-black">📑</span>
                                                                             <div class="min-w-0">
@@ -627,6 +629,10 @@
                                                                             </div>
                                                                         </div>
                                                                         <div class="flex items-center gap-1.5 shrink-0">
+                                                                            <button type="button" @click.stop="panelLiquidacionAbierto = true; importacion['621'].abierta = true; $nextTick(() => encuadrarMenuDJ())"
+                                                                                    class="inline-flex items-center rounded-md border border-blue-300 bg-white px-1.5 py-0.5 text-[10px] font-bold text-blue-800 hover:bg-blue-50">
+                                                                                Importar DJ
+                                                                            </button>
                                                                             <span x-show="liquidacion.igv_saldo_favor_siguiente > 0" class="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200" title="Saldo a favor para siguiente mes">
                                                                                 Favor M+1: S/ <span x-text="formatearNumeroConComas(liquidacion.igv_saldo_favor_siguiente)"></span>
                                                                             </span>
@@ -634,10 +640,11 @@
                                                                                 <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                                                                             </svg>
                                                                         </div>
-                                                                    </button>
+                                                                    </div>
 
                                                                     {{-- Contenedor Desplegable de la Hoja de Liquidación --}}
                                                                     <div x-show="panelLiquidacionAbierto" class="border-t border-blue-200/80 p-3 space-y-3 bg-white">
+                                                                        @include('control.partials.importar-declaracion', ['formulario' => '621', 'tono' => 'blue'])
                                                                         {{-- Banner / Switch de Régimen Amazonía - Selva (Ley 27037) --}}
                                                                         <div class="flex items-center justify-between p-2 rounded-lg border transition"
                                                                              :class="liquidacion.es_zona_selva ? 'bg-emerald-50 border-emerald-300 shadow-xs' : 'bg-slate-50 border-slate-200'">
@@ -720,6 +727,20 @@
                                                                                                placeholder="0.00" class="w-full rounded border py-1 px-1.5 text-xs font-mono transition"
                                                                                                :class="liquidacion.es_zona_selva ? 'border-slate-200 bg-slate-100 text-slate-400 font-bold cursor-not-allowed' : 'border-slate-300 bg-white text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none'">
                                                                                     </div>
+                                                                                    <div class="grid grid-cols-2 gap-1.5" x-show="!liquidacion.es_zona_selva">
+                                                                                        <div>
+                                                                                            <label class="text-[9px] text-slate-500 font-medium block mb-0.5">Descuentos (Cas. 102)</label>
+                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.igv_descuentos_base"
+                                                                                                   @input="liquidacion.igv_descuentos_base = formatearMilesInput($event); onDescuentosBaseInput()"
+                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <label class="text-[9px] text-slate-500 font-medium block mb-0.5">IGV descuentos (Cas. 103)</label>
+                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.igv_descuentos"
+                                                                                                   @input="liquidacion.igv_descuentos = formatearMilesInput($event); sincronizarBaseRenta(); recalcularTotalesLiquidacion()"
+                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                        </div>
+                                                                                    </div>
                                                                                 </div>
 
                                                                                 {{-- Compras Netas --}}
@@ -742,6 +763,64 @@
                                                                                                @input="liquidacion.igv_compras = formatearMilesInput($event); recalcularTotalesLiquidacion()"
                                                                                                placeholder="0.00" class="w-full rounded border py-1 px-1.5 text-xs font-mono transition"
                                                                                                :class="liquidacion.es_zona_selva ? 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed' : 'border-slate-300 bg-white text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none'">
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            <div x-show="!liquidacion.es_zona_selva" class="rounded-lg border border-slate-200 bg-white">
+                                                                                <button type="button" @click="otrasCasillasIgv = !otrasCasillasIgv"
+                                                                                        class="flex w-full items-center justify-between px-2 py-1.5 text-left">
+                                                                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-600">Otras casillas IGV</span>
+                                                                                    <span class="text-[10px] text-slate-400" x-text="otrasCasillasIgv ? 'Ocultar' : 'Ley 31556, mixtas, importaciones'"></span>
+                                                                                </button>
+                                                                                <div x-show="otrasCasillasIgv" class="grid grid-cols-2 gap-2 border-t border-slate-100 p-2">
+                                                                                    <div>
+                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">Ventas Ley 31556 (Cas. 154)</label>
+                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_ventas_ley_base"
+                                                                                               @input="liquidacion.igv_ventas_ley_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">IGV Ley 31556 (Cas. 155)</label>
+                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_ventas_ley"
+                                                                                               @input="liquidacion.igv_ventas_ley = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">Compras Ley 31556 (Cas. 156)</label>
+                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras_ley_base"
+                                                                                               @input="liquidacion.igv_compras_ley_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">IGV Ley 31556 (Cas. 157)</label>
+                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras_ley"
+                                                                                               @input="liquidacion.igv_compras_ley = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">Compras mixtas (Cas. 110)</label>
+                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras_mixtas_base"
+                                                                                               @input="liquidacion.igv_compras_mixtas_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">IGV mixtas (Cas. 111)</label>
+                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras_mixtas"
+                                                                                               @input="liquidacion.igv_compras_mixtas = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">Importaciones (Cas. 114)</label>
+                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_importaciones_base"
+                                                                                               @input="liquidacion.igv_importaciones_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">IGV importaciones (Cas. 115)</label>
+                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_importaciones"
+                                                                                               @input="liquidacion.igv_importaciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
@@ -773,18 +852,18 @@
                                                                                            placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                 </div>
 
-                                                                                {{-- Retenciones de IGV (Casillas 168, 179 y 164) --}}
+                                                                                {{-- Retenciones de IGV (casillas 176, 179 y 165) --}}
                                                                                 <div class="rounded-md bg-white p-2 border border-slate-200/80 space-y-1.5">
                                                                                     <div class="flex items-center justify-between">
                                                                                         <span class="text-[9.5px] font-bold text-slate-700">Retenciones de IGV</span>
                                                                                         <span class="text-[9px] font-mono text-blue-700 font-bold" x-show="liquidacion.igv_retenciones_saldo_siguiente > 0">
-                                                                                            Pasa M+1 (Cas. 164): S/ <span x-text="formatearNumeroConComas(liquidacion.igv_retenciones_saldo_siguiente)"></span>
+                                                                                            Pasa M+1 (Cas. 165): S/ <span x-text="formatearNumeroConComas(liquidacion.igv_retenciones_saldo_siguiente)"></span>
                                                                                         </span>
                                                                                     </div>
                                                                                     <div class="grid grid-cols-2 gap-2">
                                                                                         <div>
                                                                                             <div class="flex items-center justify-between gap-1 mb-0.5">
-                                                                                                <label class="text-[9px] text-slate-600 font-medium truncate">Saldo Ant. (Cas. 168)</label>
+                                                                                                <label class="text-[9px] text-slate-600 font-medium truncate">Saldo Ant. (Cas. 176)</label>
                                                                                                 <div class="flex items-center gap-1">
                                                                                                     <span x-show="retencionesSugeridas > 0" class="text-[8px] font-bold text-blue-700 bg-blue-100 px-1 py-0.2 rounded" title="Arrastre automático de retenciones de M-1">
                                                                                                         Auto M-1
@@ -809,18 +888,18 @@
                                                                                     </div>
                                                                                 </div>
 
-                                                                                {{-- Percepciones de IGV (Casillas 171, Del Mes y 166) --}}
+                                                                                {{-- Percepciones de IGV (casillas 168, 171 y 164) --}}
                                                                                 <div class="rounded-md bg-white p-2 border border-slate-200/80 space-y-1.5">
                                                                                     <div class="flex items-center justify-between">
                                                                                         <span class="text-[9.5px] font-bold text-slate-700">Percepciones de IGV</span>
                                                                                         <span class="text-[9px] font-mono text-amber-700 font-bold" x-show="liquidacion.igv_percepciones_saldo_siguiente > 0">
-                                                                                            Pasa M+1 (Cas. 166): S/ <span x-text="formatearNumeroConComas(liquidacion.igv_percepciones_saldo_siguiente)"></span>
+                                                                                            Pasa M+1 (Cas. 164): S/ <span x-text="formatearNumeroConComas(liquidacion.igv_percepciones_saldo_siguiente)"></span>
                                                                                         </span>
                                                                                     </div>
                                                                                     <div class="grid grid-cols-2 gap-2">
                                                                                         <div>
                                                                                             <div class="flex items-center justify-between gap-1 mb-0.5">
-                                                                                                <label class="text-[9px] text-slate-600 font-medium truncate">Saldo Ant. (Cas. 171)</label>
+                                                                                                <label class="text-[9px] text-slate-600 font-medium truncate">Saldo Ant. (Cas. 168)</label>
                                                                                                 <div class="flex items-center gap-1">
                                                                                                     <span x-show="percepcionesSugeridas > 0" class="text-[8px] font-bold text-amber-700 bg-amber-100 px-1 py-0.2 rounded" title="Arrastre automático de percepciones de M-1">
                                                                                                         Auto M-1
@@ -837,7 +916,7 @@
                                                                                                    placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
                                                                                         </div>
                                                                                         <div>
-                                                                                            <label class="text-[9px] text-slate-600 font-medium block mb-0.5 truncate">Del Periodo (Facturas/DSI)</label>
+                                                                                            <label class="text-[9px] text-slate-600 font-medium block mb-0.5 truncate">Del Periodo (Cas. 171)</label>
                                                                                             <input type="text" inputmode="decimal" x-model="liquidacion.igv_percepciones"
                                                                                                    @input="liquidacion.igv_percepciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
                                                                                                    placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
@@ -853,10 +932,13 @@
                                                                                     <div>
                                                                                         <p class="text-[9px] font-bold uppercase tracking-wider"
                                                                                            :class="liquidacion.es_zona_selva ? 'text-emerald-800' : (liquidacion.igv_resultante_pagar > 0 ? 'text-rose-700' : (liquidacion.igv_saldo_favor_siguiente > 0 ? 'text-emerald-700' : 'text-slate-600'))"
-                                                                                           x-text="liquidacion.es_zona_selva ? '🌴 Exonerado de IGV (Amazonía Ley 27037)' : (liquidacion.igv_resultante_pagar > 0 ? 'Impuesto a Pagar IGV (Cas. 180)' : (liquidacion.igv_saldo_favor_siguiente > 0 ? '🟢 Saldo a Favor Mes Siguiente (Cas. 184)' : 'Resultado IGV'))"></p>
+                                                                                           x-text="liquidacion.es_zona_selva ? '🌴 Exonerado de IGV (Amazonía Ley 27037)' : (liquidacion.igv_resultante_pagar > 0 ? 'IGV a pagar' : (liquidacion.igv_saldo_favor_siguiente > 0 ? 'Saldo a favor de IGV' : 'Resultado IGV'))"></p>
                                                                                         <p class="text-sm font-black mt-0.5 font-mono"
                                                                                            :class="liquidacion.es_zona_selva ? 'text-emerald-800' : (liquidacion.igv_resultante_pagar > 0 ? 'text-rose-700' : (liquidacion.igv_saldo_favor_siguiente > 0 ? 'text-emerald-700' : 'text-slate-700'))"
                                                                                            x-text="liquidacion.es_zona_selva ? 'S/ 0.00 (Exonerado)' : ('S/ ' + formatearNumeroConComas(liquidacion.igv_resultante_pagar > 0 ? liquidacion.igv_resultante_pagar : liquidacion.igv_saldo_favor_siguiente))"></p>
+                                                                                        <p x-show="cruceDj.igv !== null" class="mt-0.5 text-[10px] font-semibold"
+                                                                                           :class="cruceCuadra('igv') ? 'text-emerald-700' : 'text-amber-700'"
+                                                                                           x-text="cruceCuadra('igv') ? 'Cuadra con la DJ' : ('La DJ dice S/ ' + formatearNumeroConComas(cruceDj.igv))"></p>
                                                                                     </div>
                                                                                     <div class="flex flex-col items-end gap-1">
                                                                                         <span x-show="!liquidacion.es_zona_selva && liquidacion.igv_resultante_pagar > 0" class="text-[10px] font-bold text-rose-700 bg-rose-100/90 px-2 py-0.5 rounded-md border border-rose-200">
@@ -866,10 +948,10 @@
                                                                                             Amazonía
                                                                                         </span>
                                                                                         <div class="flex items-center gap-1">
-                                                                                            <span x-show="liquidacion.igv_retenciones_saldo_siguiente > 0" class="text-[8.5px] font-bold text-blue-700 bg-blue-100 px-1 rounded" title="Retenciones acumuladas que pasan a Casilla 168 del mes siguiente">
+                                                                                            <span x-show="liquidacion.igv_retenciones_saldo_siguiente > 0" class="text-[8.5px] font-bold text-blue-700 bg-blue-100 px-1 rounded" title="Retenciones de IGV que pasan a la casilla 176 del mes siguiente">
                                                                                                 Ret. M+1: S/ <span x-text="formatearNumeroConComas(liquidacion.igv_retenciones_saldo_siguiente)"></span>
                                                                                             </span>
-                                                                                            <span x-show="liquidacion.igv_percepciones_saldo_siguiente > 0" class="text-[8.5px] font-bold text-amber-700 bg-amber-100 px-1 rounded" title="Percepciones acumuladas que pasan a Casilla 171 del mes siguiente">
+                                                                                            <span x-show="liquidacion.igv_percepciones_saldo_siguiente > 0" class="text-[8.5px] font-bold text-amber-700 bg-amber-100 px-1 rounded" title="Percepciones de IGV que pasan a la casilla 168 del mes siguiente">
                                                                                                 Perc. M+1: S/ <span x-text="formatearNumeroConComas(liquidacion.igv_percepciones_saldo_siguiente)"></span>
                                                                                             </span>
                                                                                         </div>
@@ -908,7 +990,7 @@
                                                                                         <div class="flex items-center justify-between gap-1 mb-0.5">
                                                                                             <label class="text-[9px] text-slate-600 font-medium">Ingresos Netos del Mes (Cas. 301)</label>
                                                                                             <span class="text-[8px] text-indigo-700 bg-indigo-50 px-1 py-0.2 rounded font-mono">
-                                                                                                Cas. 100 + Cas. 105
+                                                                                                Cas. 100 − 102 + 105
                                                                                             </span>
                                                                                         </div>
                                                                                         <input type="text" inputmode="decimal" x-model="liquidacion.renta_base_ingresos"
@@ -923,7 +1005,7 @@
                                                                                     </div>
                                                                                 </div>
                                                                                 <div>
-                                                                                    <label class="text-[9px] text-slate-500 font-medium block">Pago a Cuenta Calculado (Ingresos &times; Tasa)</label>
+                                                                                    <label class="text-[9px] text-slate-500 font-medium block">Pago a cuenta calculado (Cas. 312)</label>
                                                                                     <input type="text" readonly x-model="liquidacion.renta_calculada"
                                                                                            placeholder="0.00" class="w-full rounded border border-slate-200 py-1 px-1.5 text-xs font-mono bg-slate-100 text-slate-700 cursor-default">
                                                                                 </div>
@@ -934,7 +1016,7 @@
                                                                                 <span class="block text-[10px] font-bold text-slate-700 uppercase tracking-wider">2. Compensaciones, ITAN y Créditos</span>
                                                                                 <div>
                                                                                     <div class="flex items-center justify-between gap-1 mb-0.5">
-                                                                                        <label class="text-[9px] text-slate-600 font-medium">Saldo Favor Ejercicio Anterior / DJ Anual 710 (Cas. 109)</label>
+                                                                                        <label class="text-[9px] text-slate-600 font-medium">Saldo a favor del período anterior (Cas. 303)</label>
                                                                                         <div class="flex items-center gap-1">
                                                                                             <span x-show="rentaSugeridaM1 > 0" class="text-[8.5px] font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.2 rounded" title="Arrastre automático de saldo de renta M-1">
                                                                                                 Auto M-1: S/ <span x-text="formatearNumeroConComas(rentaSugeridaM1)"></span>
@@ -978,7 +1060,7 @@
                                                                                         </div>
                                                                                         <div>
                                                                                             <div class="flex items-center justify-between gap-1 mb-0.5">
-                                                                                                <label class="text-[9px] text-slate-600 font-medium truncate">Compensación ITAN (Cas. 111)</label>
+                                                                                                <label class="text-[9px] text-slate-600 font-medium truncate">Compensación ITAN (Cas. 328)</label>
                                                                                                 <button type="button" x-show="limpiarMoneda(liquidacion.renta_itan_saldo_anterior) > 0"
                                                                                                         @click="aplicarCompensacionItanTotal()"
                                                                                                         class="text-[8px] font-bold text-purple-700 hover:text-purple-900 underline" title="Compensar el pago a cuenta con el ITAN disponible">
@@ -993,7 +1075,7 @@
                                                                                 </div>
 
                                                                                 <div>
-                                                                                    <label class="text-[9px] text-slate-600 font-medium block mb-0.5">Retenciones 3ra Cat. (Cas. 113)</label>
+                                                                                    <label class="text-[9px] text-slate-600 font-medium block mb-0.5">Retenciones 3ra Cat. (Cas. 326)</label>
                                                                                     <input type="text" inputmode="decimal" x-model="liquidacion.renta_retenciones"
                                                                                            @input="liquidacion.renta_retenciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
                                                                                            placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
@@ -1007,15 +1089,18 @@
                                                                                     <div>
                                                                                         <p class="text-[9px] font-bold uppercase tracking-wider"
                                                                                            :class="liquidacion.renta_resultante_pagar > 0 ? 'text-rose-700' : 'text-emerald-700'">
-                                                                                            <span x-show="liquidacion.renta_resultante_pagar > 0">Importe a Pagar de Renta (Cas. 302)</span>
+                                                                                            <span x-show="liquidacion.renta_resultante_pagar > 0">Importe a pagar de renta (Cas. 307 o 324)</span>
                                                                                             <span x-show="!(liquidacion.renta_resultante_pagar > 0)">
-                                                                                                <span x-show="liquidacion.renta_saldo_favor_siguiente > 0">Saldo a Favor para Mes Siguiente (Cas. 109)</span>
+                                                                                                <span x-show="liquidacion.renta_saldo_favor_siguiente > 0">Saldo a favor de renta para el mes siguiente</span>
                                                                                                 <span x-show="!(liquidacion.renta_saldo_favor_siguiente > 0)">Pago a Cuenta de Renta S/ 0.00</span>
                                                                                             </span>
                                                                                         </p>
                                                                                         <p class="text-sm font-black mt-0.5 font-mono"
                                                                                            :class="liquidacion.renta_resultante_pagar > 0 ? 'text-rose-700' : 'text-emerald-700'"
                                                                                            x-text="'S/ ' + formatearNumeroConComas(liquidacion.renta_resultante_pagar > 0 ? liquidacion.renta_resultante_pagar : liquidacion.renta_saldo_favor_siguiente)"></p>
+                                                                                        <p x-show="cruceDj.renta !== null" class="mt-0.5 text-[10px] font-semibold"
+                                                                                           :class="cruceCuadra('renta') ? 'text-emerald-700' : 'text-amber-700'"
+                                                                                           x-text="cruceCuadra('renta') ? 'Cuadra con la DJ' : ('La DJ dice S/ ' + formatearNumeroConComas(cruceDj.renta))"></p>
                                                                                     </div>
                                                                                     <div class="flex flex-col items-end gap-1">
                                                                                         <span x-show="liquidacion.renta_resultante_pagar > 0" class="text-[10px] font-bold text-indigo-700 bg-indigo-100/90 px-2 py-0.5 rounded-md border border-indigo-200"
@@ -1063,8 +1148,10 @@
                                                                 {{-- ACORDEÓN: HOJA DE LIQUIDACIÓN PDT 601 (PLAME) --}}
                                                                 <div x-show="bloque.id === 'pdt_601'" class="rounded-xl border border-purple-200 bg-gradient-to-b from-purple-50/70 to-slate-50 overflow-hidden shadow-2xs">
                                                                     {{-- Botón Cabecera del Acordeón PLAME --}}
-                                                                    <button type="button" @click="panelLiquidacionPlameAbierto = !panelLiquidacionPlameAbierto; if (panelLiquidacionPlameAbierto) encuadrarMenuDJ()"
-                                                                            class="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-purple-100/50 transition">
+                                                                    <div role="button" tabindex="0" @click="panelLiquidacionPlameAbierto = !panelLiquidacionPlameAbierto; if (panelLiquidacionPlameAbierto) encuadrarMenuDJ()"
+                                                                         @keydown.enter.prevent="panelLiquidacionPlameAbierto = !panelLiquidacionPlameAbierto; if (panelLiquidacionPlameAbierto) encuadrarMenuDJ()"
+                                                                         @keydown.space.prevent="panelLiquidacionPlameAbierto = !panelLiquidacionPlameAbierto; if (panelLiquidacionPlameAbierto) encuadrarMenuDJ()"
+                                                                         class="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-purple-100/50 transition cursor-pointer">
                                                                         <div class="flex items-center gap-2 min-w-0">
                                                                             <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-purple-600 text-white text-[11px] font-black">👥</span>
                                                                             <div class="min-w-0">
@@ -1078,6 +1165,10 @@
                                                                             </div>
                                                                         </div>
                                                                         <div class="flex items-center gap-1.5 shrink-0">
+                                                                            <button type="button" @click.stop="panelLiquidacionPlameAbierto = true; importacion['601'].abierta = true; $nextTick(() => encuadrarMenuDJ())"
+                                                                                    class="inline-flex items-center rounded-md border border-purple-300 bg-white px-1.5 py-0.5 text-[10px] font-bold text-purple-800 hover:bg-purple-50">
+                                                                                Importar DJ
+                                                                            </button>
                                                                             <span x-show="totalPlamePagar() > 0" class="text-[9px] font-bold bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded border border-purple-200">
                                                                                 Pagar: S/ <span x-text="formatearNumeroConComas(totalPlamePagar())"></span>
                                                                             </span>
@@ -1085,10 +1176,11 @@
                                                                                 <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
                                                                             </svg>
                                                                         </div>
-                                                                    </button>
+                                                                    </div>
 
                                                                     {{-- Contenedor Desplegable de la Hoja de Liquidación PLAME --}}
                                                                     <div x-show="panelLiquidacionPlameAbierto" class="border-t border-purple-200/80 p-3 space-y-3 bg-white">
+                                                                        @include('control.partials.importar-declaracion', ['formulario' => '601', 'tono' => 'purple'])
                                                                         {{-- Seguridad Social / Aportes Empleador --}}
                                                                         <div class="rounded-lg border border-slate-200 bg-slate-50/70 p-2 space-y-2">
                                                                             <div class="flex items-center justify-between">
@@ -1311,8 +1403,8 @@
                                                                             </div>
                                                                             <select x-model="deuda.nuevoMedio" class="w-full rounded-lg border border-gray-300 py-1.5 px-2 text-xs bg-white shadow-2xs hover:border-gray-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none transition">
                                                                                 <option value="">Medio de pago</option>
-                                                                                @foreach (\App\Enums\MedioPagoTributo::cases() as $medioPago)
-                                                                                    <option value="{{ $medioPago->value }}">{{ $medioPago->etiqueta() }}</option>
+                                                                                @foreach ($mediosPago as $medioPago)
+                                                                                    <option value="{{ $medioPago['codigo'] }}">{{ $medioPago['denominacion'] }}</option>
                                                                                 @endforeach
                                                                             </select>
                                                                             <input type="text" x-model="deuda.nuevaObs" placeholder="N° operación o nota" class="w-full rounded-lg border border-gray-300 py-1.5 px-2 text-xs bg-white shadow-2xs hover:border-gray-400 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none transition">
@@ -1553,7 +1645,7 @@
             };
         }
 
-        function controlCeldaDJ(clienteId, mesIdx, meses, declaraciones, regimen, rentaSugerida, departamento) {
+        function controlCeldaDJ(clienteId, mesIdx, meses, declaraciones, regimen, rentaSugerida, departamento, codigosLiquidacion) {
             return {
                 clienteId: clienteId,
                 mesIdx: mesIdx,
@@ -1562,6 +1654,7 @@
                 regimen: regimen || '',
                 rentaSugerida: rentaSugerida || '',
                 departamento: departamento || '',
+                codigosLiquidacion: codigosLiquidacion || ['1011', '1016', '3121', '3111', '3031', '3011', '5210', '5310', '3042', '3052', '6098', 'AFP'],
                 openDJ: false,
                 hoverDeuda: false,
                 activeTab: 'declaracion',
@@ -1603,9 +1696,19 @@
                     es_zona_selva: false,
                     ventas_base: '',
                     igv_ventas: '',
+                    igv_descuentos_base: '',
+                    igv_descuentos: '',
                     ventas_no_gravadas: '',
+                    igv_ventas_ley_base: '',
+                    igv_ventas_ley: '',
                     compras_base: '',
                     igv_compras: '',
+                    igv_compras_ley_base: '',
+                    igv_compras_ley: '',
+                    igv_compras_mixtas_base: '',
+                    igv_compras_mixtas: '',
+                    igv_importaciones_base: '',
+                    igv_importaciones: '',
                     igv_saldo_favor_anterior: '',
                     igv_retenciones_saldo_anterior: '',
                     igv_retenciones: '',
@@ -1634,6 +1737,14 @@
                     plame_afp_a_pagar: '',
                     notas_liquidacion: '',
                 },
+                importacion: {
+                    '621': { abierta: false, cargando: false, error: '', resultado: null, aplicada: false, marcarDeclarado: true },
+                    '601': { abierta: false, cargando: false, error: '', resultado: null, aplicada: false, marcarDeclarado: true },
+                },
+                preservarSunat: null,
+                determinacionSunat: { igv: false, renta: false },
+                otrasCasillasIgv: false,
+                cruceDj: { igv: null, renta: null },
 
                 init() {
                     this.hidratarDeudas(this.meses[this.mesIdx].deudas || []);
@@ -2820,6 +2931,7 @@
                 // --- Métodos de Hoja de Liquidación Tributaria (PDT 621 & PLAME 601) ---
                 inicializarLiquidacion() {
                     const mes = this.meses[this.mesIdx];
+                    this.olvidarImportacionSunat();
                     this.saldoFavorSugerido = parseFloat(mes?.saldo_favor_anterior_sugerido || 0);
                     this.retencionesSugeridas = parseFloat(mes?.retenciones_saldo_anterior_sugerido || 0);
                     this.percepcionesSugeridas = parseFloat(mes?.percepciones_saldo_anterior_sugerido || 0);
@@ -2834,6 +2946,19 @@
 
                     const depto = (this.departamento || '').toUpperCase().trim();
                     const esSelvaSugerido = ['LORETO', 'UCAYALI', 'SAN MARTIN', 'SAN MARTÍN', 'AMAZONAS', 'MADRE DE DIOS'].includes(depto);
+                    const guardada = mes?.liquidacion || null;
+                    const marcaSunat = guardada ? {
+                        igv: !!guardada.igv_determinado_por_sunat,
+                        renta: !!guardada.renta_determinado_por_sunat,
+                        igv_resultante_pagar: parseFloat(guardada.igv_resultante_pagar || 0),
+                        igv_saldo_favor_siguiente: parseFloat(guardada.igv_saldo_favor_siguiente || 0),
+                        igv_retenciones_saldo_siguiente: parseFloat(guardada.igv_retenciones_saldo_siguiente || 0),
+                        igv_percepciones_saldo_siguiente: parseFloat(guardada.igv_percepciones_saldo_siguiente || 0),
+                        renta_calculada: parseFloat(guardada.renta_calculada || 0),
+                        renta_resultante_pagar: parseFloat(guardada.renta_resultante_pagar || 0),
+                        renta_saldo_favor_siguiente: parseFloat(guardada.renta_saldo_favor_siguiente || 0),
+                        renta_tributo_codigo: guardada.renta_tributo_codigo || null,
+                    } : null;
 
                     if (mes && mes.liquidacion) {
                         const l = mes.liquidacion;
@@ -2862,9 +2987,19 @@
                             es_zona_selva: !!l.es_zona_selva,
                             ventas_base: l.ventas_base > 0 ? this.formatearNumeroConComas(l.ventas_base) : '',
                             igv_ventas: l.igv_ventas > 0 ? this.formatearNumeroConComas(l.igv_ventas) : (l.es_zona_selva ? '0.00' : ''),
+                            igv_descuentos_base: l.igv_descuentos_base > 0 ? this.formatearNumeroConComas(l.igv_descuentos_base) : '',
+                            igv_descuentos: l.igv_descuentos > 0 ? this.formatearNumeroConComas(l.igv_descuentos) : '',
                             ventas_no_gravadas: l.ventas_no_gravadas > 0 ? this.formatearNumeroConComas(l.ventas_no_gravadas) : '',
+                            igv_ventas_ley_base: l.igv_ventas_ley_base > 0 ? this.formatearNumeroConComas(l.igv_ventas_ley_base) : '',
+                            igv_ventas_ley: l.igv_ventas_ley > 0 ? this.formatearNumeroConComas(l.igv_ventas_ley) : '',
                             compras_base: l.compras_base > 0 ? this.formatearNumeroConComas(l.compras_base) : '',
                             igv_compras: l.igv_compras > 0 ? this.formatearNumeroConComas(l.igv_compras) : (l.es_zona_selva ? '0.00' : ''),
+                            igv_compras_ley_base: l.igv_compras_ley_base > 0 ? this.formatearNumeroConComas(l.igv_compras_ley_base) : '',
+                            igv_compras_ley: l.igv_compras_ley > 0 ? this.formatearNumeroConComas(l.igv_compras_ley) : '',
+                            igv_compras_mixtas_base: l.igv_compras_mixtas_base > 0 ? this.formatearNumeroConComas(l.igv_compras_mixtas_base) : '',
+                            igv_compras_mixtas: l.igv_compras_mixtas > 0 ? this.formatearNumeroConComas(l.igv_compras_mixtas) : '',
+                            igv_importaciones_base: l.igv_importaciones_base > 0 ? this.formatearNumeroConComas(l.igv_importaciones_base) : '',
+                            igv_importaciones: l.igv_importaciones > 0 ? this.formatearNumeroConComas(l.igv_importaciones) : '',
                             igv_saldo_favor_anterior: sfAnterior > 0 ? this.formatearNumeroConComas(sfAnterior) : '',
                             igv_retenciones_saldo_anterior: retAnterior > 0 ? this.formatearNumeroConComas(retAnterior) : '',
                             igv_retenciones: l.igv_retenciones > 0 ? this.formatearNumeroConComas(l.igv_retenciones) : '',
@@ -2899,9 +3034,19 @@
                             es_zona_selva: esSelvaSugerido,
                             ventas_base: '',
                             igv_ventas: esSelvaSugerido ? '0.00' : '',
+                            igv_descuentos_base: '',
+                            igv_descuentos: '',
                             ventas_no_gravadas: '',
+                            igv_ventas_ley_base: '',
+                            igv_ventas_ley: '',
                             compras_base: '',
                             igv_compras: esSelvaSugerido ? '0.00' : '',
+                            igv_compras_ley_base: '',
+                            igv_compras_ley: '',
+                            igv_compras_mixtas_base: '',
+                            igv_compras_mixtas: '',
+                            igv_importaciones_base: '',
+                            igv_importaciones: '',
                             igv_saldo_favor_anterior: this.saldoFavorSugerido > 0 ? this.formatearNumeroConComas(this.saldoFavorSugerido) : '',
                             igv_retenciones_saldo_anterior: this.retencionesSugeridas > 0 ? this.formatearNumeroConComas(this.retencionesSugeridas) : '',
                             igv_retenciones: '',
@@ -2931,7 +3076,11 @@
                             notas_liquidacion: '',
                         };
                     }
+                    this.otrasCasillasIgv = [
+                        'igv_ventas_ley', 'igv_compras_ley', 'igv_compras_mixtas', 'igv_importaciones',
+                    ].some((campo) => this.limpiarMoneda(this.liquidacion[campo]) > 0);
                     this.recalcularTotalesLiquidacion();
+                    this.anclarDeterminacionGuardada(marcaSunat);
                 },
 
                 onVentasBaseInput() {
@@ -2945,19 +3094,31 @@
                         this.liquidacion.igv_ventas = '';
                     }
 
-                    // Sincronización automática de Ventas a Renta (Casilla 301 = Cas. 100 + Cas. 105)
-                    const noGravadas = this.limpiarMoneda(this.liquidacion.ventas_no_gravadas);
-                    const totalIngresos = base + noGravadas;
-                    this.liquidacion.renta_base_ingresos = totalIngresos > 0 ? this.formatearNumeroConComas(totalIngresos) : '';
-
+                    this.sincronizarBaseRenta();
                     this.recalcularTotalesLiquidacion();
                 },
 
-                onVentasNoGravadasInput() {
+                onDescuentosBaseInput() {
+                    const base = this.limpiarMoneda(this.liquidacion.igv_descuentos_base);
+                    if (!this.liquidacion.es_zona_selva && base > 0) {
+                        this.liquidacion.igv_descuentos = this.formatearNumeroConComas(Math.round(base * 0.18 * 100) / 100);
+                    } else if (base <= 0) {
+                        this.liquidacion.igv_descuentos = '';
+                    }
+                    this.sincronizarBaseRenta();
+                    this.recalcularTotalesLiquidacion();
+                },
+
+                sincronizarBaseRenta() {
                     const base = this.limpiarMoneda(this.liquidacion.ventas_base);
+                    const descuentos = this.limpiarMoneda(this.liquidacion.igv_descuentos_base);
                     const noGravadas = this.limpiarMoneda(this.liquidacion.ventas_no_gravadas);
-                    const totalIngresos = base + noGravadas;
+                    const totalIngresos = Math.max(0, Math.round((base - descuentos + noGravadas) * 100) / 100);
                     this.liquidacion.renta_base_ingresos = totalIngresos > 0 ? this.formatearNumeroConComas(totalIngresos) : '';
+                },
+
+                onVentasNoGravadasInput() {
+                    this.sincronizarBaseRenta();
                     this.recalcularTotalesLiquidacion();
                 },
 
@@ -2995,7 +3156,11 @@
                     this.recalcularTotalesLiquidacion();
                 },
 
-                recalcularTotalesLiquidacion() {
+                recalcularTotalesLiquidacion(origen = 'usuario') {
+                    if (origen !== 'sunat') {
+                        this.determinacionSunat.igv = false;
+                        this.determinacionSunat.renta = false;
+                    }
                     if (this.liquidacion.es_zona_selva) {
                         this.liquidacion.igv_ventas = '0.00';
                         this.liquidacion.igv_compras = '0.00';
@@ -3004,8 +3169,17 @@
                         this.liquidacion.igv_retenciones_saldo_siguiente = 0;
                         this.liquidacion.igv_percepciones_saldo_siguiente = 0;
                     } else {
-                        const debito = this.limpiarMoneda(this.liquidacion.igv_ventas);
-                        const credito = this.limpiarMoneda(this.liquidacion.igv_compras);
+                        const debito = Math.round((
+                            this.limpiarMoneda(this.liquidacion.igv_ventas)
+                            + this.limpiarMoneda(this.liquidacion.igv_ventas_ley)
+                            - this.limpiarMoneda(this.liquidacion.igv_descuentos)
+                        ) * 100) / 100;
+                        const credito = Math.round((
+                            this.limpiarMoneda(this.liquidacion.igv_compras)
+                            + this.limpiarMoneda(this.liquidacion.igv_compras_ley)
+                            + this.limpiarMoneda(this.liquidacion.igv_compras_mixtas)
+                            + this.limpiarMoneda(this.liquidacion.igv_importaciones)
+                        ) * 100) / 100;
                         const saldoAnterior = this.limpiarMoneda(this.liquidacion.igv_saldo_favor_anterior);
 
                         const retencionesMes = this.limpiarMoneda(this.liquidacion.igv_retenciones);
@@ -3061,14 +3235,16 @@
                     } else {
                         const ingresos = this.limpiarMoneda(this.liquidacion.renta_base_ingresos);
                         const tasa = parseFloat(this.liquidacion.renta_tasa || (esRer ? 1.5 : 1.0));
-                        const rentaCalc = Math.round(ingresos * (tasa / 100) * 100) / 100;
+                        const rentaCalc = Math.round(ingresos * (tasa / 100));
                         this.liquidacion.renta_calculada = rentaCalc > 0 ? this.formatearNumeroConComas(rentaCalc) : (ingresos > 0 ? '0.00' : '');
 
                         if (esRer) {
                             const ret3ra = this.limpiarMoneda(this.liquidacion.renta_retenciones);
-                            this.liquidacion.renta_resultante_pagar = Math.max(0, Math.round((rentaCalc - ret3ra) * 100) / 100);
+                            const itan = this.limpiarMoneda(this.liquidacion.renta_compensacion_itan);
+                            const itanSaldoAnt = this.limpiarMoneda(this.liquidacion.renta_itan_saldo_anterior);
+                            this.liquidacion.renta_resultante_pagar = Math.max(0, Math.round((rentaCalc - ret3ra - itan) * 100) / 100);
                             this.liquidacion.renta_saldo_favor_siguiente = 0;
-                            this.liquidacion.renta_itan_saldo_siguiente = 0;
+                            this.liquidacion.renta_itan_saldo_siguiente = Math.max(0, Math.round((itanSaldoAnt - itan) * 100) / 100);
                         } else {
                             const saldoAnt = this.limpiarMoneda(this.liquidacion.renta_saldo_favor_anterior);
                             const itanSaldoAnt = this.limpiarMoneda(this.liquidacion.renta_itan_saldo_anterior);
@@ -3084,7 +3260,7 @@
                             if (totalComp >= rentaCalc) {
                                 this.liquidacion.renta_resultante_pagar = 0;
                                 const remanente = Math.round((totalComp - rentaCalc) * 100) / 100;
-                                // Casilla 109 saldo que pasa a siguiente mes (sólo remanente del saldo a favor del ejercicio)
+                                // Casilla 303: saldo a favor de renta que pasa al siguiente mes del ejercicio
                                 this.liquidacion.renta_saldo_favor_siguiente = Math.min(saldoAnt, remanente);
                             } else {
                                 this.liquidacion.renta_resultante_pagar = Math.round((rentaCalc - totalComp) * 100) / 100;
@@ -3174,10 +3350,214 @@
                 },
 
                 rentaCodigoSugerido() {
+                    if (this.rentaSugerida) {
+                        return this.rentaSugerida;
+                    }
                     const reg = (this.regimen || '').toUpperCase();
                     if (reg === 'RER') return '3111';
                     if (reg === 'GENERAL' || reg === 'RG') return '3031';
                     return '3121';
+                },
+
+                olvidarImportacionSunat() {
+                    this.preservarSunat = null;
+                    this.determinacionSunat.igv = false;
+                    this.determinacionSunat.renta = false;
+                    this.cruceDj = { igv: null, renta: null };
+                    this.otrasCasillasIgv = false;
+                    ['621', '601'].forEach((formulario) => {
+                        this.importacion[formulario].abierta = false;
+                        this.importacion[formulario].cargando = false;
+                        this.importacion[formulario].error = '';
+                        this.importacion[formulario].resultado = null;
+                        this.importacion[formulario].aplicada = false;
+                    });
+                },
+
+                anclarDeterminacionGuardada(marca) {
+                    if (!marca || (!marca.igv && !marca.renta)) {
+                        return;
+                    }
+
+                    const preservar = {};
+                    if (marca.igv) {
+                        preservar.igv_resultante_pagar = marca.igv_resultante_pagar;
+                        preservar.igv_saldo_favor_siguiente = marca.igv_saldo_favor_siguiente;
+                        preservar.igv_retenciones_saldo_siguiente = marca.igv_retenciones_saldo_siguiente;
+                        preservar.igv_percepciones_saldo_siguiente = marca.igv_percepciones_saldo_siguiente;
+                        this.determinacionSunat.igv = true;
+                    }
+                    if (marca.renta) {
+                        preservar.renta_calculada = marca.renta_calculada;
+                        preservar.renta_resultante_pagar = marca.renta_resultante_pagar;
+                        preservar.renta_saldo_favor_siguiente = marca.renta_saldo_favor_siguiente;
+                        if (marca.renta_tributo_codigo) {
+                            preservar.renta_tributo_codigo = marca.renta_tributo_codigo;
+                        }
+                        this.determinacionSunat.renta = true;
+                    }
+                    this.preservarSunat = preservar;
+                    this.restaurarOficiales(preservar);
+                },
+
+                soltarConstancia(formulario, event) {
+                    const archivos = event.dataTransfer && event.dataTransfer.files
+                        ? Array.from(event.dataTransfer.files)
+                        : [];
+                    this.enviarConstancia(formulario, archivos);
+                },
+
+                subirConstancia(formulario, event) {
+                    const archivos = event.target.files ? Array.from(event.target.files) : [];
+                    event.target.value = '';
+                    this.enviarConstancia(formulario, archivos);
+                },
+
+                async enviarConstancia(formulario, archivos) {
+                    if (!archivos.length) {
+                        return;
+                    }
+
+                    const estado = this.importacion[formulario];
+                    estado.cargando = true;
+                    estado.error = '';
+                    estado.resultado = null;
+                    estado.aplicada = false;
+
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+                        const body = new FormData();
+                        body.append('cliente_id', this.clienteId);
+                        body.append('periodo', this.meses[this.mesIdx].periodo);
+                        body.append('formulario', formulario);
+                        archivos.slice(0, 3).forEach((archivo) => body.append('archivos[]', archivo));
+
+                        const response = await fetch('{{ route('control.liquidacion.importar') }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body,
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            const detalle = data.errors ? Object.values(data.errors).flat()[0] : null;
+                            throw new Error(detalle || data.message || 'No se pudo leer la declaración.');
+                        }
+
+                        estado.resultado = data;
+                        if (!data.bloqueado) {
+                            this.aplicarConstancia(formulario, data);
+                        }
+                    } catch (err) {
+                        estado.error = err.message || 'No se pudo leer la declaración.';
+                    } finally {
+                        estado.cargando = false;
+                    }
+                },
+
+                aplicarConstancia(formulario, resultado) {
+                    if (!resultado || resultado.bloqueado) {
+                        return;
+                    }
+
+                    const campos = resultado.campos || {};
+                    const montos = [
+                        'ventas_base', 'igv_ventas', 'igv_descuentos_base', 'igv_descuentos',
+                        'ventas_no_gravadas', 'igv_ventas_ley_base', 'igv_ventas_ley',
+                        'compras_base', 'igv_compras', 'igv_compras_ley_base', 'igv_compras_ley',
+                        'igv_compras_mixtas_base', 'igv_compras_mixtas', 'igv_importaciones_base', 'igv_importaciones',
+                        'igv_saldo_favor_anterior', 'igv_retenciones_saldo_anterior', 'igv_retenciones',
+                        'igv_percepciones_saldo_anterior', 'igv_percepciones',
+                        'renta_base_ingresos', 'renta_saldo_favor_anterior', 'renta_itan_saldo_anterior',
+                        'renta_compensacion_itan', 'renta_retenciones',
+                        'plame_essalud_base', 'plame_essalud_a_pagar', 'plame_onp_a_pagar',
+                        'plame_renta_4ta_base', 'plame_renta_4ta_a_pagar', 'plame_renta_5ta_a_pagar', 'plame_afp_a_pagar',
+                    ];
+                    montos.forEach((campo) => {
+                        if (Object.prototype.hasOwnProperty.call(campos, campo)) {
+                            this.liquidacion[campo] = this.formatearNumeroConComas(campos[campo]);
+                        }
+                    });
+
+                    if (Object.prototype.hasOwnProperty.call(campos, 'renta_tasa')) {
+                        this.liquidacion.renta_tasa = campos.renta_tasa;
+                    }
+                    if (Object.prototype.hasOwnProperty.call(campos, 'es_zona_selva')) {
+                        this.liquidacion.es_zona_selva = !!campos.es_zona_selva;
+                    }
+                    if (campos.notas_liquidacion && !String(this.liquidacion.notas_liquidacion || '').trim()) {
+                        this.liquidacion.notas_liquidacion = campos.notas_liquidacion;
+                    }
+
+                    const preservar = resultado.preservar || {};
+                    this.recalcularTotalesLiquidacion('sunat');
+
+                    if (formulario === '621') {
+                        this.preservarSunat = preservar.tributo_1016 !== undefined ? preservar : null;
+                        if (preservar.renta_tributo_codigo) {
+                            this.rentaSugerida = String(preservar.renta_tributo_codigo);
+                        }
+                        const control = resultado.control || {};
+                        this.cruceDj = {
+                            igv: control.igv === null || control.igv === undefined ? null : parseFloat(control.igv),
+                            renta: control.renta === null || control.renta === undefined ? null : parseFloat(control.renta),
+                        };
+                        this.otrasCasillasIgv = [
+                            'igv_ventas_ley', 'igv_compras_ley', 'igv_compras_mixtas', 'igv_importaciones',
+                        ].some((campo) => this.limpiarMoneda(this.liquidacion[campo]) > 0);
+                    }
+
+                    this.importacion[formulario].aplicada = true;
+                },
+
+                cruceCuadra(impuesto) {
+                    const oficial = this.cruceDj[impuesto];
+                    if (oficial === null || oficial === undefined || Number.isNaN(oficial)) {
+                        return false;
+                    }
+                    const calculado = impuesto === 'igv'
+                        ? parseFloat(this.liquidacion.igv_resultante_pagar || 0)
+                        : parseFloat(this.liquidacion.renta_resultante_pagar || 0);
+
+                    return Math.abs(calculado - oficial) < 0.05;
+                },
+
+                restaurarOficiales(preservar) {
+                    const numericos = [
+                        'igv_resultante_pagar', 'igv_saldo_favor_siguiente',
+                        'igv_retenciones_saldo_siguiente', 'igv_percepciones_saldo_siguiente',
+                        'renta_resultante_pagar', 'renta_saldo_favor_siguiente',
+                    ];
+                    numericos.forEach((campo) => {
+                        if (Object.prototype.hasOwnProperty.call(preservar, campo) && preservar[campo] !== null) {
+                            this.liquidacion[campo] = parseFloat(preservar[campo]);
+                        }
+                    });
+                    if (Object.prototype.hasOwnProperty.call(preservar, 'renta_calculada') && preservar.renta_calculada !== null) {
+                        this.liquidacion.renta_calculada = this.formatearNumeroConComas(preservar.renta_calculada);
+                    }
+                },
+
+                async marcarDeclaradoSiCorresponde() {
+                    const mes = this.meses[this.mesIdx];
+                    let cambio = false;
+                    if (this.importacion['621'].aplicada && this.importacion['621'].marcarDeclarado && mes.pdt !== 'Declarado') {
+                        mes.pdt = 'Declarado';
+                        cambio = true;
+                    }
+                    if (this.importacion['601'].aplicada && this.importacion['601'].marcarDeclarado && mes.ple !== 'Declarado') {
+                        mes.ple = 'Declarado';
+                        cambio = true;
+                    }
+                    if (!cambio) {
+                        return;
+                    }
+
+                    mes.estado = this.calcularEstadoMaestro(mes.sire, mes.pdt, mes.ple);
+                    await this.actualizarEstadoMaestro(this.mesIdx);
                 },
 
                 async guardarLiquidacion(actualizarDeudas = true) {
@@ -3193,9 +3573,19 @@
                             es_zona_selva: this.liquidacion.es_zona_selva,
                             ventas_base: this.limpiarMoneda(this.liquidacion.ventas_base),
                             igv_ventas: this.limpiarMoneda(this.liquidacion.igv_ventas),
+                            igv_descuentos_base: this.limpiarMoneda(this.liquidacion.igv_descuentos_base),
+                            igv_descuentos: this.limpiarMoneda(this.liquidacion.igv_descuentos),
                             ventas_no_gravadas: this.limpiarMoneda(this.liquidacion.ventas_no_gravadas),
+                            igv_ventas_ley_base: this.limpiarMoneda(this.liquidacion.igv_ventas_ley_base),
+                            igv_ventas_ley: this.limpiarMoneda(this.liquidacion.igv_ventas_ley),
                             compras_base: this.limpiarMoneda(this.liquidacion.compras_base),
                             igv_compras: this.limpiarMoneda(this.liquidacion.igv_compras),
+                            igv_compras_ley_base: this.limpiarMoneda(this.liquidacion.igv_compras_ley_base),
+                            igv_compras_ley: this.limpiarMoneda(this.liquidacion.igv_compras_ley),
+                            igv_compras_mixtas_base: this.limpiarMoneda(this.liquidacion.igv_compras_mixtas_base),
+                            igv_compras_mixtas: this.limpiarMoneda(this.liquidacion.igv_compras_mixtas),
+                            igv_importaciones_base: this.limpiarMoneda(this.liquidacion.igv_importaciones_base),
+                            igv_importaciones: this.limpiarMoneda(this.liquidacion.igv_importaciones),
                             igv_saldo_favor_anterior: this.limpiarMoneda(this.liquidacion.igv_saldo_favor_anterior),
                             igv_retenciones_saldo_anterior: this.limpiarMoneda(this.liquidacion.igv_retenciones_saldo_anterior),
                             igv_retenciones: this.limpiarMoneda(this.liquidacion.igv_retenciones),
@@ -3220,6 +3610,43 @@
                             notas_liquidacion: this.liquidacion.notas_liquidacion || null,
                             actualizar_deudas: actualizarDeudas,
                         };
+
+                        if (this.determinacionSunat.igv && this.preservarSunat) {
+                            payload.respetar_igv_sunat = true;
+                            const igvOficial = {
+                                igv_resultante_pagar: 'igv_resultante_oficial',
+                                igv_saldo_favor_siguiente: 'igv_saldo_favor_oficial',
+                                igv_retenciones_saldo_siguiente: 'igv_retenciones_siguiente_oficial',
+                                igv_percepciones_saldo_siguiente: 'igv_percepciones_siguiente_oficial',
+                            };
+                            Object.entries(igvOficial).forEach(([origen, destino]) => {
+                                if (Object.prototype.hasOwnProperty.call(this.preservarSunat, origen)) {
+                                    payload[destino] = this.preservarSunat[origen];
+                                }
+                            });
+                            if (Object.prototype.hasOwnProperty.call(this.preservarSunat, 'tributo_1016')) {
+                                payload.tributo_igv_105 = this.preservarSunat.tributo_1016;
+                            }
+                        }
+                        if (this.preservarSunat && Object.prototype.hasOwnProperty.call(this.preservarSunat, 'tributo_1016')) {
+                            payload.tributo_igv_105 = this.preservarSunat.tributo_1016;
+                        }
+                        if (this.determinacionSunat.renta && this.preservarSunat) {
+                            payload.respetar_renta_sunat = true;
+                            const rentaOficial = {
+                                renta_calculada: 'renta_calculada_oficial',
+                                renta_resultante_pagar: 'renta_resultante_oficial',
+                                renta_saldo_favor_siguiente: 'renta_saldo_favor_oficial',
+                            };
+                            Object.entries(rentaOficial).forEach(([origen, destino]) => {
+                                if (Object.prototype.hasOwnProperty.call(this.preservarSunat, origen)) {
+                                    payload[destino] = this.preservarSunat[origen];
+                                }
+                            });
+                            if (this.preservarSunat.renta_tributo_codigo) {
+                                payload.renta_tributo_codigo = this.preservarSunat.renta_tributo_codigo;
+                            }
+                        }
 
                         const response = await fetch('{{ route('control.liquidacion') }}', {
                             method: 'POST',
@@ -3256,6 +3683,7 @@
                         }
 
                         this.guardadoLiquidacionExitoso = true;
+                        await this.marcarDeclaradoSiCorresponde();
                         this.encuadrarMenuDJ();
                         setTimeout(() => { this.guardadoLiquidacionExitoso = false; }, 2500);
                     } catch (err) {
@@ -3268,7 +3696,7 @@
 
                 async limpiarHojaLiquidacion() {
                     const tieneLiquidacionGuardada = !!this.meses[this.mesIdx]?.liquidacion;
-                    const deudasLiquidacion = (this.deudas || []).filter(d => ['1011', '1016', '3121', '3111', '3031', '3011', '5210', '5310', '3042', '3052', 'AFP'].includes(d.tributo_codigo));
+                    const deudasLiquidacion = (this.deudas || []).filter(d => this.codigosLiquidacion.includes(d.tributo_codigo));
                     const abonosTotales = deudasLiquidacion.reduce((acc, d) => acc + (parseFloat(d.monto_abonado || 0)), 0);
                     const deudasPendientes = deudasLiquidacion.filter(d => parseFloat(d.saldo_pendiente || d.monto_deuda_inicial || 0) > 0);
 
@@ -3340,9 +3768,19 @@
                         es_zona_selva: esSelvaSugerido,
                         ventas_base: '',
                         igv_ventas: esSelvaSugerido ? '0.00' : '',
+                        igv_descuentos_base: '',
+                        igv_descuentos: '',
                         ventas_no_gravadas: '',
+                        igv_ventas_ley_base: '',
+                        igv_ventas_ley: '',
                         compras_base: '',
                         igv_compras: esSelvaSugerido ? '0.00' : '',
+                        igv_compras_ley_base: '',
+                        igv_compras_ley: '',
+                        igv_compras_mixtas_base: '',
+                        igv_compras_mixtas: '',
+                        igv_importaciones_base: '',
+                        igv_importaciones: '',
                         igv_saldo_favor_anterior: '',
                         igv_retenciones_saldo_anterior: '',
                         igv_retenciones: '',
@@ -3371,6 +3809,7 @@
                         plame_afp_a_pagar: '',
                         notas_liquidacion: '',
                     };
+                    this.olvidarImportacionSunat();
                     this.recalcularTotalesLiquidacion();
                 }
             };

@@ -5,6 +5,7 @@ namespace App\Services\ControlImpuestos;
 use App\Enums\TipoTributoSunat;
 use App\Models\DeudaTributaria;
 use App\Models\Operacion;
+use App\Services\Catalogos\CatalogoSunat;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -26,8 +27,8 @@ class RegistrarTributoPeriodo
      */
     public function registrar(Operacion $operacion, array $datos): void
     {
-        $codigo = (string) ($datos['tributo_codigo'] ?? '');
-        if (TipoTributoSunat::tryFrom($codigo) === null) {
+        $codigo = strtoupper(trim((string) ($datos['tributo_codigo'] ?? '')));
+        if (! app(CatalogoSunat::class)->aceptaTributo($codigo, $operacion->estudio_id)) {
             throw ValidationException::withMessages([
                 'tributo_codigo' => 'Seleccione un tributo SUNAT válido.',
             ]);

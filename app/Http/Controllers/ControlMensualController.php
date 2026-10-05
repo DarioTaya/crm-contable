@@ -11,6 +11,7 @@ use App\Models\CronogramaSunat;
 use App\Models\DeudaTributaria;
 use App\Models\LiquidacionPeriodo;
 use App\Models\Operacion;
+use App\Services\Catalogos\CatalogoSunat;
 use App\Services\ControlImpuestos\CalculadorLiquidacionService;
 use App\Services\ControlImpuestos\RegistrarTributoPeriodo;
 use App\Services\CronogramaSunatService;
@@ -164,9 +165,19 @@ class ControlMensualController extends Controller
                     'es_zona_selva' => (bool) $liq->es_zona_selva,
                     'ventas_base' => (float) $liq->ventas_base,
                     'igv_ventas' => (float) $liq->igv_ventas,
+                    'igv_descuentos_base' => (float) $liq->igv_descuentos_base,
+                    'igv_descuentos' => (float) $liq->igv_descuentos,
                     'ventas_no_gravadas' => (float) $liq->ventas_no_gravadas,
+                    'igv_ventas_ley_base' => (float) $liq->igv_ventas_ley_base,
+                    'igv_ventas_ley' => (float) $liq->igv_ventas_ley,
                     'compras_base' => (float) $liq->compras_base,
                     'igv_compras' => (float) $liq->igv_compras,
+                    'igv_compras_ley_base' => (float) $liq->igv_compras_ley_base,
+                    'igv_compras_ley' => (float) $liq->igv_compras_ley,
+                    'igv_compras_mixtas_base' => (float) $liq->igv_compras_mixtas_base,
+                    'igv_compras_mixtas' => (float) $liq->igv_compras_mixtas,
+                    'igv_importaciones_base' => (float) $liq->igv_importaciones_base,
+                    'igv_importaciones' => (float) $liq->igv_importaciones,
                     'igv_saldo_favor_anterior' => (float) $liq->igv_saldo_favor_anterior,
                     'igv_retenciones_saldo_anterior' => (float) $liq->igv_retenciones_saldo_anterior,
                     'igv_retenciones' => (float) $liq->igv_retenciones,
@@ -176,6 +187,7 @@ class ControlMensualController extends Controller
                     'igv_percepciones_saldo_siguiente' => (float) $liq->igv_percepciones_saldo_siguiente,
                     'igv_saldo_favor_siguiente' => (float) $liq->igv_saldo_favor_siguiente,
                     'igv_resultante_pagar' => (float) $liq->igv_resultante_pagar,
+                    'igv_determinado_por_sunat' => (bool) $liq->igv_determinado_por_sunat,
                     'renta_base_ingresos' => (float) $liq->renta_base_ingresos,
                     'renta_tasa' => (float) $liq->renta_tasa,
                     'renta_calculada' => (float) $liq->renta_calculada,
@@ -186,6 +198,8 @@ class ControlMensualController extends Controller
                     'renta_retenciones' => (float) $liq->renta_retenciones,
                     'renta_saldo_favor_siguiente' => (float) $liq->renta_saldo_favor_siguiente,
                     'renta_resultante_pagar' => (float) $liq->renta_resultante_pagar,
+                    'renta_determinado_por_sunat' => (bool) $liq->renta_determinado_por_sunat,
+                    'renta_tributo_codigo' => $liq->renta_tributo_codigo,
                     'plame_essalud_base' => (float) $liq->plame_essalud_base,
                     'plame_essalud_a_pagar' => (float) $liq->plame_essalud_a_pagar,
                     'plame_onp_a_pagar' => (float) $liq->plame_onp_a_pagar,
@@ -254,7 +268,9 @@ class ControlMensualController extends Controller
             ];
         }
 
-        $catalogoTributos = TipoTributoSunat::catalogoFormulario();
+        $catalogo = app(CatalogoSunat::class);
+        $catalogoTributos = $catalogo->catalogoFormulario();
+        $mediosPago = $catalogo->mediosParaSelector();
         $cargaMasiva = $this->configuracionCargaMasiva($anio, $mesesEncabezado);
 
         return view('control.index', array_merge(compact(
@@ -263,6 +279,7 @@ class ControlMensualController extends Controller
             'mesesEncabezado',
             'matrizClientes',
             'catalogoTributos',
+            'mediosPago',
             'cargaMasiva',
         ), $kpis));
     }
@@ -676,9 +693,19 @@ class ControlMensualController extends Controller
             'es_zona_selva' => ['nullable', 'boolean'],
             'ventas_base' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'igv_ventas' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_descuentos_base' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_descuentos' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'ventas_no_gravadas' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_ventas_ley_base' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_ventas_ley' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'compras_base' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'igv_compras' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_compras_ley_base' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_compras_ley' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_compras_mixtas_base' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_compras_mixtas' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_importaciones_base' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_importaciones' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'igv_saldo_favor_anterior' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'igv_retenciones_saldo_anterior' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
             'igv_retenciones' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
@@ -702,6 +729,16 @@ class ControlMensualController extends Controller
             'vencimiento_deuda' => ['nullable', 'date'],
             'notas_liquidacion' => ['nullable', 'string', 'max:1000'],
             'actualizar_deudas' => ['nullable', 'boolean'],
+            'respetar_igv_sunat' => ['nullable', 'boolean'],
+            'respetar_renta_sunat' => ['nullable', 'boolean'],
+            'igv_resultante_oficial' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_saldo_favor_oficial' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_retenciones_siguiente_oficial' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'igv_percepciones_siguiente_oficial' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'renta_calculada_oficial' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'renta_resultante_oficial' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'renta_saldo_favor_oficial' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
+            'tributo_igv_105' => ['nullable', 'numeric', 'min:0', 'max:999999999.99'],
         ], [
             'cliente_id.required' => 'El cliente es obligatorio.',
             'cliente_id.exists' => 'El cliente no existe.',
@@ -738,9 +775,19 @@ class ControlMensualController extends Controller
                 'es_zona_selva' => $request->boolean('es_zona_selva'),
                 'ventas_base' => $validated['ventas_base'] ?? 0,
                 'igv_ventas' => $validated['igv_ventas'] ?? 0,
+                'igv_descuentos_base' => $validated['igv_descuentos_base'] ?? 0,
+                'igv_descuentos' => $validated['igv_descuentos'] ?? 0,
                 'ventas_no_gravadas' => $validated['ventas_no_gravadas'] ?? 0,
+                'igv_ventas_ley_base' => $validated['igv_ventas_ley_base'] ?? 0,
+                'igv_ventas_ley' => $validated['igv_ventas_ley'] ?? 0,
                 'compras_base' => $validated['compras_base'] ?? 0,
                 'igv_compras' => $validated['igv_compras'] ?? 0,
+                'igv_compras_ley_base' => $validated['igv_compras_ley_base'] ?? 0,
+                'igv_compras_ley' => $validated['igv_compras_ley'] ?? 0,
+                'igv_compras_mixtas_base' => $validated['igv_compras_mixtas_base'] ?? 0,
+                'igv_compras_mixtas' => $validated['igv_compras_mixtas'] ?? 0,
+                'igv_importaciones_base' => $validated['igv_importaciones_base'] ?? 0,
+                'igv_importaciones' => $validated['igv_importaciones'] ?? 0,
                 'igv_saldo_favor_anterior' => $validated['igv_saldo_favor_anterior'] ?? 0,
                 'igv_retenciones_saldo_anterior' => $validated['igv_retenciones_saldo_anterior'] ?? 0,
                 'igv_retenciones' => $validated['igv_retenciones'] ?? 0,
@@ -764,6 +811,7 @@ class ControlMensualController extends Controller
             ]);
 
             $liquidacion->recalcularDeterminacion();
+            $this->respetarDeterminacionSunat($liquidacion, $validated);
             $liquidacion->save();
 
             // Propagación en cascada de arrastres de crédito a los siguientes meses del ejercicio
@@ -811,23 +859,22 @@ class ControlMensualController extends Controller
                     $deudaIgv->save();
                 }
 
-                // 2. Renta (3121, 3111, 3031)
-                $rentaCodigo = $validated['renta_tributo_codigo'] ?? null;
-                $rentaTributo = $rentaCodigo
-                    ? TipoTributoSunat::tryFrom($rentaCodigo)
-                    : TipoTributoSunat::rentaDelRegimen($cliente->regimen_tributario);
-
-                if (! $rentaTributo) {
-                    $rentaTributo = TipoTributoSunat::RentaMype;
+                // 2. Renta mensual, según el régimen configurado en Códigos SUNAT
+                $catalogo = app(CatalogoSunat::class);
+                $rentaCodigo = strtoupper(trim((string) ($validated['renta_tributo_codigo'] ?? '')));
+                if ($rentaCodigo === '' || ! $catalogo->aceptaTributo($rentaCodigo, $cliente->estudio_id)) {
+                    $rentaCodigo = $catalogo->codigoRentaDelRegimen($cliente->regimen_tributario, $cliente->estudio_id)
+                        ?? TipoTributoSunat::rentaDelRegimen($cliente->regimen_tributario)?->value
+                        ?? TipoTributoSunat::RentaMype->value;
                 }
 
-                $deudaRenta = $operacion->deudasTributarias()->where('tributo_codigo', $rentaTributo->value)->first();
+                $deudaRenta = $operacion->deudasTributarias()->where('tributo_codigo', $rentaCodigo)->first();
                 if ((float) $liquidacion->renta_resultante_pagar > 0) {
                     $vencRentaFinal = $deudaRenta?->vencimiento_deuda?->format('Y-m-d') ?: $vencimientoOficialPdt;
 
                     $this->registroTributo->registrar($operacion, [
                         'deuda_id' => $deudaRenta?->id,
-                        'tributo_codigo' => $rentaTributo->value,
+                        'tributo_codigo' => $rentaCodigo,
                         'monto_deuda_inicial' => $liquidacion->renta_resultante_pagar,
                         'vencimiento_deuda' => $vencRentaFinal,
                         'permitir_ajuste_abono' => true,
@@ -842,11 +889,11 @@ class ControlMensualController extends Controller
 
                 // 3. Tributos de Planilla y Retenciones (PLAME PDT 601)
                 $tributosPlame = [
-                    '5210' => (float) $liquidacion->plame_essalud_a_pagar,
-                    '5310' => (float) $liquidacion->plame_onp_a_pagar,
-                    '3042' => (float) $liquidacion->plame_renta_4ta_a_pagar,
-                    '3052' => (float) $liquidacion->plame_renta_5ta_a_pagar,
-                    'AFP' => (float) $liquidacion->plame_afp_a_pagar,
+                    $catalogo->codigoDelRol('essalud', $cliente->estudio_id) ?? '5210' => (float) $liquidacion->plame_essalud_a_pagar,
+                    $catalogo->codigoDelRol('onp', $cliente->estudio_id) ?? '5310' => (float) $liquidacion->plame_onp_a_pagar,
+                    $catalogo->codigoDelRol('renta_4ta', $cliente->estudio_id) ?? '3042' => (float) $liquidacion->plame_renta_4ta_a_pagar,
+                    $catalogo->codigoDelRol('renta_5ta', $cliente->estudio_id) ?? '3052' => (float) $liquidacion->plame_renta_5ta_a_pagar,
+                    $catalogo->codigoDelRol('afp', $cliente->estudio_id) ?? TipoTributoSunat::Afp->value => (float) $liquidacion->plame_afp_a_pagar,
                 ];
 
                 foreach ($tributosPlame as $codPlame => $montoPlame) {
@@ -869,6 +916,10 @@ class ControlMensualController extends Controller
                     }
                 }
 
+                if (array_key_exists('tributo_igv_105', $validated) && $validated['tributo_igv_105'] !== null) {
+                    $this->registrarIgvTasaEspecial($operacion, (float) $validated['tributo_igv_105'], $vencimientoOficialPdt);
+                }
+
                 $operacion->refrescarResumenDeudas();
             }
 
@@ -883,9 +934,19 @@ class ControlMensualController extends Controller
                     'es_zona_selva' => (bool) $liquidacion->es_zona_selva,
                     'ventas_base' => (float) $liquidacion->ventas_base,
                     'igv_ventas' => (float) $liquidacion->igv_ventas,
+                    'igv_descuentos_base' => (float) $liquidacion->igv_descuentos_base,
+                    'igv_descuentos' => (float) $liquidacion->igv_descuentos,
                     'ventas_no_gravadas' => (float) $liquidacion->ventas_no_gravadas,
+                    'igv_ventas_ley_base' => (float) $liquidacion->igv_ventas_ley_base,
+                    'igv_ventas_ley' => (float) $liquidacion->igv_ventas_ley,
                     'compras_base' => (float) $liquidacion->compras_base,
                     'igv_compras' => (float) $liquidacion->igv_compras,
+                    'igv_compras_ley_base' => (float) $liquidacion->igv_compras_ley_base,
+                    'igv_compras_ley' => (float) $liquidacion->igv_compras_ley,
+                    'igv_compras_mixtas_base' => (float) $liquidacion->igv_compras_mixtas_base,
+                    'igv_compras_mixtas' => (float) $liquidacion->igv_compras_mixtas,
+                    'igv_importaciones_base' => (float) $liquidacion->igv_importaciones_base,
+                    'igv_importaciones' => (float) $liquidacion->igv_importaciones,
                     'igv_saldo_favor_anterior' => (float) $liquidacion->igv_saldo_favor_anterior,
                     'igv_retenciones_saldo_anterior' => (float) $liquidacion->igv_retenciones_saldo_anterior,
                     'igv_retenciones' => (float) $liquidacion->igv_retenciones,
@@ -895,6 +956,7 @@ class ControlMensualController extends Controller
                     'igv_percepciones_saldo_siguiente' => (float) $liquidacion->igv_percepciones_saldo_siguiente,
                     'igv_saldo_favor_siguiente' => (float) $liquidacion->igv_saldo_favor_siguiente,
                     'igv_resultante_pagar' => (float) $liquidacion->igv_resultante_pagar,
+                    'igv_determinado_por_sunat' => (bool) $liquidacion->igv_determinado_por_sunat,
                     'renta_base_ingresos' => (float) $liquidacion->renta_base_ingresos,
                     'renta_tasa' => (float) $liquidacion->renta_tasa,
                     'renta_calculada' => (float) $liquidacion->renta_calculada,
@@ -905,6 +967,8 @@ class ControlMensualController extends Controller
                     'renta_retenciones' => (float) $liquidacion->renta_retenciones,
                     'renta_saldo_favor_siguiente' => (float) $liquidacion->renta_saldo_favor_siguiente,
                     'renta_resultante_pagar' => (float) $liquidacion->renta_resultante_pagar,
+                    'renta_determinado_por_sunat' => (bool) $liquidacion->renta_determinado_por_sunat,
+                    'renta_tributo_codigo' => $liquidacion->renta_tributo_codigo,
                     'plame_essalud_base' => (float) $liquidacion->plame_essalud_base,
                     'plame_essalud_a_pagar' => (float) $liquidacion->plame_essalud_a_pagar,
                     'plame_onp_a_pagar' => (float) $liquidacion->plame_onp_a_pagar,
@@ -955,7 +1019,7 @@ class ControlMensualController extends Controller
                 $operacion->liquidacionPeriodo()?->delete();
 
                 // Eliminar deudas de liquidación que no tengan abonos (PDT 621 y PLAME 601)
-                $codigosLiquidacion = ['1011', '1016', '3121', '3111', '3031', '3011', '5210', '5310', '3042', '3052', 'AFP'];
+                $codigosLiquidacion = app(CatalogoSunat::class)->codigosDeLiquidacion($cliente->estudio_id);
                 $deudasLiquidacion = $operacion->deudasTributarias()
                     ->whereIn('tributo_codigo', $codigosLiquidacion)
                     ->get();
@@ -1004,6 +1068,80 @@ class ControlMensualController extends Controller
                 'kpis' => $this->calcularKpis($anio),
             ]);
         });
+    }
+
+    /**
+     * Conserva el importe que SUNAT determinó cuando el motor interno no alcanza
+     * a reproducirlo (pagos previos, intereses, prorrata u otras casillas).
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function respetarDeterminacionSunat(LiquidacionPeriodo $liquidacion, array $validated): void
+    {
+        $liquidacion->igv_determinado_por_sunat = ! empty($validated['respetar_igv_sunat']);
+        $liquidacion->renta_determinado_por_sunat = ! empty($validated['respetar_renta_sunat']);
+        $liquidacion->renta_tributo_codigo = $validated['renta_tributo_codigo'] ?? null;
+
+        if (! empty($validated['respetar_igv_sunat'])) {
+            if (array_key_exists('igv_resultante_oficial', $validated) && $validated['igv_resultante_oficial'] !== null) {
+                $liquidacion->igv_resultante_pagar = $validated['igv_resultante_oficial'];
+            }
+            if (array_key_exists('igv_saldo_favor_oficial', $validated) && $validated['igv_saldo_favor_oficial'] !== null) {
+                $liquidacion->igv_saldo_favor_siguiente = $validated['igv_saldo_favor_oficial'];
+            } elseif ((float) ($validated['igv_resultante_oficial'] ?? 0) > 0) {
+                $liquidacion->igv_saldo_favor_siguiente = 0;
+            }
+            if (array_key_exists('igv_retenciones_siguiente_oficial', $validated) && $validated['igv_retenciones_siguiente_oficial'] !== null) {
+                $liquidacion->igv_retenciones_saldo_siguiente = $validated['igv_retenciones_siguiente_oficial'];
+            }
+            if (array_key_exists('igv_percepciones_siguiente_oficial', $validated) && $validated['igv_percepciones_siguiente_oficial'] !== null) {
+                $liquidacion->igv_percepciones_saldo_siguiente = $validated['igv_percepciones_siguiente_oficial'];
+            }
+        }
+
+        if (! empty($validated['respetar_renta_sunat'])) {
+            if (array_key_exists('renta_calculada_oficial', $validated) && $validated['renta_calculada_oficial'] !== null) {
+                $liquidacion->renta_calculada = $validated['renta_calculada_oficial'];
+            }
+            if (array_key_exists('renta_resultante_oficial', $validated) && $validated['renta_resultante_oficial'] !== null) {
+                $liquidacion->renta_resultante_pagar = $validated['renta_resultante_oficial'];
+            }
+            if (array_key_exists('renta_saldo_favor_oficial', $validated) && $validated['renta_saldo_favor_oficial'] !== null) {
+                $liquidacion->renta_saldo_favor_siguiente = $validated['renta_saldo_favor_oficial'];
+            }
+        }
+    }
+
+    /**
+     * El IGV del 10% (tributo 1016) no entra en la casilla de 18% y se registra aparte.
+     */
+    private function registrarIgvTasaEspecial(Operacion $operacion, float $monto, string $vencimiento): void
+    {
+        $deuda = $operacion->deudasTributarias()->where('tributo_codigo', '1016')->first();
+        if ($monto > 0) {
+            $this->registroTributo->registrar($operacion, [
+                'deuda_id' => $deuda?->id,
+                'tributo_codigo' => '1016',
+                'monto_deuda_inicial' => $monto,
+                'vencimiento_deuda' => $deuda?->vencimiento_deuda?->format('Y-m-d') ?: $vencimiento,
+                'permitir_ajuste_abono' => true,
+            ]);
+
+            return;
+        }
+
+        if (! $deuda) {
+            return;
+        }
+
+        if ($deuda->abonos()->doesntExist()) {
+            $deuda->delete();
+
+            return;
+        }
+
+        $deuda->monto_deuda_inicial = (float) $deuda->abonos()->sum('monto');
+        $deuda->save();
     }
 
     /**
@@ -1078,13 +1216,15 @@ class ControlMensualController extends Controller
         ])->with(['abonosDeuda', 'deudasTributarias.abonos'])->first();
 
         if (! $operacion) {
+            $catalogo = app(CatalogoSunat::class);
+
             return response()->json([
                 'operacion_id' => null,
                 'tiene_deuda' => false,
                 'tributo_codigo' => '1011',
-                'tributo_nombre' => 'IGV Cuenta Propia 18%',
-                'tributo_nombre_corto' => 'IGV 18%',
-                'tributo_etiqueta' => '1011 - IGV Cuenta Propia 18%',
+                'tributo_nombre' => $catalogo->nombre('1011'),
+                'tributo_nombre_corto' => $catalogo->nombreCorto('1011'),
+                'tributo_etiqueta' => $catalogo->etiqueta('1011'),
                 'es_igv_justo' => false,
                 'monto_deuda_inicial' => null,
                 'vencimiento_deuda' => $oficialPdtStr,
@@ -1095,7 +1235,7 @@ class ControlMensualController extends Controller
                 'deudas' => [],
                 'total_abonado' => 0,
                 'saldo_pendiente' => 0,
-                'tributos_disponibles' => TipoTributoSunat::opciones(),
+                'tributos_disponibles' => app(CatalogoSunat::class)->opcionesTributo(),
             ]);
         }
 
@@ -1125,7 +1265,7 @@ class ControlMensualController extends Controller
             'saldo_pendiente' => $this->saldoDeudaMes($operacion),
             'saldo_pendiente_formateado' => 'S/ '.number_format($this->saldoDeudaMes($operacion), 2),
             'deudas' => $this->arregloDeudas($operacion, $oficialPdtStr, $oficialPdtDmy),
-            'tributos_disponibles' => TipoTributoSunat::opciones(),
+            'tributos_disponibles' => app(CatalogoSunat::class)->opcionesTributo(),
         ]);
     }
 
@@ -1153,10 +1293,10 @@ class ControlMensualController extends Controller
             'id' => null,
             'operacion_id' => $operacion->id,
             'tributo_codigo' => $codigo,
-            'declaracion' => TipoTributoSunat::declaracionDe($codigo),
-            'tributo_nombre' => TipoTributoSunat::obtenerNombre($codigo, 'IGV Cuenta Propia 18%'),
-            'tributo_nombre_corto' => TipoTributoSunat::obtenerNombreCorto($codigo, 'IGV 18%'),
-            'tributo_etiqueta' => TipoTributoSunat::tryFrom($codigo)?->etiquetaCompleta() ?? $codigo,
+            'declaracion' => app(CatalogoSunat::class)->declaracionDe($codigo),
+            'tributo_nombre' => app(CatalogoSunat::class)->nombre($codigo),
+            'tributo_nombre_corto' => app(CatalogoSunat::class)->nombreCorto($codigo),
+            'tributo_etiqueta' => app(CatalogoSunat::class)->etiqueta($codigo),
             'es_igv_justo' => (bool) $operacion->es_igv_justo,
             'monto_deuda_inicial' => (float) ($operacion->monto_deuda_inicial ?? 0),
             'vencimiento_deuda' => $operacion->vencimiento_deuda?->format('Y-m-d') ?: ($operacion->es_igv_justo ? '' : $vencimientoOficial),
@@ -1178,7 +1318,7 @@ class ControlMensualController extends Controller
             'id' => $deuda->id,
             'operacion_id' => $deuda->operacion_id,
             'tributo_codigo' => $deuda->tributo_codigo,
-            'declaracion' => TipoTributoSunat::declaracionDe($deuda->tributo_codigo),
+            'declaracion' => app(CatalogoSunat::class)->declaracionDe($deuda->tributo_codigo, $deuda->estudio_id),
             'tributo_nombre' => $deuda->tributo_nombre,
             'tributo_nombre_corto' => $deuda->tributo_nombre_corto,
             'tributo_etiqueta' => $deuda->tributo_etiqueta,
@@ -1205,8 +1345,8 @@ class ControlMensualController extends Controller
             'monto_formateado' => $abono->monto_formateado,
             'fecha_pago' => $abono->fecha_pago?->format('d/m/Y') ?? '',
             'observacion' => $abono->observacion ?? '',
-            'medio_pago' => $abono->medio_pago?->value,
-            'medio_etiqueta' => $abono->medio_pago?->etiqueta() ?? '',
+            'medio_pago' => $abono->medio_pago,
+            'medio_etiqueta' => $abono->etiquetaMedioPago(),
         ])->values()->all();
     }
 

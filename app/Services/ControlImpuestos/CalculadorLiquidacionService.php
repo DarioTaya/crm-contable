@@ -80,9 +80,20 @@ class CalculadorLiquidacionService
                 $liq->igv_compras = round($baseCompras * self::TASA_IGV, 2);
             }
 
-            $debito = (float) $liq->igv_ventas;
-            $credito = (float) $liq->igv_compras;
-            $saldoFavorAnterior = (float) $liq->igv_saldo_favor_anterior; // Casilla 145 SFMB
+            $debito = round(
+                (float) $liq->igv_ventas
+                + (float) $liq->igv_ventas_ley
+                - (float) $liq->igv_descuentos,
+                2,
+            );
+            $credito = round(
+                (float) $liq->igv_compras
+                + (float) $liq->igv_compras_ley
+                + (float) $liq->igv_compras_mixtas
+                + (float) $liq->igv_importaciones,
+                2,
+            );
+            $saldoFavorAnterior = (float) $liq->igv_saldo_favor_anterior;
 
             // Impuesto Bruto menos Crédito Fiscal y Saldo a Favor del Exportador / Anterior
             $netoFiscal = round($debito - $credito - $saldoFavorAnterior, 2);
@@ -147,7 +158,12 @@ class CalculadorLiquidacionService
             $liq->renta_saldo_favor_siguiente = 0.00;
         } else {
             // Base Imponible de Renta: Ventas Gravadas + Ventas No Gravadas
-            $totalVentas = round((float) $liq->ventas_base + (float) $liq->ventas_no_gravadas, 2);
+            $totalVentas = max(0, round(
+                (float) $liq->ventas_base
+                - (float) $liq->igv_descuentos_base
+                + (float) $liq->ventas_no_gravadas,
+                2,
+            ));
             if ((float) $liq->renta_base_ingresos <= 0 && $totalVentas > 0) {
                 $liq->renta_base_ingresos = $totalVentas;
             }
@@ -156,20 +172,18 @@ class CalculadorLiquidacionService
             $factor = $this->resolverFactorRenta($liq->renta_tasa, $regimen);
 
             if ((float) $liq->renta_base_ingresos > 0 && (float) $liq->renta_calculada <= 0 && $factor > 0) {
-                $liq->renta_calculada = round((float) $liq->renta_base_ingresos * $factor, 2);
+                $liq->renta_calculada = round((float) $liq->renta_base_ingresos * $factor);
             }
 
             $rentaBruta = (float) ($liq->renta_calculada ?? 0);
 
             if ($esRer) {
-                // RER: Pago mensual definitivo del 1.5%. No admite compensación de saldo anual ni ITAN
                 $liq->renta_saldo_favor_anterior = 0.00;
-                $liq->renta_compensacion_itan = 0.00;
                 $liq->renta_saldo_favor_siguiente = 0.00;
-
-                // Solo admite retenciones de 3ra si hubieran sido efectuadas
                 $ret3ra = (float) $liq->renta_retenciones;
-                $liq->renta_resultante_pagar = max(0.00, round($rentaBruta - $ret3ra, 2));
+                $itan = (float) $liq->renta_compensacion_itan;
+                $liq->renta_resultante_pagar = max(0.00, round($rentaBruta - $ret3ra - $itan, 2));
+                $liq->renta_itan_saldo_siguiente = max(0.00, round((float) ($liq->renta_itan_saldo_anterior ?? 0) - $itan, 2));
             } else {
                 // Régimen General o MYPE Tributario: admite compensaciones
                 $compensacionSaldo = (float) ($liq->renta_saldo_favor_anterior ?? 0); // Casilla 109
@@ -245,7 +259,9 @@ class CalculadorLiquidacionService
      *     igv_saldo_favor_anterior: float,
      *     igv_retenciones_saldo_anterior: float,
      *     igv_percepciones_saldo_anterior: float,
-     *     renta_saldo_favor_anterior: float
+     *     renta_saldo_favor_anterior: float,
+     *     renta_itan_saldo_anterior: float,
+     *     hay_liquidacion_anterior: bool
      * }
      */
     public function obtenerSaldosAnteriores(Cliente $cliente, string $periodo): array
@@ -270,6 +286,7 @@ class CalculadorLiquidacionService
                 'igv_percepciones_saldo_anterior' => 0.00,
                 'renta_saldo_favor_anterior' => 0.00,
                 'renta_itan_saldo_anterior' => 0.00,
+                'hay_liquidacion_anterior' => false,
             ];
         }
 
@@ -283,6 +300,7 @@ class CalculadorLiquidacionService
             'igv_percepciones_saldo_anterior' => (float) ($liqAnterior->igv_percepciones_saldo_siguiente ?? 0),
             'renta_saldo_favor_anterior' => $rentaSaldo,
             'renta_itan_saldo_anterior' => $itanSaldo,
+            'hay_liquidacion_anterior' => true,
         ];
     }
 

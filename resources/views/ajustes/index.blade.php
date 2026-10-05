@@ -123,6 +123,14 @@
                     <span class="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5">BETA</span>
                 </button>
 
+                <a href="{{ route('ajustes.codigos') }}"
+                   class="whitespace-nowrap flex items-center gap-2.5 border-b-2 border-transparent py-3 px-2 text-xs font-medium text-gray-500 transition hover:border-gray-300 hover:text-gray-700">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                    </svg>
+                    <span>Códigos SUNAT</span>
+                </a>
+
                 <button type="button"
                         @click="tabActiva = 'enlaces'"
                         :class="tabActiva === 'enlaces' ? 'border-brand-600 text-brand-600 font-bold' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 font-medium'"

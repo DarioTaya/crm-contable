@@ -6,8 +6,10 @@ use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CargaMasivaClienteController;
 use App\Http\Controllers\CargaMasivaControlController;
+use App\Http\Controllers\CatalogoSunatController;
 use App\Http\Controllers\ClienteController;
 use App\Http\Controllers\ComprobanteController;
+use App\Http\Controllers\ConstanciaDeclaracionController;
 use App\Http\Controllers\ControlBalanceController;
 use App\Http\Controllers\ControlDeudaController;
 use App\Http\Controllers\ControlMensualController;
@@ -55,6 +57,7 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
     Route::get('/control', fn () => redirect()->route('control.index'));
     Route::post('/control/update', [ControlMensualController::class, 'update'])->name('control.update');
     Route::post('/control/liquidacion', [ControlMensualController::class, 'guardarLiquidacion'])->name('control.liquidacion');
+    Route::post('/control/liquidacion/importar', [ConstanciaDeclaracionController::class, 'previsualizar'])->name('control.liquidacion.importar');
     Route::post('/control/liquidacion/limpiar', [ControlMensualController::class, 'limpiarLiquidacion'])->name('control.liquidacion.limpiar');
     Route::post('/control/deuda', [ControlMensualController::class, 'getDeuda'])->name('control.deuda');
     Route::post('/control/calcular-igv-justo', [ControlMensualController::class, 'calcularIgvJusto'])->name('control.calcular_igv_justo');
@@ -194,5 +197,13 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
         Route::put('/ajustes/quick-links/{quickLink}', [QuickLinkController::class, 'update'])->name('quick-links.update');
         Route::delete('/ajustes/quick-links/{quickLink}', [QuickLinkController::class, 'destroy'])->name('quick-links.destroy');
         Route::post('/ajustes/quick-links/reorder', [QuickLinkController::class, 'reorder'])->name('quick-links.reorder');
+
+        Route::get('/ajustes/codigos-sunat', [CatalogoSunatController::class, 'index'])->name('ajustes.codigos');
+        Route::post('/ajustes/codigos-sunat/tributos', [CatalogoSunatController::class, 'storeTributo'])->name('ajustes.codigos.tributos.store');
+        Route::put('/ajustes/codigos-sunat/tributos/{catalogoTributo}', [CatalogoSunatController::class, 'updateTributo'])->name('ajustes.codigos.tributos.update');
+        Route::delete('/ajustes/codigos-sunat/tributos/{catalogoTributo}', [CatalogoSunatController::class, 'destroyTributo'])->name('ajustes.codigos.tributos.destroy');
+        Route::post('/ajustes/codigos-sunat/medios', [CatalogoSunatController::class, 'storeMedio'])->name('ajustes.codigos.medios.store');
+        Route::put('/ajustes/codigos-sunat/medios/{catalogoMedioPago}', [CatalogoSunatController::class, 'updateMedio'])->name('ajustes.codigos.medios.update');
+        Route::delete('/ajustes/codigos-sunat/medios/{catalogoMedioPago}', [CatalogoSunatController::class, 'destroyMedio'])->name('ajustes.codigos.medios.destroy');
     });
 });

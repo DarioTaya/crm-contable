@@ -4,6 +4,7 @@ namespace App\Services\ControlImpuestos;
 
 use App\Enums\MedioPagoTributo;
 use App\Enums\TipoTributoSunat;
+use App\Services\Catalogos\CatalogoSunat;
 use Carbon\Carbon;
 
 /**
@@ -265,13 +266,14 @@ class LectorPlantillaControlImpuestos
         }
 
         $token = preg_split('/\s+/', $texto)[0] ?? '';
-        if (strcasecmp($token, 'afp') === 0) {
-            $token = 'AFP';
+        $resuelto = TipoTributoSunat::resolver($token)?->value;
+        if ($resuelto !== null) {
+            return 'tributo:'.$resuelto;
         }
 
-        foreach (TipoTributoSunat::cases() as $caso) {
-            if (strcasecmp($token, $caso->value) === 0) {
-                return 'tributo:'.$caso->value;
+        foreach (app(CatalogoSunat::class)->tributos() as $tributo) {
+            if (strcasecmp($token, $tributo->codigo) === 0) {
+                return 'tributo:'.$tributo->codigo;
             }
         }
 
@@ -583,15 +585,27 @@ class LectorPlantillaControlImpuestos
             'compensacion itan' => MedioPagoTributo::CompensacionItan->value,
         ];
 
-        if (isset($sinonimos[$normalizado])) {
+        $catalogo = app(CatalogoSunat::class);
+        if (isset($sinonimos[$normalizado]) && $catalogo->aceptaMedio($sinonimos[$normalizado])) {
             return ['valor' => $sinonimos[$normalizado], 'error' => null];
         }
 
         foreach (MedioPagoTributo::cases() as $caso) {
             $etiqueta = str_replace(['_', '-'], ' ', $this->sinAcentos(mb_strtolower($caso->etiqueta())));
             $valor = str_replace('_', ' ', $caso->value);
-            if (in_array($normalizado, [$etiqueta, $valor, $caso->value], true)) {
+            if (in_array($normalizado, [$etiqueta, $valor, $caso->value], true) && $catalogo->aceptaMedio($caso->value)) {
                 return ['valor' => $caso->value, 'error' => null];
+            }
+        }
+
+        foreach ($catalogo->medios() as $medio) {
+            if (! $medio->activo) {
+                continue;
+            }
+            $etiqueta = str_replace(['_', '-'], ' ', $this->sinAcentos(mb_strtolower($medio->denominacion)));
+            $valor = str_replace('_', ' ', $medio->codigo);
+            if (in_array($normalizado, [$etiqueta, $valor, $medio->codigo], true)) {
+                return ['valor' => $medio->codigo, 'error' => null];
             }
         }
 
@@ -894,6 +908,18 @@ class LectorPlantillaControlImpuestos
             $token = '3031';
         }
 
-        return TipoTributoSunat::resolver($token)?->value;
+        $resuelto = TipoTributoSunat::resolver($token)?->value;
+        if ($resuelto !== null) {
+            return $resuelto;
+        }
+
+        $codigo = strtoupper($token);
+        foreach (app(CatalogoSunat::class)->tributos() as $tributo) {
+            if (strcasecmp($tributo->codigo, $codigo) === 0 || strcasecmp($tributo->denominacion, $token) === 0) {
+                return $tributo->codigo;
+            }
+        }
+
+        return null;
     }
 }

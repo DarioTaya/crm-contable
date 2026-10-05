@@ -8,6 +8,7 @@ use App\Models\AbonoDeuda;
 use App\Models\Cliente;
 use App\Models\DeudaTributaria;
 use App\Models\Operacion;
+use App\Services\Catalogos\CatalogoSunat;
 use App\Services\CronogramaSunatService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
@@ -554,7 +555,7 @@ class CargaMasivaControlImpuestos
             $monto = (float) $tributo['monto'];
             $existente = $deudas->get($codigo);
             $deuda = $existente instanceof DeudaTributaria ? $existente : null;
-            $nombre = TipoTributoSunat::tryFrom($codigo)?->nombreCorto() ?? $codigo;
+            $nombre = app(CatalogoSunat::class)->nombreCorto($codigo);
             $abonado = $deuda ? round((float) $deuda->abonos->sum('monto'), 2) : 0.0;
 
             if ($abonado > 0.001 && $abonado + 0.001 < $monto) {
@@ -709,7 +710,7 @@ class CargaMasivaControlImpuestos
             } elseif ($deuda instanceof DeudaTributaria) {
                 $montoTributo = (float) $deuda->monto_deuda_inicial;
             } else {
-                $nombre = TipoTributoSunat::tryFrom($codigo)?->nombreCorto() ?? $codigo;
+                $nombre = app(CatalogoSunat::class)->nombreCorto($codigo);
                 $errores[] = [
                     'fila' => $numero,
                     'mensaje' => "Fila {$numero}: no hay importe de {$codigo} {$nombre} en {$periodo}. Escríbalo en la fila del mes.",
@@ -735,7 +736,7 @@ class CargaMasivaControlImpuestos
                 function (AbonoDeuda $abono) use ($monto, $fecha, $medio, $observacion): bool {
                     return $this->mismoMonto((float) $abono->monto, $monto)
                         && $abono->fecha_pago?->toDateString() === $fecha
-                        && ($abono->medio_pago?->value ?? '') === $medio
+                        && (string) ($abono->medio_pago ?? '') === $medio
                         && (string) $abono->observacion === $observacion;
                 },
             );
@@ -747,7 +748,7 @@ class CargaMasivaControlImpuestos
 
             $acumulado[$claveImporte] = round(($acumulado[$claveImporte] ?? 0) + $monto, 2);
             if ($abonado + $acumulado[$claveImporte] > $montoTributo + 0.001) {
-                $nombre = TipoTributoSunat::tryFrom($codigo)?->nombreCorto() ?? $codigo;
+                $nombre = app(CatalogoSunat::class)->nombreCorto($codigo);
                 $errores[] = [
                     'fila' => $numero,
                     'mensaje' => "Fila {$numero}: los pagos de {$codigo} {$nombre} superan el importe de {$this->soles($montoTributo)}.",
@@ -756,7 +757,7 @@ class CargaMasivaControlImpuestos
                 continue;
             }
 
-            $nombre = TipoTributoSunat::tryFrom($codigo)?->nombreCorto() ?? $codigo;
+            $nombre = app(CatalogoSunat::class)->nombreCorto($codigo);
             $resumen = "{$cliente->razon_social} · {$periodo} · pago {$codigo} {$nombre} → {$this->soles($monto)}";
             if ($medio !== '') {
                 $resumen .= ' · '.str_replace('_', ' ', $medio);
@@ -815,7 +816,8 @@ class CargaMasivaControlImpuestos
             : (string) $cliente->regimen_tributario;
         $regimenNorm = strtoupper(trim($regimenValor));
 
-        $dec = TipoTributoSunat::declaracionDe($codigo);
+        $catalogo = app(CatalogoSunat::class);
+        $dec = $catalogo->declaracionDe($codigo, $cliente->estudio_id);
         if ($regimenNorm === 'RUS' && $dec === 'pdt_621') {
             return [
                 'cambio' => null,
@@ -824,13 +826,13 @@ class CargaMasivaControlImpuestos
             ];
         }
 
-        $rentaEsperada = TipoTributoSunat::rentaDelRegimen($cliente->regimen_tributario);
-        if (in_array($codigo, ['3111', '3121', '3031'], true) && $rentaEsperada !== null && $codigo !== $rentaEsperada->value) {
-            $nombreEsperado = $rentaEsperada->nombreCorto();
+        $rentaEsperada = $catalogo->codigoRentaDelRegimen($cliente->regimen_tributario, $cliente->estudio_id);
+        if ($catalogo->rolDe($codigo, $cliente->estudio_id) === 'renta_mensual' && $rentaEsperada !== null && $codigo !== $rentaEsperada) {
+            $nombreEsperado = $catalogo->nombreCorto($rentaEsperada, $cliente->estudio_id);
 
             return [
                 'cambio' => null,
-                'error' => "Fila {$fila}: el tributo {$codigo} no corresponde al régimen {$regimenNorm} de {$cliente->razon_social} (corresponde {$rentaEsperada->value} {$nombreEsperado}).",
+                'error' => "Fila {$fila}: el tributo {$codigo} no corresponde al régimen {$regimenNorm} de {$cliente->razon_social} (corresponde {$rentaEsperada} {$nombreEsperado}).",
                 'motivo' => null,
             ];
         }
@@ -851,7 +853,7 @@ class CargaMasivaControlImpuestos
 
         $abonado = $deuda ? round((float) $deuda->abonos->sum('monto'), 2) : 0.0;
         if ($monto + 0.001 < $abonado) {
-            $nombre = TipoTributoSunat::tryFrom($codigo)?->nombreCorto() ?? $codigo;
+            $nombre = app(CatalogoSunat::class)->nombreCorto($codigo);
 
             return [
                 'cambio' => null,
@@ -860,7 +862,7 @@ class CargaMasivaControlImpuestos
             ];
         }
 
-        $nombre = TipoTributoSunat::tryFrom($codigo)?->nombreCorto() ?? $codigo;
+        $nombre = app(CatalogoSunat::class)->nombreCorto($codigo);
         $resumen = "{$cliente->razon_social} · {$periodo} · {$codigo} {$nombre} → {$this->soles($monto)}";
         if ($igv) {
             $resumen .= ' · IGV Justo';
@@ -1028,7 +1030,7 @@ class CargaMasivaControlImpuestos
         }
 
         $operacion->deudasTributarias()->get()->each(function (DeudaTributaria $deuda) use ($declaraciones): void {
-            $dec = TipoTributoSunat::declaracionDe($deuda->tributo_codigo);
+            $dec = app(CatalogoSunat::class)->declaracionDe($deuda->tributo_codigo);
             if ($dec !== null && in_array($dec, $declaraciones, true)) {
                 $deuda->abonos()->delete();
                 $deuda->delete();
@@ -1069,7 +1071,7 @@ class CargaMasivaControlImpuestos
 
         if ($operacion->relationLoaded('deudasTributarias')) {
             $hay = $operacion->deudasTributarias->contains(function (DeudaTributaria $deuda) use ($declaraciones): bool {
-                $dec = TipoTributoSunat::declaracionDe($deuda->tributo_codigo);
+                $dec = app(CatalogoSunat::class)->declaracionDe($deuda->tributo_codigo);
 
                 return $dec !== null && in_array($dec, $declaraciones, true);
             });
@@ -1078,7 +1080,7 @@ class CargaMasivaControlImpuestos
             }
         } else {
             $hay = $operacion->deudasTributarias()->get()->contains(function (DeudaTributaria $deuda) use ($declaraciones): bool {
-                $dec = TipoTributoSunat::declaracionDe($deuda->tributo_codigo);
+                $dec = app(CatalogoSunat::class)->declaracionDe($deuda->tributo_codigo);
 
                 return $dec !== null && in_array($dec, $declaraciones, true);
             });
@@ -1504,7 +1506,7 @@ class CargaMasivaControlImpuestos
             'Declaracion DJ (Opcional: un solo valor para marcar SIRE, PDT 621 y PLAME a la vez; vacio no cambia)',
             'Honorarios RH (Debe o Pago; vacio no cambia)',
         ];
-        foreach (TipoTributoSunat::catalogoFormulario() as $bloque) {
+        foreach (app(CatalogoSunat::class)->catalogoFormulario() as $bloque) {
             $grupo = $bloque['titulo'].' '.$bloque['detalle'];
             foreach ($bloque['tributos'] as $tributo) {
                 $columnas[] = $tributo['codigo'].' '.$tributo['nombre_corto'].' (importe a pagar '.$grupo.')';
@@ -1526,7 +1528,7 @@ class CargaMasivaControlImpuestos
             'RUC',
             'Razon social',
             'Periodo (MM-AAAA)',
-            'Codigo del tributo (el mismo codigo de la fila del mes: 1011, 5210, AFP u otro)',
+            'Codigo del tributo (el mismo codigo de la fila del mes: 1011, 5210, 6098 u otro)',
             'Monto del pago',
             'Fecha de pago (DD/MM/AAAA)',
             'Medio de pago (Detracciones, Caja, Bancos, Compensacion renta anual o Compensacion ITAN)',

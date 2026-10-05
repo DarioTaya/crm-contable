@@ -2,13 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\MedioPagoTributo;
 use App\Models\AbonoDeuda;
 use App\Models\DeudaTributaria;
 use App\Models\Operacion;
+use App\Services\Catalogos\CatalogoSunat;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class AbonoDeudaController extends Controller
 {
@@ -32,10 +31,12 @@ class AbonoDeudaController extends Controller
             'deuda_tributaria_id' => 'nullable|integer|exists:deuda_tributarias,id',
             'monto' => 'required|numeric|min:0.01|max:99999999.99',
             'fecha_pago' => 'required|date',
-            'medio_pago' => ['nullable', Rule::enum(MedioPagoTributo::class)],
+            'medio_pago' => ['nullable', 'string', 'max:40', function (string $attribute, mixed $value, \Closure $fail): void {
+                if ($value !== null && $value !== '' && ! app(CatalogoSunat::class)->aceptaMedio((string) $value)) {
+                    $fail('Seleccione un medio de pago válido.');
+                }
+            }],
             'observacion' => 'nullable|string|max:500',
-        ], [
-            'medio_pago.enum' => 'Seleccione un medio de pago válido.',
         ]);
 
         $operacion = Operacion::findOrFail($validated['operacion_id']);
@@ -60,8 +61,8 @@ class AbonoDeudaController extends Controller
                 'monto_formateado' => $abono->monto_formateado,
                 'fecha_pago' => $abono->fecha_pago->format('d/m/Y'),
                 'observacion' => $abono->observacion,
-                'medio_pago' => $abono->medio_pago?->value,
-                'medio_etiqueta' => $abono->medio_pago?->etiqueta() ?? '',
+                'medio_pago' => $abono->medio_pago,
+                'medio_etiqueta' => $abono->etiquetaMedioPago(),
             ],
             'deuda_tributaria_id' => $deuda?->id,
             'total_abonado' => $totales['total_abonado'],

@@ -80,10 +80,25 @@
                     </div>
                 </a>
 
+                <a href="{{ route('ajustes.codigos') }}"
+                   @click="abierto = false"
+                   role="menuitem"
+                   class="flex items-center gap-3 rounded-xl px-3 py-2.5 transition {{ request()->routeIs('ajustes.codigos') ? 'bg-white/10 font-bold text-white' : 'text-white/80 hover:bg-sidebar-hover hover:text-white' }}">
+                    <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/20 text-amber-300">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <p class="font-bold leading-tight">Códigos SUNAT</p>
+                        <p class="text-[10px] leading-tight text-white/55">Tributos y medios de pago</p>
+                    </div>
+                </a>
+
                 <a href="{{ route('ajustes.index') }}"
                    @click="abierto = false"
                    role="menuitem"
-                   class="flex items-center gap-3 rounded-xl px-3 py-2.5 transition {{ request()->routeIs('ajustes.*') ? 'bg-white/10 font-bold text-white' : 'text-white/80 hover:bg-sidebar-hover hover:text-white' }}">
+                   class="flex items-center gap-3 rounded-xl px-3 py-2.5 transition {{ request()->routeIs('ajustes.index') ? 'bg-white/10 font-bold text-white' : 'text-white/80 hover:bg-sidebar-hover hover:text-white' }}">
                     <div class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-sky-500/30 bg-sky-500/20 text-sky-400">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />

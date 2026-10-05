@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\TipoTributoSunat;
+use App\Services\Catalogos\CatalogoSunat;
 use App\Traits\BelongsToEstudioViaCliente;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -147,7 +148,9 @@ class Operacion extends Model
     protected function tributoNombre(): Attribute
     {
         return Attribute::make(
-            get: fn (): string => TipoTributoSunat::obtenerNombre($this->tributo_codigo, 'Deuda Tributaria SUNAT'),
+            get: fn (): string => $this->tributo_codigo
+                ? app(CatalogoSunat::class)->nombre((string) $this->tributo_codigo, $this->estudio_id, 'Deuda Tributaria SUNAT')
+                : 'Deuda Tributaria SUNAT',
         );
     }
 
@@ -157,7 +160,9 @@ class Operacion extends Model
     protected function tributoNombreCorto(): Attribute
     {
         return Attribute::make(
-            get: fn (): string => TipoTributoSunat::obtenerNombreCorto($this->tributo_codigo, 'Tributo'),
+            get: fn (): string => $this->tributo_codigo
+                ? app(CatalogoSunat::class)->nombreCorto((string) $this->tributo_codigo, $this->estudio_id)
+                : 'Tributo',
         );
     }
 
@@ -172,9 +177,7 @@ class Operacion extends Model
                     return 'Deuda Tributaria SUNAT';
                 }
 
-                $enum = $this->tributoEnum();
-
-                return $enum ? $enum->etiquetaCompleta() : "{$this->tributo_codigo} - Tributo SUNAT";
+                return app(CatalogoSunat::class)->etiqueta((string) $this->tributo_codigo, $this->estudio_id);
             },
         );
     }

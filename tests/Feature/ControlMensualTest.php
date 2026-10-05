@@ -632,10 +632,11 @@ class ControlMensualTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Hoja de Liquidación PDT 621', false);
+        $response->assertSee('Importar DJ', false);
         $response->assertSee('Régimen Amazonía / Selva (Ley 27037)', false);
         $response->assertSee('Ventas No Gravadas (Cas. 105)', false);
         $response->assertSee('Saldo Favor Periodo Anterior (Casilla 145)', false);
-        $response->assertSee('Compensación ITAN (Cas. 111)', false);
+        $response->assertSee('Compensación ITAN (Cas. 328)', false);
         $response->assertSee('guardarLiquidacion', false);
         $response->assertSee('limpiarHojaLiquidacion', false);
         $response->assertDontSee('Copiar a Tributo Renta', false);

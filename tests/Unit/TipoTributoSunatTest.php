@@ -22,7 +22,7 @@ class TipoTributoSunatTest extends TestCase
         $this->assertSame('pdt_601', $catalogo[1]['id']);
         $this->assertSame('PLAME', $catalogo[1]['detalle']);
         $this->assertSame(
-            ['5210', '5310', 'AFP', '3052', '3042'],
+            ['5210', '5310', '6098', '3052', '3042'],
             array_column($catalogo[1]['tributos'], 'codigo'),
         );
 
@@ -54,6 +54,7 @@ class TipoTributoSunatTest extends TestCase
         $this->assertSame('pdt_601', TipoTributoSunat::declaracionDe('5210'));
         $this->assertSame('pdt_601', TipoTributoSunat::declaracionDe('3041'));
         $this->assertSame('pdt_601', TipoTributoSunat::declaracionDe('3051'));
+        $this->assertSame('pdt_601', TipoTributoSunat::declaracionDe('AFP'));
         $this->assertNull(TipoTributoSunat::declaracionDe(null));
         $this->assertNull(TipoTributoSunat::declaracionDe('9999'));
     }
