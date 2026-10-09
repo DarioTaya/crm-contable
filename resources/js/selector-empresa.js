@@ -231,9 +231,8 @@ export function registrarSelectorEmpresa(Alpine) {
         },
 
         async elegir(item) {
-            if (this.paginaDeOtraEmpresa(item)) {
-                const destino = item.secciones?.[this.rutaActual] || item.carpeta;
-                window.location.assign(destino);
+            if (item?.carpeta) {
+                window.location.assign(item.carpeta);
                 return;
             }
 
@@ -246,6 +245,7 @@ export function registrarSelectorEmpresa(Alpine) {
                 id: item.id,
                 razon_social: item.razon_social,
                 ruc: item.ruc,
+                url: item.carpeta,
             };
             this.cerrar();
         },
@@ -290,6 +290,7 @@ export function registrarSelectorEmpresa(Alpine) {
                     id: item.id,
                     razon_social: item.razon_social,
                     ruc: item.ruc,
+                    url: item.carpeta,
                 };
                 this.recordar(item);
             }
@@ -318,6 +319,7 @@ export function registrarSelectorEmpresa(Alpine) {
                     id: item.id,
                     razon_social: item.razon_social,
                     ruc: item.ruc,
+                    url: item.carpeta,
                 };
                 this.recordar(item);
             }

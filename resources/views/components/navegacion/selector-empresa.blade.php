@@ -10,6 +10,7 @@
             'id' => $empresa->id,
             'razon_social' => $empresa->razon_social,
             'ruc' => $empresa->ruc,
+            'url' => route('clientes.show', $empresa),
         ] : null,
         'contextoClienteId' => $clienteRuta instanceof \App\Models\Cliente ? $clienteRuta->id : null,
         'rutaActual' => request()->route()?->getName(),
@@ -125,29 +126,32 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
                             </svg>
                         </button>
-                        <button
-                            type="button"
-                            class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40"
-                            @click="elegir(item)"
-                        >
-                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700">
+                        <div class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left">
+                            <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700 select-none">
                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
                                 </svg>
                             </span>
-                            <span class="min-w-0 flex-1">
-                                <span class="flex items-center gap-1.5">
-                                    <span class="truncate text-xs font-semibold text-gray-900" x-text="item.razon_social"></span>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5">
+                                    {{-- ÚNICAMENTE al dar clic sobre las letras del nombre de la empresa, lleva a su carpeta --}}
+                                    <a
+                                        :href="item.carpeta"
+                                        class="truncate text-xs font-semibold text-gray-900 hover:text-brand-600 hover:underline cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-500 rounded-xs"
+                                        x-text="item.razon_social"
+                                        title="Abrir carpeta de esta empresa"
+                                    ></a>
                                     <span
                                         x-show="item.estado_etiqueta"
                                         x-cloak
-                                        class="shrink-0 rounded bg-gray-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-500"
+                                        class="shrink-0 rounded bg-gray-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-gray-500 select-none"
                                         x-text="item.estado_etiqueta"
                                     ></span>
-                                </span>
-                                <span class="mt-0.5 block truncate font-mono text-[10px] tabular-nums text-gray-500" x-text="item.ruc"></span>
-                            </span>
-                        </button>
+                                </div>
+                                {{-- RUC: solo informativo, no lleva a la carpeta ni tiene acción de enlace --}}
+                                <span class="mt-0.5 block truncate font-mono text-[10px] tabular-nums text-gray-500 select-none" x-text="item.ruc"></span>
+                            </div>
+                        </div>
 
                         <div class="flex shrink-0 items-center gap-1">
                             <button

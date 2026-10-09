@@ -399,6 +399,27 @@ class SelectorEmpresaTest extends TestCase
         $response->assertDontSee('<script>alert(1)</script>', false);
     }
 
+    public function test_top_bar_selector_toggles_panel_and_company_name_in_list_links_to_folder(): void
+    {
+        $cartera = $this->cartera();
+
+        $this->actingAs($cartera['admin'])
+            ->postJson(route('acceso-rapido.seleccionar'), [
+                'cliente_id' => $cartera['asignada']->id,
+            ])
+            ->assertOk();
+
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        // El disparador superior es un botón con @click="alternar()" y no un enlace que navega
+        $response->assertSee('@click="alternar()"', false);
+        $response->assertSee($cartera['asignada']->razon_social);
+        $response->assertSee($cartera['asignada']->ruc);
+        // En la lista flotante, cada empresa tiene su enlace a la carpeta
+        $response->assertSee(':href="item.carpeta"', false);
+    }
+
     /**
      * @return array{admin: User, asistente: User, asignada: Cliente, privada: Cliente, baja: Cliente}
      */
