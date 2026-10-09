@@ -43,6 +43,7 @@ class SelectorEmpresa
         'clientes.show',
         'clientes.notificaciones',
         'clientes.operaciones',
+        'clientes.creditos',
         'clientes.sire',
     ];
 

@@ -215,7 +215,10 @@
                                                     class="relative flex h-full min-h-9 w-full flex-col items-center justify-center px-0.5 py-1 focus:outline-none"
                                                     title="{{ $fila['etiqueta'] }} {{ $tributo['nombre'] }} {{ $fila['situacion_etiqueta'] }}">
                                                 @if ($fila['es_igv_justo'])
-                                                    <span class="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-indigo-500"></span>
+                                                    <span class="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-indigo-500" title="IGV Justo"></span>
+                                                @endif
+                                                @if (!empty($fila['tasa']))
+                                                    <span class="absolute left-0.5 top-0.5 text-[8px] font-mono font-bold leading-none px-0.5 py-0.2 rounded {{ $fila['tasa'] > 1.0 ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' }}" title="Tasa: {{ $fila['tasa'] }}%">{{ rtrim(rtrim(number_format($fila['tasa'], 2, '.', ''), '0'), '.') }}%</span>
                                                 @endif
                                                 <span class="block w-full truncate font-mono text-[11px] font-bold leading-none tabular-nums">
                                                     {{ $fila['determinado'] ? str_replace('S/ ', '', $fila['determinado']) : '—' }}
@@ -260,6 +263,14 @@
                                         <span class="rounded-full px-2 py-0.5 text-[10px] font-bold {{ $tonoEstado($fila['situacion']) }}">{{ $fila['situacion_etiqueta'] }}</span>
                                         @if ($fila['es_igv_justo'])
                                             <span class="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase text-indigo-800">IGV Justo</span>
+                                        @endif
+                                        @if (!empty($fila['tasa']))
+                                            <span class="rounded-full px-2 py-0.5 text-[10px] font-bold {{ $fila['tasa'] > 1.0 ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' }}">
+                                                Tasa: {{ rtrim(rtrim(number_format($fila['tasa'], 2, '.', ''), '0'), '.') }}%
+                                                @if ($tributo['codigo'] === '3121')
+                                                    {{ $fila['tasa'] > 1.0 ? '(>300 UIT)' : '(≤300 UIT)' }}
+                                                @endif
+                                            </span>
                                         @endif
                                     </div>
                                 </div>

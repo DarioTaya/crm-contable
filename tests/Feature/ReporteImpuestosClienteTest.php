@@ -171,7 +171,7 @@ class ReporteImpuestosClienteTest extends TestCase
         $reporte = $response->viewData('reporteImpuestos');
         $pdt = collect($reporte['bloques'])->firstWhere('id', 'pdt_621');
         $plame = collect($reporte['bloques'])->firstWhere('id', 'pdt_601');
-        $this->assertSame(['1011', '1016', '3111', '3121', '3031', '3081'], array_column($pdt['tributos'], 'codigo'));
+        $this->assertSame(['1011', '3031', '3081'], array_column($pdt['tributos'], 'codigo'));
         $this->assertSame(['5210', '5310', '6098', '3052', '3042'], array_column($plame['tributos'], 'codigo'));
         $html = $response->getContent();
         $fila = function (string $codigo) use ($html): string {
@@ -184,7 +184,7 @@ class ReporteImpuestosClienteTest extends TestCase
         $this->assertStringContainsString('data-sin-monto', $fila('5310'));
         $this->assertStringNotContainsString('data-sin-monto', $fila('3031'));
         $this->assertStringNotContainsString('data-sin-monto', $fila('5210'));
-        $response->assertSee('5 sin monto', false);
+        $response->assertSee('2 sin monto', false);
         $response->assertSee('4 sin monto', false);
         $response->assertDontSee('data-malla-oculta', false);
     }
@@ -196,7 +196,7 @@ class ReporteImpuestosClienteTest extends TestCase
         $response = $this->get(route('clientes.operaciones', $cliente));
 
         $response->assertSee('tributosCompletos: {}', false);
-        $response->assertSee('6 sin monto', false);
+        $response->assertSee('2 sin monto', false);
         $response->assertSee('5 sin monto', false);
         $response->assertSee('data-malla-oculta', false);
         $response->assertSee('A pagar · según PDT');
@@ -212,7 +212,7 @@ class ReporteImpuestosClienteTest extends TestCase
         $reporte = $response->viewData('reporteImpuestos');
         $pdt = collect($reporte['bloques'])->firstWhere('id', 'pdt_621');
         $plame = collect($reporte['bloques'])->firstWhere('id', 'pdt_601');
-        $this->assertCount(6, $pdt['tributos']);
+        $this->assertCount(2, $pdt['tributos']);
         $this->assertCount(5, $plame['tributos']);
         $this->assertSame('S/ 0.00', $pdt['tributos'][0]['periodos'][0]['determinado']);
         $this->assertSame('S/ 0.00', $pdt['tributos'][0]['periodos'][0]['saldo']);
@@ -316,6 +316,28 @@ class ReporteImpuestosClienteTest extends TestCase
         $this->cliente('MYPE', 'LIBRO FORMULARIO SAC', '20111000120');
 
         $this->get(route('control.index'))->assertSee('Medio de pago');
+    }
+
+    public function test_empresa_que_migro_de_rer_a_mype_muestra_igv_rer_y_rmt_dinamicamente(): void
+    {
+        $cliente = $this->cliente('MYPE', 'TRANSICION RER A MYPE SAC', '20111000130');
+
+        // Periodo Enero 2026: tributó bajo RER (3111)
+        $this->guardarTributo($cliente, '01-2026', '3111', 150, '2026-02-18');
+        // Periodo Mayo 2026: ascendió a RMT (3121)
+        $this->guardarTributo($cliente, '05-2026', '3121', 280, '2026-06-18');
+
+        $response = $this->get(route('clientes.operaciones', $cliente));
+        $reporte = $response->viewData('reporteImpuestos');
+        $pdt = collect($reporte['bloques'])->firstWhere('id', 'pdt_621');
+
+        $codigos = array_column($pdt['tributos'], 'codigo');
+        // Debe figurar IGV (1011), RER histórico (3111) y RMT actual (3121)
+        $this->assertContains('1011', $codigos);
+        $this->assertContains('3111', $codigos);
+        $this->assertContains('3121', $codigos);
+        $this->assertNotContains('3031', $codigos); // No debe figurar Régimen General
+        $this->assertNotContains('3081', $codigos);
     }
 
     private function cliente(string $regimen, string $razonSocial, string $ruc): Cliente

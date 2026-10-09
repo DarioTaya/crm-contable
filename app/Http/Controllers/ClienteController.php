@@ -8,6 +8,7 @@ use App\Enums\SeccionExpediente;
 use App\Models\Cliente;
 use App\Models\Credencial;
 use App\Services\Clientes\ValidacionRuc;
+use App\Services\Impuestos\ReporteCreditosFiscalesCliente;
 use App\Services\Impuestos\ReporteImpuestosCliente;
 use App\Services\SunafilBuzonSyncService;
 use App\Services\SunatBuzonSyncService;
@@ -319,8 +320,12 @@ class ClienteController extends Controller
      * Muestra el expediente digital del cliente.
      * La sección de impuestos proyecta los tributos y pagos ya registrados en Control de Impuestos.
      */
-    public function show(Request $request, Cliente $cliente, ReporteImpuestosCliente $reporteImpuestosCliente): View|RedirectResponse
-    {
+    public function show(
+        Request $request,
+        Cliente $cliente,
+        ReporteImpuestosCliente $reporteImpuestosCliente,
+        ReporteCreditosFiscalesCliente $reporteCreditosFiscalesCliente,
+    ): View|RedirectResponse {
         if ($redireccion = $this->redirigirSeccionAntigua($request, $cliente)) {
             return $redireccion;
         }
@@ -336,6 +341,7 @@ class ClienteController extends Controller
             $anioReporte = $anioActual;
         }
         $reporteImpuestos = $reporteImpuestosCliente->armar($cliente, $anioReporte);
+        $reporteCreditosFiscales = $reporteCreditosFiscalesCliente->armar($cliente, $anioReporte);
 
         // Bóveda SIRE: Comprobantes y Métricas pre-filtradas exclusivamente para este cliente
         $sireQuery = $cliente->comprobantes();
@@ -374,6 +380,7 @@ class ClienteController extends Controller
             'urlsSeccion',
             'consultaSire',
             'reporteImpuestos',
+            'reporteCreditosFiscales',
             'comprobantesCliente',
             'sireTotalBase',
             'sireTotalIgv',

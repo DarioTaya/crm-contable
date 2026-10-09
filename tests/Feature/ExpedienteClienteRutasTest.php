@@ -20,6 +20,7 @@ class ExpedienteClienteRutasTest extends TestCase
             ->assertSee('data-seccion="datos"', false)
             ->assertSee('/clientes/'.$cliente->id.'/notificaciones', false)
             ->assertSee('/clientes/'.$cliente->id.'/impuestos', false)
+            ->assertSee('/clientes/'.$cliente->id.'/detracciones-retenciones', false)
             ->assertDontSee('/clientes/'.$cliente->id.'/operaciones', false)
             ->assertSee('/clientes/'.$cliente->id.'/sire', false);
 
@@ -30,6 +31,10 @@ class ExpedienteClienteRutasTest extends TestCase
         $this->get(route('clientes.operaciones', $cliente))
             ->assertOk()
             ->assertSee('data-seccion="operaciones"', false);
+
+        $this->get(route('clientes.creditos', $cliente))
+            ->assertOk()
+            ->assertSee('data-seccion="creditos"', false);
 
         $this->get(route('clientes.sire', $cliente))
             ->assertOk()
@@ -55,6 +60,7 @@ class ExpedienteClienteRutasTest extends TestCase
 
     #[TestWith(['notificaciones', 'clientes.notificaciones'])]
     #[TestWith(['operaciones', 'clientes.operaciones'])]
+    #[TestWith(['creditos', 'clientes.creditos'])]
     #[TestWith(['sire', 'clientes.sire'])]
     #[TestWith(['datos', 'clientes.show'])]
     #[TestWith(['api_credentials', 'clientes.show'])]

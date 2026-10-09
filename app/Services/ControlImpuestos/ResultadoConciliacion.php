@@ -26,6 +26,8 @@ class ResultadoConciliacion
         public array $constanciaIds = [],
         public array $control = ['igv' => null, 'renta' => null],
         public array $calculo = ['igv' => null, 'renta' => null],
+        public array $pagos = [],
+        public ?array $regimenDiscrepancia = null,
     ) {}
 
     /**
@@ -42,6 +44,8 @@ class ResultadoConciliacion
             'preservar' => $this->preservar,
             'control' => $this->control,
             'calculo' => $this->calculo,
+            'pagos' => $this->pagos,
+            'regimen_discrepancia' => $this->regimenDiscrepancia,
             'alertas' => $this->alertas,
             'constancia_id' => $this->constanciaIds[0] ?? null,
         ];

@@ -166,12 +166,18 @@ class ReporteImpuestosCliente
             );
 
             foreach ($deudasLista as $deuda) {
+                $codigo = (string) $deuda->tributo_codigo;
+                $tasa = null;
+                if (in_array($codigo, ['3111', '3121', '3031'], true) && $liq) {
+                    $tasa = (float) $liq->renta_tasa;
+                }
                 $lineas[] = [
-                    'codigo' => (string) $deuda->tributo_codigo,
+                    'codigo' => $codigo,
                     'monto' => (float) $deuda->monto_deuda_inicial,
                     'vencimiento' => $deuda->vencimiento_deuda?->format('Y-m-d'),
                     'es_igv_justo' => (bool) $deuda->es_igv_justo,
                     'pagos' => $this->pagosDe($deuda->abonos),
+                    'tasa' => $tasa,
                 ];
             }
 
@@ -215,6 +221,7 @@ class ReporteImpuestosCliente
                     'es_declarado' => true,
                     'es_zona_selva' => false,
                     'saldo_favor' => (float) $liq->renta_saldo_favor_siguiente,
+                    'tasa' => (float) $liq->renta_tasa,
                 ];
             }
         }
@@ -275,10 +282,29 @@ class ReporteImpuestosCliente
             fn (string $codigo): bool => $catalogo->declaracionDe($codigo, $cliente->estudio_id) === $declaracion,
         ));
 
-        $nrusSinPdt = $declaracion === 'pdt_621' && $cliente->regimen_tributario === RegimenTributario::Rus;
-        $codigos = $nrusSinPdt
-            ? $conDatos
-            : array_values(array_unique([...$orden, ...$conDatos]));
+        $regimen = $cliente->regimen_tributario instanceof RegimenTributario
+            ? $cliente->regimen_tributario->siglaSunat()
+            : strtoupper((string) ($cliente->regimen_tributario?->value ?? $cliente->regimen_tributario ?? ''));
+
+        if ($declaracion === 'pdt_621') {
+            $baseRegimen = match ($regimen) {
+                'RER' => ['1011', '3111'],
+                'RMT' => ['1011', '3121'],
+                'RG', 'GENERAL' => ['1011', '3031', '3081'],
+                'RUS', 'NRUS' => [],
+                default => ['1011', '3121'],
+            };
+
+            // Inteligente: combina los tributos base del régimen actual con cualquier tributo
+            // que la empresa haya utilizado en el ejercicio (ej. si inició como RER y ascendió a RMT,
+            // figurarán tanto 3111 como 3121)
+            $codigos = array_values(array_unique([...$baseRegimen, ...$conDatos]));
+        } else {
+            // PDT 601 PLAME:
+            $codigos = in_array($regimen, ['RUS', 'NRUS'], true)
+                ? $conDatos
+                : array_values(array_unique([...$orden, ...$conDatos]));
+        }
 
         usort($codigos, function (string $a, string $b) use ($orden): int {
             $indiceA = array_search($a, $orden, true);
@@ -343,6 +369,7 @@ class ReporteImpuestosCliente
                         'fecha_cancelacion' => null,
                         'saldo' => $this->soles(0),
                         'pagado' => $this->soles(0),
+                        'tasa' => isset($linea['tasa']) && $linea['tasa'] > 0 ? (float) $linea['tasa'] : null,
                     ];
 
                     continue;
@@ -393,6 +420,7 @@ class ReporteImpuestosCliente
                 'fecha_cancelacion' => $this->dmy($resultado->fechaCancelacion),
                 'saldo' => $this->soles($resultado->saldoCentavos),
                 'pagado' => $this->soles($resultado->pagadoCentavos),
+                'tasa' => isset($linea['tasa']) && $linea['tasa'] > 0 ? (float) $linea['tasa'] : null,
             ];
         }
 

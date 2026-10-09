@@ -4,25 +4,25 @@
                                                 x-show="openDJ"
                                                 x-cloak
                                                 data-menu-flotante
-                                                @click.outside="if (!$el._clicInicioDentro && !$event.target.closest('[data-abre-dj]')) { openDJ = false; panelLiquidacionAbierto = false; deudaAbiertaKey = null; }"
-                                                class="fixed z-50 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl text-left max-h-[calc(100vh-24px)] overflow-y-auto"
-                                                :style="activeTab === 'deuda' ? 'width: min(1120px, 96vw)' : 'width: 460px'"
+                                                @click.outside="if (!$el._clicInicioDentro && !$event.target.closest('[data-abre-dj]')) { openDJ = false; panelLiquidacionAbierto = false; panelLiquidacionPlameAbierto = false; deudaAbiertaKey = null; }"
+                                                class="fixed z-50 flex flex-col rounded-2xl border border-gray-200 bg-white shadow-2xl text-left max-h-[calc(100vh-24px)] overflow-hidden transition-[width] duration-150 ease-out"
+                                                :style="esHojaGrande() ? 'width: min(880px, calc(100vw - 280px))' : 'width: 460px'"
                                             >
-                                                {{-- Encabezado con Tabs en una sola línea --}}
-                                                <div class="border-b border-gray-100 pb-2.5 mb-3">
+                                                {{-- Encabezado con Tabs INMOVILIZADO / FROZEN (Fijo arriba sin moverse con el scroll) --}}
+                                                <div class="shrink-0 p-3.5 pb-2 bg-white border-b border-gray-100 z-20">
                                                     <div class="flex items-center justify-between mb-2">
                                                         <div class="flex items-center gap-2 truncate pr-2">
                                                             <span class="inline-flex items-center justify-center rounded bg-gray-100 border border-gray-200 px-1.5 py-0.5 text-[10px] font-mono font-bold text-gray-700" x-text="etiquetaPeriodo"></span>
                                                             <span class="text-xs font-bold text-gray-900 truncate" x-text="razonSocial"></span>
                                                         </div>
-                                                        <button type="button" @click="openDJ = false; panelLiquidacionAbierto = false; deudaAbiertaKey = null" class="text-gray-400 hover:text-gray-700 text-base font-bold leading-none p-1">&times;</button>
+                                                        <button type="button" @click="openDJ = false; panelLiquidacionAbierto = false; panelLiquidacionPlameAbierto = false; deudaAbiertaKey = null" class="text-gray-400 hover:text-gray-700 text-base font-bold leading-none p-1">&times;</button>
                                                     </div>
 
                                                     {{-- 2 Pestañas perfectamente alineadas en una sola línea --}}
                                                     <div class="flex border-b border-gray-200 text-xs font-semibold">
                                                         <button
                                                             type="button"
-                                                            @click="activeTab = 'declaracion'"
+                                                            @click="activeTab = 'declaracion'; panelLiquidacionAbierto = false; panelLiquidacionPlameAbierto = false; encuadrarMenuDJ()"
                                                             :class="activeTab === 'declaracion' ? 'border-b-2 border-brand-600 text-brand-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
                                                             class="flex-1 pb-2 text-center transition flex items-center justify-center gap-1.5 whitespace-nowrap"
                                                         >
@@ -31,7 +31,7 @@
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            @click="activeTab = 'deuda'; deudaAbiertaKey = null; if (!deudaCargada) cargarDeuda()"
+                                                            @click="activeTab = 'deuda'; deudaAbiertaKey = null; panelLiquidacionAbierto = false; panelLiquidacionPlameAbierto = false; encuadrarMenuDJ(); if (!deudaCargada) cargarDeuda()"
                                                             :class="activeTab === 'deuda' ? 'border-b-2 border-brand-600 text-brand-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
                                                             class="flex-1 pb-2 text-center transition relative flex items-center justify-center gap-1.5 whitespace-nowrap"
                                                         >
@@ -45,6 +45,9 @@
                                                         </button>
                                                     </div>
                                                 </div>
+
+                                                {{-- Contenido Desplazable con Scroll Independiente --}}
+                                                <div class="flex-1 overflow-y-auto px-3.5 py-2.5">
 
                                                 {{-- TAB 1: ESTADO DECLARACIÓN (CONTROL INDIVIDUAL: SIRE + PDT 621 + PLAME) --}}
                                                 <div x-show="activeTab === 'declaracion'" class="space-y-2.5 py-1">
@@ -194,19 +197,19 @@
                                                     <div class="grid grid-cols-3 gap-2">
                                                         <div class="rounded-xl bg-gray-50 border border-gray-200 p-2 text-center">
                                                             <p class="text-[9px] font-bold uppercase text-gray-500 tracking-wider">A pagar</p>
-                                                            <p class="text-xs font-black text-gray-800 mt-0.5" x-text="formatearMoneda(meses[mesIdx].monto_deuda_inicial)"></p>
+                                                            <p class="text-xs font-black text-gray-800 mt-0.5" x-text="formatearMoneda(totalMontoAPagar())"></p>
                                                         </div>
                                                         <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-2 text-center">
                                                             <p class="text-[9px] font-bold uppercase text-emerald-600 tracking-wider">Pagado</p>
-                                                            <p class="text-xs font-black text-emerald-600 mt-0.5" x-text="formatearMoneda(meses[mesIdx].total_abonado)"></p>
+                                                            <p class="text-xs font-black text-emerald-600 mt-0.5" x-text="formatearMoneda(totalMontoPagado())"></p>
                                                         </div>
                                                         <div class="rounded-xl p-2 text-center border"
-                                                             :class="meses[mesIdx].saldo_pendiente > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'">
+                                                             :class="totalMontoPorPagar() > 0 ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'">
                                                             <p class="text-[9px] font-bold uppercase tracking-wider"
-                                                               :class="meses[mesIdx].saldo_pendiente > 0 ? 'text-red-600' : 'text-gray-500'">Por pagar</p>
+                                                               :class="totalMontoPorPagar() > 0 ? 'text-red-600' : 'text-gray-500'">Por pagar</p>
                                                             <p class="text-xs font-black mt-0.5"
-                                                               :class="meses[mesIdx].saldo_pendiente > 0 ? 'text-red-600' : 'text-gray-600'"
-                                                               x-text="formatearMoneda(meses[mesIdx].saldo_pendiente)"></p>
+                                                               :class="totalMontoPorPagar() > 0 ? 'text-red-600' : 'text-gray-600'"
+                                                               x-text="formatearMoneda(totalMontoPorPagar())"></p>
                                                         </div>
                                                     </div>
 
@@ -251,8 +254,14 @@
                                                                         </div>
                                                                         <div class="flex items-center gap-1.5 shrink-0">
                                                                             <button type="button" @click.stop="panelLiquidacionAbierto = true; importacion['621'].abierta = true; $nextTick(() => encuadrarMenuDJ())"
-                                                                                    class="inline-flex items-center rounded-md border border-blue-300 bg-white px-1.5 py-0.5 text-[10px] font-bold text-blue-800 hover:bg-blue-50">
-                                                                                Importar DJ
+                                                                                    class="inline-flex items-center rounded-md border border-blue-300 bg-white px-2 py-0.5 text-[10px] font-bold text-blue-800 hover:bg-blue-50 shadow-2xs transition cursor-pointer">
+                                                                                📥 Importar DJ
+                                                                            </button>
+                                                                            <button type="button" @click.stop="limpiarHojaLiquidacion()" :disabled="savingLiquidacion"
+                                                                                    title="Restablecer o limpiar la hoja de liquidación PDT 621 a cero"
+                                                                                    class="inline-flex items-center gap-1 rounded-md border border-rose-300 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700 shadow-2xs transition cursor-pointer">
+                                                                                <span>🗑️</span>
+                                                                                <span>Limpiar</span>
                                                                             </button>
                                                                             <span x-show="liquidacion.igv_saldo_favor_siguiente > 0" class="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200" title="Saldo a favor para siguiente mes">
                                                                                 Favor M+1: S/ <span x-text="formatearNumeroConComas(liquidacion.igv_saldo_favor_siguiente)"></span>
@@ -315,286 +324,378 @@
                                                                             </button>
                                                                         </div>
 
-                                                                        {{-- PANEL 1: IGV (1011) --}}
-                                                                        <div x-show="tabLiquidacion === 'igv'" class="space-y-2.5">
-                                                                            <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));">
-                                                                                <div class="rounded-lg border border-slate-200 bg-slate-50/70 p-2">
-                                                                                    <span class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-700">1. Ventas</span>
-                                                                                    <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
-                                                                                        <div>
-                                                                                            <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600" x-text="liquidacion.es_zona_selva ? 'Ventas Selva (Cas. 100)' : 'Base gravada (Cas. 100)'"></label>
+                                                                        {{-- PANEL 1: IGV (1011) - REPLICA EXACTA SUNAT FORMULARIO VIRTUAL 621 --}}
+                                                                        <div x-show="tabLiquidacion === 'igv'" class="space-y-3">
+                                                                            {{-- Cuadrícula 2 Columnas: 1. Ventas & 2. Compras --}}
+                                                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5 items-start">
+                                                                                {{-- 1. VENTAS (DÉBITO FISCAL) --}}
+                                                                                <div class="rounded-xl border border-blue-200/80 bg-slate-50/80 p-2.5 space-y-2">
+                                                                                    <div class="flex items-center justify-between border-b border-blue-100 pb-1">
+                                                                                        <span class="text-[10px] font-black uppercase tracking-wider text-blue-950 flex items-center gap-1">
+                                                                                            <span>1. Ventas</span>
+                                                                                            <span class="text-[9px] text-blue-600 font-semibold">(Débito Fiscal)</span>
+                                                                                        </span>
+                                                                                        <span class="text-[9px] font-mono font-bold text-blue-800" x-show="!liquidacion.es_zona_selva">
+                                                                                            Cas. 131: S/ <span x-text="formatearNumeroConComas(totalDebitoFiscal())"></span>
+                                                                                        </span>
+                                                                                    </div>
+
+                                                                                    {{-- Casillas Frecuentes de Ventas --}}
+                                                                                    <div class="grid grid-cols-2 gap-2">
+                                                                                        <div class="col-span-2 sm:col-span-1">
+                                                                                            <label class="mb-0.5 block text-[9.5px] font-bold text-slate-700 truncate" x-text="liquidacion.es_zona_selva ? 'Ventas Selva (Cas. 100)' : 'Base Gravada (Cas. 100)'"></label>
                                                                                             <input type="text" inputmode="decimal" x-model="liquidacion.ventas_base"
                                                                                                    @input="liquidacion.ventas_base = formatearMilesInput($event); onVentasBaseInput()"
-                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800">
+                                                                                                   placeholder="0.00" class="w-full rounded-lg border border-slate-300 bg-white px-2 py-1 font-mono text-xs text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                                                                                         </div>
-                                                                                        <div>
-                                                                                            <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600">Débito fiscal (Cas. 101)</label>
+                                                                                        <div class="col-span-2 sm:col-span-1">
+                                                                                            <label class="mb-0.5 block text-[9.5px] font-bold text-slate-700 truncate">Débito Fiscal (Cas. 101)</label>
                                                                                             <input type="text" inputmode="decimal" x-model="liquidacion.igv_ventas" :readonly="liquidacion.es_zona_selva"
                                                                                                    @input="liquidacion.igv_ventas = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                                   placeholder="0.00" class="w-full rounded border px-2 py-1.5 font-mono text-xs"
-                                                                                                   :class="liquidacion.es_zona_selva ? 'border-slate-200 bg-slate-100 text-slate-400' : 'border-slate-300 bg-white text-slate-800'">
+                                                                                                   placeholder="0.00" class="w-full rounded-lg border px-2 py-1 font-mono text-xs font-semibold"
+                                                                                                   :class="liquidacion.es_zona_selva ? 'border-slate-200 bg-slate-100 text-slate-400' : 'border-slate-300 bg-white text-blue-950 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'">
                                                                                         </div>
-                                                                                        <div x-show="!liquidacion.es_zona_selva">
-                                                                                            <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600">No gravadas (Cas. 105)</label>
+                                                                                        <div class="col-span-2" x-show="!liquidacion.es_zona_selva">
+                                                                                            <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                                                                <label class="text-[9px] font-medium text-slate-600">Ventas No Gravadas (Cas. 105)</label>
+                                                                                                <span class="text-[8px] text-slate-400">Sin IGV · Suma a Renta</span>
+                                                                                            </div>
                                                                                             <input type="text" inputmode="decimal" x-model="liquidacion.ventas_no_gravadas"
                                                                                                    @input="liquidacion.ventas_no_gravadas = formatearMilesInput($event); onVentasNoGravadasInput()"
-                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800">
-                                                                                        </div>
-                                                                                        <div x-show="!liquidacion.es_zona_selva">
-                                                                                            <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600">Descuentos (Cas. 102)</label>
-                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.igv_descuentos_base"
-                                                                                                   @input="liquidacion.igv_descuentos_base = formatearMilesInput($event); onDescuentosBaseInput()"
-                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800">
-                                                                                        </div>
-                                                                                        <div x-show="!liquidacion.es_zona_selva">
-                                                                                            <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600">IGV descuentos (Cas. 103)</label>
-                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.igv_descuentos"
-                                                                                                   @input="liquidacion.igv_descuentos = formatearMilesInput($event); sincronizarBaseRenta(); recalcularTotalesLiquidacion()"
-                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800">
+                                                                                                   placeholder="0.00" class="w-full rounded-lg border border-slate-300 bg-white px-2 py-1 font-mono text-xs text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                                                                                         </div>
                                                                                     </div>
+
+                                                                                    {{-- Desplegable de Casillas Secundarias de Ventas --}}
+                                                                                    <div x-show="!liquidacion.es_zona_selva" class="pt-0.5">
+                                                                                        <button type="button" @click="masCasillasVentas = !masCasillasVentas"
+                                                                                                class="text-[9.5px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition">
+                                                                                            <span x-text="(masCasillasVentas || tieneValoresMasVentas()) ? '▾ Ocultar casillas secundarias' : '▸ + Más casillas de ventas (Descuentos, Ley 31556...)'"></span>
+                                                                                        </button>
+
+                                                                                        <div x-show="masCasillasVentas || tieneValoresMasVentas()" class="mt-1.5 p-2 rounded-lg bg-white border border-slate-200 grid grid-cols-2 gap-2">
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">Descuentos Vtas (Cas. 102)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_descuentos_base"
+                                                                                                       @input="liquidacion.igv_descuentos_base = formatearMilesInput($event); onDescuentosBaseInput()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">IGV Descuentos (Cas. 103)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_descuentos"
+                                                                                                       @input="liquidacion.igv_descuentos = formatearMilesInput($event); sincronizarBaseRenta(); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">Base Ley 31556 (Cas. 154)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_ventas_ley_base"
+                                                                                                       @input="liquidacion.igv_ventas_ley_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">IGV Ley 31556 (Cas. 155)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_ventas_ley"
+                                                                                                       @input="liquidacion.igv_ventas_ley = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    {{-- Pie de Ventas: Total Débito Fiscal --}}
+                                                                                    <div class="flex items-center justify-between pt-1 border-t border-slate-200/70 text-[10px]">
+                                                                                        <span class="font-bold text-slate-600">Total Débito Fiscal (Cas. 131):</span>
+                                                                                        <span class="font-black font-mono text-blue-900" x-text="'S/ ' + formatearNumeroConComas(totalDebitoFiscal())"></span>
+                                                                                    </div>
                                                                                 </div>
-                                                                                <div class="rounded-lg border border-slate-200 bg-slate-50/70 p-2">
-                                                                                    <span class="mb-1.5 block text-[10px] font-bold uppercase tracking-wider text-slate-700">2. Compras</span>
-                                                                                    <div class="grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
-                                                                                        <div>
-                                                                                            <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600" x-text="liquidacion.es_zona_selva ? 'Compras del mes (Cas. 107)' : 'Destino gravado (Cas. 107)'"></label>
+
+                                                                                {{-- 2. COMPRAS (CRÉDITO FISCAL) --}}
+                                                                                <div class="rounded-xl border border-blue-200/80 bg-slate-50/80 p-2.5 space-y-2">
+                                                                                    <div class="flex items-center justify-between border-b border-blue-100 pb-1">
+                                                                                        <span class="text-[10px] font-black uppercase tracking-wider text-blue-950 flex items-center gap-1">
+                                                                                            <span>2. Compras</span>
+                                                                                            <span class="text-[9px] text-blue-600 font-semibold">(Crédito Fiscal)</span>
+                                                                                        </span>
+                                                                                        <span class="text-[9px] font-mono font-bold text-blue-800" x-show="!liquidacion.es_zona_selva">
+                                                                                            Cas. 178: S/ <span x-text="formatearNumeroConComas(totalCreditoFiscal())"></span>
+                                                                                        </span>
+                                                                                    </div>
+
+                                                                                    {{-- Casillas Frecuentes de Compras --}}
+                                                                                    <div class="grid grid-cols-2 gap-2">
+                                                                                        <div class="col-span-2 sm:col-span-1">
+                                                                                            <label class="mb-0.5 block text-[9.5px] font-bold text-slate-700 truncate" x-text="liquidacion.es_zona_selva ? 'Compras Selva (Cas. 107)' : 'Destino Gravado (Cas. 107)'"></label>
                                                                                             <input type="text" inputmode="decimal" x-model="liquidacion.compras_base"
                                                                                                    @input="liquidacion.compras_base = formatearMilesInput($event); onComprasBaseInput()"
-                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800">
+                                                                                                   placeholder="0.00" class="w-full rounded-lg border border-slate-300 bg-white px-2 py-1 font-mono text-xs text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                                                                                         </div>
-                                                                                        <div>
-                                                                                            <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600">Crédito fiscal (Cas. 108)</label>
+                                                                                        <div class="col-span-2 sm:col-span-1">
+                                                                                            <label class="mb-0.5 block text-[9.5px] font-bold text-slate-700 truncate">Crédito Fiscal (Cas. 108)</label>
                                                                                             <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras" :readonly="liquidacion.es_zona_selva"
                                                                                                    @input="liquidacion.igv_compras = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                                   placeholder="0.00" class="w-full rounded border px-2 py-1.5 font-mono text-xs"
-                                                                                                   :class="liquidacion.es_zona_selva ? 'border-slate-200 bg-slate-100 text-slate-400' : 'border-slate-300 bg-white text-slate-800'">
+                                                                                                   placeholder="0.00" class="w-full rounded-lg border px-2 py-1 font-mono text-xs font-semibold"
+                                                                                                   :class="liquidacion.es_zona_selva ? 'border-slate-200 bg-slate-100 text-slate-400' : 'border-slate-300 bg-white text-blue-950 focus:border-blue-500 focus:ring-1 focus:ring-blue-500'">
                                                                                         </div>
-                                                                                        <div x-show="!liquidacion.es_zona_selva">
-                                                                                            <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600">Internas no gravadas (Cas. 120)</label>
+                                                                                        <div class="col-span-2" x-show="!liquidacion.es_zona_selva">
+                                                                                            <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                                                                <label class="text-[9px] font-medium text-slate-600">Internas No Gravadas (Cas. 120)</label>
+                                                                                                <span class="text-[8px] text-slate-400">Sin Crédito Fiscal</span>
+                                                                                            </div>
                                                                                             <input type="text" inputmode="decimal" x-model="liquidacion.compras_internas_no_gravadas"
                                                                                                    @input="liquidacion.compras_internas_no_gravadas = formatearMilesInput($event)"
-                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800">
+                                                                                                   placeholder="0.00" class="w-full rounded-lg border border-slate-300 bg-white px-2 py-1 font-mono text-xs text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                                                                                         </div>
-                                                                                        <div x-show="!liquidacion.es_zona_selva">
-                                                                                            <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600">Importadas no gravadas (Cas. 122)</label>
-                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.compras_importadas_no_gravadas"
-                                                                                                   @input="liquidacion.compras_importadas_no_gravadas = formatearMilesInput($event)"
-                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800">
+                                                                                    </div>
+
+                                                                                    {{-- Desplegable de Casillas Secundarias de Compras --}}
+                                                                                    <div x-show="!liquidacion.es_zona_selva" class="pt-0.5">
+                                                                                        <button type="button" @click="masCasillasCompras = !masCasillasCompras"
+                                                                                                class="text-[9.5px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition">
+                                                                                            <span x-text="(masCasillasCompras || tieneValoresMasCompras()) ? '▾ Ocultar casillas secundarias' : '▸ + Más casillas de compras (Mixtas, Importaciones...)'"></span>
+                                                                                        </button>
+
+                                                                                        <div x-show="masCasillasCompras || tieneValoresMasCompras()" class="mt-1.5 p-2 rounded-lg bg-white border border-slate-200 grid grid-cols-2 gap-2">
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">Compras Mixtas (Cas. 110)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras_mixtas_base"
+                                                                                                       @input="liquidacion.igv_compras_mixtas_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">IGV Mixtas (Cas. 111)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras_mixtas"
+                                                                                                       @input="liquidacion.igv_compras_mixtas = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">Importaciones (Cas. 114)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_importaciones_base"
+                                                                                                       @input="liquidacion.igv_importaciones_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">IGV Import. (Cas. 115)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_importaciones"
+                                                                                                       @input="liquidacion.igv_importaciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">Import. Mixtas (Cas. 116)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_importaciones_mixtas_base"
+                                                                                                       @input="liquidacion.igv_importaciones_mixtas_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">IGV Imp. Mixtas (Cas. 117)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_importaciones_mixtas"
+                                                                                                       @input="liquidacion.igv_importaciones_mixtas = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">No Gravadas (Cas. 113)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.compras_destino_no_gravadas"
+                                                                                                       @input="liquidacion.compras_destino_no_gravadas = formatearMilesInput($event)"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">Import. No Grav. (Cas. 122)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.compras_importadas_no_gravadas"
+                                                                                                       @input="liquidacion.compras_importadas_no_gravadas = formatearMilesInput($event)"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">Compras Ley 31556 (Cas. 156)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras_ley_base"
+                                                                                                       @input="liquidacion.igv_compras_ley_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="mb-0.5 block text-[8.5px] font-medium text-slate-600">IGV Ley 31556 (Cas. 157)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras_ley"
+                                                                                                       @input="liquidacion.igv_compras_ley = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 px-1.5 py-0.5 font-mono text-xs text-slate-800">
+                                                                                            </div>
                                                                                         </div>
+                                                                                    </div>
+
+                                                                                    {{-- Pie de Compras: Total Crédito Fiscal --}}
+                                                                                    <div class="flex items-center justify-between pt-1 border-t border-slate-200/70 text-[10px]">
+                                                                                        <span class="font-bold text-slate-600">Total Crédito Fiscal (Cas. 178):</span>
+                                                                                        <span class="font-black font-mono text-blue-900" x-text="'S/ ' + formatearNumeroConComas(totalCreditoFiscal())"></span>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
 
-                                                                            <div x-show="!liquidacion.es_zona_selva" class="rounded-lg border border-slate-200 bg-white">
-                                                                                <button type="button" @click="otrasCasillasIgv = !otrasCasillasIgv"
-                                                                                        class="flex w-full items-center justify-between px-2 py-1.5 text-left">
-                                                                                    <span class="text-[10px] font-bold uppercase tracking-wider text-slate-600">Otras casillas IGV</span>
-                                                                                    <span class="text-[10px] text-slate-400" x-text="otrasCasillasIgv ? 'Ocultar' : 'Ley 31556, mixtas, importaciones'"></span>
-                                                                                </button>
-                                                                                <div x-show="otrasCasillasIgv" class="grid gap-2 border-t border-slate-100 p-2" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
-                                                                                    <div>
-                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">Ventas Ley 31556 (Cas. 154)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_ventas_ley_base"
-                                                                                               @input="liquidacion.igv_ventas_ley_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">IGV Ley 31556 (Cas. 155)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_ventas_ley"
-                                                                                               @input="liquidacion.igv_ventas_ley = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">Compras Ley 31556 (Cas. 156)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras_ley_base"
-                                                                                               @input="liquidacion.igv_compras_ley_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">IGV Ley 31556 (Cas. 157)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras_ley"
-                                                                                               @input="liquidacion.igv_compras_ley = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">Compras mixtas (Cas. 110)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras_mixtas_base"
-                                                                                               @input="liquidacion.igv_compras_mixtas_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">IGV mixtas (Cas. 111)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_compras_mixtas"
-                                                                                               @input="liquidacion.igv_compras_mixtas = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label class="mb-0.5 block text-[9px] font-medium text-slate-500">Importaciones (Cas. 114)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_importaciones_base"
-                                                                                               @input="liquidacion.igv_importaciones_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-1.5 py-1 font-mono text-xs text-slate-800">
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600">IGV importaciones (Cas. 115)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_importaciones"
-                                                                                               @input="liquidacion.igv_importaciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800">
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600">Importaciones mixtas (Cas. 116)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_importaciones_mixtas_base"
-                                                                                               @input="liquidacion.igv_importaciones_mixtas_base = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800">
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600">IGV import. mixtas (Cas. 117)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.igv_importaciones_mixtas"
-                                                                                               @input="liquidacion.igv_importaciones_mixtas = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800">
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600">Compras a no gravadas (Cas. 113)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.compras_destino_no_gravadas"
-                                                                                               @input="liquidacion.compras_destino_no_gravadas = formatearMilesInput($event)"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800">
-                                                                                    </div>
-                                                                                    <div>
-                                                                                        <label class="mb-0.5 block text-[10px] font-medium leading-snug text-slate-600">Import. a no gravadas (Cas. 119)</label>
-                                                                                        <input type="text" inputmode="decimal" x-model="liquidacion.importaciones_destino_no_gravadas"
-                                                                                               @input="liquidacion.importaciones_destino_no_gravadas = formatearMilesInput($event)"
-                                                                                               placeholder="0.00" class="w-full rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs text-slate-800">
-                                                                                    </div>
-                                                                                </div>
-                                                                            </div>
-
-                                                                            {{-- Deducciones de IGV (Ocultas si es Selva) --}}
-                                                                            <div x-show="!liquidacion.es_zona_selva" class="rounded-lg border border-slate-200 bg-slate-50/70 p-2 space-y-2">
-                                                                                <div class="flex items-center justify-between">
-                                                                                    <span class="block text-[10px] font-bold text-slate-700 uppercase tracking-wider">3. Arrastre y Deducciones</span>
-                                                                                    <span class="text-[9px] text-slate-500">Separación estricta de saldos SUNAT</span>
+                                                                            {{-- 3. DETERMINACIÓN OFICIAL DE LA DEUDA SUNAT (PÁGINA 2 DEL FV 621) --}}
+                                                                            <div x-show="!liquidacion.es_zona_selva" class="rounded-xl border border-slate-200 bg-white p-3 space-y-2.5 shadow-2xs">
+                                                                                <div class="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                                                                                    <span class="text-[10.5px] font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                                                                                        <span>3. Determinación de la Deuda</span>
+                                                                                        <span class="text-[9px] font-semibold text-slate-500">(Página 2 PDT 621)</span>
+                                                                                    </span>
+                                                                                    <span class="text-[9.5px] text-slate-500 font-medium">Secuencia oficial SUNAT</span>
                                                                                 </div>
 
-                                                                                {{-- Saldo a favor mes anterior (Crédito Fiscal Casilla 145) --}}
-                                                                                <div class="rounded-md bg-white p-2 border border-slate-200/80">
+                                                                                {{-- PASO A: Impuesto Resultante o Saldo a Favor del Mes (Casilla 140) --}}
+                                                                                <div class="flex items-center justify-between p-2 rounded-lg border transition"
+                                                                                     :class="casilla140ImpuestoMes() > 0 ? 'bg-amber-50/70 border-amber-200 text-amber-950' : (casilla140ImpuestoMes() < 0 ? 'bg-emerald-50/70 border-emerald-200 text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-800')">
+                                                                                    <div>
+                                                                                        <div class="flex items-center gap-1.5">
+                                                                                            <span class="text-[9.5px] font-black">Casilla 140:</span>
+                                                                                            <span class="text-[9.5px] font-bold"
+                                                                                                  x-text="casilla140ImpuestoMes() > 0 ? 'Impuesto Resultante del Mes (Débito − Crédito)' : (casilla140ImpuestoMes() < 0 ? 'Saldo a Favor del Mes (Crédito > Débito)' : 'Impuesto Resultante / Saldo a Favor')"></span>
+                                                                                        </div>
+                                                                                        <p class="text-[8.5px] text-slate-500 mt-0.5">
+                                                                                            <span x-text="'Débito S/ ' + formatearNumeroConComas(totalDebitoFiscal()) + ' − Crédito S/ ' + formatearNumeroConComas(totalCreditoFiscal())"></span>
+                                                                                        </p>
+                                                                                    </div>
+                                                                                    <div class="text-right">
+                                                                                        <span class="font-mono text-xs font-black"
+                                                                                              :class="casilla140ImpuestoMes() > 0 ? 'text-amber-900' : (casilla140ImpuestoMes() < 0 ? 'text-emerald-800' : 'text-slate-700')"
+                                                                                              x-text="casilla140ImpuestoMes() > 0 ? ('S/ ' + formatearNumeroConComas(casilla140ImpuestoMes())) : (casilla140ImpuestoMes() < 0 ? ('- S/ ' + formatearNumeroConComas(Math.abs(casilla140ImpuestoMes()))) : 'S/ 0.00')"></span>
+                                                                                        <span class="block text-[8px] font-bold uppercase"
+                                                                                              :class="casilla140ImpuestoMes() > 0 ? 'text-amber-700' : (casilla140ImpuestoMes() < 0 ? 'text-emerald-600' : 'text-slate-400')"
+                                                                                              x-text="casilla140ImpuestoMes() > 0 ? 'Tributo previo' : (casilla140ImpuestoMes() < 0 ? 'A favor contribuyente' : 'Neutro')"></span>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {{-- PASO B: Saldo a Favor del Periodo Anterior (Casilla 145) --}}
+                                                                                <div class="p-2 rounded-lg bg-slate-50/80 border border-slate-200">
                                                                                     <div class="flex items-center justify-between gap-1 mb-1">
-                                                                                        <label class="text-[9.5px] text-slate-700 font-bold">Saldo Favor Periodo Anterior (Casilla 145)</label>
+                                                                                        <label class="text-[9.5px] text-slate-800 font-bold flex items-center gap-1">
+                                                                                            <span>Saldo Favor Periodo Anterior (Casilla 145)</span>
+                                                                                        </label>
                                                                                         <div class="flex items-center gap-1">
-                                                                                            <span x-show="saldoFavorSugerido > 0" class="text-[8.5px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200" title="Arrastre automático del crédito fiscal de M-1">
+                                                                                            <span x-show="saldoFavorSugerido > 0" class="text-[8.5px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200" title="Arrastre automático de M-1">
                                                                                                 Auto M-1: S/ <span x-text="formatearNumeroConComas(saldoFavorSugerido)"></span>
                                                                                             </span>
                                                                                             <button type="button" x-show="saldoFavorSugerido > 0"
                                                                                                     @click="aplicarSaldoAnteriorSugerido()"
-                                                                                                    class="text-[8px] text-emerald-600 hover:text-emerald-800 underline" title="Recargar saldo de M-1">
+                                                                                                    class="text-[8px] text-emerald-700 hover:text-emerald-900 underline font-semibold" title="Recargar saldo de M-1">
                                                                                                 Reaplicar
                                                                                             </button>
                                                                                         </div>
                                                                                     </div>
                                                                                     <input type="text" inputmode="decimal" x-model="liquidacion.igv_saldo_favor_anterior"
                                                                                            @input="liquidacion.igv_saldo_favor_anterior = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                           placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                           placeholder="0.00" class="w-full rounded-lg border border-slate-300 bg-white py-1 px-2 text-xs font-mono text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500">
                                                                                 </div>
 
-                                                                                {{-- Retenciones de IGV (casillas 176, 179 y 165) --}}
-                                                                                <div class="rounded-md bg-white p-2 border border-slate-200/80 space-y-1.5">
-                                                                                    <div class="flex items-center justify-between">
-                                                                                        <span class="text-[9.5px] font-bold text-slate-700">Retenciones de IGV</span>
-                                                                                        <span class="text-[9px] font-mono text-blue-700 font-bold" x-show="liquidacion.igv_retenciones_saldo_siguiente > 0">
-                                                                                            Pasa M+1 (Cas. 165): S/ <span x-text="formatearNumeroConComas(liquidacion.igv_retenciones_saldo_siguiente)"></span>
-                                                                                        </span>
+                                                                                {{-- PASO C: Tributo a Pagar o Saldo a Favor (Casilla 184) --}}
+                                                                                <div class="flex items-center justify-between p-2 rounded-lg border transition"
+                                                                                     :class="casilla184TributoResultante() > 0 ? 'bg-blue-50/60 border-blue-200 text-blue-950' : (casilla184TributoResultante() < 0 ? 'bg-emerald-50/60 border-emerald-200 text-emerald-950' : 'bg-slate-50 border-slate-200 text-slate-800')">
+                                                                                    <div>
+                                                                                        <div class="flex items-center gap-1.5">
+                                                                                            <span class="text-[9.5px] font-black">Casilla 184:</span>
+                                                                                            <span class="text-[9.5px] font-bold"
+                                                                                                  x-text="casilla184TributoResultante() > 0 ? 'Tributo a Pagar (antes de ret./perc.)' : (casilla184TributoResultante() < 0 ? 'Saldo a Favor Acumulado (para mes siguiente)' : 'Tributo a Pagar o Saldo a Favor')"></span>
+                                                                                        </div>
+                                                                                        <p class="text-[8.5px] text-slate-500 mt-0.5">
+                                                                                            <span>Casilla 140 menos Casilla 145</span>
+                                                                                        </p>
                                                                                     </div>
-                                                                                    <div class="grid grid-cols-2 gap-2">
-                                                                                        <div>
-                                                                                            <div class="flex items-center justify-between gap-1 mb-0.5">
-                                                                                                <label class="text-[9px] text-slate-600 font-medium leading-snug">Saldo Ant. (Cas. 176)</label>
-                                                                                                <div class="flex items-center gap-1">
-                                                                                                    <span x-show="retencionesSugeridas > 0" class="text-[8px] font-bold text-blue-700 bg-blue-100 px-1 py-0.2 rounded" title="Arrastre automático de retenciones de M-1">
-                                                                                                        Auto M-1
-                                                                                                    </span>
-                                                                                                    <button type="button" x-show="retencionesSugeridas > 0"
-                                                                                                            @click="aplicarRetencionesSugeridas()"
-                                                                                                            class="text-[8px] text-blue-600 hover:text-blue-800 underline" title="Recargar retenciones de M-1">
-                                                                                                        ↺
-                                                                                                    </button>
-                                                                                                </div>
-                                                                                            </div>
-                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.igv_retenciones_saldo_anterior"
-                                                                                                   @input="liquidacion.igv_retenciones_saldo_anterior = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
-                                                                                        </div>
-                                                                                        <div>
-                                                                                            <label class="text-[9px] text-slate-600 font-medium block mb-0.5 truncate">Del Periodo (Cas. 179)</label>
-                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.igv_retenciones"
-                                                                                                   @input="liquidacion.igv_retenciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
-                                                                                        </div>
+                                                                                    <div class="text-right">
+                                                                                        <span class="font-mono text-xs font-black"
+                                                                                              :class="casilla184TributoResultante() > 0 ? 'text-blue-900' : (casilla184TributoResultante() < 0 ? 'text-emerald-800' : 'text-slate-700')"
+                                                                                              x-text="casilla184TributoResultante() > 0 ? ('S/ ' + formatearNumeroConComas(casilla184TributoResultante())) : (casilla184TributoResultante() < 0 ? ('S/ ' + formatearNumeroConComas(Math.abs(casilla184TributoResultante()))) : 'S/ 0.00')"></span>
+                                                                                        <span class="block text-[8px] font-bold uppercase"
+                                                                                              :class="casilla184TributoResultante() > 0 ? 'text-blue-700' : (casilla184TributoResultante() < 0 ? 'text-emerald-600' : 'text-slate-400')"
+                                                                                              x-text="casilla184TributoResultante() > 0 ? 'A deducir ret/perc' : (casilla184TributoResultante() < 0 ? 'Pasa a Cas. 145 M+1' : 'Saldo S/ 0')"></span>
                                                                                     </div>
                                                                                 </div>
 
-                                                                                {{-- Percepciones de IGV (casillas 168, 171 y 164) --}}
-                                                                                <div class="rounded-md bg-white p-2 border border-slate-200/80 space-y-1.5">
-                                                                                    <div class="flex items-center justify-between">
-                                                                                        <span class="text-[9.5px] font-bold text-slate-700">Percepciones de IGV</span>
-                                                                                        <span class="text-[9px] font-mono text-amber-700 font-bold" x-show="liquidacion.igv_percepciones_saldo_siguiente > 0">
-                                                                                            Pasa M+1 (Cas. 164): S/ <span x-text="formatearNumeroConComas(liquidacion.igv_percepciones_saldo_siguiente)"></span>
-                                                                                        </span>
-                                                                                    </div>
-                                                                                    <div class="grid grid-cols-2 gap-2">
-                                                                                        <div>
-                                                                                            <div class="flex items-center justify-between gap-1 mb-0.5">
-                                                                                                <label class="text-[9px] text-slate-600 font-medium leading-snug">Saldo Ant. (Cas. 168)</label>
-                                                                                                <div class="flex items-center gap-1">
-                                                                                                    <span x-show="percepcionesSugeridas > 0" class="text-[8px] font-bold text-amber-700 bg-amber-100 px-1 py-0.2 rounded" title="Arrastre automático de percepciones de M-1">
-                                                                                                        Auto M-1
-                                                                                                    </span>
-                                                                                                    <button type="button" x-show="percepcionesSugeridas > 0"
-                                                                                                            @click="aplicarPercepcionesSugeridas()"
-                                                                                                            class="text-[8px] text-amber-600 hover:text-amber-800 underline" title="Recargar percepciones de M-1">
-                                                                                                        ↺
-                                                                                                    </button>
-                                                                                                </div>
-                                                                                            </div>
-                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.igv_percepciones_saldo_anterior"
-                                                                                                   @input="liquidacion.igv_percepciones_saldo_anterior = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                {{-- PASO D: Deducción de Retenciones y Percepciones --}}
+                                                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                                                                                    {{-- Retenciones de IGV (Casillas 176, 179 y 165) --}}
+                                                                                    <div class="rounded-lg border border-slate-200 bg-slate-50/70 p-2 space-y-1.5">
+                                                                                        <div class="flex items-center justify-between">
+                                                                                            <span class="text-[9.5px] font-bold text-slate-800">Menos: Retenciones de IGV</span>
+                                                                                            <span class="text-[8.5px] font-mono font-bold text-blue-700" x-show="liquidacion.igv_retenciones_saldo_siguiente > 0" title="Retenciones no aplicadas que pasan a M+1">
+                                                                                                Pasa M+1 (Cas. 165): S/ <span x-text="formatearNumeroConComas(liquidacion.igv_retenciones_saldo_siguiente)"></span>
+                                                                                            </span>
                                                                                         </div>
-                                                                                        <div>
-                                                                                            <label class="text-[9px] text-slate-600 font-medium block mb-0.5 truncate">Del Periodo (Cas. 171)</label>
-                                                                                            <input type="text" inputmode="decimal" x-model="liquidacion.igv_percepciones"
-                                                                                                   @input="liquidacion.igv_percepciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
-                                                                                                   placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-1 px-1.5 text-xs font-mono text-slate-800 shadow-2xs hover:border-slate-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition">
+                                                                                        <div class="grid grid-cols-2 gap-1.5">
+                                                                                            <div>
+                                                                                                <div class="flex items-center justify-between gap-0.5 mb-0.5">
+                                                                                                    <label class="text-[8.5px] text-slate-600 font-medium">Saldo Ant. (Cas. 176)</label>
+                                                                                                    <button type="button" x-show="retencionesSugeridas > 0" @click="aplicarRetencionesSugeridas()" class="text-[7.5px] text-blue-700 hover:underline font-bold" title="Reaplicar retenciones M-1">Auto M-1</button>
+                                                                                                </div>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_retenciones_saldo_anterior"
+                                                                                                       @input="liquidacion.igv_retenciones_saldo_anterior = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-0.5 px-1.5 text-xs font-mono text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="text-[8.5px] text-slate-600 font-medium block mb-0.5">Del Periodo (Cas. 179)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_retenciones"
+                                                                                                       @input="liquidacion.igv_retenciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-0.5 px-1.5 text-xs font-mono text-slate-800">
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div class="flex items-center justify-between text-[8.5px] text-slate-500 pt-0.5">
+                                                                                            <span>Deducidas este mes:</span>
+                                                                                            <span class="font-mono font-bold text-slate-700" x-text="'S/ ' + formatearNumeroConComas(retencionesAplicadas())"></span>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    {{-- Percepciones de IGV (Casillas 168, 171 y 164) --}}
+                                                                                    <div class="rounded-lg border border-slate-200 bg-slate-50/70 p-2 space-y-1.5">
+                                                                                        <div class="flex items-center justify-between">
+                                                                                            <span class="text-[9.5px] font-bold text-slate-800">Menos: Percepciones de IGV</span>
+                                                                                            <span class="text-[8.5px] font-mono font-bold text-amber-700" x-show="liquidacion.igv_percepciones_saldo_siguiente > 0" title="Percepciones no aplicadas que pasan a M+1">
+                                                                                                Pasa M+1 (Cas. 164): S/ <span x-text="formatearNumeroConComas(liquidacion.igv_percepciones_saldo_siguiente)"></span>
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        <div class="grid grid-cols-2 gap-1.5">
+                                                                                            <div>
+                                                                                                <div class="flex items-center justify-between gap-0.5 mb-0.5">
+                                                                                                    <label class="text-[8.5px] text-slate-600 font-medium">Saldo Ant. (Cas. 168)</label>
+                                                                                                    <button type="button" x-show="percepcionesSugeridas > 0" @click="aplicarPercepcionesSugeridas()" class="text-[7.5px] text-amber-700 hover:underline font-bold" title="Reaplicar percepciones M-1">Auto M-1</button>
+                                                                                                </div>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_percepciones_saldo_anterior"
+                                                                                                       @input="liquidacion.igv_percepciones_saldo_anterior = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-0.5 px-1.5 text-xs font-mono text-slate-800">
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <label class="text-[8.5px] text-slate-600 font-medium block mb-0.5">Del Periodo (Cas. 171)</label>
+                                                                                                <input type="text" inputmode="decimal" x-model="liquidacion.igv_percepciones"
+                                                                                                       @input="liquidacion.igv_percepciones = formatearMilesInput($event); recalcularTotalesLiquidacion()"
+                                                                                                       placeholder="0.00" class="w-full rounded border border-slate-300 bg-white py-0.5 px-1.5 text-xs font-mono text-slate-800">
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div class="flex items-center justify-between text-[8.5px] text-slate-500 pt-0.5">
+                                                                                            <span>Deducidas este mes:</span>
+                                                                                            <span class="font-mono font-bold text-slate-700" x-text="'S/ ' + formatearNumeroConComas(percepcionesAplicadas())"></span>
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
 
-                                                                            {{-- Tarjeta Resultado Determinado de IGV --}}
-                                                                            <div class="rounded-xl p-2.5 border transition"
+                                                                            {{-- TARJETA RESULTADO DETERMINADO DE IGV (CASILLA 188 / 189) --}}
+                                                                            <div class="rounded-xl p-3 border transition shadow-2xs"
                                                                                  :class="liquidacion.es_zona_selva ? 'bg-emerald-50 border-emerald-300' : (liquidacion.igv_resultante_pagar > 0 ? 'bg-rose-50 border-rose-200' : (liquidacion.igv_saldo_favor_siguiente > 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'))">
                                                                                 <div class="flex items-center justify-between gap-2">
                                                                                     <div>
-                                                                                        <p class="text-[9px] font-bold uppercase tracking-wider"
+                                                                                        <p class="text-[9.5px] font-black uppercase tracking-wider"
                                                                                            :class="liquidacion.es_zona_selva ? 'text-emerald-800' : (liquidacion.igv_resultante_pagar > 0 ? 'text-rose-700' : (liquidacion.igv_saldo_favor_siguiente > 0 ? 'text-emerald-700' : 'text-slate-600'))"
-                                                                                           x-text="liquidacion.es_zona_selva ? '🌴 Exonerado de IGV (Amazonía Ley 27037)' : (liquidacion.igv_resultante_pagar > 0 ? 'IGV a pagar' : (liquidacion.igv_saldo_favor_siguiente > 0 ? 'Saldo a favor de IGV' : 'Resultado IGV'))"></p>
-                                                                                        <p class="text-sm font-black mt-0.5 font-mono"
+                                                                                           x-text="liquidacion.es_zona_selva ? '🌴 Exonerado de IGV (Amazonía Ley 27037)' : (liquidacion.igv_resultante_pagar > 0 ? 'IGV a pagar (Casilla 189)' : (liquidacion.igv_saldo_favor_siguiente > 0 ? 'Saldo a favor de IGV para M+1 (Casilla 184)' : 'Resultado IGV: S/ 0.00'))"></p>
+                                                                                        <p class="text-base font-black mt-0.5 font-mono"
                                                                                            :class="liquidacion.es_zona_selva ? 'text-emerald-800' : (liquidacion.igv_resultante_pagar > 0 ? 'text-rose-700' : (liquidacion.igv_saldo_favor_siguiente > 0 ? 'text-emerald-700' : 'text-slate-700'))"
                                                                                            x-text="liquidacion.es_zona_selva ? 'S/ 0.00 (Exonerado)' : ('S/ ' + formatearNumeroConComas(liquidacion.igv_resultante_pagar > 0 ? liquidacion.igv_resultante_pagar : liquidacion.igv_saldo_favor_siguiente))"></p>
                                                                                         <p x-show="cruceDj.igv !== null" class="mt-0.5 text-[10px] font-semibold"
                                                                                            :class="cruceCuadra('igv') ? 'text-emerald-700' : 'text-amber-700'"
-                                                                                           x-text="cruceCuadra('igv') ? 'Cuadra con la DJ' : ('La DJ dice S/ ' + formatearNumeroConComas(cruceDj.igv))"></p>
+                                                                                           x-text="cruceCuadra('igv') ? '🟢 Cuadra con la DJ oficial de SUNAT' : ('⚠️ La DJ de SUNAT indica S/ ' + formatearNumeroConComas(cruceDj.igv))"></p>
                                                                                     </div>
-                                                                                    <div class="flex flex-col items-end gap-1">
+                                                                                    <div class="flex flex-col items-end gap-1.5">
                                                                                         <span x-show="!liquidacion.es_zona_selva && liquidacion.igv_resultante_pagar > 0" class="text-[10px] font-bold text-rose-700 bg-rose-100/90 px-2 py-0.5 rounded-md border border-rose-200">
-                                                                                            Tributo 1011
+                                                                                            Tributo 1011 · IGV
                                                                                         </span>
                                                                                         <span x-show="liquidacion.es_zona_selva" class="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-200">
-                                                                                            Amazonía
+                                                                                            Ley 27037 Selva
                                                                                         </span>
-                                                                                        <div class="flex items-center gap-1">
-                                                                                            <span x-show="liquidacion.igv_retenciones_saldo_siguiente > 0" class="text-[8.5px] font-bold text-blue-700 bg-blue-100 px-1 rounded" title="Retenciones de IGV que pasan a la casilla 176 del mes siguiente">
+                                                                                        <div class="flex items-center gap-1 flex-wrap justify-end">
+                                                                                            <span x-show="liquidacion.igv_retenciones_saldo_siguiente > 0" class="text-[8.5px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded" title="Retenciones que pasan a Casilla 176 de M+1">
                                                                                                 Ret. M+1: S/ <span x-text="formatearNumeroConComas(liquidacion.igv_retenciones_saldo_siguiente)"></span>
                                                                                             </span>
-                                                                                            <span x-show="liquidacion.igv_percepciones_saldo_siguiente > 0" class="text-[8.5px] font-bold text-amber-700 bg-amber-100 px-1 rounded" title="Percepciones de IGV que pasan a la casilla 168 del mes siguiente">
+                                                                                            <span x-show="liquidacion.igv_percepciones_saldo_siguiente > 0" class="text-[8.5px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.2 rounded" title="Percepciones que pasan a Casilla 168 de M+1">
                                                                                                 Perc. M+1: S/ <span x-text="formatearNumeroConComas(liquidacion.igv_percepciones_saldo_siguiente)"></span>
                                                                                             </span>
                                                                                         </div>
@@ -605,6 +706,51 @@
 
                                                                         {{-- PANEL 2: RENTA MENSUAL (3111 / 3121 / 3031) --}}
                                                                         <div x-show="tabLiquidacion === 'renta'" class="space-y-2.5">
+                                                                            {{-- BANNER EJECUTIVO: RÉGIMEN TRIBUTARIO Y CONTROL DE LÍMITES SUNAT --}}
+                                                                            <div class="rounded-xl border p-2.5 transition shadow-2xs"
+                                                                                 :class="(regimen || '').toUpperCase() === 'RER' ? 'border-blue-200 bg-blue-50/70' : ((regimen || '').toUpperCase() === 'RMT' ? 'border-indigo-200 bg-indigo-50/70' : ((regimen || '').toUpperCase() === 'RUS' ? 'border-amber-200 bg-amber-50/70' : 'border-purple-200 bg-purple-50/70'))">
+                                                                                <div class="flex items-center justify-between gap-2">
+                                                                                    <div class="flex items-center gap-2 min-w-0 flex-wrap">
+                                                                                        <span class="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider">Régimen Ficha:</span>
+                                                                                        <span class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-black border"
+                                                                                              :class="(regimen || '').toUpperCase() === 'RER' ? 'bg-blue-100 text-blue-900 border-blue-300' : ((regimen || '').toUpperCase() === 'RMT' ? 'bg-indigo-100 text-indigo-900 border-indigo-300' : ((regimen || '').toUpperCase() === 'RUS' ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-purple-100 text-purple-900 border-purple-300'))">
+                                                                                            <span x-text="regimen || 'NO ASIGNADO'"></span>
+                                                                                        </span>
+                                                                                        <span class="text-[10px] text-slate-600 font-medium"
+                                                                                              x-text="(regimen || '').toUpperCase() === 'RER' ? '· Tasa 1.5% fija (Tributo 3111)' : ((regimen || '').toUpperCase() === 'RMT' ? '· Tasa 1.0% hasta 300 UIT (Tributo 3121)' : ((regimen || '').toUpperCase() === 'RUS' ? '· Cuota mensual fija NRUS' : '· Coeficiente / 1.5% (Tributo 3031)'))">
+                                                                                        </span>
+                                                                                    </div>
+                                                                                    <div class="flex items-center gap-1 shrink-0">
+                                                                                        <template x-if="(regimen || '').toUpperCase() === 'RER'">
+                                                                                            <span class="rounded bg-white/90 border border-blue-200 px-1.5 py-0.5 text-[9px] font-semibold text-blue-800" title="Tope anual de ingresos netos según Art. 119 Ley Impuesto a la Renta">
+                                                                                                Tope Ley: S/ 525,000 / año
+                                                                                            </span>
+                                                                                        </template>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {{-- Alerta interactiva de discrepancia si la DJ oficial difiere de la ficha --}}
+                                                                                <div x-show="importacion['621']?.resultado?.regimen_discrepancia" x-cloak
+                                                                                     class="mt-2 pt-2 border-t border-amber-200/80 flex items-center justify-between gap-2">
+                                                                                    <div class="flex items-center gap-1.5 min-w-0 text-[10px] text-amber-900">
+                                                                                        <span class="text-xs">⚠️</span>
+                                                                                        <span>La DJ oficial declaró en <strong class="font-bold underline" x-text="importacion['621']?.resultado?.regimen_discrepancia?.dj"></strong> (<span x-text="importacion['621']?.resultado?.regimen_discrepancia?.tasa_dj + '%'"></span>). Su ficha está en <strong x-text="importacion['621']?.resultado?.regimen_discrepancia?.ficha"></strong>.</span>
+                                                                                    </div>
+                                                                                    <template x-if="importacion['621']?.resultado?.regimen_discrepancia?.puede_cambiar_ficha">
+                                                                                        <button type="button"
+                                                                                                @click="actualizarRegimenFicha(importacion['621']?.resultado?.regimen_discrepancia?.dj)"
+                                                                                                class="shrink-0 px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-700 text-white font-bold text-[9px] shadow-2xs transition cursor-pointer">
+                                                                                            <span>⚡ Sincronizar Ficha a <span x-text="importacion['621']?.resultado?.regimen_discrepancia?.dj"></span></span>
+                                                                                        </button>
+                                                                                    </template>
+                                                                                    <template x-if="!importacion['621']?.resultado?.regimen_discrepancia?.puede_cambiar_ficha">
+                                                                                        <span class="shrink-0 px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[8.5px]" title="Normativa SUNAT: el descenso de régimen solo procede en Enero">
+                                                                                            Art. 121 LIR
+                                                                                        </span>
+                                                                                    </template>
+                                                                                </div>
+                                                                            </div>
+
                                                                             <div class="rounded-lg border border-slate-200 bg-slate-50/70 p-2 space-y-2">
                                                                                 <span class="block text-[10px] font-bold text-slate-700 uppercase tracking-wider">1. Determinación Pago a Cuenta</span>
 
@@ -776,12 +922,12 @@
                                                                                     </button>
                                                                                 </div>
                                                                                 <button type="button" @click="limpiarHojaLiquidacion()" :disabled="savingLiquidacion"
-                                                                                        title="Restablecer o limpiar la hoja de liquidación a cero"
-                                                                                        class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-slate-200 transition shrink-0">
-                                                                                    <svg class="h-3.5 w-3.5 text-slate-400 group-hover:text-rose-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                                                        title="Restablecer o limpiar la hoja de liquidación PDT 621 a cero"
+                                                                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-700 hover:text-white bg-rose-50 hover:bg-rose-600 rounded-lg border border-rose-300 transition shadow-2xs shrink-0 cursor-pointer">
+                                                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                                                                         <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                                                                                     </svg>
-                                                                                    <span>Limpiar</span>
+                                                                                    <span>Limpiar Hoja</span>
                                                                                 </button>
                                                                             </div>
                                                                         </div>
@@ -809,8 +955,14 @@
                                                                         </div>
                                                                         <div class="flex items-center gap-1.5 shrink-0">
                                                                             <button type="button" @click.stop="panelLiquidacionPlameAbierto = true; importacion['601'].abierta = true; $nextTick(() => encuadrarMenuDJ())"
-                                                                                    class="inline-flex items-center rounded-md border border-purple-300 bg-white px-1.5 py-0.5 text-[10px] font-bold text-purple-800 hover:bg-purple-50">
-                                                                                Importar DJ
+                                                                                    class="inline-flex items-center rounded-md border border-purple-300 bg-white px-2 py-0.5 text-[10px] font-bold text-purple-800 hover:bg-purple-50 shadow-2xs transition cursor-pointer">
+                                                                                📥 Importar DJ
+                                                                            </button>
+                                                                            <button type="button" @click.stop="limpiarHojaLiquidacion()" :disabled="savingLiquidacion"
+                                                                                    title="Restablecer o limpiar la planilla PLAME a cero"
+                                                                                    class="inline-flex items-center gap-1 rounded-md border border-rose-300 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700 shadow-2xs transition cursor-pointer">
+                                                                                <span>🗑️</span>
+                                                                                <span>Limpiar</span>
                                                                             </button>
                                                                             <span x-show="totalPlamePagar() > 0" class="text-[9px] font-bold bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded border border-purple-200">
                                                                                 Pagar: S/ <span x-text="formatearNumeroConComas(totalPlamePagar())"></span>
@@ -929,12 +1081,12 @@
                                                                                 </button>
                                                                             </div>
                                                                             <button type="button" @click="limpiarHojaLiquidacion()" :disabled="savingLiquidacion"
-                                                                                    title="Restablecer o limpiar la liquidación a cero"
-                                                                                    class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-slate-200 transition shrink-0">
-                                                                                <svg class="h-3.5 w-3.5 text-slate-400 group-hover:text-rose-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                                                    title="Restablecer o limpiar la liquidación PLAME a cero"
+                                                                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-rose-700 hover:text-white bg-rose-50 hover:bg-rose-600 rounded-lg border border-rose-300 transition shadow-2xs shrink-0 cursor-pointer">
+                                                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                                                                     <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
                                                                                 </svg>
-                                                                                <span>Limpiar</span>
+                                                                                <span>Limpiar Hoja</span>
                                                                             </button>
                                                                         </div>
                                                                     </div>
@@ -1067,8 +1219,8 @@
                                                                         class="flex w-full items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-600 transition hover:border-brand-400 hover:bg-brand-50 hover:text-brand-700">
                                                                     + Nuevo tributo
                                                                 </button>
-                                                            </div>
                                                         </section>
                                                     </template>
                                                 </div>
                                             </div>
+                                        </div>

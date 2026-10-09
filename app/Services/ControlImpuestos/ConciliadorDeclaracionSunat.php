@@ -75,7 +75,7 @@ final class ConciliadorDeclaracionSunat
         }
 
         if ($sinLectura) {
-            return $this->resultado($formularioEsperado, $declaracion, [], [], $alertas);
+            return $this->resultado($formularioEsperado, $declaracion, [], [], $alertas, $cliente, $periodoEsperado);
         }
 
         if ($declaracion->esBoleta && $declaracion->casillas === [] && $declaracion->tributos === []) {
@@ -88,9 +88,11 @@ final class ConciliadorDeclaracionSunat
 
         if ($declaracion->boletasIgnoradas > 0) {
             $alertas[] = $this->alerta(
-                'advertencia',
+                $declaracion->pagos !== [] ? 'info' : 'advertencia',
                 'boleta_ignorada',
-                'Dejé fuera un archivo que es boleta de pago. Use la constancia o el detalle de la declaración.',
+                $declaracion->pagos !== []
+                    ? 'Incorporé '.$declaracion->boletasIgnoradas.' boleta(s) de pago (Formulario 1662) para registrar abonos del periodo.'
+                    : 'Dejé fuera un archivo que es boleta de pago. Use la constancia o el detalle de la declaración.',
             );
         }
 
@@ -220,7 +222,7 @@ final class ConciliadorDeclaracionSunat
             ));
         }
 
-        return $this->resultado($formulario ?? $formularioEsperado, $declaracion, $campos, $preservar, $alertas);
+        return $this->resultado($formulario ?? $formularioEsperado, $declaracion, $campos, $preservar, $alertas, $cliente, $periodoEsperado);
     }
 
     /**
@@ -234,7 +236,98 @@ final class ConciliadorDeclaracionSunat
         array $campos,
         array $preservar,
         array $alertas,
+        Cliente $cliente,
+        string $periodoEsperado,
     ): ResultadoConciliacion {
+        $regimenFicha = $cliente->regimen_tributario instanceof RegimenTributario
+            ? $cliente->regimen_tributario->siglaSunat()
+            : strtoupper((string) ($cliente->regimen_tributario?->value ?? $cliente->regimen_tributario ?? ''));
+
+        $periodoRef = $declaracion->periodo ?? $periodoEsperado;
+        $anioRef = (int) (explode('-', $periodoRef)[1] ?? date('Y'));
+        $tope300Uit = self::tope300Uit($anioRef);
+        $ventasAcumuladas = (float) LiquidacionPeriodo::query()
+            ->where('cliente_id', $cliente->id)
+            ->where('periodo', 'like', "%-{$anioRef}")
+            ->sum('ventas_base');
+        $ventasEsteMes = (float) ($campos['ventas_base'] ?? 0);
+        $totalVentasAnual = $ventasAcumuladas + $ventasEsteMes;
+        $supero300Uit = $totalVentasAnual > $tope300Uit;
+
+        $tasaDj = $declaracion->casillas['315'] ?? null;
+        $tributoRentaDj = $campos['renta_tributo_codigo'] ?? ($preservar['renta_tributo_codigo'] ?? null);
+
+        $regimenDj = match (true) {
+            $tributoRentaDj === '3111' => 'RER',
+            $tributoRentaDj === '3121' => 'RMT',
+            $tributoRentaDj === '3031' => 'RG',
+            $tasaDj !== null && abs($tasaDj - 1.0) < 0.06 => 'RMT',
+            $tasaDj !== null && abs($tasaDj - 1.5) < 0.06 => match ($regimenFicha) {
+                'RMT' => 'RMT',
+                'RG', 'GENERAL' => 'RG',
+                'RER' => 'RER',
+                default => ($supero300Uit ? 'RMT' : 'RER'),
+            },
+            $tasaDj !== null && $regimenFicha === 'RMT' => 'RMT',
+            $tasaDj !== null && in_array($regimenFicha, ['RG', 'GENERAL'], true) => 'RG',
+            default => null,
+        };
+
+        if ($formulario === '621' && ($regimenFicha === 'RMT' || $regimenDj === 'RMT')) {
+            if ($supero300Uit || ($tasaDj !== null && abs($tasaDj - 1.5) < 0.06)) {
+                $alertas[] = $this->alerta(
+                    'info',
+                    'rmt_300_uit_superado',
+                    'Régimen MYPE Tributario (Art. 6 D. Leg. 1269): Ingresos anuales acumulados (S/ '.number_format($totalVentasAnual, 2).') '.($supero300Uit ? 'superan las 300 UIT (S/ '.number_format($tope300Uit, 2).')' : 'en evaluación').'. Corresponde legalmente aplicar la tasa del '.($tasaDj ? $this->formatearTasa($tasaDj).'%' : '1.5% o coeficiente').' para el pago a cuenta mensual.',
+                );
+            }
+        }
+
+        $regimenDiscrepancia = null;
+        if ($regimenDj !== null && $regimenFicha !== '' && $regimenDj !== $regimenFicha) {
+            $jerarquia = ['RUS' => 1, 'NRUS' => 1, 'RER' => 2, 'RMT' => 3, 'RG' => 4, 'GENERAL' => 4];
+            $nivelFicha = $jerarquia[$regimenFicha] ?? 0;
+            $nivelDj = $jerarquia[$regimenDj] ?? 0;
+            $esAscenso = $nivelDj > $nivelFicha;
+            $esDescenso = $nivelDj < $nivelFicha;
+            $esEnero = str_starts_with($periodoRef, '01-');
+            $puedeCambiarFicha = $esAscenso || ($esDescenso && $esEnero);
+
+            $motivo = match (true) {
+                $esAscenso => "El cliente ascendió de {$regimenFicha} a {$regimenDj} en el periodo {$this->etiquetaPeriodo($periodoRef)}. El pase a un régimen superior procede en cualquier mes del año (Art. 119 LIR / D. Leg. 1269).",
+                $esDescenso && $esEnero => "Cambio a régimen menor ({$regimenFicha} → {$regimenDj}) procedente únicamente con la declaración de Enero (Art. 121 LIR).",
+                $esDescenso && ! $esEnero => "La Ficha actual es {$regimenFicha}. Conforme al Art. 121 del TUO de la LIR, no es procedente descender de régimen a {$regimenDj} en {$this->etiquetaPeriodo($periodoRef)} (solo se permite en Enero). En este periodo el cliente tributó bajo {$regimenDj} antes de ascender a {$regimenFicha}. Se aplican la tasa y tributo declarados en la DJ sin modificar la Ficha maestra.",
+                default => "Discrepancia entre la Ficha ({$regimenFicha}) y la DJ ({$regimenDj}).",
+            };
+
+            $regimenDiscrepancia = [
+                'ficha' => $regimenFicha,
+                'dj' => $regimenDj,
+                'tasa_dj' => $tasaDj,
+                'tributo_sugerido' => match ($regimenDj) {
+                    'RER' => '3111',
+                    'RMT' => '3121',
+                    'RG' => '3031',
+                    default => null,
+                },
+                'es_ascenso' => $esAscenso,
+                'es_descenso' => $esDescenso,
+                'es_enero' => $esEnero,
+                'puede_cambiar_ficha' => $puedeCambiarFicha,
+                'mensaje_normativo' => $motivo,
+            ];
+        }
+
+        if ($regimenDj === 'RER' && $regimenFicha === 'RER' && $formulario === '621') {
+            if ($totalVentasAnual > 525000.00) {
+                $alertas[] = $this->alerta(
+                    'advertencia',
+                    'limite_rer_excedido',
+                    'Las ventas anuales estimadas/acumuladas (S/ '.number_format($totalVentasAnual, 2).') superan el tope legal de S/ 525,000.00 del RER (Art. 119 LIR). La empresa debe tributar en el Régimen MYPE Tributario (RMT) o General.',
+                );
+            }
+        }
+
         return new ResultadoConciliacion(
             bloqueado: $this->hayError($alertas),
             formulario: $formulario,
@@ -259,6 +352,8 @@ final class ConciliadorDeclaracionSunat
             ],
             control: $this->controlSunat,
             calculo: $this->calculoHoja,
+            pagos: $declaracion->pagos,
+            regimenDiscrepancia: $regimenDiscrepancia,
         );
     }
 
@@ -352,7 +447,7 @@ final class ConciliadorDeclaracionSunat
 
             if (isset($casillas['315']) && $casillas['315'] > 0) {
                 $campos['renta_tasa'] = round($casillas['315'], 4);
-                $esperada = $this->tasaDeLaFicha($cliente);
+                $esperada = $this->tasaDeLaFicha($cliente, $periodoEsperado, (float) ($campos['ventas_base'] ?? 0));
                 if ($esperada !== null && abs($campos['renta_tasa'] - $esperada) > 0.05) {
                     $alertas[] = $this->alerta(
                         'advertencia',
@@ -460,7 +555,7 @@ final class ConciliadorDeclaracionSunat
         }
 
         if ($hayDetalle) {
-            $this->contrastarMotor($campos, $pagarIgv, $pagarRenta, $cliente, $alertas);
+            $this->contrastarMotor($campos, $pagarIgv, $pagarRenta, $cliente, $alertas, $declaracion);
         }
 
         foreach ($tributos as $codigo => $monto) {
@@ -576,16 +671,16 @@ final class ConciliadorDeclaracionSunat
      */
     private function importeIgv(array $casillas, array $tributos): ?float
     {
+        if (isset($casillas['188'])) {
+            return max(0, $casillas['188']);
+        }
+
         if (isset($casillas['189'])) {
             return max(0, $casillas['189']);
         }
 
         if (isset($tributos['1011'])) {
             return $tributos['1011'];
-        }
-
-        if (isset($casillas['188'])) {
-            return max(0, $casillas['188']);
         }
 
         return null;
@@ -644,7 +739,7 @@ final class ConciliadorDeclaracionSunat
             );
         }
 
-        $codigo = $presentes[0] ?? $this->codigoRentaPorTasa($casillas);
+        $codigo = $presentes[0] ?? $this->codigoRentaPorTasa($casillas, $cliente);
         $esperado = app(CatalogoSunat::class)->codigoRentaDelRegimen($cliente->regimen_tributario, $cliente->estudio_id);
         $yaAvisoLaTasa = collect($alertas)->contains(fn (array $alerta): bool => $alerta['codigo'] === 'tasa_distinta');
         if ($codigo && $codigo !== '3081' && $esperado && $codigo !== $esperado && ! $yaAvisoLaTasa) {
@@ -667,11 +762,14 @@ final class ConciliadorDeclaracionSunat
     }
 
     /**
-     * El detalle del PDT 621 no imprime el código 3111/3121. La tasa del pago a cuenta sí: 1.5 % es RER y 1 % es RMT.
+     * El detalle del PDT 621 no siempre imprime el código 3111/3121. La tasa del pago a cuenta sí:
+     * - En RMT es 1.0 % (<=300 UIT) o 1.5 % / coeficiente (>300 UIT - Art. 6 D. Leg. 1269). Código: 3121.
+     * - En RER es 1.5 % (Art. 120 LIR). Código: 3111.
+     * - En RG es coeficiente o 1.5 % (Art. 85 LIR). Código: 3031.
      *
      * @param  array<string, float>  $casillas
      */
-    private function codigoRentaPorTasa(array $casillas): ?string
+    private function codigoRentaPorTasa(array $casillas, ?Cliente $cliente = null): ?string
     {
         if (isset($casillas['315']) && $casillas['315'] > 0) {
             $tasa = round($casillas['315'], 2);
@@ -681,10 +779,24 @@ final class ConciliadorDeclaracionSunat
             return null;
         }
 
+        $regimen = $cliente ? strtoupper((string) ($cliente->regimen_tributario?->value ?? $cliente->regimen_tributario)) : '';
+
+        if ($regimen === 'RMT') {
+            return '3121';
+        }
+
+        if (in_array($regimen, ['RG', 'GENERAL'], true)) {
+            return '3031';
+        }
+
+        if ($regimen === 'RER') {
+            return abs($tasa - 1.0) < 0.06 ? '3121' : '3111';
+        }
+
         return match (true) {
-            abs($tasa - 1.5) < 0.06 => '3111',
             abs($tasa - 1.0) < 0.06 => '3121',
-            default => null,
+            abs($tasa - 1.5) < 0.06 => '3111',
+            default => '3121',
         };
     }
 
@@ -717,7 +829,7 @@ final class ConciliadorDeclaracionSunat
      * @param  array<string, float|bool|string|null>  $campos
      * @param  list<array{nivel: string, codigo: string, mensaje: string}>  $alertas
      */
-    private function contrastarMotor(array $campos, ?float $pagarIgv, ?float $pagarRenta, Cliente $cliente, array &$alertas): void
+    private function contrastarMotor(array $campos, ?float $pagarIgv, ?float $pagarRenta, Cliente $cliente, array &$alertas, ?DeclaracionLeida $declaracion = null): void
     {
         $borrador = new LiquidacionPeriodo;
         foreach ($campos as $campo => $valor) {
@@ -733,18 +845,58 @@ final class ConciliadorDeclaracionSunat
         ];
 
         if ($pagarIgv !== null && ! MontoTributario::iguales((float) $borrador->igv_resultante_pagar, $pagarIgv, 0.05)) {
+            $motivos = [];
+            $saldoAntCrm = (float) ($campos['igv_saldo_favor_anterior'] ?? 0);
+            $saldoAntDj = (float) ($declaracion?->casillas['145'] ?? 0);
+            if (abs($saldoAntCrm - $saldoAntDj) > 0.05) {
+                $motivos[] = 'Saldo a favor anterior (CRM S/ '.number_format($saldoAntCrm, 2).' vs DJ Cas. 145 S/ '.number_format($saldoAntDj, 2).')';
+            }
+            $retCrm = (float) ($campos['igv_retenciones'] ?? 0) + (float) ($campos['igv_retenciones_saldo_anterior'] ?? 0);
+            $retDj = (float) ($declaracion?->casillas['179'] ?? 0) + (float) ($declaracion?->casillas['176'] ?? 0);
+            if (abs($retCrm - $retDj) > 0.05) {
+                $motivos[] = 'Retenciones (CRM S/ '.number_format($retCrm, 2).' vs DJ S/ '.number_format($retDj, 2).')';
+            }
+            $percCrm = (float) ($campos['igv_percepciones'] ?? 0) + (float) ($campos['igv_percepciones_saldo_anterior'] ?? 0);
+            $percDj = (float) ($declaracion?->casillas['171'] ?? 0) + (float) ($declaracion?->casillas['168'] ?? 0);
+            if (abs($percCrm - $percDj) > 0.05) {
+                $motivos[] = 'Percepciones (CRM S/ '.number_format($percCrm, 2).' vs DJ S/ '.number_format($percDj, 2).')';
+            }
+            if (($declaracion?->casillas['185'] ?? 0) > 0) {
+                $motivos[] = 'Pagos previos en DJ (Cas. 185: S/ '.number_format($declaracion->casillas['185'], 2).')';
+            }
+            if (($declaracion?->casillas['187'] ?? 0) > 0) {
+                $motivos[] = 'Interés moratorio en DJ (Cas. 187: S/ '.number_format($declaracion->casillas['187'], 2).')';
+            }
+
+            $detalle = $motivos !== [] ? ' Detalle de diferencias: '.implode('; ', $motivos).'.' : '';
             $alertas[] = $this->alerta(
                 'advertencia',
                 'igv_distinto_al_motor',
-                'IGV calculado: S/ '.number_format((float) $borrador->igv_resultante_pagar, 2).'. La DJ dice S/ '.number_format($pagarIgv, 2).'.',
+                'IGV calculado por el CRM: S/ '.number_format((float) $borrador->igv_resultante_pagar, 2).'. La DJ oficial de SUNAT indica S/ '.number_format($pagarIgv, 2).'.'.$detalle,
             );
         }
 
         if ($pagarRenta !== null && ! MontoTributario::iguales((float) $borrador->renta_resultante_pagar, $pagarRenta, 0.05)) {
+            $motivosRenta = [];
+            $saldoRentaCrm = (float) ($campos['renta_saldo_favor_anterior'] ?? 0);
+            $saldoRentaDj = (float) ($declaracion?->casillas['303'] ?? 0);
+            if (abs($saldoRentaCrm - $saldoRentaDj) > 0.05) {
+                $motivosRenta[] = 'Saldo a favor anterior (CRM S/ '.number_format($saldoRentaCrm, 2).' vs DJ Cas. 303 S/ '.number_format($saldoRentaDj, 2).')';
+            }
+            $itanCrm = (float) ($campos['renta_compensacion_itan'] ?? 0);
+            $itanDj = (float) ($declaracion?->casillas['328'] ?? 0);
+            if (abs($itanCrm - $itanDj) > 0.05) {
+                $motivosRenta[] = 'Compensación ITAN (CRM S/ '.number_format($itanCrm, 2).' vs DJ Cas. 328 S/ '.number_format($itanDj, 2).')';
+            }
+            if (($declaracion?->casillas['317'] ?? 0) > 0) {
+                $motivosRenta[] = 'Pagos previos en DJ (Cas. 317: S/ '.number_format($declaracion->casillas['317'], 2).')';
+            }
+
+            $detalleRenta = $motivosRenta !== [] ? ' Detalle de diferencias: '.implode('; ', $motivosRenta).'.' : '';
             $alertas[] = $this->alerta(
                 'advertencia',
                 'renta_distinta_al_motor',
-                'Renta calculada: S/ '.number_format((float) $borrador->renta_resultante_pagar, 2).'. La DJ dice S/ '.number_format($pagarRenta, 2).'.',
+                'Renta calculada por el CRM: S/ '.number_format((float) $borrador->renta_resultante_pagar, 2).'. La DJ oficial de SUNAT indica S/ '.number_format($pagarRenta, 2).'.'.$detalleRenta,
             );
         }
     }
@@ -811,15 +963,49 @@ final class ConciliadorDeclaracionSunat
         $campos[$campo] = $crm;
     }
 
-    private function tasaDeLaFicha(Cliente $cliente): ?float
+    public static function uitDelAnio(int $anio): float
+    {
+        return match ($anio) {
+            2021 => 4400.0,
+            2022 => 4600.0,
+            2023 => 4950.0,
+            2024 => 5150.0,
+            2025 => 5350.0,
+            2026 => 5500.0,
+            default => 5500.0,
+        };
+    }
+
+    public static function tope300Uit(int $anio): float
+    {
+        return self::uitDelAnio($anio) * 300;
+    }
+
+    private function tasaDeLaFicha(Cliente $cliente, ?string $periodo = null, float $ventasEsteMes = 0.0): ?float
     {
         $regimen = strtoupper((string) ($cliente->regimen_tributario?->value ?? $cliente->regimen_tributario));
 
-        return match ($regimen) {
-            'RER' => 1.5,
-            'RMT' => 1.0,
-            default => null,
-        };
+        if ($regimen === 'RER') {
+            return 1.5;
+        }
+
+        if ($regimen === 'RMT') {
+            $anio = $periodo ? (int) (explode('-', $periodo)[1] ?? date('Y')) : (int) date('Y');
+            $tope = self::tope300Uit($anio);
+            $ventasAcum = (float) LiquidacionPeriodo::query()
+                ->where('cliente_id', $cliente->id)
+                ->where('periodo', 'like', "%-{$anio}")
+                ->sum('ventas_base');
+            $totalAnual = $ventasAcum + $ventasEsteMes;
+
+            return $totalAnual > $tope ? 1.5 : 1.0;
+        }
+
+        if (in_array($regimen, ['RG', 'GENERAL'], true)) {
+            return 1.5;
+        }
+
+        return null;
     }
 
     private function nombreRegimen(Cliente $cliente): string

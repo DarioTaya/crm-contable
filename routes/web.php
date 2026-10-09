@@ -61,6 +61,7 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
     Route::post('/control/liquidacion/limpiar', [ControlMensualController::class, 'limpiarLiquidacion'])->name('control.liquidacion.limpiar');
     Route::post('/control/deuda', [ControlMensualController::class, 'getDeuda'])->name('control.deuda');
     Route::post('/control/calcular-igv-justo', [ControlMensualController::class, 'calcularIgvJusto'])->name('control.calcular_igv_justo');
+    Route::post('/control/actualizar-regimen', [ControlMensualController::class, 'actualizarRegimenCliente'])->name('control.actualizar_regimen');
     Route::get('/control/carga-masiva/plantilla', [CargaMasivaControlController::class, 'plantilla'])->name('control.carga_masiva.plantilla');
     Route::post('/control/carga-masiva/previsualizar', [CargaMasivaControlController::class, 'previsualizar'])->name('control.carga_masiva.previsualizar');
     Route::post('/control/carga-masiva/aplicar', [CargaMasivaControlController::class, 'aplicar'])->name('control.carga_masiva.aplicar');
@@ -133,6 +134,7 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
     // redirige a esa ruta para no romper enlaces ya guardados.
     Route::get('/clientes/{cliente}/notificaciones', [ClienteController::class, 'show'])->name('clientes.notificaciones')->can('view', 'cliente');
     Route::get('/clientes/{cliente}/impuestos', [ClienteController::class, 'show'])->name('clientes.operaciones')->can('view', 'cliente');
+    Route::get('/clientes/{cliente}/detracciones-retenciones', [ClienteController::class, 'show'])->name('clientes.creditos')->can('view', 'cliente');
     Route::get('/clientes/{cliente}/operaciones', [ClienteController::class, 'redirigirOperaciones'])->name('clientes.operaciones.legado')->can('view', 'cliente');
     Route::get('/clientes/{cliente}/sire', [ClienteController::class, 'show'])->name('clientes.sire')->can('view', 'cliente');
     Route::get('/clientes/{cliente}', [ClienteController::class, 'show'])->name('clientes.show')->can('view', 'cliente');

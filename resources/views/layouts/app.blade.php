@@ -43,11 +43,10 @@
                 }
             }
 
-            const ancho = panel.offsetWidth || 455;
-            const alto = panel.offsetHeight || 380;
+            const ancho = panel.offsetWidth || (panel.dataset.alineacion === 'centro' ? 280 : 455);
+            const alto = panel.offsetHeight || (panel.dataset.alineacion === 'centro' ? 100 : 380);
 
             if ((!panel.offsetWidth || !panel.offsetHeight) && (intento || 0) < 3) {
-                panel.style.visibility = 'hidden';
                 requestAnimationFrame(function () {
                     window.ubicarMenuFlotante(panel, ancla, (intento || 0) + 1);
                 });
@@ -56,24 +55,41 @@
 
             const cabeAbajo = window.innerHeight - rect.bottom >= alto + margen;
             const cabeArriba = rect.top >= alto + margen;
-            const abrirArriba = panel.dataset.abrir === 'abajo' ? false : (!cabeAbajo && cabeArriba);
+            const abrirArriba = panel.dataset.abrir === 'arriba'
+                ? (cabeArriba || window.innerHeight - rect.bottom < alto)
+                : (panel.dataset.abrir === 'abajo' ? false : (!cabeAbajo && cabeArriba));
 
             let top = abrirArriba ? rect.top - alto - separacion : rect.bottom + separacion;
             let left = rect.left;
 
-            if (panel.dataset.alineacion === 'centro') {
-                left = rect.left + (rect.width / 2) - (ancho / 2);
+            // Respetar el límite de la barra lateral (sidebar) para que ninguna ventana flotante la tape
+            const sidebarEl = document.querySelector('.app-sidebar');
+            let minLeft = margen;
+            if (sidebarEl && window.innerWidth >= 768) {
+                const sidebarRect = sidebarEl.getBoundingClientRect();
+                if (sidebarRect.right > 0 && sidebarRect.left >= 0) {
+                    minLeft = Math.round(sidebarRect.right + 12);
+                }
             }
 
-            if (left + ancho > window.innerWidth - margen) {
-                left = rect.right - ancho;
+            if (panel.dataset.alineacion === 'centro') {
+                left = rect.left + (rect.width / 2) - (ancho / 2);
+                left = Math.max(margen, Math.min(left, window.innerWidth - ancho - margen));
+                if (rect.left >= minLeft && left < minLeft) {
+                    left = minLeft;
+                }
+            } else {
+                if (left + ancho > window.innerWidth - margen) {
+                    left = rect.right - ancho;
+                }
+                if (left + ancho > window.innerWidth - margen) {
+                    left = window.innerWidth - ancho - margen;
+                }
+                if (left < minLeft) {
+                    left = minLeft;
+                }
             }
-            if (left + ancho > window.innerWidth - margen) {
-                left = window.innerWidth - ancho - margen;
-            }
-            if (left < margen) {
-                left = margen;
-            }
+
             if (top < margen) {
                 top = margen;
             }

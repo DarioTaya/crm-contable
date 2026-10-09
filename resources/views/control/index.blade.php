@@ -242,6 +242,7 @@
                             departamento: @js($item['cliente']->departamento),
                             rentaSugerida: @js(app(\App\Services\Catalogos\CatalogoSunat::class)->codigoRentaDelRegimen($item['cliente']->regimen_tributario)),
                         })"
+                        @cliente-regimen-actualizado.window="if ($event.detail.clienteId === clienteId) { regimen = $event.detail.regimen; }"
                         class="group hover:bg-blue-50/20 transition-colors"
                         :class="{ 'marca-en-trabajo': Number($store.enTrabajo.id) === {{ $item['cliente']->id }} }"
                         x-init="if (Number($store.enTrabajo.id) === {{ $item['cliente']->id }}) { $nextTick(() => $el.scrollIntoView({ block: 'nearest' })) }">
@@ -265,7 +266,9 @@
                                         </a>
                                         <div class="flex items-center gap-1.5 text-[10px] font-mono text-gray-500">
                                             <span>{{ $item['cliente']->ruc }}</span>
-                                            <span class="rounded border px-1 py-0.1 text-[9px] font-bold {{ $badgeColor }}">
+                                            <span class="rounded border px-1 py-0.1 text-[9px] font-bold transition-colors"
+                                                  :class="regimenBadgeColor(regimen)"
+                                                  x-text="regimen">
                                                 {{ $item['cliente']->regimen_tributario?->value }}
                                             </span>
                                         </div>
@@ -282,24 +285,6 @@
                                       x-text="calcAvance() + '%'">
                                     {{ $item['porcentaje'] }}%
                                 </span>
-                            </div>
-                            <div
-                                x-ref="tooltipDeuda"
-                                x-show="hoverMes !== null"
-                                x-cloak
-                                data-menu-flotante
-                                class="fixed z-50 pointer-events-none rounded-2xl bg-white p-3.5 text-left text-gray-800 shadow-2xl border border-gray-200 min-w-[320px] max-w-sm"
-                            >
-                                <div class="mb-2 flex items-center justify-between border-b border-gray-100 pb-2">
-                                    <span class="text-[11px] font-bold text-rose-700">Deuda SUNAT pendiente</span>
-                                    <span class="font-mono text-[10px] font-bold text-gray-600" x-text="hoverMes === null ? '' : meses[hoverMes].periodo"></span>
-                                </div>
-                                <template x-for="deudaTip in deudasDelTip()" :key="deudaTip.localKey || deudaTip.id || deudaTip.tributo_codigo">
-                                    <div class="mb-1 flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-2 py-1 text-xs">
-                                        <span class="truncate font-bold" x-text="deudaTip.tributo_nombre_corto || deudaTip.tributo_nombre || 'Tributo'"></span>
-                                        <span class="font-mono font-bold text-rose-600" x-text="moneda(deudaTip.saldo_pendiente)"></span>
-                                    </div>
-                                </template>
                             </div>
                         </td>
 
@@ -422,6 +407,32 @@
          @abrir-panel-dj.window="abrirDesde($event.detail)">
         @include('control.partials.menu-dj')
     </div>
+
+    {{-- Tooltip Flotante Global de Deuda SUNAT (Matriz Anual) --}}
+    <div x-data="tooltipDeudaMatriz()"
+         x-show="visible"
+         x-cloak
+         data-menu-flotante
+         data-abrir="arriba"
+         data-alineacion="centro"
+         class="fixed z-50 pointer-events-none rounded-2xl bg-white p-3 text-left text-gray-800 shadow-2xl border border-gray-200 w-72 transition-opacity duration-150"
+         @mostrar-tooltip-deuda.window="mostrar($event.detail)"
+         @ocultar-tooltip-deuda.window="ocultar()">
+        <div class="mb-2 flex items-center justify-between border-b border-gray-100 pb-1.5">
+            <div class="flex items-center gap-1.5">
+                <span class="inline-block h-2 w-2 rounded-full bg-rose-500 animate-pulse"></span>
+                <span class="text-[11px] font-black text-rose-700">Deuda SUNAT pendiente</span>
+            </div>
+            <span class="font-mono text-[10px] font-bold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded border border-gray-200" x-text="periodo"></span>
+        </div>
+        <template x-for="(deudaTip, dIdx) in deudas" :key="deudaTip.id || deudaTip.tributo_codigo || dIdx">
+            <div class="mb-1 flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1 text-xs border border-slate-100">
+                <span class="truncate font-bold text-slate-800" x-text="deudaTip.tributo_nombre_corto || deudaTip.tributo_nombre || 'Tributo'"></span>
+                <span class="font-mono font-bold text-rose-600 shrink-0" x-text="formatearMoneda(deudaTip.saldo_pendiente)"></span>
+            </div>
+        </template>
+        <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-b border-r border-gray-200 rotate-45"></div>
+    </div>
     {{-- Pie de Sábana --}}
     <div class="mt-3 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-400 gap-2 px-1">
         <p>Mostrando {{ $totalClientes }} clientes activos &bull; 13 columnas optimizadas para 100% de pantalla (DJ: Declaración Jurada &bull; RH: Recibo por Honorarios).</p>
@@ -430,6 +441,35 @@
 
     {{-- ═══════════════════════════════ SCRIPTS ALPINE.JS ═══════════════════════════════ --}}
     <script>
+        function tooltipDeudaMatriz() {
+            return {
+                visible: false,
+                periodo: '',
+                deudas: [],
+
+                mostrar(detail) {
+                    if (!detail || !detail.ancla) return;
+                    this.periodo = detail.periodo || '';
+                    this.deudas = detail.deudas || [];
+                    this.visible = true;
+                    this.$nextTick(() => {
+                        if (typeof window.ubicarMenuFlotante === 'function') {
+                            window.ubicarMenuFlotante(this.$el, detail.ancla);
+                        }
+                    });
+                },
+
+                ocultar() {
+                    this.visible = false;
+                },
+
+                formatearMoneda(val) {
+                    const n = parseFloat(val || 0);
+                    return 'S/ ' + n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+            };
+        }
+
         function filaClienteMatriz(config) {
             return {
                 clienteId: config.clienteId,
@@ -440,6 +480,15 @@
                 departamento: config.departamento || '',
                 rentaSugerida: config.rentaSugerida || '',
                 hoverMes: null,
+
+                regimenBadgeColor(reg) {
+                    const r = (reg || '').toUpperCase();
+                    if (r === 'RUS') return 'bg-amber-50 text-amber-700 border-amber-300';
+                    if (r === 'RER') return 'bg-blue-50 text-blue-700 border-blue-300';
+                    if (r === 'RMT') return 'bg-indigo-50 text-indigo-700 border-indigo-300';
+                    if (r === 'RG' || r === 'GENERAL') return 'bg-purple-50 text-purple-700 border-purple-300';
+                    return 'bg-gray-100 text-gray-700 border-gray-300';
+                },
 
                 saldoPendienteMes(idx) {
                     const mes = this.meses[idx];
@@ -476,19 +525,28 @@
                         return;
                     }
                     this.hoverMes = idx;
-                    this.$nextTick(() => {
-                        if (this.$refs.tooltipDeuda && typeof window.ubicarMenuFlotante === 'function') {
-                            window.ubicarMenuFlotante(this.$refs.tooltipDeuda, event.currentTarget);
+                    const mes = this.meses[idx];
+                    const deudas = (mes.deudas || []).filter(d => parseFloat(d.saldo_pendiente || 0) > 0);
+                    const deudasParaTip = deudas.length > 0 ? deudas : [{
+                        tributo_nombre_corto: mes.tributo_nombre_corto || mes.tributo_nombre || 'Tributo',
+                        saldo_pendiente: parseFloat(mes.saldo_pendiente ?? mes.monto_deuda_inicial ?? 0)
+                    }];
+                    window.dispatchEvent(new CustomEvent('mostrar-tooltip-deuda', {
+                        detail: {
+                            ancla: event.currentTarget,
+                            periodo: mes.periodo || ((mes.corto || '') + '-' + this.anio),
+                            deudas: deudasParaTip
                         }
-                    });
+                    }));
                 },
 
                 ocultarTipDeuda() {
                     this.hoverMes = null;
+                    window.dispatchEvent(new CustomEvent('ocultar-tooltip-deuda'));
                 },
 
                 abrirPanelDj(event, idx) {
-                    this.hoverMes = null;
+                    this.ocultarTipDeuda();
                     const mes = this.meses[idx];
                     window.dispatchEvent(new CustomEvent('abrir-panel-dj', {
                         detail: {
@@ -769,6 +827,88 @@
                 otrasCasillasIgv: false,
                 cruceDj: { igv: null, renta: null },
 
+                masCasillasVentas: false,
+                masCasillasCompras: false,
+                masCasillasDeuda: false,
+                masCasillasRenta: false,
+
+                esHojaGrande() {
+                    return this.activeTab === 'deuda' && (this.panelLiquidacionAbierto || this.panelLiquidacionPlameAbierto);
+                },
+
+                tieneValoresMasVentas() {
+                    return [
+                        'igv_descuentos_base', 'igv_descuentos', 'igv_ventas_ley_base', 'igv_ventas_ley'
+                    ].some((campo) => this.limpiarMoneda(this.liquidacion[campo]) > 0);
+                },
+
+                tieneValoresMasCompras() {
+                    return [
+                        'igv_compras_ley_base', 'igv_compras_ley', 'igv_compras_mixtas_base', 'igv_compras_mixtas',
+                        'igv_importaciones_base', 'igv_importaciones', 'compras_destino_no_gravadas',
+                        'igv_importaciones_mixtas_base', 'igv_importaciones_mixtas', 'importaciones_destino_no_gravadas',
+                        'compras_importadas_no_gravadas'
+                    ].some((campo) => this.limpiarMoneda(this.liquidacion[campo]) > 0);
+                },
+
+                totalDebitoFiscal() {
+                    if (this.liquidacion.es_zona_selva) return 0;
+                    const v101 = this.limpiarMoneda(this.liquidacion.igv_ventas);
+                    const v155 = this.limpiarMoneda(this.liquidacion.igv_ventas_ley);
+                    const v103 = this.limpiarMoneda(this.liquidacion.igv_descuentos);
+                    return Math.max(0, Math.round((v101 + v155 - v103) * 100) / 100);
+                },
+
+                totalCreditoFiscal() {
+                    if (this.liquidacion.es_zona_selva) return 0;
+                    const c108 = this.limpiarMoneda(this.liquidacion.igv_compras);
+                    const c157 = this.limpiarMoneda(this.liquidacion.igv_compras_ley);
+                    const c111 = this.limpiarMoneda(this.liquidacion.igv_compras_mixtas);
+                    const c115 = this.limpiarMoneda(this.liquidacion.igv_importaciones);
+                    const c117 = this.limpiarMoneda(this.liquidacion.igv_importaciones_mixtas);
+                    return Math.round((c108 + c157 + c111 + c115 + c117) * 100) / 100;
+                },
+
+                casilla140ImpuestoMes() {
+                    if (this.liquidacion.es_zona_selva) return 0;
+                    return Math.round((this.totalDebitoFiscal() - this.totalCreditoFiscal()) * 100) / 100;
+                },
+
+                casilla184TributoResultante() {
+                    if (this.liquidacion.es_zona_selva) return 0;
+                    const netoMes = this.casilla140ImpuestoMes();
+                    const saldoAnt145 = this.limpiarMoneda(this.liquidacion.igv_saldo_favor_anterior);
+                    return Math.round((netoMes - saldoAnt145) * 100) / 100;
+                },
+
+                totalRetencionesDisponibles() {
+                    const ant = this.limpiarMoneda(this.liquidacion.igv_retenciones_saldo_anterior);
+                    const mes = this.limpiarMoneda(this.liquidacion.igv_retenciones);
+                    return Math.round((ant + mes) * 100) / 100;
+                },
+
+                retencionesAplicadas() {
+                    const t184 = this.casilla184TributoResultante();
+                    if (t184 <= 0) return 0;
+                    const disp = this.totalRetencionesDisponibles();
+                    return Math.min(t184, disp);
+                },
+
+                totalPercepcionesDisponibles() {
+                    const ant = this.limpiarMoneda(this.liquidacion.igv_percepciones_saldo_anterior);
+                    const mes = this.limpiarMoneda(this.liquidacion.igv_percepciones);
+                    return Math.round((ant + mes) * 100) / 100;
+                },
+
+                percepcionesAplicadas() {
+                    const t184 = this.casilla184TributoResultante();
+                    const ret = this.retencionesAplicadas();
+                    const saldoTrasRet = Math.max(0, Math.round((t184 - ret) * 100) / 100);
+                    if (saldoTrasRet <= 0) return 0;
+                    const disp = this.totalPercepcionesDisponibles();
+                    return Math.min(saldoTrasRet, disp);
+                },
+
                 init() {
                     this.hidratarDeudas(this.meses[this.mesIdx].deudas || []);
                     this.abonos = this.meses[this.mesIdx].abonos || [];
@@ -823,6 +963,12 @@
                     });
                     this.$watch('tieneDeuda', () => {
                         this.reubicarMenuDeudaCompleto();
+                    });
+                    this.$watch('panelLiquidacionAbierto', () => {
+                        this.encuadrarMenuDJ();
+                    });
+                    this.$watch('panelLiquidacionPlameAbierto', () => {
+                        this.encuadrarMenuDJ();
                     });
                     this.$watch('activeTab', () => {
                         this.$nextTick(() => {
@@ -1108,27 +1254,12 @@
 
                 reubicarMenuDeudaCompleto() {
                     const menu = this.$refs.menuDJ;
-                    if (!menu || !menu._anclaMenu) {
+                    if (!menu || !menu._anclaMenu || typeof window.ubicarMenuFlotante !== 'function') {
                         return;
                     }
-                    menu._reposicionPendiente = true;
-                    menu.style.visibility = 'hidden';
-                    let intentos = 0;
-                    const mostrar = () => {
-                        const formulario = menu.querySelector('[data-deuda-formulario]');
-                        const formularioVisible = formulario && getComputedStyle(formulario).display !== 'none';
-                        const listo = !this.tieneDeuda || formularioVisible;
-                        if (!listo && intentos < 8) {
-                            intentos += 1;
-                            requestAnimationFrame(mostrar);
-                            return;
-                        }
-                        requestAnimationFrame(() => {
-                            menu._reposicionPendiente = false;
-                            window.ubicarMenuFlotante(menu, menu._anclaMenu);
-                        });
-                    };
-                    this.$nextTick(() => requestAnimationFrame(mostrar));
+                    this.$nextTick(() => {
+                        window.ubicarMenuFlotante(menu, menu._anclaMenu);
+                    });
                 },
 
                 revertirDeudaNoGuardada() {
@@ -1354,6 +1485,36 @@
                     const filas = this.deudasDelBloque(id).filter((deuda) => !!deuda.id);
                     const saldo = filas.reduce((suma, deuda) => suma + (parseFloat(deuda.saldo_pendiente) || 0), 0);
                     return { hay: filas.length > 0, saldo: Math.round(saldo * 100) / 100 };
+                },
+
+                totalMontoAPagar() {
+                    const deudasValidas = (this.deudas || []).filter(d => !!d.id || (parseFloat(d.monto_deuda_inicial || 0) > 0) || (parseFloat(d.borrador_monto || 0) > 0));
+                    if (deudasValidas.length > 0) {
+                        const total = deudasValidas.reduce((acc, d) => acc + (parseFloat(d.monto_deuda_inicial || d.borrador_monto || 0)), 0);
+                        return Math.round(total * 100) / 100;
+                    }
+                    const mes = this.meses[this.mesIdx];
+                    return Math.round((parseFloat(mes?.monto_deuda_inicial || 0)) * 100) / 100;
+                },
+
+                totalMontoPagado() {
+                    const deudasValidas = (this.deudas || []).filter(d => !!d.id || (parseFloat(d.monto_deuda_inicial || 0) > 0) || (parseFloat(d.borrador_monto || 0) > 0));
+                    if (deudasValidas.length > 0) {
+                        const total = deudasValidas.reduce((acc, d) => {
+                            const abonosSum = (d.abonos || []).reduce((a, b) => a + (parseFloat(b.monto || 0)), 0);
+                            return acc + (abonosSum > 0 ? abonosSum : (parseFloat(d.total_abonado || 0)));
+                        }, 0);
+                        return Math.round(total * 100) / 100;
+                    }
+                    const mes = this.meses[this.mesIdx];
+                    const abonosMes = (this.abonos || mes?.abonos || []).reduce((a, b) => a + (parseFloat(b.monto || 0)), 0);
+                    return Math.round((abonosMes > 0 ? abonosMes : parseFloat(mes?.total_abonado || 0)) * 100) / 100;
+                },
+
+                totalMontoPorPagar() {
+                    const aPagar = this.totalMontoAPagar();
+                    const pagado = this.totalMontoPagado();
+                    return Math.max(0, Math.round((aPagar - pagado) * 100) / 100);
                 },
 
                 tributosLibres(bloque) {
@@ -2628,9 +2789,68 @@
                     }
 
                     this.importacion[formulario].aplicada = true;
-                    if ((resultado.pagos_registrados || 0) > 0) {
+                    if ((resultado.pagos_registrados || 0) > 0 || (resultado.pagos && resultado.pagos.length > 0)) {
                         this.deudaCargada = false;
                         await this.cargarDeuda();
+                    }
+                },
+
+                async actualizarRegimenFicha(nuevoRegimen) {
+                    if (!nuevoRegimen) return;
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch('{{ route('control.actualizar_regimen') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                regimen: nuevoRegimen,
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Error al actualizar régimen.');
+                        }
+
+                        // Sincronizar estado local en el panel de control
+                        this.regimen = data.regimen_sigla || nuevoRegimen;
+                        if (data.renta_codigo) {
+                            this.rentaSugerida = String(data.renta_codigo);
+                            if (this.liquidacion) {
+                                this.liquidacion.renta_tributo_codigo = String(data.renta_codigo);
+                            }
+                        }
+                        if (this.importacion['621']?.resultado?.regimen_discrepancia) {
+                            this.importacion['621'].resultado.regimen_discrepancia = null;
+                        }
+
+                        // Ajustar tasa sugerida de acuerdo al nuevo régimen
+                        const regNorm = (this.regimen || '').toUpperCase();
+                        if (regNorm === 'RER') {
+                            this.liquidacion.renta_tasa = 1.5;
+                        } else if (regNorm === 'RMT') {
+                            this.liquidacion.renta_tasa = 1.0;
+                        }
+                        this.recalcularTotalesLiquidacion();
+
+                        // Emitir evento para actualizar en vivo la fila del cliente en la matriz
+                        window.dispatchEvent(new CustomEvent('cliente-regimen-actualizado', {
+                            detail: {
+                                clienteId: this.clienteId,
+                                regimen: this.regimen,
+                            }
+                        }));
+
+                        alert('✅ ' + data.message);
+                    } catch (err) {
+                        alert('Error al actualizar régimen: ' + err.message);
                     }
                 },
 
@@ -2836,9 +3056,9 @@
                     // Escenario 2: Hay datos guardados en base de datos o deudas PDT / PLAME
                     let mensajeConfirmacion = '¿Deseas restablecer la Hoja de Liquidación a cero?';
                     if (abonosTotales > 0) {
-                        mensajeConfirmacion = '⚠️ Esta liquidación tiene tributos con pagos/abonos realizados (S/ ' + this.formatearNumeroConComas(abonosTotales) + '). Limpiar la hoja restablecerá los valores a cero pero conservará el historial de los pagos. ¿Deseas continuar?';
+                        mensajeConfirmacion = '⚠️ Esta liquidación tiene tributos con pagos registrados (S/ ' + this.formatearNumeroConComas(abonosTotales) + '). Limpiar la liquidación restablecerá los valores a cero y eliminará las deudas y todos sus pagos asociados. ¿Deseas continuar?';
                     } else if (deudasPendientes.length > 0) {
-                        mensajeConfirmacion = '¿Deseas restablecer a cero la Hoja de Liquidación y eliminar los tributos pendientes de pago (IGV, Renta y PLAME) generados para este mes?';
+                        mensajeConfirmacion = '¿Deseas restablecer a cero la Hoja de Liquidación y eliminar los tributos (IGV, Renta y PLAME) generados para este mes?';
                     }
 
                     if (!confirm(mensajeConfirmacion)) {

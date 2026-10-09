@@ -287,6 +287,21 @@
                     Impuestos
                 </a>
                 <a
+                    href="{{ $urlsSeccion['creditos'] }}"
+                    @click="abrirSeccion('creditos', $event)"
+                    :class="tab === 'creditos'
+                        ? 'border-brand-500 text-brand-600'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
+                    :aria-selected="tab === 'creditos'"
+                    class="flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition"
+                    role="tab"
+                >
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6H2.25m0 0H3m-1.5 0A2.25 2.25 0 0 0 0 8.25v7.5A2.25 2.25 0 0 0 2.25 18H3m0 0h1.5m15-12h.75a2.25 2.25 0 0 1 2.25 2.25v7.5a2.25 2.25 0 0 1-2.25 2.25h-.75m0-12H18m0 0v-1.5A2.25 2.25 0 0 0 15.75 0h-7.5A2.25 2.25 0 0 0 6 2.25V4.5" />
+                    </svg>
+                    Detracciones y Percepciones
+                </a>
+                <a
                     href="{{ route('clientes.sire', array_merge(['cliente' => $cliente], $consultaSire)) }}"
                     @click="abrirSeccion('sire', $event)"
                     :class="tab === 'sire'
@@ -2035,7 +2050,11 @@
         {{-- ════════════════════ PESTAÑA 3: IMPUESTOS ════════════════════ --}}
         <div x-show="tab === 'operaciones'" x-cloak class="mt-3">
             @include('clientes.partials.reporte-impuestos')
+        </div>
 
+        {{-- ════════════════════ PESTAÑA 4: DETRACCIONES, RETENCIONES Y PERCEPCIONES ════════════════════ --}}
+        <div x-show="tab === 'creditos'" x-cloak class="mt-3">
+            @include('clientes.partials.control-creditos-fiscales')
         </div>
     </div>
 

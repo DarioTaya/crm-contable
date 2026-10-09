@@ -290,4 +290,51 @@ class LiquidacionTributariaCascadeTest extends TestCase
 
         $this->assertEquals(900.0, (float) $saldosAbril['renta_itan_saldo_anterior']);
     }
+
+    public function test_limpiar_liquidacion_elimina_hoja_deudas_y_abonos_asociados(): void
+    {
+        // 1. Crear liquidación con deuda de IGV y Renta
+        $this->postJson(route('control.liquidacion'), [
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '05-2026',
+            'ventas_base' => 10000,
+            'igv_ventas' => 1800,
+            'compras_base' => 5000,
+            'igv_compras' => 900, // Resultante IGV = 900
+            'renta_base_ingresos' => 10000,
+            'renta_tasa' => 1.0,  // Resultante Renta = 100
+            'actualizar_deudas' => true,
+        ])->assertOk();
+
+        $op = Operacion::where('cliente_id', $this->cliente->id)->where('periodo', '05-2026')->first();
+        $this->assertNotNull($op);
+
+        $deudaIgv = $op->deudasTributarias()->where('tributo_codigo', '1011')->first();
+        $this->assertNotNull($deudaIgv);
+
+        // 2. Registrar un pago (abono) en esa deuda
+        $abono = $deudaIgv->abonos()->create([
+            'operacion_id' => $op->id,
+            'cliente_id' => $this->cliente->id,
+            'tributo_codigo' => '1011',
+            'monto' => 450.0,
+            'fecha_pago' => '2026-06-10',
+            'medio_pago' => '001',
+            'observacion' => 'Pago parcial de IGV',
+        ]);
+        $this->assertDatabaseHas('abonos_deudas', ['id' => $abono->id]);
+
+        // 3. Limpiar la liquidación del PDT 621
+        $responseLimpiar = $this->postJson(route('control.liquidacion.limpiar'), [
+            'cliente_id' => $this->cliente->id,
+            'periodo' => '05-2026',
+            'obligacion' => 'pdt_621',
+        ]);
+
+        $responseLimpiar->assertOk();
+
+        // 4. Verificar que la deuda de IGV y el abono se hayan eliminado en cascada
+        $this->assertDatabaseMissing('deuda_tributarias', ['id' => $deudaIgv->id]);
+        $this->assertDatabaseMissing('abonos_deudas', ['id' => $abono->id]);
+    }
 }

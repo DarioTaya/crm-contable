@@ -886,7 +886,25 @@ class ControlMensualController extends Controller
                         ?? TipoTributoSunat::RentaMype->value;
                 }
 
-                $deudaRenta = $operacion->deudasTributarias()->where('tributo_codigo', $rentaCodigo)->first();
+                $codigosRenta = ['3111', '3121', '3031', '3081'];
+                $deudaRenta = $operacion->deudasTributarias()->where('tributo_codigo', $rentaCodigo)->first()
+                    ?? $operacion->deudasTributarias()->whereIn('tributo_codigo', $codigosRenta)->first();
+
+                // Si existen otras deudas de renta para esta operación (duplicadas de otro régimen), unificar
+                if ($deudaRenta) {
+                    $duplicadasRenta = $operacion->deudasTributarias()
+                        ->whereIn('tributo_codigo', $codigosRenta)
+                        ->where('id', '!=', $deudaRenta->id)
+                        ->get();
+
+                    foreach ($duplicadasRenta as $dup) {
+                        if ($dup->abonos()->exists()) {
+                            $dup->abonos()->update(['deuda_tributaria_id' => $deudaRenta->id]);
+                        }
+                        $dup->delete();
+                    }
+                }
+
                 if ((float) $liquidacion->renta_resultante_pagar > 0) {
                     $vencRentaFinal = $deudaRenta?->vencimiento_deuda?->format('Y-m-d') ?: $vencimientoOficialPdt;
 
@@ -1042,22 +1060,19 @@ class ControlMensualController extends Controller
                 // Eliminar la liquidación guardada si existe
                 $operacion->liquidacionPeriodo()?->delete();
 
-                // Eliminar deudas de liquidación que no tengan abonos (PDT 621 y PLAME 601)
+                // Al restablecer o eliminar la liquidación, se eliminan los tributos y todos sus pagos asociados
                 $codigosLiquidacion = app(CatalogoSunat::class)->codigosDeLiquidacion($cliente->estudio_id);
                 $deudasLiquidacion = $operacion->deudasTributarias()
                     ->whereIn('tributo_codigo', $codigosLiquidacion)
                     ->get();
 
                 foreach ($deudasLiquidacion as $deuda) {
-                    if ($deuda->abonos()->doesntExist()) {
-                        $deuda->delete();
-                    } else {
-                        // Si ya tenía abonos, su deuda inicial queda ajustada al monto abonado para mantener balance limpio
-                        $totalAbonado = (float) $deuda->abonos()->sum('monto');
-                        $deuda->monto_deuda_inicial = $totalAbonado;
-                        $deuda->save();
-                    }
+                    $deuda->abonos()->delete();
+                    $deuda->delete();
                 }
+
+                // Limpiar también abonos huérfanos sin deuda_tributaria_id vinculados a la operación
+                $operacion->abonosDeuda()->whereNull('deuda_tributaria_id')->delete();
 
                 $operacion->refrescarResumenDeudas();
 
@@ -1271,8 +1286,8 @@ class ControlMensualController extends Controller
             'tributo_nombre_corto' => $operacion->tributo_nombre_corto,
             'tributo_etiqueta' => $operacion->tributo_etiqueta,
             'es_igv_justo' => (bool) $operacion->es_igv_justo,
-            'monto_deuda_inicial' => $operacion->monto_deuda_inicial,
-            'monto_deuda_inicial_formateado' => $operacion->monto_deuda_inicial_formateado,
+            'monto_deuda_inicial' => $this->montoDeudaMes($operacion),
+            'monto_deuda_inicial_formateado' => 'S/ '.number_format($this->montoDeudaMes($operacion), 2),
             'vencimiento_deuda' => $operacion->vencimiento_deuda?->format('Y-m-d') ?: ($operacion->es_igv_justo ? '' : $oficialPdtStr),
             'vencimiento_deuda_dmy' => $operacion->vencimiento_deuda?->format('d/m/Y') ?: ($operacion->es_igv_justo ? '' : $oficialPdtDmy),
             'vencimiento_oficial_pdt' => $oficialPdtStr,
@@ -1284,8 +1299,8 @@ class ControlMensualController extends Controller
                 'fecha_pago' => $abono->fecha_pago->format('d/m/Y'),
                 'observacion' => $abono->observacion,
             ])->values(),
-            'total_abonado' => $operacion->total_abonado,
-            'total_abonado_formateado' => $operacion->total_abonado_formateado,
+            'total_abonado' => $this->abonadoDeudaMes($operacion),
+            'total_abonado_formateado' => 'S/ '.number_format($this->abonadoDeudaMes($operacion), 2),
             'saldo_pendiente' => $this->saldoDeudaMes($operacion),
             'saldo_pendiente_formateado' => 'S/ '.number_format($this->saldoDeudaMes($operacion), 2),
             'deudas' => $this->arregloDeudas($operacion, $oficialPdtStr, $oficialPdtDmy),
@@ -1397,5 +1412,45 @@ class ControlMensualController extends Controller
     private function saldoDeudaMes(Operacion $operacion): float
     {
         return max(0, round($this->montoDeudaMes($operacion) - $this->abonadoDeudaMes($operacion), 2));
+    }
+
+    /**
+     * Sincroniza y actualiza el régimen tributario del cliente en su ficha (desde Control de Impuestos).
+     */
+    public function actualizarRegimenCliente(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cliente_id' => ['required', 'integer', Cliente::reglaPerteneceACartera()],
+            'regimen' => ['required', 'string'],
+        ], [
+            'cliente_id.required' => 'El cliente es obligatorio.',
+            'regimen.required' => 'El régimen es obligatorio.',
+        ]);
+
+        $cliente = Cliente::findOrFail($validated['cliente_id']);
+        $regimenEnum = RegimenTributario::tryFromNormalizado($validated['regimen']);
+
+        if (! $regimenEnum) {
+            return response()->json([
+                'success' => false,
+                'message' => "El régimen tributario '{$validated['regimen']}' no es válido en el sistema.",
+            ], 422);
+        }
+
+        $cliente->regimen_tributario = $regimenEnum;
+        $cliente->save();
+
+        $catalogo = app(CatalogoSunat::class);
+        $rentaCodigo = $catalogo->codigoRentaDelRegimen($regimenEnum, $cliente->estudio_id)
+            ?? TipoTributoSunat::rentaDelRegimen($regimenEnum)?->value;
+
+        return response()->json([
+            'success' => true,
+            'message' => "Ficha del cliente actualizada exitosamente al régimen {$regimenEnum->siglaSunat()}.",
+            'cliente_id' => $cliente->id,
+            'regimen' => $regimenEnum->value,
+            'regimen_sigla' => $regimenEnum->siglaSunat(),
+            'renta_codigo' => $rentaCodigo,
+        ]);
     }
 }

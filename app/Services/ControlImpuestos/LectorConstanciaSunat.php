@@ -54,7 +54,12 @@ final class LectorConstanciaSunat
         $declaracion->fechaPresentacion = $this->fechaPresentacion($normal);
         $declaracion->tipo = $this->tipo($normal);
         [$declaracion->casillas, $declaracion->casillasRepetidas] = $this->casillas($normal);
-        [$declaracion->tributos, $declaracion->essaludBase, $declaracion->renta4taBase, $declaracion->tributosRepetidos] = $this->tributos($normal, $codigosAdicionales);
+        $textoSinAvisoSaldo = preg_replace(
+            '/(?:USTED\s+HA\s+REALIZADO\s+EL\s+PAGO\s+PARCIAL|DEBERA\s+CANCELAR\s+EL\s+SALDO\s+DEUDOR).*?(?=(?:FECHA\s*:\s*\d{2}\/\d{2}\/\d{4}|CONSTANCIA\s+FORMULARIO|IDENTIFICACION\s+DE\s+LA\s+TRANSACCION)|$)/is',
+            '',
+            $normal
+        );
+        [$declaracion->tributos, $declaracion->essaludBase, $declaracion->renta4taBase, $declaracion->tributosRepetidos] = $this->tributos($textoSinAvisoSaldo, $codigosAdicionales);
         $declaracion->afp = $this->afp($normal);
         $declaracion->igvJusto = preg_match('/IGV\s+JUSTO.{0,80}SI\/NO\)?\??\s*SI\b/', $normal) === 1;
         $declaracion->pagos = $this->pagos($normal);
@@ -165,14 +170,17 @@ final class LectorConstanciaSunat
 
     private function esBoleta(string $texto): bool
     {
-        $pareceBoleta = preg_match('/BOLETA\s+DE\s+PAGO|FORMULARIO\s+1662|FORMULARIO\s+VIRTUAL\s+N\s*1662/', $texto) === 1;
-        $pareceDeclaracion = preg_match('/CONSTANCIA\s+DE\s+PRESENTACION|DETALLE\s+DE\s+(?:LA\s+)?DECLARACION|CASILLA\s+100|\bPDT\s*621\b|\bPLAME\b|\b0601\b|\b0621\b/', $texto) === 1;
+        $pareceBoleta = preg_match('/BOLETA\s+DE\s+PAGO|FORMULARIO\s*[-–—]?\s*1662|FORMULARIO\s+VIRTUAL\s+N\s*1662/i', $texto) === 1;
+        $esDeclaracionExplicita = preg_match('/(?:NUMERO\s+DE\s+FORMULARIO|CONSTANCIA\s+FORMULARIO)\s*[:\-]?\s*0*(?:621|601)\b|CASILLA\s+100|\bDETALLE\s+DE\s+(?:LA\s+)?DECLARACION\b/i', $texto) === 1;
 
-        return $pareceBoleta && ! $pareceDeclaracion;
+        return $pareceBoleta && ! $esDeclaracionExplicita;
     }
 
     private function formulario(string $texto): ?string
     {
+        if ($this->esBoleta($texto)) {
+            return null;
+        }
         $senal621 = preg_match_all('/\b0621\b|\bPDT\s*621\b|IGV\s*-?\s*RENTA|FORMULARIO(?:\s+VIRTUAL)?\s+N\s*0*621\b/', $texto);
         $senal601 = preg_match_all('/\b0601\b|\bPDT\s*601\b|\bPLAME\b|PLANILLA\s+ELECTRONICA|FORMULARIO(?:\s+VIRTUAL)?\s+N\s*0*601\b/', $texto);
 
@@ -270,15 +278,22 @@ final class LectorConstanciaSunat
 
     private function numeroOrden(string $texto): ?string
     {
-        if (preg_match('/DECLARACION\s+JURADA\s+ASOCIADA\s*:\s*(\d{6,15})\b/', $texto, $asociada) === 1) {
+        // 1. Si hay una sección explícita de formulario 0621 o 0601 (por ejemplo, en constancias compuestas donde primero viene una boleta 1662)
+        if (preg_match('/(?:FORMULARIO\s*[:\-]?\s*0*(?:621|601)|CONSTANCIA\s+FORMULARIO\s*[-–—]?\s*0*(?:621|601)).{0,250}?(?:NUMERO\s+DE\s+ORDEN|NRO\.?\s+DE\s+ORDEN|NRO\.?\s+ORDEN|N\s*ORDEN)\s*[:\-]?\s*(\d{6,15})/is', $texto, $coincidencia) === 1) {
+            return $coincidencia[1];
+        }
+
+        // 2. Si la boleta trae "Número de Orden de la Declaración Jurada Asociada"
+        if (preg_match('/DECLARACION\s+JURADA\s+ASOCIADA\s*[:\-]?\s*(?:N[^\d]{0,10})?(\d{6,15})/i', $texto, $asociada) === 1) {
             return $asociada[1];
         }
 
-        if (preg_match('/\b(?:NUMERO\s+DE\s+ORDEN|NRO\.?\s+DE\s+ORDEN|NRO\.?\s+ORDEN|N\s*ORDEN)(?:\s+(?:NUMERO\s+DE\s+ORDEN|NRO\.?\s+DE\s+ORDEN))?\s*[:\-]?\s*(\d{6,15})\b/', $texto, $coincidencia) !== 1) {
-            return null;
+        // 3. Búsqueda general de número de orden
+        if (preg_match('/\b(?:NUMERO\s+DE\s+ORDEN|NRO\.?\s+DE\s+ORDEN|NRO\.?\s+ORDEN|N\s*ORDEN)(?:\s+(?:NUMERO\s+DE\s+ORDEN|NRO\.?\s+DE\s+ORDEN))?\s*[:\-]?\s*(\d{6,15})\b/', $texto, $coincidencia) === 1) {
+            return $coincidencia[1];
         }
 
-        return $coincidencia[1];
+        return null;
     }
 
     private function fechaPresentacion(string $texto): ?string
