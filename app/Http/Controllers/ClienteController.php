@@ -14,6 +14,7 @@ use App\Services\SunafilBuzonSyncService;
 use App\Services\SunatBuzonSyncService;
 use App\Services\WhatsAppService;
 use App\Support\AccesosSunat;
+use App\Support\NodeBinary;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -53,10 +54,19 @@ class ClienteController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $conteoTodos = Cliente::paraUsuario()->count();
-        $conteoActivos = Cliente::paraUsuario()->where('estado', 'activo')->count();
-        $conteoSuspendidos = Cliente::paraUsuario()->where('estado', 'suspendido')->count();
-        $conteoRetirados = Cliente::paraUsuario()->where('estado', 'retirado')->count();
+        $conteos = Cliente::paraUsuario()
+            ->selectRaw("
+                count(*) as todos,
+                sum(case when estado = 'activo' then 1 else 0 end) as activos,
+                sum(case when estado = 'suspendido' then 1 else 0 end) as suspendidos,
+                sum(case when estado = 'retirado' then 1 else 0 end) as retirados
+            ")
+            ->first();
+
+        $conteoTodos = (int) ($conteos->todos ?? 0);
+        $conteoActivos = (int) ($conteos->activos ?? 0);
+        $conteoSuspendidos = (int) ($conteos->suspendidos ?? 0);
+        $conteoRetirados = (int) ($conteos->retirados ?? 0);
         $totalEnPapelera = auth()->user()?->isAdmin() ? Cliente::onlyTrashed()->count() : 0;
 
         return view('clientes.index', compact(
@@ -1376,24 +1386,6 @@ class ClienteController extends Controller
 
     private function getNodeExecutable(): string
     {
-        $laragonNodes = glob(base_path('../../bin/nodejs/*/node.exe'));
-        if (! empty($laragonNodes) && file_exists($laragonNodes[0])) {
-            return str_replace('/', '\\', $laragonNodes[0]);
-        }
-
-        $possiblePaths = [
-            'C:\\laragon\\bin\\nodejs\\node-v22\\node.exe',
-            'C:\\Program Files\\nodejs\\node.exe',
-            'C:\\Program Files (x86)\\nodejs\\node.exe',
-            (getenv('LOCALAPPDATA') ?: '').'\\Programs\\nodejs\\node.exe',
-        ];
-
-        foreach ($possiblePaths as $path) {
-            if ($path && file_exists($path)) {
-                return $path;
-            }
-        }
-
-        return 'node';
+        return NodeBinary::path();
     }
 }

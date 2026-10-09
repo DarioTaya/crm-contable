@@ -6,6 +6,7 @@ use App\Models\QuickLink;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class QuickLinkController extends Controller
 {
@@ -29,6 +30,8 @@ class QuickLinkController extends Controller
             'orden' => $orden,
             'activo' => $request->boolean('activo', true),
         ]);
+
+        Cache::forget('quick_links_activos');
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -60,6 +63,8 @@ class QuickLinkController extends Controller
             'activo' => $request->has('activo') ? $request->boolean('activo') : $quickLink->activo,
         ]);
 
+        Cache::forget('quick_links_activos');
+
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -77,6 +82,8 @@ class QuickLinkController extends Controller
     public function destroy(Request $request, QuickLink $quickLink): JsonResponse|RedirectResponse
     {
         $quickLink->delete();
+
+        Cache::forget('quick_links_activos');
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -101,6 +108,8 @@ class QuickLinkController extends Controller
         foreach ($validated['ids'] as $index => $id) {
             QuickLink::where('id', $id)->update(['orden' => $index + 1]);
         }
+
+        Cache::forget('quick_links_activos');
 
         return response()->json([
             'success' => true,

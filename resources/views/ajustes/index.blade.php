@@ -27,6 +27,9 @@
             logo_reportes_actual: @js($estudio->logoReportesUrl()),
             logo_reportes_nombre_actual: @js($estudio->logoReportesNombreOriginal()),
             frecuencia_cron_horas: {{ $ajustes->frecuencia_cron_horas }},
+            descargar_adjuntos_pdf: {{ $ajustes->descargar_adjuntos_pdf ? 'true' : 'false' }},
+            pausa_anti_bloqueo_segundos: {{ $ajustes->pausa_anti_bloqueo_segundos ?? 3 }},
+            limite_mensajes_buzon: {{ $ajustes->limite_mensajes_buzon ?? 15 }},
             notificar_whatsapp: {{ $ajustes->notificar_whatsapp ? 'true' : 'false' }},
             nivel_alerta_whatsapp: @js($ajustes->nivel_alerta_whatsapp),
             enlaces: @js($enlacesRapidos ?? []),
@@ -613,8 +616,54 @@
                                 <span class="font-bold text-brand-600" x-text="'Cada ' + form.frecuencia_cron_horas + ' horas'"></span>
                             </div>
                             <div class="flex items-center justify-between text-[11px]">
-                                <span class="text-gray-500 font-medium">Filtro de Ruido:</span>
-                                <span class="font-bold text-emerald-700">Anti-Spam Activado</span>
+                                <span class="text-gray-500 font-medium">Protección Anti-Bloqueo:</span>
+                                <span class="font-bold text-emerald-700" x-text="form.pausa_anti_bloqueo_segundos + 's de pausa humana activa'"></span>
+                            </div>
+                        </div>
+
+                        {{-- Toggle Descarga Automática de PDFs Oficiales --}}
+                        <div class="flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-gray-50/50">
+                            <div>
+                                <span class="block font-bold text-gray-900">Descargar Documentos PDF Oficiales de SUNAT</span>
+                                <span class="block text-[11px] text-gray-500">Captura directamente las resoluciones y constancias firmadas en PDF emitida por SUNAT</span>
+                            </div>
+
+                            <button type="button"
+                                    @click="form.descargar_adjuntos_pdf = !form.descargar_adjuntos_pdf"
+                                    class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                                    :class="form.descargar_adjuntos_pdf ? 'bg-brand-600' : 'bg-gray-300'"
+                                    role="switch"
+                                    :aria-checked="form.descargar_adjuntos_pdf">
+                                <span class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out"
+                                      :class="form.descargar_adjuntos_pdf ? 'translate-x-5' : 'translate-x-0'"></span>
+                            </button>
+                        </div>
+
+                        {{-- Parámetros Anti-Bloqueo y Rendimiento --}}
+                        <div class="grid grid-cols-2 gap-3 p-4 rounded-xl border border-gray-200 bg-gray-50/50">
+                            <div class="space-y-1">
+                                <label class="block font-semibold text-gray-700 text-[11px]">Pausa Anti-Bloqueo</label>
+                                <select x-model.number="form.pausa_anti_bloqueo_segundos"
+                                        class="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 font-medium">
+                                    <option value="2">2 segundos</option>
+                                    <option value="3">3 segundos (Recomendado)</option>
+                                    <option value="5">5 segundos (Máx. seguridad)</option>
+                                    <option value="10">10 segundos (Conexión lenta)</option>
+                                </select>
+                                <span class="text-[10px] text-gray-400 block leading-tight">Previene bloqueos de IP en el portal SOL.</span>
+                            </div>
+
+                            <div class="space-y-1">
+                                <label class="block font-semibold text-gray-700 text-[11px]">Límite por Consulta</label>
+                                <select x-model.number="form.limite_mensajes_buzon"
+                                        class="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs text-gray-900 shadow-xs focus:border-brand-500 font-medium">
+                                    <option value="5">5 mensajes</option>
+                                    <option value="10">10 mensajes</option>
+                                    <option value="15">15 mensajes (Estándar)</option>
+                                    <option value="25">25 mensajes</option>
+                                    <option value="50">50 mensajes</option>
+                                </select>
+                                <span class="text-[10px] text-gray-400 block leading-tight">Mensajes a extraer por sincronización.</span>
                             </div>
                         </div>
                     </div>
@@ -1064,6 +1113,9 @@
                     logo_reportes_actual: initialData.logo_reportes_actual || null,
                     logo_reportes_nombre_actual: initialData.logo_reportes_nombre_actual || null,
                     frecuencia_cron_horas: initialData.frecuencia_cron_horas || 8,
+                    descargar_adjuntos_pdf: initialData.descargar_adjuntos_pdf !== false,
+                    pausa_anti_bloqueo_segundos: initialData.pausa_anti_bloqueo_segundos || 3,
+                    limite_mensajes_buzon: initialData.limite_mensajes_buzon || 15,
                     notificar_whatsapp: Boolean(initialData.notificar_whatsapp),
                     nivel_alerta_whatsapp: initialData.nivel_alerta_whatsapp || 'Solo Altas'
                 },
@@ -1490,6 +1542,9 @@
                         formData.append('color_base', this.form.color_base || '#0B132B');
                         formData.append('color_acento', this.form.color_acento || '#00C2CB');
                         formData.append('frecuencia_cron_horas', this.form.frecuencia_cron_horas);
+                        formData.append('descargar_adjuntos_pdf', this.form.descargar_adjuntos_pdf ? '1' : '0');
+                        formData.append('pausa_anti_bloqueo_segundos', this.form.pausa_anti_bloqueo_segundos);
+                        formData.append('limite_mensajes_buzon', this.form.limite_mensajes_buzon);
                         formData.append('notificar_whatsapp', this.form.notificar_whatsapp ? '1' : '0');
                         formData.append('nivel_alerta_whatsapp', this.form.nivel_alerta_whatsapp);
 

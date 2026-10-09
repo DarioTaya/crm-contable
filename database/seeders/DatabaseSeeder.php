@@ -29,7 +29,19 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // 2. Crear o actualizar Usuario Administrador Principal
+        // 2. Crear o actualizar Usuarios Administradores Principales
+        User::firstOrCreate(
+            ['email' => 'sebastiantaya22@gmail.com'],
+            [
+                'estudio_id' => $estudio->id,
+                'name' => 'Sebastián Taya',
+                'password' => Hash::make('admin123'),
+                'rol' => 'admin',
+                'activo' => true,
+                'telefono' => '925147601',
+            ]
+        );
+
         User::firstOrCreate(
             ['email' => 'decontador.pe@gmail.com'],
             [

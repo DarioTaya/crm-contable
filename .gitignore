@@ -30,6 +30,7 @@ Thumbs.db
 .wwebjs_auth/
 .wwebjs_cache/
 /storage/chrome_profile/
+scripts/*.png
 
 # Artefactos de respaldo y empaquetado comercial.
 /storage/backups/*

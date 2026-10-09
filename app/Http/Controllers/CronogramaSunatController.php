@@ -128,6 +128,8 @@ class CronogramaSunatController extends Controller
             $cronograma->update($datosActualizar);
         }
 
+        CronogramaSunatService::olvidarBarraSuperior();
+
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
@@ -146,6 +148,7 @@ class CronogramaSunatController extends Controller
         $anio = (int) $request->input('anio', 2026);
 
         $actualizados = $this->cronogramaService->autogenerarSireDesdePdt($anio);
+        CronogramaSunatService::olvidarBarraSuperior();
 
         $mensaje = "Se auto-generaron con éxito {$actualizados} períodos del cronograma SIRE (1 día hábil previo a PDT 621).";
 
@@ -172,6 +175,7 @@ class CronogramaSunatController extends Controller
         }
 
         $actualizados = $this->cronogramaService->sincronizarBalancesMensuales($anio);
+        CronogramaSunatService::olvidarBarraSuperior();
         $mensaje = "Se calcularon {$actualizados} plazos de balances mensuales {$anio} (3 meses desde el primer día hábil del mes siguiente).";
 
         if ($request->expectsJson() || $request->ajax()) {
@@ -191,6 +195,7 @@ class CronogramaSunatController extends Controller
     public function restablecer(Request $request): JsonResponse|RedirectResponse
     {
         $this->cronogramaService->restablecerOficial2026();
+        CronogramaSunatService::olvidarBarraSuperior();
 
         $mensaje = 'Cronograma oficial SUNAT 2026 restablecido con éxito.';
 

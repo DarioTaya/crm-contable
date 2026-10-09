@@ -277,7 +277,7 @@ class ControlMensualController extends Controller
         $catalogo = app(CatalogoSunat::class);
         $catalogoTributos = $catalogo->catalogoFormulario();
         $mediosPago = $catalogo->mediosParaSelector();
-        $cargaMasiva = $this->configuracionCargaMasiva($anio, $mesesEncabezado);
+        $cargaMasiva = $this->configuracionCargaMasiva($anio, $mesesEncabezado, $clientes);
 
         return view('control.index', array_merge(compact(
             'anio',
@@ -296,9 +296,15 @@ class ControlMensualController extends Controller
      * @param  array<int, array{corto: string, nombre: string}>  $mesesEncabezado
      * @return array<string, mixed>
      */
-    private function configuracionCargaMasiva(int $anio, array $mesesEncabezado): array
+    private function configuracionCargaMasiva(int $anio, array $mesesEncabezado, ?Collection $clientesExistentes = null): array
     {
         $mesHasta = $anio === (int) now()->year ? max(1, (int) now()->month - 1) : 12;
+
+        $clientesColeccion = $clientesExistentes ?? Cliente::query()
+            ->paraUsuario()
+            ->vigentesEnEjercicio($anio)
+            ->orderBy('numero')
+            ->get(['id', 'numero', 'razon_social', 'ruc', 'estado', 'mes_baja', 'regimen_tributario']);
 
         return [
             'anio' => $anio,
@@ -307,11 +313,7 @@ class ControlMensualController extends Controller
                 'numero' => $numero,
                 'nombre' => $meta['nombre'],
             ])->values()->all(),
-            'clientes' => Cliente::query()
-                ->paraUsuario()
-                ->vigentesEnEjercicio($anio)
-                ->orderBy('numero')
-                ->get(['id', 'numero', 'razon_social', 'ruc', 'estado', 'mes_baja', 'regimen_tributario'])
+            'clientes' => $clientesColeccion
                 ->map(fn (Cliente $cliente): array => [
                     'id' => $cliente->id,
                     'numero' => $cliente->numero,

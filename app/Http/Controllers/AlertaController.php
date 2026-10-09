@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AlertaBuzon;
+use App\Services\AlertaDocumentService;
 use App\Services\SunafilBuzonSyncService;
 use App\Services\SunatBuzonSyncService;
 use App\Services\WhatsAppService;
@@ -10,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AlertaController extends Controller
 {
@@ -53,12 +55,21 @@ class AlertaController extends Controller
             ->get();
 
         // Estadísticas rápidas para tarjetas y filtros
-        $totalAlertas = AlertaBuzon::count();
-        $totalPendientes = AlertaBuzon::where('estado', 'Pendiente')->count();
-        $totalLeidos = AlertaBuzon::where('estado', 'Leído')->count();
-        $totalAltaPrioridad = AlertaBuzon::where('estado', 'Pendiente')->where('prioridad', 'Alta')->count();
-        $totalSunatPendientes = AlertaBuzon::where('estado', 'Pendiente')->where('plataforma', 'SUNAT')->count();
-        $totalSunafilPendientes = AlertaBuzon::where('estado', 'Pendiente')->where('plataforma', 'SUNAFIL')->count();
+        $alertaStats = AlertaBuzon::selectRaw('
+            COUNT(*) as total_alertas,
+            COUNT(CASE WHEN estado = "Pendiente" THEN 1 END) as total_pendientes,
+            COUNT(CASE WHEN estado = "Leído" THEN 1 END) as total_leidos,
+            COUNT(CASE WHEN estado = "Pendiente" AND prioridad = "Alta" THEN 1 END) as total_alta_prioridad,
+            COUNT(CASE WHEN estado = "Pendiente" AND plataforma = "SUNAT" THEN 1 END) as total_sunat_pendientes,
+            COUNT(CASE WHEN estado = "Pendiente" AND plataforma = "SUNAFIL" THEN 1 END) as total_sunafil_pendientes
+        ')->first();
+
+        $totalAlertas = (int) ($alertaStats->total_alertas ?? 0);
+        $totalPendientes = (int) ($alertaStats->total_pendientes ?? 0);
+        $totalLeidos = (int) ($alertaStats->total_leidos ?? 0);
+        $totalAltaPrioridad = (int) ($alertaStats->total_alta_prioridad ?? 0);
+        $totalSunatPendientes = (int) ($alertaStats->total_sunat_pendientes ?? 0);
+        $totalSunafilPendientes = (int) ($alertaStats->total_sunafil_pendientes ?? 0);
 
         return view('alertas.index', compact(
             'alertas',
@@ -148,5 +159,49 @@ class AlertaController extends Controller
         }
 
         return redirect()->route('alertas.index')->with('success', $mensaje);
+    }
+
+    /**
+     * Descarga o visualiza el documento PDF oficial emitido por SUNAT o SUNAFIL (documento o constancia).
+     */
+    public function downloadPdf(Request $request, AlertaBuzon $alerta, AlertaDocumentService $docService): BinaryFileResponse|RedirectResponse|JsonResponse
+    {
+        $alerta->loadMissing('cliente.credencial');
+
+        if (auth()->check() && auth()->user()->estudio_id && $alerta->cliente && (int) $alerta->cliente->estudio_id !== (int) auth()->user()->estudio_id) {
+            abort(403, 'No autorizado para acceder a este documento.');
+        }
+
+        $tipo = $request->query('tipo', 'documento') === 'constancia' ? 'constancia' : 'documento';
+        $ruta = $docService->asegurarDocumento($alerta, $tipo);
+
+        // Si el archivo físico no está disponible pero el cliente tiene credenciales SOL y es de SUNAT,
+        // intentamos una sincronización en demanda para obtener el archivo original.
+        if (! $ruta && $alerta->plataforma === 'SUNAT' && $alerta->cliente?->credencial?->usuario_sol) {
+            try {
+                app(SunatBuzonSyncService::class)->syncCliente($alerta->cliente);
+                $alerta->refresh();
+                $ruta = $docService->asegurarDocumento($alerta, $tipo);
+            } catch (\Throwable $e) {
+                \Log::warning("Fallo en sincronización on-demand de PDF para alerta {$alerta->id}: {$e->getMessage()}");
+            }
+        }
+
+        if (! $ruta) {
+            $mensaje = ($tipo === 'constancia')
+                ? 'Esta comunicación oficial no contiene una constancia de notificación adjunta en el Buzón SOL.'
+                : 'Esta comunicación oficial no contiene un archivo PDF adjunto emitido por SUNAT en el Buzón SOL.';
+
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $mensaje,
+                ], 404);
+            }
+
+            return redirect()->back()->with('warning', $mensaje);
+        }
+
+        return $docService->descargar($alerta, $request->boolean('inline'), $tipo);
     }
 }

@@ -25,22 +25,29 @@ class DashboardController extends Controller
      */
     public function index(): View
     {
-        $totalClientesActivos = Cliente::where('estado', 'activo')->count();
-        $totalClientesSuspendidos = Cliente::where('estado', 'suspendido')->count();
-        $totalClientesRetirados = Cliente::where('estado', 'retirado')->count();
+        $metricasClientes = Cliente::selectRaw("
+            sum(case when estado = 'activo' then 1 else 0 end) as activos,
+            sum(case when estado = 'suspendido' then 1 else 0 end) as suspendidos,
+            sum(case when estado = 'retirado' then 1 else 0 end) as retirados
+        ")->first();
+        $totalClientesActivos = (int) ($metricasClientes->activos ?? 0);
+        $totalClientesSuspendidos = (int) ($metricasClientes->suspendidos ?? 0);
+        $totalClientesRetirados = (int) ($metricasClientes->retirados ?? 0);
         $totalClientesInactivos = $totalClientesSuspendidos + $totalClientesRetirados;
 
-        // Notificaciones pendientes globales del Buzón de Alertas SUNAT / SUNAFIL (count real de alertas_buzon)
-        $notificacionesPendientes = AlertaBuzon::where('estado', 'Pendiente')->count();
-        $notificacionesImportantes = AlertaBuzon::where('estado', 'Pendiente')
-            ->where('prioridad', 'Alta')
-            ->count();
-        $notificacionesSunat = AlertaBuzon::where('estado', 'Pendiente')
-            ->where('plataforma', 'SUNAT')
-            ->count();
-        $notificacionesSunafil = AlertaBuzon::where('estado', 'Pendiente')
-            ->where('plataforma', 'SUNAFIL')
-            ->count();
+        // Notificaciones pendientes globales del Buzón de Alertas SUNAT / SUNAFIL
+        $metricasAlertas = AlertaBuzon::where('estado', 'Pendiente')
+            ->selectRaw("
+                count(*) as total,
+                sum(case when prioridad = 'Alta' then 1 else 0 end) as importantes,
+                sum(case when plataforma = 'SUNAT' then 1 else 0 end) as sunat,
+                sum(case when plataforma = 'SUNAFIL' then 1 else 0 end) as sunafil
+            ")
+            ->first();
+        $notificacionesPendientes = (int) ($metricasAlertas->total ?? 0);
+        $notificacionesImportantes = (int) ($metricasAlertas->importantes ?? 0);
+        $notificacionesSunat = (int) ($metricasAlertas->sunat ?? 0);
+        $notificacionesSunafil = (int) ($metricasAlertas->sunafil ?? 0);
 
         // Determinar el período tributario activo según el Cronograma Oficial SUNAT
         // (En Setiembre 2026 se declaran las operaciones de Agosto 2026 '08-2026')

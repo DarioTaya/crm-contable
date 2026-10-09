@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AlertaBuzon;
 use App\Models\Cliente;
+use App\Support\NodeBinary;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Support\Facades\Log;
@@ -136,25 +137,7 @@ class SunafilBuzonSyncService
      */
     public function getNodeExecutable(): string
     {
-        $laragonNodes = glob(base_path('../../bin/nodejs/*/node.exe'));
-        if (! empty($laragonNodes) && file_exists($laragonNodes[0])) {
-            return str_replace('/', '\\', $laragonNodes[0]);
-        }
-
-        $possiblePaths = [
-            'C:\\laragon\\bin\\nodejs\\node-v22\\node.exe',
-            'C:\\Program Files\\nodejs\\node.exe',
-            'C:\\Program Files (x86)\\nodejs\\node.exe',
-            (getenv('LOCALAPPDATA') ?: '').'\\Programs\\nodejs\\node.exe',
-        ];
-
-        foreach ($possiblePaths as $path) {
-            if ($path && file_exists($path)) {
-                return $path;
-            }
-        }
-
-        return 'node';
+        return NodeBinary::path();
     }
 
     /**
@@ -360,10 +343,24 @@ class SunafilBuzonSyncService
                 $contenidoBruto = ! empty($alerta['contenido']) ? trim((string) $alerta['contenido']) : null;
                 $textoPlano = $contenidoBruto ? trim(strip_tags($contenidoBruto)) : '';
 
-                if (empty($textoPlano) || mb_strlen($textoPlano) < 20) {
-                    $contenido = 'El contenido detallado o documento anexo se encuentra en formato PDF. Por favor, acceda a la Casilla Electrónica de SUNAFIL desde el Expediente del Cliente para visualizarlo o descargarlo.';
+                $tienePdf = ! empty($alerta['tiene_pdf']) || ! empty($alerta['ruta_pdf']);
+                $rutaPdf = ! empty($alerta['ruta_pdf']) ? (string) $alerta['ruta_pdf'] : null;
+                $nombreArchivoPdf = ! empty($alerta['nombre_archivo_pdf']) ? (string) $alerta['nombre_archivo_pdf'] : null;
+                $numeroNotificacion = ! empty($alerta['numero_notificacion']) ? trim((string) $alerta['numero_notificacion']) : null;
+
+                if (! $numeroNotificacion && preg_match('/(?:N[°o]\.?|Número|Numero|Valor|Resolución|Resolucion)\s*([0-9]{3,4}-[0-9]{3,4}-[0-9]{5,10}|[0-9]{10,16})/i', $asunto.' '.$textoPlano, $m)) {
+                    $numeroNotificacion = trim($m[1]);
+                }
+
+                if (empty($textoPlano) || mb_strlen($textoPlano) <= 25 || preg_match('/^(ver pdf|descargar|pdf)$/i', $textoPlano)) {
+                    $contenido = '<div class="p-3 bg-rose-50/80 border border-rose-200 rounded-lg text-rose-950 text-xs leading-relaxed"><strong class="block mb-1 font-bold text-rose-900">Comunicación Electrónica Oficial - SUNAFIL:</strong><p>Esta notificación corresponde a un acto laboral formal depositado en su Casilla Electrónica de SUNAFIL. Puede consultar y descargar el documento PDF oficial directamente desde los botones de acción del CRM.</p></div>';
+                    $tienePdf = true;
                 } else {
                     $contenido = $contenidoBruto;
+                }
+
+                if (preg_match('/(resoluci[oó]n|requerimiento|infracci[oó]n|carta|comparecencia|multa)/i', $asunto)) {
+                    $tienePdf = true;
                 }
 
                 $estado = in_array($alerta['estado'] ?? '', ['Pendiente', 'Leído']) ? $alerta['estado'] : 'Pendiente';
@@ -382,9 +379,13 @@ class SunafilBuzonSyncService
                         'fecha_recepcion' => $fecha,
                     ],
                     [
+                        'numero_notificacion' => $numeroNotificacion,
                         'contenido' => $contenido,
                         'estado' => $estado,
                         'prioridad' => $prioridad,
+                        'tiene_pdf' => $tienePdf,
+                        'ruta_pdf' => $rutaPdf,
+                        'nombre_archivo_pdf' => $nombreArchivoPdf,
                     ]
                 );
 

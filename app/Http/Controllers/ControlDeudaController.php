@@ -30,8 +30,9 @@ class ControlDeudaController extends Controller
         $totalRecaudado = (float) $todasDeudas->sum(fn (DeudaTributaria|Operacion $fila) => (float) $fila->total_abonado);
         $totalSaldoPorCobrar = (float) $todasDeudas->sum(fn (DeudaTributaria|Operacion $fila) => (float) $fila->saldo_pendiente);
 
-        $todasLasDeudasSinFiltro = $this->filasDeuda(null)
-            ->filter(fn (DeudaTributaria|Operacion $fila) => (float) $fila->saldo_pendiente > 0);
+        $todasLasDeudasSinFiltro = empty($clienteIds)
+            ? $deudas
+            : $this->filasDeuda(null)->filter(fn (DeudaTributaria|Operacion $fila) => (float) $fila->saldo_pendiente > 0);
 
         $clientesConDeuda = $todasLasDeudasSinFiltro->map(fn (DeudaTributaria|Operacion $fila) => $fila->cliente)
             ->filter()

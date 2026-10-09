@@ -191,7 +191,7 @@ class SyncSunatBuzonTest extends TestCase
         }
     }
 
-    public function test_pdf_fallback_content_assigned_when_body_is_empty_or_short(): void
+    public function test_pdf_fields_and_faithful_content_preserved_on_sync(): void
     {
         $cliente = Cliente::create([
             'razon_social' => 'EMPRESA PDF TEST SAC',
@@ -210,8 +210,12 @@ class SyncSunatBuzonTest extends TestCase
             return [
                 [
                     'asunto' => 'NOTIFICACIÓN RESOLUCIÓN COACTIVA ANEXO PDF',
+                    'numero_notificacion' => '0230010987654',
                     'fecha_recepcion' => '2026-09-05 15:00:00',
-                    'contenido' => '<button>Ver PDF</button>', // Contenido muy corto
+                    'contenido' => '<button>Ver PDF</button>',
+                    'tiene_pdf' => true,
+                    'ruta_pdf' => 'alertas/SUNAT/20777666555/0230010987654.pdf',
+                    'nombre_archivo_pdf' => 'REC-0230010987654.pdf',
                 ],
             ];
         });
@@ -221,7 +225,10 @@ class SyncSunatBuzonTest extends TestCase
 
         $alerta = AlertaBuzon::where('asunto', 'NOTIFICACIÓN RESOLUCIÓN COACTIVA ANEXO PDF')->first();
         $this->assertNotNull($alerta);
-        $this->assertStringContainsString('El contenido detallado o documento anexo se encuentra en formato PDF', $alerta->contenido);
+        $this->assertEquals('0230010987654', $alerta->numero_notificacion);
+        $this->assertTrue($alerta->tiene_pdf);
+        $this->assertEquals('alertas/SUNAT/20777666555/0230010987654.pdf', $alerta->ruta_pdf);
+        $this->assertStringContainsString('<button>Ver PDF</button>', $alerta->contenido);
     }
 
     public function test_sync_all_iterates_all_active_clients_with_sol_credentials(): void

@@ -278,7 +278,23 @@ class CronogramaSunatService
      *     periodo_balance_anual: string
      * }
      */
+    /**
+     * Memoria estática para evitar re-consultar durante el mismo ciclo de petición HTTP.
+     *
+     * @var array<string, mixed>|null
+     */
+    private static ?array $barraSuperiorEnMemoria = null;
+
     public function paraBarraSuperior(): array
+    {
+        if (self::$barraSuperiorEnMemoria !== null && ! app()->environment('testing')) {
+            return self::$barraSuperiorEnMemoria;
+        }
+
+        return self::$barraSuperiorEnMemoria = $this->calcularBarraSuperior();
+    }
+
+    private function calcularBarraSuperior(): array
     {
         $anio = (int) now()->year;
         $hayEjercicio = CronogramaSunat::query()
@@ -312,6 +328,11 @@ class CronogramaSunatService
         $cronograma['periodo_balance_anual'] = $this->obtenerPeriodoEnCurso('balance_anual');
 
         return $cronograma;
+    }
+
+    public static function olvidarBarraSuperior(): void
+    {
+        self::$barraSuperiorEnMemoria = null;
     }
 
     public function inicioPlazoBalanceMensual(int $mes, int $anio): Carbon

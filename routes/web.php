@@ -82,6 +82,7 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
     Route::post('/alertas/sync-all', [AlertaController::class, 'syncAll'])->name('alertas.sync-all');
     Route::post('/alertas/sync-sunafil', [AlertaController::class, 'syncSunafil'])->name('alertas.sync-sunafil');
     Route::post('/alertas/{alerta}/mark-as-read', [AlertaController::class, 'markAsRead'])->name('alertas.mark-as-read');
+    Route::get('/alertas/{alerta}/descargar-pdf', [AlertaController::class, 'downloadPdf'])->name('alertas.descargar-pdf');
 
     // Bóveda SIRE / Comprobantes
     Route::get('/comprobantes', [ComprobanteController::class, 'index'])->name('comprobantes.index');

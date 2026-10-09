@@ -7,6 +7,7 @@ use App\Models\Cliente;
 use App\Models\ControlBalance;
 use App\Services\CronogramaSunatService;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -47,7 +48,6 @@ class ControlBalanceController extends Controller
             12 => ['corto' => 'DIC', 'nombre' => 'Diciembre'],
         ];
 
-        $kpis = $this->calcularKpis($anio);
         $aperturaBalance = $this->periodoEnApertura();
 
         // FILTRO INTELIGENTE: Consulta estricta para regímenes MYPE y General (excluye RUS y RER).
@@ -65,6 +65,8 @@ class ControlBalanceController extends Controller
             ->with(['controlBalances' => fn ($query) => $query->where('anio', $anio)])
             ->orderBy('numero')
             ->get();
+
+        $kpis = $this->calcularKpis($anio, $clientes);
 
         $matrizClientes = [];
 
@@ -232,9 +234,9 @@ class ControlBalanceController extends Controller
      *
      * @return array{totalClientes: int, totalObligacionesAnio: int, balancesDeclarados: int, balancesProcesando: int, balancesPendientes: int, porcentajeAvance: int, djAnualDeclaradas: int, djAnualPendientes: int}
      */
-    public function calcularKpis(int $anio): array
+    public function calcularKpis(int $anio, ?Collection $clientesExistentes = null): array
     {
-        $clientes = Cliente::where(function ($query) use ($anio) {
+        $clientes = $clientesExistentes ?? Cliente::where(function ($query) use ($anio) {
             $query->where('estado', 'activo')
                 ->orWhere('estado', 'suspendido')
                 ->orWhere(function ($q) use ($anio) {

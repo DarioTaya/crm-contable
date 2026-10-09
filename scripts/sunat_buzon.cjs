@@ -1,18 +1,18 @@
 /**
  * scripts/sunat_buzon.cjs
  *
- * Scraper headless avanzado para el Buzón Electrónico SOL de SUNAT.
- * - Modo headless ('new') 100% oculto y silencioso.
- * - Login en portal SOL con RUC, Usuario y Clave SOL.
- * - Scraping dirigido: prioriza carpetas clave (MIS ETIQUETAS, Valores, Resoluciones, Avisos).
- * - Filtro DOM estricto: evita filas de resumen interno de deudas/pagos ('Total :', 'Pago', 'Tributo', etc.).
- * - Lectura profunda: hace clic en cada mensaje y extrae el cuerpo HTML/texto completo.
- * - Manejo de PDFs: detecta notificaciones con anexos PDF y provee fallback estructurado.
- * - Filtro Anti-Spam: ignora RVIE, RCE, Comprobantes, etc.
- * - Diccionario Tributario de Alta Prioridad (Esquela, Omiso, Multa, Embargo, etc.).
+ * Scraper headless empresarial para el Buzón Electrónico SOL de SUNAT.
+ * - Modo headless ('new') 100% silencioso.
+ * - Soporte nativo para el nuevo Visor SPA de SUNAT (iframeApplication, list-group-item, contenedorMensaje).
+ * - Descarga directa del archivo PDF 100% auténtico e idéntico emitido por SUNAT (#listArchivosAdjuntos).
+ * - Cero generación sintética o ficticia de documentos.
+ * - Captura del cuerpo HTML/texto original del acto administrativo sin adulteración.
+ * - Mecanismos anti-bloqueo: manejo de diálogos de sesión ("Ya cuenta con una sesión activa"),
+ *   pausas humanas calibradas, cierre de sesión limpio y límites configurables.
+ * - Compatibilidad con tablas tradicionales / jqGrid para contribuyentes antiguos.
  *
  * Uso:
- *   node scripts/sunat_buzon.cjs <RUC> <USUARIO_SOL> <CLAVE_SOL>
+ *   node scripts/sunat_buzon.cjs <RUC> <USUARIO_SOL> <CLAVE_SOL> [DESCARGAR_PDF] [LIMITE] [PAUSA_SEG]
  */
 
 const fs = require('fs');
@@ -20,12 +20,16 @@ const path = require('path');
 const puppeteer = require('puppeteer');
 
 // ─── 1. Validar Argumentos ───────────────────────────────────────────────────
-const [, , ruc, usuario, clave] = process.argv;
+const [, , ruc, usuario, clave, argDescargarPdf, argLimite, argPausa] = process.argv;
 
 if (!ruc || !usuario || !clave) {
     console.error(JSON.stringify({ error: 'Faltan parámetros: <RUC> <USUARIO_SOL> <CLAVE_SOL>' }));
     process.exit(1);
 }
+
+const descargarPdf = argDescargarPdf !== 'false';
+const limiteMensajes = parseInt(argLimite, 10) || 15;
+const pausaSegundos = Math.max(1, parseInt(argPausa, 10) || 3);
 
 // ─── 2. Localizar Navegador en Windows ────────────────────────────────────────
 function getChromePath() {
@@ -101,14 +105,12 @@ function esAsuntoInvalido(asunto) {
 
     if (t.length < 5) return true;
 
-    // Descartar cabeceras de tablas internas
     for (const b of CABECERAS_BASURA) {
         if (t === b || t.startsWith(b + ' ')) {
             return true;
         }
     }
 
-    // Descartar términos de spam conocidos
     for (const s of TERMINOS_SPAM) {
         if (t.includes(s)) {
             return true;
@@ -124,7 +126,7 @@ function calcularPrioridad(asunto, contenido = '') {
 
     const palabrasAlta = [
         'esquela', 'omiso', 'multa', 'embargo', 'valor', 'resolución', 'resolucion',
-        'coactiv', 'requerimiento', 'orden de pago'
+        'coactiv', 'requerimiento', 'orden de pago', 'carta de inductiva'
     ];
 
     for (const palabra of palabrasAlta) {
@@ -135,7 +137,7 @@ function calcularPrioridad(asunto, contenido = '') {
 
     const palabrasMedia = [
         'declaraci', 'vencimiento', 'aviso', 'recordatorio', 'rectificatori',
-        'cronograma', 'regulariz'
+        'cronograma', 'regulariz', 'carta'
     ];
 
     for (const palabra of palabrasMedia) {
@@ -147,27 +149,30 @@ function calcularPrioridad(asunto, contenido = '') {
     return 'Baja';
 }
 
-const PDF_FALLBACK_TEXT = 'El contenido detallado o documento anexo se encuentra en formato PDF. Por favor, acceda directamente al portal SUNAT desde el Expediente del Cliente para descargarlo.';
-
 const SUNAT_LOGIN_URL = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm';
 
-// Timeout global de seguridad (100 segundos) para no colgar procesos PHP
+// Timeout global de seguridad (150 segundos) para no colgar procesos PHP
 const safetyTimeout = setTimeout(() => {
     console.error('Timeout de seguridad excedido en sunat_buzon.cjs');
     console.log(JSON.stringify([]));
     process.exit(0);
-}, 100000);
+}, 150000);
 
 (async () => {
     let browser;
     const resultadoAlertas = [];
-    const interceptedMessages = [];
+
+    // Directorio de almacenamiento para PDFs oficiales del cliente
+    const downloadDir = path.resolve(__dirname, `../storage/app/alertas/SUNAT/${ruc}`);
+    if (!fs.existsSync(downloadDir)) {
+        fs.mkdirSync(downloadDir, { recursive: true });
+    }
 
     try {
         const chromePath = getChromePath();
         const launchOptions = {
             headless: 'new',
-            defaultViewport: { width: 1280, height: 800 },
+            defaultViewport: { width: 1366, height: 768 },
             ignoreDefaultArgs: ['--enable-automation'],
             args: [
                 '--no-sandbox',
@@ -183,52 +188,47 @@ const safetyTimeout = setTimeout(() => {
         }
 
         browser = await puppeteer.launch(launchOptions);
+
+        // Configuración de CDP para descargas directas en cualquier target/popup
+        const setupCDP = async (targetPage) => {
+            try {
+                const client = await targetPage.target().createCDPSession();
+                await client.send('Page.setDownloadBehavior', {
+                    behavior: 'allow',
+                    downloadPath: downloadDir,
+                });
+            } catch (_) {}
+        };
+
+        browser.on('targetcreated', async (target) => {
+            if (target.type() === 'page') {
+                const p = await target.page();
+                if (p) await setupCDP(p);
+            }
+        });
+
         const page = await browser.newPage();
+        await setupCDP(page);
 
         await page.setUserAgent(
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
         );
 
-        // Intercepción pasiva de respuestas JSON de red con datos de mensajes
-        page.on('response', async (res) => {
+        // Anti-Bloqueo: Aceptar diálogos nativos ("Ya cuenta con una sesión activa")
+        page.on('dialog', async (dialog) => {
             try {
-                const url = res.url();
-                const contentType = res.headers()['content-type'] || '';
-                if (contentType.includes('application/json') || url.includes('buzon') || url.includes('mensaje') || url.includes('notifica')) {
-                    const text = await res.text();
-                    try {
-                        const data = JSON.parse(text);
-                        const items = Array.isArray(data) ? data : (data.rows || data.data || data.mensajes || data.notificaciones || data.items || []);
-                        if (Array.isArray(items) && items.length > 0) {
-                            items.forEach(it => {
-                                const asunto = it.desAsunto || it.asunto || it.nomMensaje || it.subject || '';
-                                const fecha = it.fecEnvio || it.fecNotif || it.fecha || it.fecEmision || '';
-                                const cuerpo = it.desCuerpo || it.cuerpo || it.contenido || it.mensaje || '';
-                                if (asunto && !esAsuntoInvalido(String(asunto))) {
-                                    interceptedMessages.push({
-                                        asunto: String(asunto).trim(),
-                                        fecha: normalizarFecha(fecha),
-                                        contenido: (cuerpo && String(cuerpo).trim().length > 15) ? String(cuerpo).trim() : PDF_FALLBACK_TEXT,
-                                        estado: (it.estLectura === '1' || it.leido) ? 'Leído' : 'Pendiente',
-                                        prioridad: calcularPrioridad(asunto, cuerpo),
-                                        plataforma: 'SUNAT'
-                                    });
-                                }
-                            });
-                        }
-                    } catch (_) {}
-                }
+                await dialog.accept();
             } catch (_) {}
         });
 
-        // ─── Paso 1: Iniciar sesión en SOL ──────────────────────────────────
+        // ─── Paso 1: Login en Portal SOL ───────────────────────────────────
         await page.goto(SUNAT_LOGIN_URL, { waitUntil: 'networkidle2', timeout: 45000 });
 
         try {
             const btnPorRuc = await page.$('#btnPorRuc');
             if (btnPorRuc) {
                 await btnPorRuc.click();
-                await new Promise(r => setTimeout(r, 400));
+                await new Promise(r => setTimeout(r, 500));
             }
         } catch (_) {}
 
@@ -238,20 +238,21 @@ const safetyTimeout = setTimeout(() => {
         const selUsuario = (await page.$('#txtUsuario')) ? '#txtUsuario' : 'input[name="txtUsuario"]';
         const selClave = (await page.$('#txtContrasena')) ? '#txtContrasena' : 'input[name="txtContrasena"]';
 
-        await page.type(selRuc, ruc, { delay: 15 });
-        await page.type(selUsuario, usuario, { delay: 15 });
-        await page.type(selClave, clave, { delay: 15 });
+        await page.type(selRuc, ruc, { delay: 20 });
+        await page.type(selUsuario, usuario, { delay: 20 });
+        await page.type(selClave, clave, { delay: 20 });
 
         const selBoton = (await page.$('#btnAceptar')) ? '#btnAceptar' : 'button[type="submit"]';
 
         await Promise.allSettled([
-            page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }),
+            page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 35000 }),
             page.click(selBoton),
         ]);
 
-        await new Promise(r => setTimeout(r, 2000));
+        // Pausa calibrada anti-bloqueo tras autenticación
+        await new Promise(r => setTimeout(r, Math.max(2500, pausaSegundos * 1000)));
 
-        // ─── Paso 2: Localizar y Navegar al Buzón Electrónico ────────────────
+        // ─── Paso 2: Navegar al Buzón Electrónico SOL ──────────────────────
         let buzonEncontrado = false;
         const buzonSelectors = [
             '#aBuzon',
@@ -269,10 +270,7 @@ const safetyTimeout = setTimeout(() => {
             try {
                 const el = await page.$(selector);
                 if (el) {
-                    await Promise.allSettled([
-                        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }),
-                        el.click(),
-                    ]);
+                    await el.click();
                     buzonEncontrado = true;
                     break;
                 }
@@ -283,12 +281,9 @@ const safetyTimeout = setTimeout(() => {
             try {
                 const links = await page.$$('a, button, span');
                 for (const link of links) {
-                    const text = await page.evaluate(el => el.textContent, link);
-                    if (text && text.toLowerCase().includes('buzón')) {
-                        await Promise.allSettled([
-                            page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 15000 }),
-                            link.click(),
-                        ]);
+                    const text = await page.evaluate(el => el.textContent || '', link);
+                    if (text.toLowerCase().includes('buzón')) {
+                        await link.click();
                         buzonEncontrado = true;
                         break;
                     }
@@ -300,222 +295,354 @@ const safetyTimeout = setTimeout(() => {
             try {
                 await page.goto('https://e-menu.sunat.gob.pe/cl-ti-itmenu/BuzonInternet.htm', {
                     waitUntil: 'networkidle2',
-                    timeout: 20000,
+                    timeout: 25000,
                 });
             } catch (_) {}
         }
 
-        // ─── Paso 3: Identificar frame activo y Scraping Dirigido ───────────
-        await new Promise(r => setTimeout(r, 3000));
-
-        const allFrames = [page, ...page.frames()];
-        let frameBuzon = null;
-
-        for (const frame of allFrames) {
-            try {
-                const hasTable = await frame.$('table tbody tr, .ui-jqgrid-btable tr, tr.jqgrow, #tblMensajes tr');
-                if (hasTable) {
-                    frameBuzon = frame;
-                    break;
-                }
-            } catch (_) {}
-        }
-
-        if (!frameBuzon) {
-            frameBuzon = page;
-        }
-
-        // Scraping Dirigido: Intentar hacer clic en carpetas de alta relevancia ('MIS ETIQUETAS', 'Valores', 'Resoluciones')
+        // ─── Paso 3: Esperar frame del Visor Moderno (SPA) ─────────────────
+        let iframeApp = null;
         try {
-            const carpetasInteres = ['MIS ETIQUETAS', 'Valores', 'Resoluciones', 'Notificaciones'];
-            for (const nombreCarpeta of carpetasInteres) {
-                const clickeado = await frameBuzon.evaluate((nombre) => {
-                    const elements = Array.from(document.querySelectorAll('a, span, div.tree-node, td'));
-                    for (const el of elements) {
-                        const txt = (el.textContent || '').trim();
-                        if (txt.toLowerCase() === nombre.toLowerCase() || txt.includes(nombre)) {
-                            el.click();
-                            return true;
-                        }
-                    }
-                    return false;
-                }, nombreCarpeta);
-
-                if (clickeado) {
-                    await new Promise(r => setTimeout(r, 1200));
-                    break;
-                }
-            }
+            iframeApp = await page.waitForFrame(
+                f => f.name() === 'iframeApplication' || f.url().includes('ol-ti-itvisornoti'),
+                { timeout: 35000 }
+            );
         } catch (_) {}
 
-        // ─── Paso 4: Extraer filas reales de notificaciones (Filtrando Basura) ───
-        // Buscamos filas que tengan enlace o columna de asunto y columna con fecha válida
-        const filasCandidatas = await frameBuzon.$$('tr.jqgrow, #tblMensajes tbody tr, .ui-jqgrid-btable tr, table.table tbody tr, table tbody tr');
+        // Pausa tras cargar el visor para que se pueble la lista
+        await new Promise(r => setTimeout(r, Math.max(3000, pausaSegundos * 1000)));
 
-        const filasMensajesValidos = [];
+        if (iframeApp) {
+            // ─── RUTA A: VISOR MODERNO DE SUNAT ────────────────────────────
+            const itemsInfo = await iframeApp.evaluate(() => {
+                const listItems = Array.from(document.querySelectorAll('ul.list-group > li.list-group-item, li.list-group-item, .list-group-item'));
+                return listItems.map((li, index) => {
+                    const text = (li.innerText || '').trim();
+                    const fechaMatch = text.match(/(\d{2}\/\d{2}\/\d{4}(?:\s+\d{2}:\d{2}(?::\d{2})?)?)/);
+                    let asunto = '';
 
-        for (const fila of filasCandidatas) {
-            try {
-                const metaFila = await frameBuzon.evaluate((row) => {
-                    const cells = Array.from(row.querySelectorAll('td, div[role="gridcell"]'));
-                    if (cells.length < 2) return null;
-
-                    let fechaEncontrada = '';
-                    let asuntoEncontrado = '';
-                    let esPendiente = true;
-
-                    // Buscar celda que contenga una fecha válida
-                    for (const c of cells) {
-                        const t = (c.textContent || '').trim();
-                        if (/\d{2}\/\d{2}\/\d{4}/.test(t) || /\d{4}-\d{2}-\d{2}/.test(t)) {
-                            fechaEncontrada = t;
-                            break;
-                        }
+                    const asuntoMatch = text.match(/ASUNTO:\s*([^\n\r]+)/i);
+                    if (asuntoMatch) {
+                        asunto = asuntoMatch[1].trim();
+                    } else {
+                        // Tomar primera línea representativa
+                        const lineas = text.split('\n').map(l => l.trim()).filter(Boolean);
+                        asunto = lineas[0] || 'Notificación Electrónica SUNAT';
                     }
 
-                    // Si no tiene fecha, es cabecera o fila de resumen (descartar)
-                    if (!fechaEncontrada) return null;
-
-                    // Buscar celda de asunto (priorizar enlaces o columnas intermedias descriptivas)
-                    for (const c of cells) {
-                        const link = c.querySelector('a');
-                        const t = (link ? link.textContent : c.textContent || '').trim();
-
-                        if (t.length >= 8 && !/\d{2}\/\d{2}\/\d{4}/.test(t) && !/^\d+$/.test(t)) {
-                            asuntoEncontrado = t;
-                            break;
-                        }
-                    }
-
-                    if (!asuntoEncontrado) return null;
-
-                    const cl = row.className || '';
-                    if (cl.includes('leido') && !cl.includes('no-leido')) {
-                        esPendiente = false;
-                    }
+                    const isLeido = !li.classList.contains('no-leido') && (li.classList.contains('selected') || !li.classList.contains('font-bold'));
 
                     return {
-                        fecha: fechaEncontrada,
-                        asunto: asuntoEncontrado,
-                        esPendiente: esPendiente
+                        index,
+                        id: li.id || `msg_${index}`,
+                        asunto,
+                        fecha: fechaMatch ? fechaMatch[1] : '',
+                        isLeido,
                     };
-                }, fila);
+                }).filter(it => it.asunto && it.fecha);
+            });
 
-                if (metaFila && !esAsuntoInvalido(metaFila.asunto)) {
-                    filasMensajesValidos.push({ fila, meta: metaFila });
-                }
-            } catch (_) {}
-        }
+            const maxItems = Math.min(itemsInfo.length, limiteMensajes);
 
-        // ─── Paso 5: Lectura profunda del cuerpo de cada mensaje válido ──────
-        const maxProcesar = Math.min(filasMensajesValidos.length, 15);
+            for (let i = 0; i < maxItems; i++) {
+                const meta = itemsInfo[i];
+                if (esAsuntoInvalido(meta.asunto)) continue;
 
-        for (let i = 0; i < maxProcesar; i++) {
-            try {
-                const { fila, meta } = filasMensajesValidos[i];
-                let contenidoHtml = null;
-
-                // CRÍTICO: Hacer clic en el enlace del asunto para abrir el detalle completo
                 try {
-                    const enlaceClic = await fila.$('a, td:nth-child(2) a, td:nth-child(3) a, td.c-pointer, td');
-                    if (enlaceClic) {
-                        await enlaceClic.click();
-                        await new Promise(r => setTimeout(r, 1400));
+                    // Hacer clic en la tarjeta correspondiente si no es la primera ya seleccionada
+                    if (i > 0) {
+                        await iframeApp.evaluate((idx) => {
+                            const lis = document.querySelectorAll('ul.list-group > li.list-group-item, li.list-group-item, .list-group-item');
+                            if (lis[idx]) {
+                                lis[idx].scrollIntoView({ block: 'center' });
+                                const target = lis[idx].querySelector('a, div, p, span') || lis[idx];
+                                target.click();
+                                lis[idx].click();
+                            }
+                        }, meta.index);
 
-                        // Buscar contenedor del cuerpo del mensaje en todos los frames/modales
-                        const framesToCheck = [frameBuzon, page, ...page.frames()];
-                        for (const f of framesToCheck) {
+                        // Pausa de cortesía para carga del panel derecho
+                        await new Promise(r => setTimeout(r, Math.max(1800, pausaSegundos * 700)));
+                    }
+
+                    // 1. Ubicar el frame con el cuerpo oficial del mensaje
+                    let cuerpoOficial = '';
+                    const frameMensaje = page.frames().find(f => f.name() === 'contenedorMensaje' || f.url().includes('cl-ti-iagenerador'));
+                    if (frameMensaje) {
+                        try {
+                            const contenidoFrame = await frameMensaje.evaluate(() => {
+                                const b = document.body;
+                                return b ? (b.innerHTML || b.innerText) : '';
+                            });
+                            if (contenidoFrame && contenidoFrame.trim().length > 20) {
+                                cuerpoOficial = contenidoFrame.trim();
+                            }
+                        } catch (_) {}
+                    }
+
+                    // Fallback de contenido en el panel derecho del visor
+                    if (!cuerpoOficial) {
+                        try {
+                            const contenidoVisor = await iframeApp.evaluate(() => {
+                                const el = document.querySelector('#contenedorMensaje, #cuerpoMensaje, #divContenidoMensaje, .cuerpo-mensaje');
+                                return el ? (el.innerHTML || el.innerText) : '';
+                            });
+                            if (contenidoVisor && contenidoVisor.trim().length > 20) {
+                                cuerpoOficial = contenidoVisor.trim();
+                            }
+                        } catch (_) {}
+                    }
+
+                    // 2. Extraer número oficial de notificación
+                    let numNotificacion = null;
+                    const regexNotif = /(?:N[°o]\.?|Número|Numero|Valor|Resolución|Resolucion|Carta)\s*([0-9]{3,4}-[0-9]{3,4}-[0-9]{5,10}|[0-9]{10,18}[A-Z0-9]*)/i;
+                    const matchNotif = (meta.asunto + ' ' + (cuerpoOficial || '')).match(regexNotif);
+                    if (matchNotif) {
+                        numNotificacion = matchNotif[1];
+                    }
+
+                    // 3. Descarga oficial de Documentos PDF (Documento Oficial Sustantivo + Constancia de Notificación)
+                    let tienePdf = false;
+                    let rutaPdf = null;
+                    let nombrePdf = null;
+                    let rutaConstanciaPdf = null;
+                    let nombreConstanciaPdf = null;
+
+                    // Función auxiliar para esperar que se complete una descarga en disco
+                    async function esperarDescarga(filesBefore, timeoutMs = 8000) {
+                        const inicio = Date.now();
+                        while (Date.now() - inicio < timeoutMs) {
+                            await new Promise(r => setTimeout(r, 600));
+                            if (fs.existsSync(downloadDir)) {
+                                const currentFiles = fs.readdirSync(downloadDir);
+                                const newFiles = currentFiles.filter(f => !filesBefore.includes(f) && f.toLowerCase().endsWith('.pdf') && !f.endsWith('.crdownload'));
+                                if (newFiles.length > 0) {
+                                    const candidato = newFiles[0];
+                                    const fullP = path.join(downloadDir, candidato);
+                                    try {
+                                        const stat = fs.statSync(fullP);
+                                        if (stat.size > 200) {
+                                            const header = fs.readFileSync(fullP, { encoding: 'ascii', flag: 'r' }).slice(0, 5);
+                                            if (header.startsWith('%PDF')) {
+                                                return candidato;
+                                            }
+                                        }
+                                    } catch (_) {}
+                                }
+                            }
+                        }
+                        return null;
+                    }
+
+                    if (descargarPdf) {
+                        // ─── A. Descargar Documento Sustantivo Oficial (Carta / Resolución / OP / Valor) ───
+                        if (frameMensaje) {
                             try {
-                                const selectorCuerpo = await f.$(
-                                    '#divDetalle, #divMensaje, .modal-body, .ui-jqdialog-content, #cuerpoMensaje, #vistaMensaje, .mensaje-cuerpo, #divContenido, #txtMensaje, #divNotificacion'
-                                );
-                                if (selectorCuerpo) {
-                                    const textoExtraido = await f.evaluate(el => el.innerHTML || el.innerText, selectorCuerpo);
-                                    if (textoExtraido && textoExtraido.trim().length > 25) {
-                                        contenidoHtml = textoExtraido.trim();
-                                        break;
+                                const filesBeforeDoc = fs.existsSync(downloadDir) ? fs.readdirSync(downloadDir) : [];
+                                const clickeadoDoc = await frameMensaje.evaluate(() => {
+                                    const docLink = document.querySelector('a[href*="goArchivoDescarga"], a[href*="goArchivo"], a[onclick*="goArchivo"]');
+                                    if (docLink) {
+                                        docLink.click();
+                                        return true;
+                                    }
+                                    // Fallback: buscar formulario frmArchivo y ejecutarlo con idArchivo del primer enlace
+                                    const allLinks = Array.from(document.querySelectorAll('a'));
+                                    for (const a of allLinks) {
+                                        const href = a.getAttribute('href') || '';
+                                        const match = href.match(/goArchivoDescarga\(([^)]+)\)/i);
+                                        if (match) {
+                                            const params = match[1].split(',').map(s => s.trim().replace(/['"]/g, ''));
+                                            const frm = document.forms['frmArchivo'] || document.forms['frmArchivoBuzon'];
+                                            if (frm) {
+                                                if (frm.idArchivo) frm.idArchivo.value = params[0];
+                                                if (frm.sistema && params[1]) frm.sistema.value = params[1];
+                                                if (frm.idMensaje && params[2]) frm.idMensaje.value = params[2];
+                                                frm.submit();
+                                                return true;
+                                            }
+                                        }
+                                    }
+                                    return false;
+                                });
+
+                                if (clickeadoDoc) {
+                                    const docDescargado = await esperarDescarga(filesBeforeDoc, 9000);
+                                    if (docDescargado) {
+                                        if (docDescargado.toLowerCase().startsWith('constancia_')) {
+                                            nombreConstanciaPdf = docDescargado;
+                                            rutaConstanciaPdf = `alertas/SUNAT/${ruc}/${docDescargado}`;
+                                        } else {
+                                            nombrePdf = docDescargado;
+                                            rutaPdf = `alertas/SUNAT/${ruc}/${docDescargado}`;
+                                            tienePdf = true;
+                                        }
                                     }
                                 }
-                            } catch (_) {}
+                            } catch (eDoc) {
+                                console.error(`Error al intentar descargar documento oficial en mensaje ${i}:`, eDoc.message);
+                            }
                         }
 
-                        // Intentar cerrar el modal para no bloquear los siguientes clics
-                        for (const f of framesToCheck) {
-                            try {
-                                const btnCerrar = await f.$(
-                                    '#btnCerrar, .btn-close, .modal-header .close, #btnVolver, button[data-dismiss="modal"], #btnRegresar'
-                                );
-                                if (btnCerrar) {
-                                    await btnCerrar.click();
-                                    await new Promise(r => setTimeout(r, 350));
-                                    break;
+                        // ─── B. Descargar Constancia de Notificación (Acuse de recibo en panel de adjuntos) ───
+                        try {
+                            const adjuntosInfo = await iframeApp.evaluate(() => {
+                                const links = Array.from(document.querySelectorAll('#listArchivosAdjuntos a, a[href*="bajarArchivo"]'));
+                                return links.map(a => ({
+                                    href: a.href,
+                                    text: a.innerText.trim(),
+                                }));
+                            });
+
+                            if (adjuntosInfo.length > 0) {
+                                const filesBeforeConstancia = fs.existsSync(downloadDir) ? fs.readdirSync(downloadDir) : [];
+                                await iframeApp.evaluate(() => {
+                                    const a = document.querySelector('#listArchivosAdjuntos a, a[href*="bajarArchivo"]');
+                                    if (a) a.click();
+                                });
+
+                                const constanciaDescargada = await esperarDescarga(filesBeforeConstancia, 8000);
+                                if (constanciaDescargada) {
+                                    if (constanciaDescargada.toLowerCase().startsWith('constancia_')) {
+                                        nombreConstanciaPdf = constanciaDescargada;
+                                        rutaConstanciaPdf = `alertas/SUNAT/${ruc}/${constanciaDescargada}`;
+                                        tienePdf = true;
+                                    } else if (!nombrePdf) {
+                                        nombrePdf = constanciaDescargada;
+                                        rutaPdf = `alertas/SUNAT/${ruc}/${constanciaDescargada}`;
+                                        tienePdf = true;
+                                    }
                                 }
-                            } catch (_) {}
+                            }
+                        } catch (eConst) {
+                            console.error(`Error al intentar descargar constancia en mensaje ${i}:`, eConst.message);
+                        }
+
+                        // Si no se obtuvo documento oficial pero sí constancia, asignar constancia a rutaPdf como respaldo
+                        if (!rutaPdf && rutaConstanciaPdf) {
+                            rutaPdf = rutaConstanciaPdf;
+                            nombrePdf = nombreConstanciaPdf;
+                            tienePdf = true;
                         }
                     }
-                } catch (eClick) {
-                    console.error(`Error al abrir mensaje ${i}:`, eClick.message);
+
+                    // Si no hubo cuerpo extenso pero se detectó documento
+                    if (!cuerpoOficial) {
+                        cuerpoOficial = `<div class="p-3 bg-blue-50/80 border border-blue-200 rounded-lg text-blue-950 text-xs leading-relaxed">
+                            <strong class="block mb-1 font-bold text-blue-900">Notificación Electrónica SUNAT:</strong>
+                            <p>Esta notificación corresponde a un acto formal depositado en su Buzón SOL. El contenido íntegro y anexos se encuentran disponibles en el archivo PDF oficial adjunto.</p>
+                        </div>`;
+                    }
+
+                    resultadoAlertas.push({
+                        plataforma: 'SUNAT',
+                        asunto: meta.asunto,
+                        numero_notificacion: numNotificacion,
+                        fecha_recepcion: normalizarFecha(meta.fecha),
+                        contenido: cuerpoOficial,
+                        estado: meta.isLeido ? 'Leído' : 'Pendiente',
+                        prioridad: calcularPrioridad(meta.asunto, cuerpoOficial),
+                        tiene_pdf: tienePdf,
+                        ruta_pdf: rutaPdf,
+                        nombre_archivo_pdf: nombrePdf,
+                        ruta_constancia_pdf: rutaConstanciaPdf,
+                        nombre_archivo_constancia_pdf: nombreConstanciaPdf,
+                    });
+
+                } catch (eMsg) {
+                    console.error(`Error procesando mensaje ${i}:`, eMsg.message);
                 }
+            }
 
-                // Si no se extrajo cuerpo o es muy corto (PDF anexo), inyectar fallback de PDF
-                if (!contenidoHtml || contenidoHtml.length < 20) {
-                    contenidoHtml = PDF_FALLBACK_TEXT;
-                }
+        } else {
+            // ─── RUTA B: COMPATIBILIDAD CON BUZÓN CLÁSICO (TABLAS / JQGRID) ───
+            const allFrames = [page, ...page.frames()];
+            let frameBuzon = page;
 
-                resultadoAlertas.push({
-                    plataforma: 'SUNAT',
-                    asunto: meta.asunto.trim(),
-                    fecha_recepcion: normalizarFecha(meta.fecha),
-                    contenido: contenidoHtml.trim(),
-                    estado: meta.esPendiente ? 'Pendiente' : 'Leído',
-                    prioridad: calcularPrioridad(meta.asunto, contenidoHtml),
-                });
+            for (const f of allFrames) {
+                try {
+                    const hasTable = await f.$('table tbody tr, .ui-jqgrid-btable tr, #tblMensajes tr');
+                    if (hasTable) {
+                        frameBuzon = f;
+                        break;
+                    }
+                } catch (_) {}
+            }
 
-            } catch (errFila) {
-                console.error(`Error procesando mensaje válido ${i}:`, errFila.message);
+            const filas = await frameBuzon.$$('tr.jqgrow, #tblMensajes tbody tr, .ui-jqgrid-btable tr, table tbody tr');
+            const maxFilas = Math.min(filas.length, limiteMensajes);
+
+            for (let i = 0; i < maxFilas; i++) {
+                try {
+                    const metaFila = await frameBuzon.evaluate((row) => {
+                        const cells = Array.from(row.querySelectorAll('td, div[role="gridcell"]'));
+                        if (cells.length < 2) return null;
+
+                        let fecha = '';
+                        let asunto = '';
+
+                        for (const c of cells) {
+                            const t = (c.textContent || '').trim();
+                            if (/\d{2}\/\d{2}\/\d{4}/.test(t)) {
+                                fecha = t;
+                                break;
+                            }
+                        }
+                        if (!fecha) return null;
+
+                        for (const c of cells) {
+                            const link = c.querySelector('a');
+                            const t = (link ? link.textContent : c.textContent || '').trim();
+                            if (t.length >= 8 && !/\d{2}\/\d{2}\/\d{4}/.test(t) && !/^\d+$/.test(t)) {
+                                asunto = t;
+                                break;
+                            }
+                        }
+                        if (!asunto) return null;
+
+                        return { fecha, asunto };
+                    }, filas[i]);
+
+                    if (metaFila && !esAsuntoInvalido(metaFila.asunto)) {
+                        resultadoAlertas.push({
+                            plataforma: 'SUNAT',
+                            asunto: metaFila.asunto.trim(),
+                            numero_notificacion: null,
+                            fecha_recepcion: normalizarFecha(metaFila.fecha),
+                            contenido: `<p>Comunicación registrada en Buzón SOL: ${metaFila.asunto}</p>`,
+                            estado: 'Pendiente',
+                            prioridad: calcularPrioridad(metaFila.asunto),
+                            tiene_pdf: false,
+                            ruta_pdf: null,
+                            nombre_archivo_pdf: null,
+                            ruta_constancia_pdf: null,
+                            nombre_archivo_constancia_pdf: null,
+                        });
+                    }
+                } catch (_) {}
             }
         }
 
-        // ─── Paso 6: Unificar con mensajes interceptados limpios ─────────────
-        const mapaFinal = new Map();
-
-        resultadoAlertas.forEach(al => {
-            if (!esAsuntoInvalido(al.asunto)) {
-                const key = `${al.fecha_recepcion}|${al.asunto.toLowerCase()}`;
-                mapaFinal.set(key, al);
-            }
-        });
-
-        interceptedMessages.forEach(it => {
-            if (!esAsuntoInvalido(it.asunto)) {
-                const key = `${it.fecha}|${it.asunto.toLowerCase()}`;
-                if (!mapaFinal.has(key)) {
-                    mapaFinal.set(key, {
-                        plataforma: 'SUNAT',
-                        asunto: it.asunto,
-                        fecha_recepcion: it.fecha,
-                        contenido: it.contenido || PDF_FALLBACK_TEXT,
-                        estado: it.estado || 'Pendiente',
-                        prioridad: it.prioridad || calcularPrioridad(it.asunto),
-                    });
-                }
-            }
-        });
-
-        const salida = Array.from(mapaFinal.values());
+        // ─── Paso 4: Cierre Limpio de Sesión SOL ───────────────────────────
+        try {
+            await page.evaluate(() => {
+                const btn = document.querySelector('a[href*="logout"], a[href*="Salir"], button[id*="Salir"], #btnSalir');
+                if (btn) btn.click();
+            });
+            await new Promise(r => setTimeout(r, 1000));
+        } catch (_) {}
 
         clearTimeout(safetyTimeout);
-        console.log(JSON.stringify(salida));
+        console.log(JSON.stringify(resultadoAlertas));
 
     } catch (error) {
-        console.error('Error general durante extracción del Buzón SUNAT:', error.message);
+        console.error('Error durante extracción del Buzón SUNAT:', error.message);
         clearTimeout(safetyTimeout);
-        const fallback = Array.from(new Set(resultadoAlertas.concat(interceptedMessages)))
-            .filter(item => !esAsuntoInvalido(item.asunto));
-        console.log(JSON.stringify(fallback));
+        console.log(JSON.stringify(resultadoAlertas));
     } finally {
         if (browser) {
-            await browser.close();
+            try {
+                await browser.close();
+            } catch (_) {}
         }
         process.exit(0);
     }

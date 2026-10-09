@@ -10,6 +10,7 @@ use App\Support\IdentidadMarca;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -94,9 +95,12 @@ class AjusteSistemaController extends Controller
             'eliminar_isotipo' => ['nullable', 'boolean'],
             'logo_reportes' => ['nullable', 'file', 'mimes:png,jpg,jpeg,webp,svg,ico,gif,avif', 'max:5120'],
             'eliminar_logo_reportes' => ['nullable', 'boolean'],
-            'frecuencia_cron_horas' => ['required', 'integer', 'in:2,4,6,8,12'],
-            'notificar_whatsapp' => ['boolean'],
-            'nivel_alerta_whatsapp' => ['required', 'in:Todas,Solo Altas'],
+            'frecuencia_cron_horas' => ['nullable', 'integer', 'in:2,4,6,8,12'],
+            'descargar_adjuntos_pdf' => ['nullable', 'boolean'],
+            'pausa_anti_bloqueo_segundos' => ['nullable', 'integer', 'in:2,3,5,10'],
+            'limite_mensajes_buzon' => ['nullable', 'integer', 'in:5,10,15,25,50'],
+            'notificar_whatsapp' => ['nullable', 'boolean'],
+            'nivel_alerta_whatsapp' => ['nullable', 'in:Todas,Solo Altas'],
         ], [
             'color_base.regex' => 'El color de la barra debe ser un hexadecimal de 6 dígitos, por ejemplo #0B132B.',
             'color_acento.regex' => 'El color de acento debe ser un hexadecimal de 6 dígitos, por ejemplo #00C2CB.',
@@ -208,10 +212,15 @@ class AjusteSistemaController extends Controller
             'representante' => $validated['representante'],
             'correo_corporativo' => $correo,
             'telefono_whatsapp' => $validated['telefono_whatsapp'] ?? $telefono,
-            'frecuencia_cron_horas' => (int) $validated['frecuencia_cron_horas'],
-            'notificar_whatsapp' => (bool) $request->boolean('notificar_whatsapp'),
-            'nivel_alerta_whatsapp' => $validated['nivel_alerta_whatsapp'],
+            'frecuencia_cron_horas' => (int) ($validated['frecuencia_cron_horas'] ?? $ajustes->frecuencia_cron_horas ?? 4),
+            'descargar_adjuntos_pdf' => $request->has('descargar_adjuntos_pdf') ? (bool) $request->boolean('descargar_adjuntos_pdf') : (bool) ($ajustes->descargar_adjuntos_pdf ?? true),
+            'pausa_anti_bloqueo_segundos' => (int) ($validated['pausa_anti_bloqueo_segundos'] ?? $ajustes->pausa_anti_bloqueo_segundos ?? 3),
+            'limite_mensajes_buzon' => (int) ($validated['limite_mensajes_buzon'] ?? $ajustes->limite_mensajes_buzon ?? 15),
+            'notificar_whatsapp' => $request->has('notificar_whatsapp') ? (bool) $request->boolean('notificar_whatsapp') : (bool) ($ajustes->notificar_whatsapp ?? false),
+            'nivel_alerta_whatsapp' => $validated['nivel_alerta_whatsapp'] ?? $ajustes->nivel_alerta_whatsapp ?? 'Todas',
         ]);
+
+        Cache::forget('estudio_predeterminado');
 
         if ($request->expectsJson() || $request->ajax()) {
             return response()->json([

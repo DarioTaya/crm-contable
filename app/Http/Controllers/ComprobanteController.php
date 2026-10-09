@@ -57,11 +57,17 @@ class ComprobanteController extends Controller
         }
 
         // Métricas de tarjetas resumen calculadas sobre el dataset filtrado
-        $statsQuery = clone $query;
-        $totalBaseImponible = (float) $statsQuery->sum('base_imponible');
-        $totalIgv = (float) $statsQuery->sum('igv');
-        $totalFacturado = (float) $statsQuery->sum('total');
-        $totalRegistros = (int) $statsQuery->count();
+        $stats = (clone $query)->selectRaw('
+            COALESCE(SUM(base_imponible), 0) as total_base_imponible,
+            COALESCE(SUM(igv), 0) as total_igv,
+            COALESCE(SUM(total), 0) as total_facturado,
+            COUNT(*) as total_registros
+        ')->first();
+
+        $totalBaseImponible = (float) ($stats->total_base_imponible ?? 0);
+        $totalIgv = (float) ($stats->total_igv ?? 0);
+        $totalFacturado = (float) ($stats->total_facturado ?? 0);
+        $totalRegistros = (int) ($stats->total_registros ?? 0);
 
         // Paginación de resultados ordenados por periodo y más recientes
         $comprobantes = $query->orderBy('periodo', 'desc')

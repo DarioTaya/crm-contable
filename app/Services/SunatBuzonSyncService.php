@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\AjusteSistema;
 use App\Models\AlertaBuzon;
 use App\Models\Cliente;
+use App\Support\NodeBinary;
 use Carbon\Carbon;
 use Closure;
 use Illuminate\Support\Facades\Log;
@@ -34,25 +36,7 @@ class SunatBuzonSyncService
      */
     public function getNodeExecutable(): string
     {
-        $laragonNodes = glob(base_path('../../bin/nodejs/*/node.exe'));
-        if (! empty($laragonNodes) && file_exists($laragonNodes[0])) {
-            return str_replace('/', '\\', $laragonNodes[0]);
-        }
-
-        $possiblePaths = [
-            'C:\\laragon\\bin\\nodejs\\node-v22\\node.exe',
-            'C:\\Program Files\\nodejs\\node.exe',
-            'C:\\Program Files (x86)\\nodejs\\node.exe',
-            (getenv('LOCALAPPDATA') ?: '').'\\Programs\\nodejs\\node.exe',
-        ];
-
-        foreach ($possiblePaths as $path) {
-            if ($path && file_exists($path)) {
-                return $path;
-            }
-        }
-
-        return 'node';
+        return NodeBinary::path();
     }
 
     /**
@@ -119,12 +103,17 @@ class SunatBuzonSyncService
         $nodeExecutable = $this->getNodeExecutable();
         $env = $this->getEnvironmentVariables();
 
+        $ajustes = AjusteSistema::getSettings();
+        $descargarPdf = $ajustes->descargar_adjuntos_pdf ? 'true' : 'false';
+        $limite = (string) ($ajustes->limite_mensajes_buzon ?? 15);
+        $pausa = (string) ($ajustes->pausa_anti_bloqueo_segundos ?? 3);
+
         $process = new Process(
-            [$nodeExecutable, $scriptPath, $ruc, $usuario, $clave],
+            [$nodeExecutable, $scriptPath, $ruc, $usuario, $clave, $descargarPdf, $limite, $pausa],
             base_path(),
             $env,
             null,
-            120
+            180
         );
 
         $process->run();
@@ -306,7 +295,7 @@ class SunatBuzonSyncService
                     continue;
                 }
 
-                $asunto = trim((string) $alerta['asunto']);
+                $asunto = trim(preg_replace('/^ASUNTO:\s*/i', '', (string) $alerta['asunto']));
 
                 // ─── 1. Filtro Anti-Spam y Descarte de Basura ────────────────────────
                 if ($this->esSpamOBasura($asunto)) {
@@ -318,13 +307,20 @@ class SunatBuzonSyncService
                 $contenidoBruto = ! empty($alerta['contenido']) ? trim((string) $alerta['contenido']) : null;
                 $textoPlano = $contenidoBruto ? trim(strip_tags($contenidoBruto)) : '';
 
-                // ─── 2. Fallback de PDFs si el contenido viene vacío o muy corto ─────
-                if (empty($textoPlano) || mb_strlen($textoPlano) < 20) {
-                    $contenido = 'El contenido detallado o documento anexo se encuentra en formato PDF. Por favor, acceda directamente al portal SUNAT desde el Expediente del Cliente para descargarlo.';
-                } else {
-                    $contenido = $contenidoBruto;
+                $tienePdf = ! empty($alerta['tiene_pdf']) || ! empty($alerta['ruta_pdf']) || ! empty($alerta['ruta_constancia_pdf']);
+                $rutaPdf = ! empty($alerta['ruta_pdf']) ? (string) $alerta['ruta_pdf'] : null;
+                $nombreArchivoPdf = ! empty($alerta['nombre_archivo_pdf']) ? (string) $alerta['nombre_archivo_pdf'] : null;
+                $rutaConstanciaPdf = ! empty($alerta['ruta_constancia_pdf']) ? (string) $alerta['ruta_constancia_pdf'] : null;
+                $nombreArchivoConstanciaPdf = ! empty($alerta['nombre_archivo_constancia_pdf']) ? (string) $alerta['nombre_archivo_constancia_pdf'] : null;
+                $numeroNotificacion = ! empty($alerta['numero_notificacion']) ? trim((string) $alerta['numero_notificacion']) : null;
+
+                if (! $numeroNotificacion && preg_match('/(?:N[°o]\.?|Número|Numero|Valor|Resolución|Resolucion)\s*([0-9]{3,4}-[0-9]{3,4}-[0-9]{5,10}|[0-9]{10,16})/i', $asunto.' '.$textoPlano, $m)) {
+                    $numeroNotificacion = trim($m[1]);
                 }
 
+                // ─── 2. Lectura fiel del mensaje tal cual llega de SUNAT ─────
+                $contenido = ! empty($contenidoBruto) ? $contenidoBruto : 'Notificación oficial registrada en el Buzón Electrónico SOL.';
+                $tienePdf = ! empty($alerta['tiene_pdf']) || ! empty($rutaPdf) || ! empty($rutaConstanciaPdf);
                 $estado = in_array($alerta['estado'] ?? '', ['Pendiente', 'Leído']) ? $alerta['estado'] : 'Pendiente';
                 $prioridad = $this->determinarPrioridad($asunto, $contenido);
 
@@ -332,20 +328,68 @@ class SunatBuzonSyncService
                     ? Carbon::parse($alerta['fecha_recepcion'])
                     : (! empty($alerta['fecha']) ? Carbon::parse($alerta['fecha']) : now());
 
-                // 3. Persistir en alertas_buzon con deduplicación por (cliente_id, plataforma, asunto, fecha_recepcion)
-                $registro = AlertaBuzon::updateOrCreate(
-                    [
+                // 3. Persistir en alertas_buzon con deduplicación inteligente
+                $queryExistente = AlertaBuzon::where('cliente_id', $cliente->id)
+                    ->where('plataforma', 'SUNAT');
+
+                $registroExistente = null;
+                if (! empty($numeroNotificacion)) {
+                    $registroExistente = (clone $queryExistente)
+                        ->where('numero_notificacion', $numeroNotificacion)
+                        ->first();
+                }
+
+                if (! $registroExistente) {
+                    $registroExistente = (clone $queryExistente)
+                        ->where('asunto', $asunto)
+                        ->whereDate('fecha_recepcion', $fecha->toDateString())
+                        ->first();
+                }
+
+                if ($registroExistente) {
+                    $registro = $registroExistente;
+                    $registro->asunto = $asunto;
+                    $registro->numero_notificacion = $numeroNotificacion ?? $registro->numero_notificacion;
+                    $registro->contenido = $contenido;
+                    $registro->prioridad = $prioridad;
+                    if (! empty($rutaPdf)) {
+                        $registro->ruta_pdf = $rutaPdf;
+                        $registro->tiene_pdf = true;
+                    }
+                    if (! empty($nombreArchivoPdf)) {
+                        $registro->nombre_archivo_pdf = $nombreArchivoPdf;
+                    }
+                    if (! empty($rutaConstanciaPdf)) {
+                        $registro->ruta_constancia_pdf = $rutaConstanciaPdf;
+                        $registro->tiene_pdf = true;
+                    }
+                    if (! empty($nombreArchivoConstanciaPdf)) {
+                        $registro->nombre_archivo_constancia_pdf = $nombreArchivoConstanciaPdf;
+                    }
+                    if ($fecha->greaterThan($registro->fecha_recepcion ?? Carbon::minValue())) {
+                        $registro->fecha_recepcion = $fecha;
+                    }
+                    $registro->save();
+                    $fueCreadoReciente = false;
+                } else {
+                    $registro = AlertaBuzon::create([
+                        'estudio_id' => $cliente->estudio_id,
                         'cliente_id' => $cliente->id,
                         'plataforma' => 'SUNAT',
                         'asunto' => $asunto,
                         'fecha_recepcion' => $fecha,
-                    ],
-                    [
+                        'numero_notificacion' => $numeroNotificacion,
                         'contenido' => $contenido,
                         'estado' => $estado,
                         'prioridad' => $prioridad,
-                    ]
-                );
+                        'tiene_pdf' => $tienePdf,
+                        'ruta_pdf' => $rutaPdf,
+                        'nombre_archivo_pdf' => $nombreArchivoPdf,
+                        'ruta_constancia_pdf' => $rutaConstanciaPdf,
+                        'nombre_archivo_constancia_pdf' => $nombreArchivoConstanciaPdf,
+                    ]);
+                    $fueCreadoReciente = true;
+                }
 
                 $totalValidas++;
 
@@ -426,7 +470,14 @@ class SunatBuzonSyncService
         $nuevasAlertasItems = [];
         $errores = [];
 
+        $ajustes = AjusteSistema::getSettings();
+        $pausaEntreClientes = max(2, (int) $ajustes->pausa_anti_bloqueo_segundos);
+
+        $totalClientes = $clientes->count();
+        $indice = 0;
+
         foreach ($clientes as $cliente) {
+            $indice++;
             $resultado = $this->syncCliente($cliente);
             if ($resultado['success']) {
                 $procesados++;
@@ -437,7 +488,14 @@ class SunatBuzonSyncService
             } else {
                 $errores[] = "{$cliente->razon_social} ({$cliente->ruc}): {$resultado['message']}";
             }
+
+            // Pausa calibrada anti-bloqueo entre clientes
+            if ($indice < $totalClientes) {
+                sleep($pausaEntreClientes);
+            }
         }
+
+        $ajustes->update(['ultima_sincronizacion_at' => now()]);
 
         return [
             'total_clientes' => $clientes->count(),

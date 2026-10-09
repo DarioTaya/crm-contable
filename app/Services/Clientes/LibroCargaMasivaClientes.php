@@ -32,14 +32,23 @@ class LibroCargaMasivaClientes
 
     public function binario(): string
     {
+        $archivoEstatico = resource_path('templates/carga-masiva-clientes.xlsx');
+        if (is_file($archivoEstatico) && filesize($archivoEstatico) > 0) {
+            $bytes = file_get_contents($archivoEstatico);
+            if ($bytes !== false && strlen($bytes) > 0) {
+                return $bytes;
+            }
+        }
+
         $ruta = tempnam(sys_get_temp_dir(), 'cmx');
         if ($ruta === false) {
             return '';
         }
 
-        unlink($ruta);
         $zip = new ZipArchive;
-        if ($zip->open($ruta, ZipArchive::CREATE) !== true) {
+        if ($zip->open($ruta, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            @unlink($ruta);
+
             return '';
         }
 
@@ -49,9 +58,22 @@ class LibroCargaMasivaClientes
         $zip->close();
 
         $bytes = file_get_contents($ruta);
-        unlink($ruta);
+        @unlink($ruta);
 
         return $bytes === false ? '' : $bytes;
+    }
+
+    /**
+     * Plantilla en formato CSV con delimitador punto y coma y codificación UTF-8 con BOM.
+     */
+    public function plantillaCsv(): string
+    {
+        $lineas = [
+            'RUC;Régimen;Correo;Teléfono;Usuario SOL;Clave SOL;Client ID API SUNAT;Client Secret API SUNAT',
+            '20600000001;RMT;contacto@empresa.com;987654321;MODDATOS;moddatos;;',
+        ];
+
+        return "\xEF\xBB\xBF".implode("\r\n", $lineas)."\r\n";
     }
 
     public function aTexto(string $bytes): ?string

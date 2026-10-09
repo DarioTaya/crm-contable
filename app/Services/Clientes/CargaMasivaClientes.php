@@ -22,9 +22,13 @@ class CargaMasivaClientes
 
     public function __construct(private ValidacionRuc $validacion) {}
 
-    public function plantilla(): string
+    public function plantilla(string $formato = 'xlsx'): string
     {
-        return (new LibroCargaMasivaClientes)->binario();
+        $libro = new LibroCargaMasivaClientes;
+
+        return strtolower($formato) === 'csv'
+            ? $libro->plantillaCsv()
+            : $libro->binario();
     }
 
     /**

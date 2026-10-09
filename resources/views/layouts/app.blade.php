@@ -502,16 +502,22 @@
 
                                 <div class="max-h-80 overflow-y-auto space-y-0.5 custom-scrollbar">
                                     @forelse ($quickLinks ?? [] as $link)
-                                        <a href="{{ $link->url }}"
-                                           target="_blank"
-                                           rel="noopener noreferrer"
-                                           @click="abierto = false"
-                                           class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 transition group">
-                                            <svg class="h-3.5 w-3.5 text-gray-400 group-hover:text-brand-600 shrink-0 transition" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                                            </svg>
-                                            <span class="truncate font-medium text-gray-700 group-hover:text-gray-900">{{ $link->label }}</span>
-                                        </a>
+                                        @php
+                                            $linkUrl = is_object($link) ? ($link->url ?? null) : (is_array($link) ? ($link['url'] ?? null) : null);
+                                            $linkLabel = is_object($link) ? ($link->label ?? null) : (is_array($link) ? ($link['label'] ?? null) : null);
+                                        @endphp
+                                        @if ($linkUrl)
+                                            <a href="{{ $linkUrl }}"
+                                               target="_blank"
+                                               rel="noopener noreferrer"
+                                               @click="abierto = false"
+                                               class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs text-gray-700 hover:bg-gray-50 transition group">
+                                                <svg class="h-3.5 w-3.5 text-gray-400 group-hover:text-brand-600 shrink-0 transition" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                                </svg>
+                                                <span class="truncate font-medium text-gray-700 group-hover:text-gray-900">{{ $linkLabel ?? $linkUrl }}</span>
+                                            </a>
+                                        @endif
                                     @empty
                                         <div class="px-2.5 py-3 text-center text-xs text-gray-400">
                                             No hay enlaces configurados

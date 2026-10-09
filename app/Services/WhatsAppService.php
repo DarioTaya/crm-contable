@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AjusteSistema;
 use App\Models\AlertaBuzon;
+use App\Support\NodeBinary;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -113,25 +114,7 @@ class WhatsAppService
      */
     public function getNodeExecutable(): string
     {
-        $laragonNodes = glob(base_path('../../bin/nodejs/*/node.exe'));
-        if (! empty($laragonNodes) && file_exists($laragonNodes[0])) {
-            return str_replace('/', '\\', $laragonNodes[0]);
-        }
-
-        $possiblePaths = [
-            'C:\\laragon\\bin\\nodejs\\node-v22\\node.exe',
-            'C:\\Program Files\\nodejs\\node.exe',
-            'C:\\Program Files (x86)\\nodejs\\node.exe',
-            (getenv('LOCALAPPDATA') ?: '').'\\Programs\\nodejs\\node.exe',
-        ];
-
-        foreach ($possiblePaths as $path) {
-            if ($path && file_exists($path)) {
-                return $path;
-            }
-        }
-
-        return 'node';
+        return NodeBinary::path();
     }
 
     /**
