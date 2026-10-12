@@ -287,6 +287,24 @@
                     Impuestos
                 </a>
                 <a
+                    href="{{ $urlsSeccion['cuenta-detracciones'] }}"
+                    @click="abrirSeccion('cuenta-detracciones', $event)"
+                    :class="tab === 'cuenta-detracciones'
+                        ? 'border-brand-500 text-brand-600'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'"
+                    :aria-selected="tab === 'cuenta-detracciones'"
+                    class="flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition"
+                    role="tab"
+                >
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.5M4.5 21V10.5m15 10.5H3" />
+                    </svg>
+                    Cuenta Detracciones BN
+                    <span class="inline-flex h-5 items-center justify-center rounded-full bg-rose-100 border border-rose-200 px-1.5 text-[10px] font-bold text-rose-800">
+                        SPOT
+                    </span>
+                </a>
+                <a
                     href="{{ $urlsSeccion['creditos'] }}"
                     @click="abrirSeccion('creditos', $event)"
                     :class="tab === 'creditos'
@@ -299,7 +317,7 @@
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6H2.25m0 0H3m-1.5 0A2.25 2.25 0 0 0 0 8.25v7.5A2.25 2.25 0 0 0 2.25 18H3m0 0h1.5m15-12h.75a2.25 2.25 0 0 1 2.25 2.25v7.5a2.25 2.25 0 0 1-2.25 2.25h-.75m0-12H18m0 0v-1.5A2.25 2.25 0 0 0 15.75 0h-7.5A2.25 2.25 0 0 0 6 2.25V4.5" />
                     </svg>
-                    Detracciones y Percepciones
+                    Retenciones y Percepciones
                 </a>
                 <a
                     href="{{ route('clientes.sire', array_merge(['cliente' => $cliente], $consultaSire)) }}"
@@ -2166,13 +2184,17 @@
             @include('clientes.partials.reporte-impuestos')
         </div>
 
-        {{-- ════════════════════ PESTAÑA 4: DETRACCIONES, RETENCIONES Y PERCEPCIONES ════════════════════ --}}
+        {{-- ════════════════════ PESTAÑA: CUENTA DE DETRACCIONES (BANCO DE LA NACIÓN) ════════════════════ --}}
+        <div x-show="tab === 'cuenta-detracciones'" x-cloak class="mt-4">
+            @include('clientes.partials.extracto-cuenta-detracciones')
+        </div>
+
+        {{-- ════════════════════ PESTAÑA 4: RETENCIONES Y PERCEPCIONES ════════════════════ --}}
         <div x-show="tab === 'creditos'" x-cloak class="mt-3">
             @include('clientes.partials.control-creditos-fiscales')
         </div>
-    </div>
 
-    {{-- ════════════════════ PESTAÑA 4: SIRE / COMPROBANTES ════════════════════ --}}
+        {{-- ════════════════════ PESTAÑA 4: SIRE / COMPROBANTES ════════════════════ --}}
         <div x-show="tab === 'sire'" x-cloak class="mt-6 space-y-6">
             {{-- Encabezado de la pestaña y Botonera SIRE --}}
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-gray-200 bg-white p-5 shadow-xs">
@@ -2945,12 +2967,15 @@
                     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
                         return;
                     }
-                    event.preventDefault();
                     if (this.tab === seccion) {
+                        event.preventDefault();
                         return;
                     }
-                    this.destinoPendiente = event.currentTarget.getAttribute('href');
-                    this.tab = seccion;
+                    const href = event.currentTarget.getAttribute('href');
+                    if (href) {
+                        event.preventDefault();
+                        window.location.assign(href);
+                    }
                 },
                 urlDe(seccion) {
                     return this.rutaLocal(config.secciones[seccion] || config.secciones.datos);

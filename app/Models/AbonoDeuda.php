@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use App\Services\Catalogos\CatalogoSunat;
+use App\Services\Detracciones\ExtractoDetraccionesService;
 use App\Traits\BelongsToEstudioViaCliente;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class AbonoDeuda extends Model
 {
@@ -66,7 +68,24 @@ class AbonoDeuda extends Model
     }
 
     /**
-     * Resuelve automáticamente el estudio_id a partir de la operación padre.
+     * Determina si el pago fue financiado con cargo a la cuenta de detracciones BN.
+     */
+    public function esPagoDetracciones(): bool
+    {
+        $medio = strtolower(trim((string) $this->medio_pago));
+        $obs = strtolower(trim((string) $this->observacion));
+
+        return str_starts_with($medio, 'detracc')
+            || str_contains($medio, 'detraccion')
+            || str_contains($obs, 'cuenta de detracciones')
+            || str_contains($obs, 'cuenta detraccion')
+            || str_contains($obs, 'cta detraccion')
+            || str_contains($obs, 'cargo en cuenta de detracciones');
+    }
+
+    /**
+     * Resuelve automáticamente el estudio_id a partir de la operación padre
+     * y mantiene sincronizado en tiempo real el extracto de cuenta de detracciones.
      */
     protected static function booted(): void
     {
@@ -76,6 +95,14 @@ class AbonoDeuda extends Model
                     ->whereKey($abono->operacion_id)
                     ->value('estudio_id') ?? auth()->user()?->estudio_id;
             }
+        });
+
+        static::saved(function (AbonoDeuda $abono) {
+            app(ExtractoDetraccionesService::class)->sincronizarAbonoDeuda($abono);
+        });
+
+        static::deleted(function (AbonoDeuda $abono) {
+            app(ExtractoDetraccionesService::class)->eliminarSincronizacion($abono);
         });
     }
 
@@ -90,6 +117,14 @@ class AbonoDeuda extends Model
     public function deudaTributaria(): BelongsTo
     {
         return $this->belongsTo(DeudaTributaria::class, 'deuda_tributaria_id');
+    }
+
+    /**
+     * Relación con el movimiento de retiro en el extracto de la cuenta de detracciones.
+     */
+    public function movimientoDetraccion(): HasOne
+    {
+        return $this->hasOne(MovimientoDetraccion::class, 'abono_deuda_id');
     }
 
     /**

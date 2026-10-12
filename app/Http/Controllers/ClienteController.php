@@ -8,6 +8,7 @@ use App\Enums\SeccionExpediente;
 use App\Models\Cliente;
 use App\Models\Credencial;
 use App\Services\Clientes\ValidacionRuc;
+use App\Services\Detracciones\ExtractoDetraccionesService;
 use App\Services\Impuestos\ReporteCreditosFiscalesCliente;
 use App\Services\Impuestos\ReporteImpuestosCliente;
 use App\Services\SunafilBuzonSyncService;
@@ -335,6 +336,7 @@ class ClienteController extends Controller
         Cliente $cliente,
         ReporteImpuestosCliente $reporteImpuestosCliente,
         ReporteCreditosFiscalesCliente $reporteCreditosFiscalesCliente,
+        ExtractoDetraccionesService $extractoDetraccionesService,
     ): View|RedirectResponse {
         if ($redireccion = $this->redirigirSeccionAntigua($request, $cliente)) {
             return $redireccion;
@@ -342,7 +344,10 @@ class ClienteController extends Controller
 
         $seccion = SeccionExpediente::actual($request->route()?->getName());
 
-        $cliente->load(['credencial', 'notificaciones', 'alertas']);
+        $cliente->load(['credencial', 'alertas']);
+        if ($seccion === SeccionExpediente::Notificaciones) {
+            $cliente->load('notificaciones');
+        }
 
         $anioActual = (int) now()->year;
         $anioPedido = $request->query('anio', $anioActual);
@@ -350,10 +355,17 @@ class ClienteController extends Controller
         if ($anioReporte < 2000 || $anioReporte > 2100) {
             $anioReporte = $anioActual;
         }
+
+        $mesDetraccionPedido = $request->query('detraccion_mes');
+        $mesDetraccion = (is_numeric($mesDetraccionPedido) && (int) $mesDetraccionPedido >= 1 && (int) $mesDetraccionPedido <= 12)
+            ? (int) $mesDetraccionPedido
+            : null;
+
         $reporteImpuestos = $reporteImpuestosCliente->armar($cliente, $anioReporte);
         $reporteCreditosFiscales = $reporteCreditosFiscalesCliente->armar($cliente, $anioReporte);
+        $extractoDetracciones = $extractoDetraccionesService->obtenerExtracto($cliente, $anioReporte, $mesDetraccion);
 
-        // Bóveda SIRE: Comprobantes y Métricas pre-filtradas exclusivamente para este cliente
+        // Bóveda SIRE: Métricas en una sola consulta SQL agregada directa
         $sireQuery = $cliente->comprobantes();
 
         if (request()->filled('sire_tipo') && in_array(request('sire_tipo'), ['RCE', 'RVIE'])) {
@@ -363,13 +375,22 @@ class ClienteController extends Controller
             $sireQuery->where('periodo', request('sire_periodo'));
         }
 
-        $sireStatsQuery = clone $sireQuery;
-        $sireTotalBase = (float) $sireStatsQuery->sum('base_imponible');
-        $sireTotalIgv = (float) $sireStatsQuery->sum('igv');
-        $sireTotalFacturado = (float) $sireStatsQuery->sum('total');
-        $sireTotalRegistros = (int) $sireStatsQuery->count();
+        $sireStats = (clone $sireQuery)->selectRaw('
+            COUNT(*) as total_registros,
+            COALESCE(SUM(base_imponible), 0) as total_base,
+            COALESCE(SUM(igv), 0) as total_igv,
+            COALESCE(SUM(total), 0) as total_facturado
+        ')->first();
 
-        $comprobantesCliente = $sireQuery->orderBy('periodo', 'desc')->orderBy('id', 'desc')->get();
+        $sireTotalBase = (float) ($sireStats->total_base ?? 0);
+        $sireTotalIgv = (float) ($sireStats->total_igv ?? 0);
+        $sireTotalFacturado = (float) ($sireStats->total_facturado ?? 0);
+        $sireTotalRegistros = (int) ($sireStats->total_registros ?? 0);
+
+        // Solo instanciar comprobantes en memoria si se consulta la sección SIRE
+        $comprobantesCliente = ($seccion === SeccionExpediente::Sire)
+            ? $sireQuery->orderBy('periodo', 'desc')->orderBy('id', 'desc')->limit(200)->get()
+            : collect();
 
         $urlsSeccion = [];
         foreach (SeccionExpediente::cases() as $caso) {
@@ -391,6 +412,7 @@ class ClienteController extends Controller
             'consultaSire',
             'reporteImpuestos',
             'reporteCreditosFiscales',
+            'extractoDetracciones',
             'comprobantesCliente',
             'sireTotalBase',
             'sireTotalIgv',

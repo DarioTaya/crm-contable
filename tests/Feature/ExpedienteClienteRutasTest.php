@@ -20,6 +20,7 @@ class ExpedienteClienteRutasTest extends TestCase
             ->assertSee('data-seccion="datos"', false)
             ->assertSee('/clientes/'.$cliente->id.'/notificaciones', false)
             ->assertSee('/clientes/'.$cliente->id.'/impuestos', false)
+            ->assertSee('/clientes/'.$cliente->id.'/cuenta-detracciones', false)
             ->assertSee('/clientes/'.$cliente->id.'/detracciones-retenciones', false)
             ->assertDontSee('/clientes/'.$cliente->id.'/operaciones', false)
             ->assertSee('/clientes/'.$cliente->id.'/sire', false);
@@ -31,6 +32,10 @@ class ExpedienteClienteRutasTest extends TestCase
         $this->get(route('clientes.operaciones', $cliente))
             ->assertOk()
             ->assertSee('data-seccion="operaciones"', false);
+
+        $this->get(route('clientes.detracciones', $cliente))
+            ->assertOk()
+            ->assertSee('data-seccion="cuenta-detracciones"', false);
 
         $this->get(route('clientes.creditos', $cliente))
             ->assertOk()

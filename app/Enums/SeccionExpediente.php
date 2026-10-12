@@ -15,6 +15,7 @@ enum SeccionExpediente: string
     case Notificaciones = 'notificaciones';
     case Operaciones = 'operaciones';
     case Creditos = 'creditos';
+    case Detracciones = 'cuenta-detracciones';
     case Sire = 'sire';
 
     /**
@@ -27,6 +28,7 @@ enum SeccionExpediente: string
             self::Notificaciones => 'clientes.notificaciones',
             self::Operaciones => 'clientes.operaciones',
             self::Creditos => 'clientes.creditos',
+            self::Detracciones => 'clientes.detracciones',
             self::Sire => 'clientes.sire',
         };
     }

@@ -352,6 +352,22 @@ class Cliente extends Model
     }
 
     /**
+     * Relación 1 a N: Movimientos de la cuenta de detracciones del Banco de la Nación.
+     */
+    public function movimientosDetracciones(): HasMany
+    {
+        return $this->hasMany(MovimientoDetraccion::class, 'cliente_id');
+    }
+
+    /**
+     * Relación 1 a N: Saldos iniciales anuales de la cuenta de detracciones.
+     */
+    public function saldosDetracciones(): HasMany
+    {
+        return $this->hasMany(SaldoDetraccion::class, 'cliente_id');
+    }
+
+    /**
      * Relación N a N: Asistentes que tienen asignada la gestión de este cliente.
      */
     public function asistentes(): BelongsToMany

@@ -14,6 +14,7 @@ use App\Http\Controllers\ControlBalanceController;
 use App\Http\Controllers\ControlDeudaController;
 use App\Http\Controllers\ControlMensualController;
 use App\Http\Controllers\CronogramaSunatController;
+use App\Http\Controllers\CuentaDetraccionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\OperacionController;
@@ -135,6 +136,14 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
     // redirige a esa ruta para no romper enlaces ya guardados.
     Route::get('/clientes/{cliente}/notificaciones', [ClienteController::class, 'show'])->name('clientes.notificaciones')->can('view', 'cliente');
     Route::get('/clientes/{cliente}/impuestos', [ClienteController::class, 'show'])->name('clientes.operaciones')->can('view', 'cliente');
+    Route::get('/clientes/{cliente}/cuenta-detracciones', [CuentaDetraccionController::class, 'show'])->name('clientes.detracciones')->can('view', 'cliente');
+    Route::post('/clientes/{cliente}/cuenta-detracciones/cargar-pdf', [CuentaDetraccionController::class, 'cargarPdf'])->name('clientes.detracciones.cargar-pdf')->can('view', 'cliente');
+    Route::post('/clientes/{cliente}/cuenta-detracciones/movimiento', [CuentaDetraccionController::class, 'guardarMovimiento'])->name('clientes.detracciones.movimiento.store')->can('update', 'cliente');
+    Route::delete('/clientes/{cliente}/cuenta-detracciones/movimientos/{movimiento}', [CuentaDetraccionController::class, 'eliminarMovimiento'])->name('clientes.detracciones.movimiento.destroy')->can('update', 'cliente');
+    Route::post('/clientes/{cliente}/cuenta-detracciones/saldo-inicial', [CuentaDetraccionController::class, 'guardarSaldoInicial'])->name('clientes.detracciones.saldo-inicial')->can('update', 'cliente');
+    Route::get('/clientes/{cliente}/cuenta-detracciones/saldo-sugerido', [CuentaDetraccionController::class, 'saldoSugerido'])->name('clientes.detracciones.saldo-sugerido')->can('view', 'cliente');
+    Route::get('/clientes/{cliente}/cuenta-detracciones/imprimir', [CuentaDetraccionController::class, 'imprimir'])->name('clientes.detracciones.imprimir')->can('view', 'cliente');
+    Route::get('/clientes/{cliente}/cuenta-detracciones/exportar', [CuentaDetraccionController::class, 'exportar'])->name('clientes.detracciones.exportar')->can('view', 'cliente');
     Route::get('/clientes/{cliente}/detracciones-retenciones', [ClienteController::class, 'show'])->name('clientes.creditos')->can('view', 'cliente');
     Route::get('/clientes/{cliente}/operaciones', [ClienteController::class, 'redirigirOperaciones'])->name('clientes.operaciones.legado')->can('view', 'cliente');
     Route::get('/clientes/{cliente}/sire', [ClienteController::class, 'show'])->name('clientes.sire')->can('view', 'cliente');
