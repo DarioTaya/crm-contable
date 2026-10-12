@@ -76,6 +76,7 @@
         </div>
     </div>
 
+    {{-- Banner Informativo: Periodo en Apertura PLE (Regla de los 3 meses) --}}
     <div class="mb-4 flex flex-col gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <p class="text-xs text-amber-950">
             Periodo en apertura: <strong>{{ $aperturaBalance['nombre'] }}</strong>.
@@ -164,7 +165,12 @@
         </div>
     </div>
 
-    @include('partials.marca-cliente-en-trabajo')
+    @include('partials.marca-cliente-en-trabajo', [
+        'idsEnMatriz' => array_map(
+            fn (array $fila): int => (int) $fila['cliente']->id,
+            $matrizClientes
+        ),
+    ])
 
     {{-- ═══════════════════════════════ TABLA MATRIZ 100% MONITOR (14 COLUMNAS) ═══════════════════════════════ --}}
     <div class="overflow-x-auto rounded-xl border border-gray-300 bg-white shadow-md min-h-[200px]">
@@ -174,7 +180,7 @@
             <thead class="bg-gray-100 text-gray-700 text-xs font-extrabold select-none shadow-xs">
                 <tr class="border-b border-gray-300 bg-gray-200/90 text-center">
                     {{-- Columna 1: Cliente/RUC (Sticky Left) con N° Correlativo Original --}}
-                    <th class="w-[20%] px-2.5 py-2 text-left border-r border-b border-gray-300 bg-gray-200 sticky left-0 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
+                    <th scope="col" class="w-[20%] px-2.5 py-2 text-left border-r border-b border-gray-300 bg-gray-200 sticky left-0 z-20 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.15)]">
                         <div class="flex items-center gap-1.5">
                             <span class="inline-flex h-5 w-5 shrink-0" title="Marca la empresa en la que estás trabajando" aria-hidden="true"></span>
                             <span class="inline-flex h-5 min-w-[22px] px-1 items-center justify-center rounded bg-gray-300/80 border border-gray-400/60 text-[10px] font-mono font-black text-gray-800 shrink-0" title="Número Correlativo Original">N°</span>
@@ -185,12 +191,12 @@
                         </div>
                     </th>
 
-                    {{-- Columnas 2 a 13: 12 Meses LIMPIOS (SIN SUB-ETIQUETAS INFERIORES 'DJ | RH') --}}
+                    {{-- Columnas 2 a 13: 12 Meses LIMPIOS --}}
                     @foreach ($mesesEncabezado as $mNum => $mInfo)
                         @php
                             $esApertura = $anio === $aperturaBalance['anio'] && $mNum === $aperturaBalance['mes'];
                         @endphp
-                        <th class="w-[6%] px-0.5 py-2.5 border-r border-b border-gray-300 text-center whitespace-nowrap select-none {{ $esApertura ? 'bg-amber-100 text-amber-950' : 'bg-gray-100 text-gray-800' }}"
+                        <th scope="col" class="w-[6%] px-0.5 py-2.5 border-r border-b border-gray-300 text-center whitespace-nowrap select-none {{ $esApertura ? 'bg-amber-100 text-amber-950' : 'bg-gray-100 text-gray-800' }}"
                             @if ($esApertura) title="Periodo en apertura. Vence el {{ $aperturaBalance['vence'] }}" @endif>
                             <span class="block text-[11px] font-black tracking-tight uppercase">{{ $mInfo['corto'] }}-{{ substr((string) $anio, -2) }}</span>
                             @if ($esApertura)
@@ -200,7 +206,7 @@
                     @endforeach
 
                     {{-- Columna 14: DJ ANUAL AÑO ANTERIOR (DESTACADA) --}}
-                    <th class="w-[8%] px-1 py-2 border-b border-indigo-300 text-center whitespace-nowrap bg-indigo-100/90 text-indigo-900 select-none shadow-inner">
+                    <th scope="col" class="w-[8%] px-1 py-2 border-b border-indigo-300 text-center whitespace-nowrap bg-indigo-100/90 text-indigo-900 select-none shadow-inner">
                         <span class="block text-[10px] font-black tracking-tight uppercase">DJ ANUAL</span>
                         <span class="block text-[9px] font-extrabold text-indigo-700 leading-none mt-0.5">{{ $anio - 1 }}</span>
                     </th>
@@ -216,10 +222,11 @@
                             : 'bg-blue-100 text-blue-800 border-blue-200';
                     @endphp
 
-                    {{-- Fila del Cliente (Reactividad Alpine.js) --}}
+                    {{-- Fila del Cliente (Reactividad Alpine.js Ligera sin Menús Embebidos) --}}
                     <tr x-data="filaBalanceCliente({
                             clienteId: {{ $item['cliente']->id }},
                             anio: {{ $anio }},
+                            razonSocial: @js($item['cliente']->razon_social),
                             meses: @js($item['meses']),
                             djAnual: '{{ $item['dj_anual'] }}'
                         })"
@@ -232,7 +239,7 @@
                             <div class="flex items-center justify-between gap-2">
                                 <div class="flex items-center gap-1.5 min-w-0 flex-1">
                                     <x-marca-en-trabajo :cliente-id="$item['cliente']->id" />
-                                    {{-- N° Correlativo Original respetando su ID/Posición general (ej. 2, 5, 10) --}}
+                                    {{-- N° Correlativo Original respetando su ID/Posición general --}}
                                     <span class="inline-flex h-5 min-w-[24px] px-1 items-center justify-center rounded-md bg-gray-100 border border-gray-300 text-[10px] font-mono font-black text-gray-700 shrink-0 shadow-xs"
                                           title="Cliente N° {{ $item['numero'] }} (Correlativo original)">
                                         {{ $item['numero'] }}
@@ -266,10 +273,10 @@
                             </div>
                         </td>
 
-                        {{-- COLUMNAS 2 A 13: 12 MESES LIMPIOS CON SELECTOR DE BALANCE Y NOTA --}}
+                        {{-- COLUMNAS 2 A 13: 12 MESES CON BOTONES ULTRA-LIGEROS --}}
                         @foreach ($item['meses'] as $idx => $m)
                             <td @class([
-                                    'w-[6%] p-0.5 border-r border-b border-gray-300 text-center transition-colors relative align-middle h-11',
+                                    'group/celda w-[6%] p-0.5 border-r border-b border-gray-300 text-center transition-colors relative align-middle h-11',
                                     'bg-gray-100/80 text-gray-400' => ! empty($m['es_baja']) || ($m['estado'] ?? '') === 'Baja',
                                     'bg-emerald-100/70 hover:bg-emerald-100' => empty($m['es_baja']) && ($m['estado'] ?? '') === 'Declarado',
                                     'bg-amber-100/70 hover:bg-amber-100' => empty($m['es_baja']) && in_array($m['estado'] ?? '', ['Procesando', 'Proceso'], true),
@@ -286,29 +293,19 @@
                                         </span>
                                     </div>
                                 @else
-                                    {{-- Componente Alpine por celda: Selector de Balance + Nota Flotante --}}
-                                    <div x-data="popoverNotaBalance({
-                                            clienteId: {{ $item['cliente']->id }},
-                                            anio: {{ $anio }},
-                                            mesNum: {{ $m['numero'] }},
-                                            mesNombre: '{{ $m['nombre'] }}',
-                                            notaInicial: @js($m['nota'])
-                                         })"
-                                         class="flex items-center justify-center px-0.5 w-full h-full relative">
+                                    <div class="flex items-center justify-center px-0.5 w-full h-full relative">
+                                        {{-- Triángulo Rojo en Esquina Superior Derecha (Google Sheets Comment Indicator) --}}
+                                        <div x-show="meses[{{ $idx }}].nota && meses[{{ $idx }}].nota.trim().length > 0"
+                                             x-cloak
+                                             @click.stop="abrirNota($event, {{ $idx }})"
+                                             :title="'Nota: ' + meses[{{ $idx }}].nota"
+                                             class="absolute top-0 right-0 w-0 h-0 border-t-[8px] border-r-[8px] border-t-transparent border-r-rose-600 cursor-pointer z-10">
+                                        </div>
 
-                                    {{-- Triángulo Rojo en Esquina Superior Derecha (Google Sheets Comment Indicator) --}}
-                                    <div x-show="tieneNota()"
-                                         x-cloak
-                                         @click="abrir()"
-                                         :title="'Nota: ' + nota"
-                                         class="absolute top-0 right-0 w-0 h-0 border-t-[8px] border-r-[8px] border-t-transparent border-r-rose-600 cursor-pointer z-10">
-                                    </div>
-
-                                    {{-- Selector de Estado de Balance Mensual --}}
-                                    <div x-data="{ openMenu: false }" class="relative flex items-center justify-center w-full">
+                                        {{-- Botón Selector de Estado de Balance Mensual --}}
                                         <button
                                             type="button"
-                                            @click="openMenu = !openMenu; if (openMenu) $nextTick(() => window.ubicarMenuFlotante($refs.menuMes, $el))"
+                                            @click="abrirMenuMes($event, {{ $idx }})"
                                             :title="'Mes ' + {{ $m['numero'] }} + ': ' + meses[{{ $idx }}].estado"
                                             class="inline-flex h-7 w-7 min-w-7 shrink-0 items-center justify-center overflow-hidden rounded text-xs transition-transform select-none hover:scale-110 focus:outline-none active:scale-95"
                                         >
@@ -318,108 +315,14 @@
                                         {{-- Botón micro de nota al hover si no tiene nota --}}
                                         <button
                                             type="button"
-                                            x-show="!tieneNota()"
+                                            x-show="!meses[{{ $idx }}].nota || meses[{{ $idx }}].nota.trim().length === 0"
                                             x-cloak
-                                            @click="abrir()"
+                                            @click.stop="abrirNota($event, {{ $idx }})"
                                             title="Agregar nota"
-                                            class="absolute -right-0.5 top-0.5 opacity-0 hover:opacity-100 text-[9px] text-gray-400 hover:text-amber-700 transition"
+                                            class="absolute -right-0.5 top-0.5 opacity-0 group-hover/celda:opacity-100 text-[9px] text-gray-400 hover:text-amber-700 transition"
                                         >
                                             💬
                                         </button>
-
-                                        {{-- Miniventana Flotante Espaciosa para Estado del Mes --}}
-                                        <div
-                                            x-ref="menuMes"
-                                            x-show="openMenu"
-                                            x-cloak
-                                            data-menu-flotante
-                                            @click.outside="if (!$el._clicInicioDentro) openMenu = false"
-                                            class="fixed z-50 w-44 rounded-xl border border-gray-200 bg-white p-2 text-left shadow-2xl"
-                                        >
-                                            <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 mb-1">
-                                                Balance {{ $m['corto'] }}-{{ substr($anio, -2) }}
-                                            </div>
-                                            <div class="space-y-1">
-                                                <button
-                                                    type="button"
-                                                    @click="meses[{{ $idx }}].estado = 'Pendiente'; actualizarMes({{ $idx }}); openMenu = false"
-                                                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-slate-100 text-gray-800"
-                                                    :class="meses[{{ $idx }}].estado === 'Pendiente' ? 'bg-slate-100 text-slate-800 ring-1 ring-slate-300' : ''"
-                                                >
-                                                    <span class="text-sm">⚪</span>
-                                                    <span>Pendiente</span>
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    @click="meses[{{ $idx }}].estado = 'Procesando'; actualizarMes({{ $idx }}); openMenu = false"
-                                                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-amber-50 text-gray-800"
-                                                    :class="meses[{{ $idx }}].estado === 'Procesando' || meses[{{ $idx }}].estado === 'Proceso' ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' : ''"
-                                                >
-                                                    <span class="text-sm">🟡</span>
-                                                    <span>En Proceso</span>
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    @click="meses[{{ $idx }}].estado = 'Declarado'; actualizarMes({{ $idx }}); openMenu = false"
-                                                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-emerald-50 text-gray-800"
-                                                    :class="meses[{{ $idx }}].estado === 'Declarado' ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200' : ''"
-                                                >
-                                                    <span class="text-sm">🟢</span>
-                                                    <span>Declarado</span>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {{-- Popover Flotante de Nota estilo Google Sheets --}}
-                                    <div x-ref="menuNota"
-                                         x-show="openNote"
-                                         x-cloak
-                                         data-menu-flotante
-                                         @click.outside="if (!$el._clicInicioDentro) cerrar()"
-                                         class="fixed z-50 w-64 rounded-xl border border-amber-300 bg-amber-50 p-3 text-left shadow-2xl">
-
-                                        <div class="flex items-center justify-between pb-1.5 border-b border-amber-200 mb-2">
-                                            <div class="truncate pr-2">
-                                                <span class="block text-[11px] font-bold text-amber-900 truncate">
-                                                    Nota: {{ $m['corto'] }}-{{ substr($anio, -2) }} &bull; {{ $item['cliente']->razon_social }}
-                                                </span>
-                                            </div>
-                                            <button type="button" @click="cerrar()" class="text-gray-400 hover:text-gray-700 text-sm font-bold leading-none">&times;</button>
-                                        </div>
-
-                                        <textarea
-                                            x-model="tempNota"
-                                            rows="3"
-                                            placeholder="Escribir nota sobre el balance (ej. falta depreciación, cierre pendiente)..."
-                                            class="w-full rounded border border-amber-200 bg-white p-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-inner"
-                                        ></textarea>
-
-                                        <div class="mt-2 flex items-center justify-between">
-                                            <span x-show="guardadoExitoso" class="text-[10px] text-emerald-700 font-bold animate-pulse">✅ Guardada</span>
-                                            <span x-show="!guardadoExitoso"></span>
-
-                                            <div class="flex items-center gap-1.5">
-                                                <button
-                                                    type="button"
-                                                    @click="cerrar()"
-                                                    class="px-2 py-0.5 text-[10px] text-gray-600 hover:bg-amber-100 rounded transition"
-                                                >
-                                                    Cerrar
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    @click="guardarNota()"
-                                                    :disabled="guardando"
-                                                    class="px-2.5 py-0.5 text-[10px] font-bold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-xs transition active:scale-95 disabled:opacity-50"
-                                                >
-                                                    <span x-show="!guardando">Guardar</span>
-                                                    <span x-show="guardando">...</span>
-                                                </button>
-                                            </div>
-                                        </div>
                                     </div>
                                 @endif
                             </td>
@@ -435,10 +338,10 @@
                             ])
                             x-effect="pintarFondo($el, djAnual)">
 
-                            <div x-data="{ openDJAnual: false }" class="relative flex items-center justify-center w-full h-full">
+                            <div class="relative flex items-center justify-center w-full h-full">
                                 <button
                                     type="button"
-                                    @click="openDJAnual = !openDJAnual; if (openDJAnual) $nextTick(() => window.ubicarMenuFlotante($refs.menuDJAnual, $el))"
+                                    @click="abrirMenuDJAnual($event)"
                                     :title="'DJ Anual {{ $anio - 1 }}: ' + djAnual"
                                     @class([
                                         'inline-flex items-center justify-center gap-1 px-2 py-1 text-xs font-bold rounded-lg border transition shadow-xs hover:scale-105 active:scale-95 focus:outline-none',
@@ -451,51 +354,6 @@
                                     <span x-text="djAnual === 'Declarado' ? '🟢' : ((djAnual === 'Proceso' || djAnual === 'Procesando') ? '🟡' : '⚪')">{{ match ($item['dj_anual'] ?? 'Pendiente') { 'Declarado' => '🟢', 'Proceso', 'Procesando' => '🟡', default => '⚪' } }}</span>
                                     <span class="text-[10px]" x-text="djAnual === 'Declarado' ? 'Declarado' : (djAnual === 'Procesando' || djAnual === 'Proceso' ? 'Proceso' : 'Pendiente')">{{ match ($item['dj_anual'] ?? 'Pendiente') { 'Declarado' => 'Declarado', 'Proceso', 'Procesando' => 'Proceso', default => 'Pendiente' } }}</span>
                                 </button>
-
-                                {{-- Dropdown DJ Anual --}}
-                                <div
-                                    x-ref="menuDJAnual"
-                                    x-show="openDJAnual"
-                                    x-cloak
-                                    data-menu-flotante
-                                    @click.outside="if (!$el._clicInicioDentro) openDJAnual = false"
-                                    class="fixed z-50 w-44 rounded-xl border border-indigo-200 bg-white p-2 text-left shadow-2xl"
-                                >
-                                    <div class="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-700 border-b border-indigo-100 mb-1">
-                                        DJ Anual {{ $anio - 1 }}
-                                    </div>
-                                    <div class="space-y-1">
-                                        <button
-                                            type="button"
-                                            @click="djAnual = 'Pendiente'; actualizarDJAnual(); openDJAnual = false"
-                                            class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-slate-100 text-gray-800"
-                                            :class="djAnual === 'Pendiente' ? 'bg-slate-100 text-slate-800 ring-1 ring-slate-300' : ''"
-                                        >
-                                            <span class="text-sm">⚪</span>
-                                            <span>Pendiente</span>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            @click="djAnual = 'Procesando'; actualizarDJAnual(); openDJAnual = false"
-                                            class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-amber-50 text-gray-800"
-                                            :class="djAnual === 'Procesando' || djAnual === 'Proceso' ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' : ''"
-                                        >
-                                            <span class="text-sm">🟡</span>
-                                            <span>En Proceso</span>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            @click="djAnual = 'Declarado'; actualizarDJAnual(); openDJAnual = false"
-                                            class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-emerald-50 text-gray-800"
-                                            :class="djAnual === 'Declarado' ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200' : ''"
-                                        >
-                                            <span class="text-sm">🟢</span>
-                                            <span>Declarado</span>
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
                         </td>
 
@@ -511,20 +369,161 @@
         </table>
     </div>
 
+    {{-- ═══════════════════════════════ COMPONENTES FLOTANTES GLOBALES (FUERA DE LA TABLA) ═══════════════════════════════ --}}
+    {{-- 1. Menú Flotante Global de Estado de Mes --}}
+    <div x-data="menuFlotanteMesBalance()"
+         x-show="open"
+         x-cloak
+         data-menu-flotante
+         @click.outside="if (!$el._clicInicioDentro) cerrar()"
+         @abrir-menu-mes-balance.window="abrir($event.detail)"
+         class="fixed z-50 w-44 rounded-xl border border-gray-200 bg-white p-2 text-left shadow-2xl">
+        <div class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 border-b border-gray-100 mb-1">
+            Balance <span x-text="mesCorto"></span>-<span x-text="anioCorto"></span>
+        </div>
+        <div class="space-y-1">
+            <button
+                type="button"
+                @click="seleccionar('Pendiente')"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-slate-100 text-gray-800"
+                :class="estado === 'Pendiente' ? 'bg-slate-100 text-slate-800 ring-1 ring-slate-300' : ''"
+            >
+                <span class="text-sm">⚪</span>
+                <span>Pendiente</span>
+            </button>
+
+            <button
+                type="button"
+                @click="seleccionar('Procesando')"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-amber-50 text-gray-800"
+                :class="estado === 'Procesando' || estado === 'Proceso' ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' : ''"
+            >
+                <span class="text-sm">🟡</span>
+                <span>En Proceso</span>
+            </button>
+
+            <button
+                type="button"
+                @click="seleccionar('Declarado')"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-emerald-50 text-gray-800"
+                :class="estado === 'Declarado' ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200' : ''"
+            >
+                <span class="text-sm">🟢</span>
+                <span>Declarado</span>
+            </button>
+        </div>
+    </div>
+
+    {{-- 2. Menú Flotante Global de DJ Anual --}}
+    <div x-data="menuFlotanteDJAnual()"
+         x-show="open"
+         x-cloak
+         data-menu-flotante
+         @click.outside="if (!$el._clicInicioDentro) cerrar()"
+         @abrir-menu-dj-anual.window="abrir($event.detail)"
+         class="fixed z-50 w-44 rounded-xl border border-indigo-200 bg-white p-2 text-left shadow-2xl">
+        <div class="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-indigo-700 border-b border-indigo-100 mb-1">
+            DJ Anual <span x-text="anioDj"></span>
+        </div>
+        <div class="space-y-1">
+            <button
+                type="button"
+                @click="seleccionar('Pendiente')"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-slate-100 text-gray-800"
+                :class="estado === 'Pendiente' ? 'bg-slate-100 text-slate-800 ring-1 ring-slate-300' : ''"
+            >
+                <span class="text-sm">⚪</span>
+                <span>Pendiente</span>
+            </button>
+
+            <button
+                type="button"
+                @click="seleccionar('Procesando')"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-amber-50 text-gray-800"
+                :class="estado === 'Procesando' || estado === 'Proceso' ? 'bg-amber-50 text-amber-800 ring-1 ring-amber-200' : ''"
+            >
+                <span class="text-sm">🟡</span>
+                <span>En Proceso</span>
+            </button>
+
+            <button
+                type="button"
+                @click="seleccionar('Declarado')"
+                class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition hover:bg-emerald-50 text-gray-800"
+                :class="estado === 'Declarado' ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200' : ''"
+            >
+                <span class="text-sm">🟢</span>
+                <span>Declarado</span>
+            </button>
+        </div>
+    </div>
+
+    {{-- 3. Popover Flotante Global de Nota estilo Google Sheets --}}
+    <div x-data="popoverGlobalNotaBalance()"
+         x-show="open"
+         x-cloak
+         data-menu-flotante
+         @click.outside="if (!$el._clicInicioDentro) cerrar()"
+         @abrir-nota-balance.window="abrir($event.detail)"
+         class="fixed z-50 w-64 rounded-xl border border-amber-300 bg-amber-50 p-3 text-left shadow-2xl">
+
+        <div class="flex items-center justify-between pb-1.5 border-b border-amber-200 mb-2">
+            <div class="truncate pr-2">
+                <span class="block text-[11px] font-bold text-amber-900 truncate">
+                    Nota: <span x-text="mesCorto"></span>-<span x-text="anioCorto"></span> &bull; <span x-text="razonSocial"></span>
+                </span>
+            </div>
+            <button type="button" @click="cerrar()" class="text-gray-400 hover:text-gray-700 text-sm font-bold leading-none" aria-label="Cerrar nota">&times;</button>
+        </div>
+
+        <textarea
+            x-model="tempNota"
+            x-ref="textareaNota"
+            rows="3"
+            placeholder="Escribir nota sobre el balance (ej. falta depreciación, cierre pendiente)..."
+            class="w-full rounded border border-amber-200 bg-white p-2 text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-amber-500 shadow-inner"
+        ></textarea>
+
+        <div class="mt-2 flex items-center justify-between">
+            <span x-show="guardadoExitoso" class="text-[10px] text-emerald-700 font-bold animate-pulse">✅ Guardada</span>
+            <span x-show="!guardadoExitoso"></span>
+
+            <div class="flex items-center gap-1.5">
+                <button
+                    type="button"
+                    @click="cerrar()"
+                    class="px-2 py-0.5 text-[10px] text-gray-600 hover:bg-amber-100 rounded transition"
+                >
+                    Cerrar
+                </button>
+                <button
+                    type="button"
+                    @click="guardarNota()"
+                    :disabled="guardando"
+                    class="px-2.5 py-0.5 text-[10px] font-bold text-white bg-amber-600 hover:bg-amber-700 rounded shadow-xs transition active:scale-95 disabled:opacity-50"
+                >
+                    <span x-show="!guardando">Guardar</span>
+                    <span x-show="guardando">...</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- Pie de Sábana --}}
     <div class="mt-3 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-400 gap-2 px-1">
         <p>Mostrando {{ $totalClientes }} empresas con régimen RMT o RG &bull; 12 meses de balances + columna destacada DJ Anual {{ $anio - 1 }}.</p>
         <p>Los cambios se guardan automáticamente por AJAX en tiempo real.</p>
     </div>
 
-    {{-- ═══════════════════════════════ SCRIPTS ALPINE.JS ═══════════════════════════════ --}}
+    {{-- ═══════════════════════════════ SCRIPTS ALPINE.JS OPTIMIZADOS ═══════════════════════════════ --}}
     <script>
         function filaBalanceCliente(config) {
             return {
                 clienteId: config.clienteId,
                 anio: config.anio,
-                meses: config.meses,
-                djAnual: config.djAnual,
+                razonSocial: config.razonSocial || '',
+                meses: config.meses || [],
+                djAnual: config.djAnual || 'Pendiente',
 
                 fondosCelda: ['bg-gray-100/80', 'text-gray-400', 'bg-emerald-100/70', 'hover:bg-emerald-100', 'bg-amber-100/70', 'hover:bg-amber-100', 'bg-white', 'hover:bg-slate-100/60', 'bg-indigo-50/50', 'hover:bg-indigo-50'],
                 fondosAvance: ['bg-emerald-100', 'text-emerald-800', 'bg-gray-100', 'text-gray-700'],
@@ -575,6 +574,52 @@
                         if (m.estado === 'Declarado') declaradas++;
                     });
                     return exigibles > 0 ? Math.round((declaradas / exigibles) * 100) : 100;
+                },
+
+                abrirMenuMes(event, idx) {
+                    window.dispatchEvent(new CustomEvent('abrir-menu-mes-balance', {
+                        detail: {
+                            ancla: event.currentTarget,
+                            mesCorto: this.meses[idx].corto,
+                            anio: this.anio,
+                            estado: this.meses[idx].estado,
+                            onSeleccionar: (nuevoEstado) => {
+                                this.meses[idx].estado = nuevoEstado;
+                                this.actualizarMes(idx);
+                            }
+                        }
+                    }));
+                },
+
+                abrirMenuDJAnual(event) {
+                    window.dispatchEvent(new CustomEvent('abrir-menu-dj-anual', {
+                        detail: {
+                            ancla: event.currentTarget,
+                            anioDj: this.anio - 1,
+                            estado: this.djAnual,
+                            onSeleccionar: (nuevoEstado) => {
+                                this.djAnual = nuevoEstado;
+                                this.actualizarDJAnual();
+                            }
+                        }
+                    }));
+                },
+
+                abrirNota(event, idx) {
+                    window.dispatchEvent(new CustomEvent('abrir-nota-balance', {
+                        detail: {
+                            ancla: event.currentTarget,
+                            clienteId: this.clienteId,
+                            anio: this.anio,
+                            mesNum: this.meses[idx].numero,
+                            mesCorto: this.meses[idx].corto,
+                            razonSocial: this.razonSocial,
+                            nota: this.meses[idx].nota || '',
+                            onNotaActualizada: (nuevaNota) => {
+                                this.meses[idx].nota = nuevaNota;
+                            }
+                        }
+                    }));
                 },
 
                 async actualizarMes(idx) {
@@ -645,30 +690,142 @@
             };
         }
 
-        function popoverNotaBalance(config) {
+        function menuFlotanteMesBalance() {
             return {
-                clienteId: config.clienteId,
-                anio: config.anio,
-                mesNum: config.mesNum,
-                mesNombre: config.mesNombre,
-                nota: config.notaInicial || '',
-                tempNota: config.notaInicial || '',
-                openNote: false,
-                guardando: false,
-                guardadoExitoso: false,
+                open: false,
+                mesCorto: '',
+                anioCorto: '',
+                estado: 'Pendiente',
+                callback: null,
+                _anclaActual: null,
 
-                tieneNota() {
-                    return this.nota && this.nota.trim().length > 0;
+                abrir(detail) {
+                    if (!detail || !detail.ancla) return;
+                    if (this.open && this._anclaActual === detail.ancla) {
+                        this.cerrar();
+                        return;
+                    }
+                    this._anclaActual = detail.ancla;
+                    this.mesCorto = detail.mesCorto || '';
+                    this.anioCorto = String(detail.anio || '').slice(-2);
+                    this.estado = detail.estado || 'Pendiente';
+                    this.callback = detail.onSeleccionar || null;
+                    this.open = true;
+                    this.$nextTick(() => {
+                        if (typeof window.ubicarMenuFlotante === 'function') {
+                            window.ubicarMenuFlotante(this.$el, detail.ancla);
+                        }
+                    });
                 },
 
-                abrir() {
-                    this.tempNota = this.nota;
-                    this.openNote = true;
-                    this.$nextTick(() => window.ubicarMenuFlotante(this.$refs.menuNota, this.$el));
+                seleccionar(valor) {
+                    this.estado = valor;
+                    if (typeof this.callback === 'function') {
+                        this.callback(valor);
+                    }
+                    this.cerrar();
                 },
 
                 cerrar() {
-                    this.openNote = false;
+                    this.open = false;
+                    this._anclaActual = null;
+                    this.callback = null;
+                }
+            };
+        }
+
+        function menuFlotanteDJAnual() {
+            return {
+                open: false,
+                anioDj: '',
+                estado: 'Pendiente',
+                callback: null,
+                _anclaActual: null,
+
+                abrir(detail) {
+                    if (!detail || !detail.ancla) return;
+                    if (this.open && this._anclaActual === detail.ancla) {
+                        this.cerrar();
+                        return;
+                    }
+                    this._anclaActual = detail.ancla;
+                    this.anioDj = detail.anioDj || '';
+                    this.estado = detail.estado || 'Pendiente';
+                    this.callback = detail.onSeleccionar || null;
+                    this.open = true;
+                    this.$nextTick(() => {
+                        if (typeof window.ubicarMenuFlotante === 'function') {
+                            window.ubicarMenuFlotante(this.$el, detail.ancla);
+                        }
+                    });
+                },
+
+                seleccionar(valor) {
+                    this.estado = valor;
+                    if (typeof this.callback === 'function') {
+                        this.callback(valor);
+                    }
+                    this.cerrar();
+                },
+
+                cerrar() {
+                    this.open = false;
+                    this._anclaActual = null;
+                    this.callback = null;
+                }
+            };
+        }
+
+        function popoverGlobalNotaBalance() {
+            return {
+                open: false,
+                clienteId: null,
+                anio: null,
+                mesNum: null,
+                mesCorto: '',
+                anioCorto: '',
+                razonSocial: '',
+                nota: '',
+                tempNota: '',
+                guardando: false,
+                guardadoExitoso: false,
+                callback: null,
+                _anclaActual: null,
+
+                abrir(detail) {
+                    if (!detail || !detail.ancla) return;
+                    if (this.open && this._anclaActual === detail.ancla) {
+                        this.cerrar();
+                        return;
+                    }
+                    this._anclaActual = detail.ancla;
+                    this.clienteId = detail.clienteId;
+                    this.anio = detail.anio;
+                    this.mesNum = detail.mesNum;
+                    this.mesCorto = detail.mesCorto || '';
+                    this.anioCorto = String(detail.anio || '').slice(-2);
+                    this.razonSocial = detail.razonSocial || '';
+                    this.nota = detail.nota || '';
+                    this.tempNota = detail.nota || '';
+                    this.callback = detail.onNotaActualizada || null;
+                    this.guardando = false;
+                    this.guardadoExitoso = false;
+                    this.open = true;
+
+                    this.$nextTick(() => {
+                        if (typeof window.ubicarMenuFlotante === 'function') {
+                            window.ubicarMenuFlotante(this.$el, detail.ancla);
+                        }
+                        if (this.$refs.textareaNota) {
+                            this.$refs.textareaNota.focus();
+                        }
+                    });
+                },
+
+                cerrar() {
+                    this.open = false;
+                    this._anclaActual = null;
+                    this.callback = null;
                 },
 
                 async guardarNota() {
@@ -690,7 +847,7 @@
                                 cliente_id: this.clienteId,
                                 anio: this.anio,
                                 mes: this.mesNum,
-                                nota: this.tempNota
+                                nota: this.tempNota,
                             }),
                         });
 
@@ -703,9 +860,13 @@
                         this.guardando = false;
                         this.guardadoExitoso = true;
 
+                        if (typeof this.callback === 'function') {
+                            this.callback(this.tempNota);
+                        }
+
                         setTimeout(() => {
                             this.guardadoExitoso = false;
-                            this.openNote = false;
+                            this.cerrar();
                         }, 700);
                     } catch (err) {
                         this.guardando = false;

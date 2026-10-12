@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Cliente;
 use App\Models\ControlBalance;
+use App\Models\Estudio;
+use App\Models\User;
 use Database\Seeders\CronogramaSunatSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -248,5 +250,39 @@ class ControlBalanceTest extends TestCase
         $response->assertSee('data-marca-en-trabajo="'.$cliente->id.'"', false);
         $response->assertSee('crm-cliente-en-trabajo-', false);
         $response->assertSee('Marcar: estoy trabajando en esta empresa', false);
+    }
+
+    public function test_asistente_only_sees_assigned_clients_in_control_balances(): void
+    {
+        Estudio::firstOrCreate(
+            ['id' => 1],
+            ['nombre' => 'Estudio 1', 'correo' => 'estudio1@test.com', 'activo' => true]
+        );
+
+        $asistente = User::factory()->create([
+            'rol' => 'asistente',
+        ]);
+
+        $clienteAsignado = Cliente::create([
+            'razon_social' => 'EMPRESA ASIGNADA SAC',
+            'ruc' => '20600000001',
+            'regimen_tributario' => 'MYPE',
+            'estado' => true,
+        ]);
+        $clienteAsignado->asistentes()->attach($asistente->id);
+
+        $clienteNoAsignado = Cliente::create([
+            'razon_social' => 'EMPRESA NO ASIGNADA SAC',
+            'ruc' => '20600000002',
+            'regimen_tributario' => 'General',
+            'estado' => true,
+        ]);
+
+        $response = $this->actingAs($asistente)->get(route('balances.index'));
+
+        $response->assertOk();
+        $response->assertSee('EMPRESA ASIGNADA SAC');
+        $response->assertDontSee('EMPRESA NO ASIGNADA SAC');
+        $response->assertViewHas('totalClientes', 1);
     }
 }

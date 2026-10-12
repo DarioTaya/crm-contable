@@ -344,9 +344,17 @@ class ClienteController extends Controller
 
         $seccion = SeccionExpediente::actual($request->route()?->getName());
 
-        $cliente->load(['credencial', 'alertas']);
+        // Carga de credenciales y conteo rápido de alertas pendientes por índice,
+        // evitando la hidratación masiva innecesaria de modelos de alertas en memoria.
+        $cliente->loadMissing('credencial');
+        $alertasPendientesCount = $cliente->alertas()->where('estado', 'Pendiente')->count();
+
+        // Solo instanciar la colección de alertas cuando se visualiza la sección de Notificaciones
         if ($seccion === SeccionExpediente::Notificaciones) {
-            $cliente->load('notificaciones');
+            $cliente->load([
+                'alertas' => fn ($q) => $q->orderBy('fecha_recepcion', 'desc')->orderBy('id', 'desc'),
+                'notificaciones',
+            ]);
         }
 
         $anioActual = (int) now()->year;
@@ -356,41 +364,56 @@ class ClienteController extends Controller
             $anioReporte = $anioActual;
         }
 
-        $mesDetraccionPedido = $request->query('detraccion_mes');
-        $mesDetraccion = (is_numeric($mesDetraccionPedido) && (int) $mesDetraccionPedido >= 1 && (int) $mesDetraccionPedido <= 12)
-            ? (int) $mesDetraccionPedido
+        // Carga perezosa (lazy) optimizada según la sección activa del expediente
+        $reporteImpuestos = in_array($seccion, [SeccionExpediente::Datos, SeccionExpediente::Operaciones], true)
+            ? $reporteImpuestosCliente->armar($cliente, $anioReporte)
             : null;
 
-        $reporteImpuestos = $reporteImpuestosCliente->armar($cliente, $anioReporte);
-        $reporteCreditosFiscales = $reporteCreditosFiscalesCliente->armar($cliente, $anioReporte);
-        $extractoDetracciones = $extractoDetraccionesService->obtenerExtracto($cliente, $anioReporte, $mesDetraccion);
+        $reporteCreditosFiscales = ($seccion === SeccionExpediente::Creditos)
+            ? $reporteCreditosFiscalesCliente->armar($cliente, $anioReporte)
+            : null;
 
-        // Bóveda SIRE: Métricas en una sola consulta SQL agregada directa
-        $sireQuery = $cliente->comprobantes();
+        $extractoDetracciones = null;
+        if ($seccion === SeccionExpediente::Detracciones) {
+            $mesDetraccionPedido = $request->query('detraccion_mes');
+            $mesDetraccion = (is_numeric($mesDetraccionPedido) && (int) $mesDetraccionPedido >= 1 && (int) $mesDetraccionPedido <= 12)
+                ? (int) $mesDetraccionPedido
+                : null;
 
-        if (request()->filled('sire_tipo') && in_array(request('sire_tipo'), ['RCE', 'RVIE'])) {
-            $sireQuery->where('tipo_registro', request('sire_tipo'));
+            $extractoDetracciones = $extractoDetraccionesService->obtenerExtracto($cliente, $anioReporte, $mesDetraccion);
         }
-        if (request()->filled('sire_periodo')) {
-            $sireQuery->where('periodo', request('sire_periodo'));
+
+        // Bóveda SIRE: Contador liviano para el badge; agregación matemática completa únicamente en la sección SIRE
+        $sireTotalRegistros = $cliente->comprobantes()->count();
+        $sireTotalBase = 0.0;
+        $sireTotalIgv = 0.0;
+        $sireTotalFacturado = 0.0;
+        $comprobantesCliente = collect();
+
+        if ($seccion === SeccionExpediente::Sire) {
+            $sireQuery = $cliente->comprobantes();
+
+            if ($request->filled('sire_tipo') && in_array($request->query('sire_tipo'), ['RCE', 'RVIE'])) {
+                $sireQuery->where('tipo_registro', $request->query('sire_tipo'));
+            }
+            if ($request->filled('sire_periodo')) {
+                $sireQuery->where('periodo', $request->query('sire_periodo'));
+            }
+
+            $sireStats = (clone $sireQuery)->selectRaw('
+                COUNT(*) as total_registros,
+                COALESCE(SUM(base_imponible), 0) as total_base,
+                COALESCE(SUM(igv), 0) as total_igv,
+                COALESCE(SUM(total), 0) as total_facturado
+            ')->first();
+
+            $sireTotalBase = (float) ($sireStats->total_base ?? 0);
+            $sireTotalIgv = (float) ($sireStats->total_igv ?? 0);
+            $sireTotalFacturado = (float) ($sireStats->total_facturado ?? 0);
+            $sireTotalRegistros = (int) ($sireStats->total_registros ?? 0);
+
+            $comprobantesCliente = $sireQuery->orderBy('periodo', 'desc')->orderBy('id', 'desc')->limit(200)->get();
         }
-
-        $sireStats = (clone $sireQuery)->selectRaw('
-            COUNT(*) as total_registros,
-            COALESCE(SUM(base_imponible), 0) as total_base,
-            COALESCE(SUM(igv), 0) as total_igv,
-            COALESCE(SUM(total), 0) as total_facturado
-        ')->first();
-
-        $sireTotalBase = (float) ($sireStats->total_base ?? 0);
-        $sireTotalIgv = (float) ($sireStats->total_igv ?? 0);
-        $sireTotalFacturado = (float) ($sireStats->total_facturado ?? 0);
-        $sireTotalRegistros = (int) ($sireStats->total_registros ?? 0);
-
-        // Solo instanciar comprobantes en memoria si se consulta la sección SIRE
-        $comprobantesCliente = ($seccion === SeccionExpediente::Sire)
-            ? $sireQuery->orderBy('periodo', 'desc')->orderBy('id', 'desc')->limit(200)->get()
-            : collect();
 
         $urlsSeccion = [];
         foreach (SeccionExpediente::cases() as $caso) {
@@ -410,6 +433,7 @@ class ClienteController extends Controller
             'seccion',
             'urlsSeccion',
             'consultaSire',
+            'alertasPendientesCount',
             'reporteImpuestos',
             'reporteCreditosFiscales',
             'extractoDetracciones',

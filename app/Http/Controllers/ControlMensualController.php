@@ -28,6 +28,7 @@ class ControlMensualController extends Controller
     public function __construct(
         private RegistrarTributoPeriodo $registroTributo,
         private CalculadorLiquidacionService $calculador,
+        private CatalogoSunat $catalogo,
     ) {}
 
     /**
@@ -63,16 +64,16 @@ class ControlMensualController extends Controller
         $periodosAnio = $this->periodosDelAnio($anio);
         $periodosConDiciembreAnterior = array_merge([sprintf('12-%d', $anio - 1)], $periodosAnio);
 
-        // Cargar clientes vigentes en el año seleccionado ordenados por número.
+        // Cargar clientes vigentes en el año seleccionado ordenados por número y filtrados por cartera.
         // Se precarga diciembre del año anterior para arrastrar saldos a favor sin N+1 queries.
         $clientes = Cliente::query()
+            ->paraUsuario()
             ->vigentesEnEjercicio($anio)
             ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $periodosConDiciembreAnterior)->with(['abonosDeuda', 'deudasTributarias.abonos', 'liquidacionPeriodo'])])
             ->orderBy('numero')
             ->get();
 
-        $kpis = $this->calcularKpis($anio, $clientes);
-
+        // Precargar cronogramas oficiales de SUNAT
         $cronogramasPdt = CronogramaSunat::query()
             ->where('tipo', 'pdt_621')
             ->whereIn('periodo', $periodosAnio)
@@ -85,6 +86,47 @@ class ControlMensualController extends Controller
             ->get()
             ->keyBy('periodo');
 
+        // Pre-calcular fechas de vencimiento en O(1) para evitar parseo repetido de Carbon en bucle N x 12
+        $fechasPdtCache = [];
+        foreach ($cronogramasPdt as $periodo => $crono) {
+            for ($d = 0; $d <= 9; $d++) {
+                $f = $crono->getFechaPorDigito((string) $d, false);
+                $fechasPdtCache[$periodo]["{$d}_0"] = [
+                    'ymd' => $f?->format('Y-m-d') ?? '',
+                    'dmy' => $f?->format('d/m/Y') ?? '',
+                ];
+            }
+            $fBc = $crono->getFechaPorDigito('0', true);
+            $fechasPdtCache[$periodo]['bc'] = [
+                'ymd' => $fBc?->format('Y-m-d') ?? '',
+                'dmy' => $fBc?->format('d/m/Y') ?? '',
+            ];
+        }
+
+        $fechasSireCache = [];
+        foreach ($cronogramasSire as $periodo => $crono) {
+            for ($d = 0; $d <= 9; $d++) {
+                $f = $crono->getFechaPorDigito((string) $d, false);
+                $fechasSireCache[$periodo]["{$d}_0"] = [
+                    'ymd' => $f?->format('Y-m-d') ?? '',
+                    'dmy' => $f?->format('d/m/Y') ?? '',
+                ];
+            }
+            $fBc = $crono->getFechaPorDigito('0', true);
+            $fechasSireCache[$periodo]['bc'] = [
+                'ymd' => $fBc?->format('Y-m-d') ?? '',
+                'dmy' => $fBc?->format('d/m/Y') ?? '',
+            ];
+        }
+
+        // Acumuladores de KPIs en un solo recorrido (Single-Pass O(N x 12))
+        $totalObligacionesAnio = 0;
+        $declaradasTotal = 0;
+        $procesandoTotal = 0;
+        $pendientesTotal = 0;
+        $honorariosPagadosTotal = 0;
+        $honorariosPendientesTotal = 0;
+
         $matrizClientes = [];
 
         foreach ($clientes as $cliente) {
@@ -93,23 +135,22 @@ class ControlMensualController extends Controller
             $cDeclaradas = 0;
             $cExigibles = 0;
 
+            $esBc = (bool) $cliente->es_buen_contribuyente;
+            $ultimoChar = substr(trim((string) ($cliente->ruc ?? $cliente->numero_documento ?? '0')), -1);
+            $digito = is_numeric($ultimoChar) ? (int) $ultimoChar : 0;
+            $cronoKey = $esBc ? 'bc' : "{$digito}_0";
+
             for ($m = 1; $m <= 12; $m++) {
                 $periodo = sprintf('%02d-%d', $m, $anio);
                 $op = $opsMap->get($periodo);
 
-                $cronogramaPdt = $cronogramasPdt->get($periodo);
-                $fechaOficialPdt = $cronogramaPdt
-                    ? $cronogramaPdt->getFechaPorDigito($cliente->ruc ?? $cliente->numero_documento, (bool) $cliente->es_buen_contribuyente)
-                    : null;
-                $vencimientoOficialPdt = $fechaOficialPdt?->format('Y-m-d') ?? '';
-                $vencimientoOficialPdtDmy = $fechaOficialPdt?->format('d/m/Y') ?? '';
+                $pdtData = $fechasPdtCache[$periodo][$cronoKey] ?? ['ymd' => '', 'dmy' => ''];
+                $vencimientoOficialPdt = $pdtData['ymd'];
+                $vencimientoOficialPdtDmy = $pdtData['dmy'];
 
-                $cronogramaSire = $cronogramasSire->get($periodo);
-                $fechaOficialSire = $cronogramaSire
-                    ? $cronogramaSire->getFechaPorDigito($cliente->ruc ?? $cliente->numero_documento, (bool) $cliente->es_buen_contribuyente)
-                    : null;
-                $vencimientoOficialSire = $fechaOficialSire?->format('Y-m-d') ?? '';
-                $vencimientoOficialSireDmy = $fechaOficialSire?->format('d/m/Y') ?? '';
+                $sireData = $fechasSireCache[$periodo][$cronoKey] ?? ['ymd' => '', 'dmy' => ''];
+                $vencimientoOficialSire = $sireData['ymd'];
+                $vencimientoOficialSireDmy = $sireData['dmy'];
 
                 $esBajaMes = ! $cliente->rindeEnPeriodo($periodo);
 
@@ -137,6 +178,7 @@ class ControlMensualController extends Controller
                 }
 
                 $cExigibles++;
+                $totalObligacionesAnio++;
 
                 $sire = $op->estado_compras_ventas ?? 'Pendiente';
                 $pdt = $op->estado_pdt621 ?? 'Pendiente';
@@ -148,6 +190,17 @@ class ControlMensualController extends Controller
 
                 if ($estadoMaestro === 'Declarado') {
                     $cDeclaradas++;
+                    $declaradasTotal++;
+                } elseif ($estadoMaestro === 'Procesando') {
+                    $procesandoTotal++;
+                } else {
+                    $pendientesTotal++;
+                }
+
+                if ($honorariosMes === 'Pagado') {
+                    $honorariosPagadosTotal++;
+                } else {
+                    $honorariosPendientesTotal++;
                 }
 
                 $periodoAnterior = $m > 1 ? sprintf('%02d-%d', $m - 1, $anio) : sprintf('12-%d', $anio - 1);
@@ -161,61 +214,7 @@ class ControlMensualController extends Controller
                 $itanSugerido = $m > 1 ? (float) ($liqAnterior?->renta_itan_saldo_siguiente ?? 0) : 0.00;
 
                 $liq = $op?->liquidacionPeriodo;
-                $liqData = $liq ? [
-                    'id' => $liq->id,
-                    'es_zona_selva' => (bool) $liq->es_zona_selva,
-                    'ventas_base' => (float) $liq->ventas_base,
-                    'igv_ventas' => (float) $liq->igv_ventas,
-                    'igv_descuentos_base' => (float) $liq->igv_descuentos_base,
-                    'igv_descuentos' => (float) $liq->igv_descuentos,
-                    'ventas_no_gravadas' => (float) $liq->ventas_no_gravadas,
-                    'igv_ventas_ley_base' => (float) $liq->igv_ventas_ley_base,
-                    'igv_ventas_ley' => (float) $liq->igv_ventas_ley,
-                    'compras_base' => (float) $liq->compras_base,
-                    'igv_compras' => (float) $liq->igv_compras,
-                    'igv_compras_ley_base' => (float) $liq->igv_compras_ley_base,
-                    'igv_compras_ley' => (float) $liq->igv_compras_ley,
-                    'igv_compras_mixtas_base' => (float) $liq->igv_compras_mixtas_base,
-                    'igv_compras_mixtas' => (float) $liq->igv_compras_mixtas,
-                    'igv_importaciones_base' => (float) $liq->igv_importaciones_base,
-                    'igv_importaciones' => (float) $liq->igv_importaciones,
-                    'compras_destino_no_gravadas' => (float) $liq->compras_destino_no_gravadas,
-                    'igv_importaciones_mixtas_base' => (float) $liq->igv_importaciones_mixtas_base,
-                    'igv_importaciones_mixtas' => (float) $liq->igv_importaciones_mixtas,
-                    'importaciones_destino_no_gravadas' => (float) $liq->importaciones_destino_no_gravadas,
-                    'compras_internas_no_gravadas' => (float) $liq->compras_internas_no_gravadas,
-                    'compras_importadas_no_gravadas' => (float) $liq->compras_importadas_no_gravadas,
-                    'igv_saldo_favor_anterior' => (float) $liq->igv_saldo_favor_anterior,
-                    'igv_retenciones_saldo_anterior' => (float) $liq->igv_retenciones_saldo_anterior,
-                    'igv_retenciones' => (float) $liq->igv_retenciones,
-                    'igv_retenciones_saldo_siguiente' => (float) $liq->igv_retenciones_saldo_siguiente,
-                    'igv_percepciones_saldo_anterior' => (float) $liq->igv_percepciones_saldo_anterior,
-                    'igv_percepciones' => (float) $liq->igv_percepciones,
-                    'igv_percepciones_saldo_siguiente' => (float) $liq->igv_percepciones_saldo_siguiente,
-                    'igv_saldo_favor_siguiente' => (float) $liq->igv_saldo_favor_siguiente,
-                    'igv_resultante_pagar' => (float) $liq->igv_resultante_pagar,
-                    'igv_determinado_por_sunat' => (bool) $liq->igv_determinado_por_sunat,
-                    'renta_base_ingresos' => (float) $liq->renta_base_ingresos,
-                    'renta_tasa' => (float) $liq->renta_tasa,
-                    'renta_calculada' => (float) $liq->renta_calculada,
-                    'renta_saldo_favor_anterior' => (float) $liq->renta_saldo_favor_anterior,
-                    'renta_compensacion_itan' => (float) $liq->renta_compensacion_itan,
-                    'renta_itan_saldo_anterior' => (float) $liq->renta_itan_saldo_anterior,
-                    'renta_itan_saldo_siguiente' => (float) $liq->renta_itan_saldo_siguiente,
-                    'renta_retenciones' => (float) $liq->renta_retenciones,
-                    'renta_saldo_favor_siguiente' => (float) $liq->renta_saldo_favor_siguiente,
-                    'renta_resultante_pagar' => (float) $liq->renta_resultante_pagar,
-                    'renta_determinado_por_sunat' => (bool) $liq->renta_determinado_por_sunat,
-                    'renta_tributo_codigo' => $liq->renta_tributo_codigo,
-                    'plame_essalud_base' => (float) $liq->plame_essalud_base,
-                    'plame_essalud_a_pagar' => (float) $liq->plame_essalud_a_pagar,
-                    'plame_onp_a_pagar' => (float) $liq->plame_onp_a_pagar,
-                    'plame_renta_4ta_base' => (float) $liq->plame_renta_4ta_base,
-                    'plame_renta_4ta_a_pagar' => (float) $liq->plame_renta_4ta_a_pagar,
-                    'plame_renta_5ta_a_pagar' => (float) $liq->plame_renta_5ta_a_pagar,
-                    'plame_afp_a_pagar' => (float) $liq->plame_afp_a_pagar,
-                    'notas_liquidacion' => (string) ($liq->notas_liquidacion ?? ''),
-                ] : null;
+                $liqData = $this->serializarLiquidacion($liq);
 
                 $meses[] = [
                     'numero' => $m,
@@ -272,12 +271,29 @@ class ControlMensualController extends Controller
                 'meses' => $meses,
                 'declaradas' => $cDeclaradas,
                 'porcentaje' => $cPorcentaje,
+                'rentaSugerida' => $this->catalogo->codigoRentaDelRegimen($cliente->regimen_tributario),
             ];
         }
 
-        $catalogo = app(CatalogoSunat::class);
-        $catalogoTributos = $catalogo->catalogoFormulario();
-        $mediosPago = $catalogo->mediosParaSelector();
+        $totalClientes = $clientes->count();
+        $porcentajeAvanceAnual = $totalObligacionesAnio > 0
+            ? (int) round(($declaradasTotal / $totalObligacionesAnio) * 100)
+            : 0;
+
+        $kpis = [
+            'totalClientes' => $totalClientes,
+            'totalObligacionesAnio' => $totalObligacionesAnio,
+            'declaradasTotal' => $declaradasTotal,
+            'procesandoTotal' => $procesandoTotal,
+            'pendientesTotal' => $pendientesTotal,
+            'porcentajeAvanceAnual' => $porcentajeAvanceAnual,
+            'honorariosPagadosTotal' => $honorariosPagadosTotal,
+            'honorariosPendientesTotal' => $honorariosPendientesTotal,
+        ];
+
+        $catalogoTributos = $this->catalogo->catalogoFormulario();
+        $mediosPago = $this->catalogo->mediosParaSelector();
+        $codigosLiquidacion = $this->catalogo->codigosDeLiquidacion();
         $cargaMasiva = $this->configuracionCargaMasiva($anio, $mesesEncabezado, $clientes);
 
         return view('control.index', array_merge(compact(
@@ -287,8 +303,75 @@ class ControlMensualController extends Controller
             'matrizClientes',
             'catalogoTributos',
             'mediosPago',
+            'codigosLiquidacion',
             'cargaMasiva',
         ), $kpis));
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function serializarLiquidacion(?LiquidacionPeriodo $liq): ?array
+    {
+        if (! $liq) {
+            return null;
+        }
+
+        return [
+            'id' => $liq->id,
+            'es_zona_selva' => (bool) $liq->es_zona_selva,
+            'ventas_base' => (float) $liq->ventas_base,
+            'igv_ventas' => (float) $liq->igv_ventas,
+            'igv_descuentos_base' => (float) $liq->igv_descuentos_base,
+            'igv_descuentos' => (float) $liq->igv_descuentos,
+            'ventas_no_gravadas' => (float) $liq->ventas_no_gravadas,
+            'igv_ventas_ley_base' => (float) $liq->igv_ventas_ley_base,
+            'igv_ventas_ley' => (float) $liq->igv_ventas_ley,
+            'compras_base' => (float) $liq->compras_base,
+            'igv_compras' => (float) $liq->igv_compras,
+            'igv_compras_ley_base' => (float) $liq->igv_compras_ley_base,
+            'igv_compras_ley' => (float) $liq->igv_compras_ley,
+            'igv_compras_mixtas_base' => (float) $liq->igv_compras_mixtas_base,
+            'igv_compras_mixtas' => (float) $liq->igv_compras_mixtas,
+            'igv_importaciones_base' => (float) $liq->igv_importaciones_base,
+            'igv_importaciones' => (float) $liq->igv_importaciones,
+            'compras_destino_no_gravadas' => (float) $liq->compras_destino_no_gravadas,
+            'igv_importaciones_mixtas_base' => (float) $liq->igv_importaciones_mixtas_base,
+            'igv_importaciones_mixtas' => (float) $liq->igv_importaciones_mixtas,
+            'importaciones_destino_no_gravadas' => (float) $liq->importaciones_destino_no_gravadas,
+            'compras_internas_no_gravadas' => (float) $liq->compras_internas_no_gravadas,
+            'compras_importadas_no_gravadas' => (float) $liq->compras_importadas_no_gravadas,
+            'igv_saldo_favor_anterior' => (float) $liq->igv_saldo_favor_anterior,
+            'igv_retenciones_saldo_anterior' => (float) $liq->igv_retenciones_saldo_anterior,
+            'igv_retenciones' => (float) $liq->igv_retenciones,
+            'igv_retenciones_saldo_siguiente' => (float) $liq->igv_retenciones_saldo_siguiente,
+            'igv_percepciones_saldo_anterior' => (float) $liq->igv_percepciones_saldo_anterior,
+            'igv_percepciones' => (float) $liq->igv_percepciones,
+            'igv_percepciones_saldo_siguiente' => (float) $liq->igv_percepciones_saldo_siguiente,
+            'igv_saldo_favor_siguiente' => (float) $liq->igv_saldo_favor_siguiente,
+            'igv_resultante_pagar' => (float) $liq->igv_resultante_pagar,
+            'igv_determinado_por_sunat' => (bool) $liq->igv_determinado_por_sunat,
+            'renta_base_ingresos' => (float) $liq->renta_base_ingresos,
+            'renta_tasa' => (float) $liq->renta_tasa,
+            'renta_calculada' => (float) $liq->renta_calculada,
+            'renta_saldo_favor_anterior' => (float) $liq->renta_saldo_favor_anterior,
+            'renta_compensacion_itan' => (float) $liq->renta_compensacion_itan,
+            'renta_itan_saldo_anterior' => (float) $liq->renta_itan_saldo_anterior,
+            'renta_itan_saldo_siguiente' => (float) $liq->renta_itan_saldo_siguiente,
+            'renta_retenciones' => (float) $liq->renta_retenciones,
+            'renta_saldo_favor_siguiente' => (float) $liq->renta_saldo_favor_siguiente,
+            'renta_resultante_pagar' => (float) $liq->renta_resultante_pagar,
+            'renta_determinado_por_sunat' => (bool) $liq->renta_determinado_por_sunat,
+            'renta_tributo_codigo' => $liq->renta_tributo_codigo,
+            'plame_essalud_base' => (float) $liq->plame_essalud_base,
+            'plame_essalud_a_pagar' => (float) $liq->plame_essalud_a_pagar,
+            'plame_onp_a_pagar' => (float) $liq->plame_onp_a_pagar,
+            'plame_renta_4ta_base' => (float) $liq->plame_renta_4ta_base,
+            'plame_renta_4ta_a_pagar' => (float) $liq->plame_renta_4ta_a_pagar,
+            'plame_renta_5ta_a_pagar' => (float) $liq->plame_renta_5ta_a_pagar,
+            'plame_afp_a_pagar' => (float) $liq->plame_afp_a_pagar,
+            'notas_liquidacion' => (string) ($liq->notas_liquidacion ?? ''),
+        ];
     }
 
     /**
@@ -336,6 +419,7 @@ class ControlMensualController extends Controller
     public function calcularKpis(int $anio, ?Collection $clientesExistentes = null): array
     {
         $clientes = $clientesExistentes ?? Cliente::query()
+            ->paraUsuario()
             ->vigentesEnEjercicio($anio)
             ->with(['operaciones' => fn ($query) => $query->whereIn('periodo', $this->periodosDelAnio($anio))])
             ->get();
@@ -1352,10 +1436,10 @@ class ControlMensualController extends Controller
             'id' => null,
             'operacion_id' => $operacion->id,
             'tributo_codigo' => $codigo,
-            'declaracion' => app(CatalogoSunat::class)->declaracionDe($codigo),
-            'tributo_nombre' => app(CatalogoSunat::class)->nombre($codigo),
-            'tributo_nombre_corto' => app(CatalogoSunat::class)->nombreCorto($codigo),
-            'tributo_etiqueta' => app(CatalogoSunat::class)->etiqueta($codigo),
+            'declaracion' => $this->catalogo->declaracionDe($codigo),
+            'tributo_nombre' => $this->catalogo->nombre($codigo),
+            'tributo_nombre_corto' => $this->catalogo->nombreCorto($codigo),
+            'tributo_etiqueta' => $this->catalogo->etiqueta($codigo),
             'es_igv_justo' => (bool) $operacion->es_igv_justo,
             'monto_deuda_inicial' => (float) ($operacion->monto_deuda_inicial ?? 0),
             'vencimiento_deuda' => $operacion->vencimiento_deuda?->format('Y-m-d') ?: ($operacion->es_igv_justo ? '' : $vencimientoOficial),
@@ -1377,7 +1461,7 @@ class ControlMensualController extends Controller
             'id' => $deuda->id,
             'operacion_id' => $deuda->operacion_id,
             'tributo_codigo' => $deuda->tributo_codigo,
-            'declaracion' => app(CatalogoSunat::class)->declaracionDe($deuda->tributo_codigo, $deuda->estudio_id),
+            'declaracion' => $this->catalogo->declaracionDe($deuda->tributo_codigo, $deuda->estudio_id),
             'tributo_nombre' => $deuda->tributo_nombre,
             'tributo_nombre_corto' => $deuda->tributo_nombre_corto,
             'tributo_etiqueta' => $deuda->tributo_etiqueta,
@@ -1460,8 +1544,7 @@ class ControlMensualController extends Controller
         $cliente->regimen_tributario = $regimenEnum;
         $cliente->save();
 
-        $catalogo = app(CatalogoSunat::class);
-        $rentaCodigo = $catalogo->codigoRentaDelRegimen($regimenEnum, $cliente->estudio_id)
+        $rentaCodigo = $this->catalogo->codigoRentaDelRegimen($regimenEnum, $cliente->estudio_id)
             ?? TipoTributoSunat::rentaDelRegimen($regimenEnum)?->value;
 
         return response()->json([

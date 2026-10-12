@@ -1,0 +1,2787 @@
+<script>
+        function tooltipDeudaMatriz() {
+            return {
+                visible: false,
+                periodo: '',
+                deudas: [],
+
+                mostrar(detail) {
+                    if (!detail || !detail.ancla) return;
+                    this.periodo = detail.periodo || '';
+                    this.deudas = detail.deudas || [];
+                    this.visible = true;
+                    this.$nextTick(() => {
+                        if (typeof window.ubicarMenuFlotante === 'function') {
+                            window.ubicarMenuFlotante(this.$el, detail.ancla);
+                        }
+                    });
+                },
+
+                ocultar() {
+                    this.visible = false;
+                },
+
+                formatearMoneda(val) {
+                    const n = parseFloat(val || 0);
+                    return 'S/ ' + n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                }
+            };
+        }
+
+        function menuFlotanteRH() {
+            return {
+                openRH: false,
+                corto: '',
+                honorarios: 'Pendiente',
+                callback: null,
+                _anclaActual: null,
+
+                abrir(detail) {
+                    if (!detail || !detail.ancla) return;
+                    if (this.openRH && this._anclaActual === detail.ancla) {
+                        this.cerrar();
+                        return;
+                    }
+                    this._anclaActual = detail.ancla;
+                    this.corto = detail.corto || '';
+                    this.honorarios = detail.honorarios || 'Pendiente';
+                    this.callback = detail.onActualizar || null;
+                    this.openRH = true;
+                    this.$nextTick(() => {
+                        if (typeof window.ubicarMenuFlotante === 'function') {
+                            window.ubicarMenuFlotante(this.$el, detail.ancla);
+                        }
+                    });
+                },
+
+                seleccionar(valor) {
+                    this.honorarios = valor;
+                    if (typeof this.callback === 'function') {
+                        this.callback(valor);
+                    }
+                    this.cerrar();
+                },
+
+                cerrar() {
+                    this.openRH = false;
+                    this._anclaActual = null;
+                    this.callback = null;
+                }
+            };
+        }
+
+        function filaClienteMatriz(config) {
+            return {
+                clienteId: config.clienteId,
+                anio: config.anio,
+                meses: config.meses,
+                razonSocial: config.razonSocial || '',
+                regimen: config.regimen || '',
+                departamento: config.departamento || '',
+                rentaSugerida: config.rentaSugerida || '',
+                hoverMes: null,
+
+                regimenBadgeColor(reg) {
+                    const r = (reg || '').toUpperCase();
+                    if (r === 'RUS') return 'bg-amber-50 text-amber-700 border-amber-300';
+                    if (r === 'RER') return 'bg-blue-50 text-blue-700 border-blue-300';
+                    if (r === 'RMT') return 'bg-indigo-50 text-indigo-700 border-indigo-300';
+                    if (r === 'RG' || r === 'GENERAL') return 'bg-purple-50 text-purple-700 border-purple-300';
+                    return 'bg-gray-100 text-gray-700 border-gray-300';
+                },
+
+                saldoPendienteMes(idx) {
+                    const mes = this.meses[idx];
+                    return !!mes && !!mes.tiene_deuda && parseFloat(mes.saldo_pendiente ?? mes.monto_deuda_inicial ?? 0) > 0;
+                },
+
+                anilloRojo(idx) {
+                    const mes = this.meses[idx];
+                    return !!mes && (mes.estado === 'Declarado' || mes.estado === 'Procesando') && this.saldoPendienteMes(idx);
+                },
+
+                anilloVioleta(idx) {
+                    const mes = this.meses[idx];
+                    if (!mes || (mes.estado !== 'Declarado' && mes.estado !== 'Procesando') || !mes.tiene_deuda || this.saldoPendienteMes(idx)) {
+                        return false;
+                    }
+                    return parseFloat(mes.total_abonado ?? 0) > 0;
+                },
+
+                deudasDelTip() {
+                    if (this.hoverMes === null) {
+                        return [];
+                    }
+                    return (this.meses[this.hoverMes].deudas || []).filter((deuda) => parseFloat(deuda.saldo_pendiente || 0) > 0);
+                },
+
+                moneda(val) {
+                    const n = parseFloat(val || 0);
+                    return 'S/ ' + n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                },
+
+                mostrarTipDeuda(event, idx) {
+                    if (!this.saldoPendienteMes(idx)) {
+                        return;
+                    }
+                    this.hoverMes = idx;
+                    const mes = this.meses[idx];
+                    const deudas = (mes.deudas || []).filter(d => parseFloat(d.saldo_pendiente || 0) > 0);
+                    const deudasParaTip = deudas.length > 0 ? deudas : [{
+                        tributo_nombre_corto: mes.tributo_nombre_corto || mes.tributo_nombre || 'Tributo',
+                        saldo_pendiente: parseFloat(mes.saldo_pendiente ?? mes.monto_deuda_inicial ?? 0)
+                    }];
+                    window.dispatchEvent(new CustomEvent('mostrar-tooltip-deuda', {
+                        detail: {
+                            ancla: event.currentTarget,
+                            periodo: mes.periodo || ((mes.corto || '') + '-' + this.anio),
+                            deudas: deudasParaTip
+                        }
+                    }));
+                },
+
+                ocultarTipDeuda() {
+                    this.hoverMes = null;
+                    window.dispatchEvent(new CustomEvent('ocultar-tooltip-deuda'));
+                },
+
+                abrirPanelDj(event, idx) {
+                    this.ocultarTipDeuda();
+                    const mes = this.meses[idx];
+                    window.dispatchEvent(new CustomEvent('abrir-panel-dj', {
+                        detail: {
+                            clienteId: this.clienteId,
+                            mesIdx: idx,
+                            meses: this.meses,
+                            regimen: this.regimen,
+                            rentaSugerida: this.rentaSugerida,
+                            departamento: this.departamento,
+                            razonSocial: this.razonSocial,
+                            etiquetaPeriodo: (mes.corto || '') + '-' + String(this.anio).slice(-2),
+                            anchor: event.currentTarget,
+                        },
+                    }));
+                },
+
+                fondosCelda: [
+                    'bg-gray-100/80', 'text-gray-400',
+                    'bg-emerald-100/70', 'hover:bg-emerald-100',
+                    'bg-amber-100/70', 'hover:bg-amber-100',
+                    'bg-white', 'hover:bg-slate-100/60'
+                ],
+                fondosAvance: ['bg-emerald-100', 'text-emerald-800', 'bg-gray-100', 'text-gray-700'],
+
+                bgClass(mes) {
+                    if (!mes) return 'bg-white hover:bg-slate-100/60';
+                    if (mes.es_baja || mes.estado === 'Baja') {
+                        return 'bg-gray-100/80 text-gray-400';
+                    }
+                    if (mes.estado === 'Declarado') {
+                        return 'bg-emerald-100/70 hover:bg-emerald-100';
+                    }
+                    if (mes.estado === 'Procesando' || mes.estado === 'Proceso') {
+                        return 'bg-amber-100/70 hover:bg-amber-100';
+                    }
+                    return 'bg-white hover:bg-slate-100/60';
+                },
+
+                pintarFondo(el, mes) {
+                    this.fondosCelda.forEach((clase) => el.classList.remove(clase));
+                    this.bgClass(mes).split(' ').forEach((clase) => {
+                        if (clase.trim()) el.classList.add(clase.trim());
+                    });
+                },
+
+                pintarAvance(el) {
+                    this.fondosAvance.forEach((clase) => el.classList.remove(clase));
+                    const clases = this.calcAvance() === 100
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-gray-100 text-gray-700';
+                    clases.split(' ').forEach((clase) => el.classList.add(clase));
+                },
+
+                calcAvance() {
+                    let declaradas = 0;
+                    let exigibles = 0;
+                    this.meses.forEach(m => {
+                        if (m.estado === 'Baja' || m.es_baja) return;
+                        exigibles++;
+                        if (m.estado === 'Declarado') declaradas++;
+                    });
+                    return exigibles > 0 ? Math.round((declaradas / exigibles) * 100) : 100;
+                },
+
+                async actualizarEstadoMaestro(idx) {
+                    const mes = this.meses[idx];
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch('{{ route('control.update') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: mes.periodo,
+                                estado_compras_ventas: mes.sire || 'Pendiente',
+                                estado_pdt621: mes.pdt || 'Pendiente',
+                                estado_ple: mes.ple || 'Pendiente',
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Error al guardar estado.');
+                        }
+                        if (data.operacion_id) {
+                            mes.operacion_id = data.operacion_id;
+                        }
+                        if (data.estado) {
+                            mes.estado = data.estado;
+                        }
+                        if (data.sire) {
+                            mes.sire = data.sire;
+                        }
+                        if (data.pdt) {
+                            mes.pdt = data.pdt;
+                        }
+                        if (data.ple) {
+                            mes.ple = data.ple;
+                        }
+                        if (data.kpis) {
+                            window.dispatchEvent(new CustomEvent('kpis-actualizados', { detail: data.kpis }));
+                        }
+                    } catch (err) {
+                        console.error('Error al actualizar estado:', err);
+                        alert('No se pudo actualizar el estado: ' + err.message);
+                    }
+                },
+
+                async actualizarHonorarios(idx) {
+                    const mes = this.meses[idx];
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch('{{ route('control.update') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: mes.periodo,
+                                honorarios: mes.honorarios
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Error al guardar honorarios.');
+                        }
+                        if (data.kpis) {
+                            window.dispatchEvent(new CustomEvent('kpis-actualizados', { detail: data.kpis }));
+                        }
+                    } catch (err) {
+                        console.error('Error al actualizar honorarios:', err);
+                        alert('No se pudo actualizar honorarios: ' + err.message);
+                    }
+                },
+
+                abrirMenuRH(event, idx) {
+                    const mes = this.meses[idx];
+                    window.dispatchEvent(new CustomEvent('abrir-menu-rh', {
+                        detail: {
+                            ancla: event.currentTarget,
+                            corto: mes.corto || '',
+                            honorarios: mes.honorarios || 'Pendiente',
+                            onActualizar: (nuevoValor) => {
+                                mes.honorarios = nuevoValor;
+                                this.actualizarHonorarios(idx);
+                            }
+                        }
+                    }));
+                }
+            };
+        }
+
+
+
+        function mesVacioPanel() {
+            return {
+                tiene_deuda: false,
+                tributo_codigo: '1011',
+                vencimiento_deuda: '',
+                vencimiento_oficial_pdt: '',
+                es_igv_justo: false,
+                monto_deuda_inicial: 0,
+                abonos: [],
+                deudas: [],
+                saldo_pendiente: 0,
+                total_abonado: 0,
+                estado: 'Pendiente',
+                sire: 'Pendiente',
+                pdt: 'Pendiente',
+                ple: 'Pendiente',
+                periodo: '',
+                corto: '',
+                liquidacion: null,
+            };
+        }
+
+        function controlCeldaDJ(clienteId, mesIdx, meses, declaraciones, regimen, rentaSugerida, departamento, codigosLiquidacion) {
+            return {
+                clienteId: clienteId,
+                mesIdx: mesIdx,
+                meses: meses,
+                declaraciones: declaraciones || [],
+                regimen: regimen || '',
+                rentaSugerida: rentaSugerida || '',
+                departamento: departamento || '',
+                razonSocial: '',
+                etiquetaPeriodo: '',
+                codigosLiquidacion: codigosLiquidacion || ['1011', '1016', '3121', '3111', '3031', '3011', '5210', '5310', '3042', '3052', '6098', 'AFP'],
+                openDJ: false,
+                hoverDeuda: false,
+                activeTab: 'declaracion',
+                tieneDeuda: !!meses[mesIdx].tiene_deuda,
+                deudas: [],
+                deudaAbiertaKey: null,
+                tributoCodigo: meses[mesIdx].tributo_codigo || '1011',
+                montoDeuda: '',
+                vencimientoDeuda: meses[mesIdx].vencimiento_deuda || '',
+                vencimientoOficialPdt: meses[mesIdx].vencimiento_oficial_pdt || '',
+                editandoFechaManual: false,
+                esIgvJusto: !!meses[mesIdx].es_igv_justo,
+                calculandoIgv: false,
+                igvJustoMensaje: '',
+                cacheDeuda: null,
+                deudaDescartada: false,
+                deudaCargada: false,
+                savingDeuda: false,
+                guardadoDeudaExitoso: false,
+                savingAbono: false,
+                abonoGuardadoExitoso: false,
+                abonos: [],
+                nuevoMonto: '',
+                nuevaFecha: new Date().toISOString().split('T')[0],
+                nuevaObs: '',
+
+                // --- Hoja de Liquidación Tributaria (PDT 621 & PLAME 601) ---
+                panelLiquidacionAbierto: false,
+                panelLiquidacionPlameAbierto: false,
+                tabLiquidacion: 'igv',
+                savingLiquidacion: false,
+                guardadoLiquidacionExitoso: false,
+                saldoFavorSugerido: 0,
+                retencionesSugeridas: 0,
+                percepcionesSugeridas: 0,
+                rentaSugeridaM1: 0,
+                itanSugeridoM1: 0,
+                liquidacion: {
+                    es_zona_selva: false,
+                    ventas_base: '',
+                    igv_ventas: '',
+                    igv_descuentos_base: '',
+                    igv_descuentos: '',
+                    ventas_no_gravadas: '',
+                    igv_ventas_ley_base: '',
+                    igv_ventas_ley: '',
+                    compras_base: '',
+                    igv_compras: '',
+                    igv_compras_ley_base: '',
+                    igv_compras_ley: '',
+                    igv_compras_mixtas_base: '',
+                    igv_compras_mixtas: '',
+                    igv_importaciones_base: '',
+                    igv_importaciones: '',
+                    compras_destino_no_gravadas: '',
+                    igv_importaciones_mixtas_base: '',
+                    igv_importaciones_mixtas: '',
+                    importaciones_destino_no_gravadas: '',
+                    compras_internas_no_gravadas: '',
+                    compras_importadas_no_gravadas: '',
+                    igv_saldo_favor_anterior: '',
+                    igv_retenciones_saldo_anterior: '',
+                    igv_retenciones: '',
+                    igv_retenciones_saldo_siguiente: 0,
+                    igv_percepciones_saldo_anterior: '',
+                    igv_percepciones: '',
+                    igv_percepciones_saldo_siguiente: 0,
+                    igv_saldo_favor_siguiente: 0,
+                    igv_resultante_pagar: 0,
+                    renta_base_ingresos: '',
+                    renta_tasa: 1.0,
+                    renta_calculada: '',
+                    renta_saldo_favor_anterior: '',
+                    renta_itan_saldo_anterior: '',
+                    renta_compensacion_itan: '',
+                    renta_itan_saldo_siguiente: 0,
+                    renta_retenciones: '',
+                    renta_saldo_favor_siguiente: 0,
+                    renta_resultante_pagar: 0,
+                    plame_essalud_base: '',
+                    plame_essalud_a_pagar: '',
+                    plame_onp_a_pagar: '',
+                    plame_renta_4ta_base: '',
+                    plame_renta_4ta_a_pagar: '',
+                    plame_renta_5ta_a_pagar: '',
+                    plame_afp_a_pagar: '',
+                    notas_liquidacion: '',
+                },
+                importacion: {
+                    '621': { abierta: false, cargando: false, error: '', resultado: null, aplicada: false, marcarDeclarado: true },
+                    '601': { abierta: false, cargando: false, error: '', resultado: null, aplicada: false, marcarDeclarado: true },
+                },
+                preservarSunat: null,
+                determinacionSunat: { igv: false, renta: false },
+                otrasCasillasIgv: false,
+                cruceDj: { igv: null, renta: null },
+
+                masCasillasVentas: false,
+                masCasillasCompras: false,
+                masCasillasDeuda: false,
+                masCasillasRenta: false,
+
+                esHojaGrande() {
+                    return this.activeTab === 'deuda' && (this.panelLiquidacionAbierto || this.panelLiquidacionPlameAbierto);
+                },
+
+                tieneValoresMasVentas() {
+                    return [
+                        'igv_descuentos_base', 'igv_descuentos', 'igv_ventas_ley_base', 'igv_ventas_ley'
+                    ].some((campo) => this.limpiarMoneda(this.liquidacion[campo]) > 0);
+                },
+
+                tieneValoresMasCompras() {
+                    return [
+                        'igv_compras_ley_base', 'igv_compras_ley', 'igv_compras_mixtas_base', 'igv_compras_mixtas',
+                        'igv_importaciones_base', 'igv_importaciones', 'compras_destino_no_gravadas',
+                        'igv_importaciones_mixtas_base', 'igv_importaciones_mixtas', 'importaciones_destino_no_gravadas',
+                        'compras_importadas_no_gravadas'
+                    ].some((campo) => this.limpiarMoneda(this.liquidacion[campo]) > 0);
+                },
+
+                totalDebitoFiscal() {
+                    if (this.liquidacion.es_zona_selva) return 0;
+                    const v101 = this.limpiarMoneda(this.liquidacion.igv_ventas);
+                    const v155 = this.limpiarMoneda(this.liquidacion.igv_ventas_ley);
+                    const v103 = this.limpiarMoneda(this.liquidacion.igv_descuentos);
+                    return Math.max(0, Math.round((v101 + v155 - v103) * 100) / 100);
+                },
+
+                totalCreditoFiscal() {
+                    if (this.liquidacion.es_zona_selva) return 0;
+                    const c108 = this.limpiarMoneda(this.liquidacion.igv_compras);
+                    const c157 = this.limpiarMoneda(this.liquidacion.igv_compras_ley);
+                    const c111 = this.limpiarMoneda(this.liquidacion.igv_compras_mixtas);
+                    const c115 = this.limpiarMoneda(this.liquidacion.igv_importaciones);
+                    const c117 = this.limpiarMoneda(this.liquidacion.igv_importaciones_mixtas);
+                    return Math.round((c108 + c157 + c111 + c115 + c117) * 100) / 100;
+                },
+
+                casilla140ImpuestoMes() {
+                    if (this.liquidacion.es_zona_selva) return 0;
+                    return Math.round((this.totalDebitoFiscal() - this.totalCreditoFiscal()) * 100) / 100;
+                },
+
+                casilla184TributoResultante() {
+                    if (this.liquidacion.es_zona_selva) return 0;
+                    const netoMes = this.casilla140ImpuestoMes();
+                    const saldoAnt145 = this.limpiarMoneda(this.liquidacion.igv_saldo_favor_anterior);
+                    return Math.round((netoMes - saldoAnt145) * 100) / 100;
+                },
+
+                totalRetencionesDisponibles() {
+                    const ant = this.limpiarMoneda(this.liquidacion.igv_retenciones_saldo_anterior);
+                    const mes = this.limpiarMoneda(this.liquidacion.igv_retenciones);
+                    return Math.round((ant + mes) * 100) / 100;
+                },
+
+                retencionesAplicadas() {
+                    const t184 = this.casilla184TributoResultante();
+                    if (t184 <= 0) return 0;
+                    const disp = this.totalRetencionesDisponibles();
+                    return Math.min(t184, disp);
+                },
+
+                totalPercepcionesDisponibles() {
+                    const ant = this.limpiarMoneda(this.liquidacion.igv_percepciones_saldo_anterior);
+                    const mes = this.limpiarMoneda(this.liquidacion.igv_percepciones);
+                    return Math.round((ant + mes) * 100) / 100;
+                },
+
+                percepcionesAplicadas() {
+                    const t184 = this.casilla184TributoResultante();
+                    const ret = this.retencionesAplicadas();
+                    const saldoTrasRet = Math.max(0, Math.round((t184 - ret) * 100) / 100);
+                    if (saldoTrasRet <= 0) return 0;
+                    const disp = this.totalPercepcionesDisponibles();
+                    return Math.min(saldoTrasRet, disp);
+                },
+
+                init() {
+                    this.hidratarDeudas(this.meses[this.mesIdx].deudas || []);
+                    this.abonos = this.meses[this.mesIdx].abonos || [];
+                    this.vencimientoOficialPdt = this.meses[this.mesIdx].vencimiento_oficial_pdt || '';
+                    if (this.meses[this.mesIdx].monto_deuda_inicial) {
+                        this.montoDeuda = this.formatearNumeroConComas(this.meses[this.mesIdx].monto_deuda_inicial);
+                    }
+                    if (!this.vencimientoDeuda && !this.esIgvJusto && this.vencimientoOficialPdt) {
+                        this.vencimientoDeuda = this.vencimientoOficialPdt;
+                    }
+                    if (this.vencimientoDeuda && this.vencimientoOficialPdt && this.vencimientoDeuda !== this.vencimientoOficialPdt && !this.esIgvJusto) {
+                        this.editandoFechaManual = true;
+                    }
+                    this.inicializarLiquidacion();
+                    const mesInicial = this.meses[this.mesIdx];
+                    if (mesInicial.tiene_deuda && (mesInicial.monto_deuda_inicial || (this.abonos && this.abonos.length > 0))) {
+                        this.cacheDeuda = {
+                            montoDeuda: this.montoDeuda,
+                            monto_deuda_inicial: parseFloat(this.meses[this.mesIdx].monto_deuda_inicial || 0),
+                            vencimientoDeuda: this.vencimientoDeuda,
+                            vencimiento_deuda_dmy: this.meses[this.mesIdx].vencimiento_deuda_dmy || '',
+                            vencimiento_oficial_pdt: this.vencimientoOficialPdt,
+                            tributoCodigo: this.meses[this.mesIdx].tributo_codigo || '1011',
+                            esIgvJusto: !!this.meses[this.mesIdx].es_igv_justo,
+                            editandoFechaManual: this.editandoFechaManual,
+                            total_abonado: parseFloat(this.meses[this.mesIdx].total_abonado || 0),
+                            saldo_pendiente: parseFloat(this.meses[this.mesIdx].saldo_pendiente || 0),
+                            abonos: [...this.abonos]
+                        };
+                    } else if (!mesInicial.tiene_deuda && (mesInicial.monto_deuda_inicial || (this.abonos && this.abonos.length > 0))) {
+                        this.descartarDeudaAlCerrar();
+                    }
+                    this.$watch('openDJ', (abierto) => {
+                        if (!abierto) {
+                            this.panelLiquidacionAbierto = false;
+                            this.panelLiquidacionPlameAbierto = false;
+                            this.deudas.forEach((deuda) => this.revertirCampos(deuda));
+                            this.deudas = this.deudas.filter((deuda) => this.deudaPersistida(deuda));
+                            this.deudaAbiertaKey = null;
+                        }
+                    });
+                    this.$watch('deudaAbiertaKey', (nueva, anterior) => {
+                        if (anterior && anterior !== nueva) {
+                            const previa = this.deudas.find((deuda) => deuda.localKey === anterior);
+                            if (previa) {
+                                this.revertirCampos(previa);
+                            }
+                        }
+                        if (nueva !== anterior) {
+                            this.encuadrarMenuDJ();
+                        }
+                    });
+                    this.$watch('tieneDeuda', () => {
+                        this.reubicarMenuDeudaCompleto();
+                    });
+                    this.$watch('panelLiquidacionAbierto', () => {
+                        this.encuadrarMenuDJ();
+                    });
+                    this.$watch('panelLiquidacionPlameAbierto', () => {
+                        this.encuadrarMenuDJ();
+                    });
+                    this.$watch('activeTab', () => {
+                        this.$nextTick(() => {
+                            if (this.$refs.menuDJ && this.$refs.menuDJ._anclaMenu) {
+                                window.ubicarMenuFlotante(this.$refs.menuDJ, this.$refs.menuDJ._anclaMenu);
+                            }
+                        });
+                    });
+                },
+
+                formatearMoneda(val) {
+                    const n = parseFloat(val || 0);
+                    return 'S/ ' + n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                },
+
+                formatearNumeroConComas(val) {
+                    if (val === null || val === undefined || val === '') return '';
+                    const num = parseFloat(String(val).replace(/,/g, ''));
+                    if (isNaN(num) || num === 0) return '';
+                    return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                },
+
+                limpiarMoneda(val) {
+                    if (val === null || val === undefined || val === '') return 0;
+                    const cleanStr = String(val).replace(/,/g, '').trim();
+                    const num = parseFloat(cleanStr);
+                    return isNaN(num) ? 0 : num;
+                },
+
+                formatearMilesInput(event) {
+                    const inputVal = event.target.value;
+                    const cleaned = inputVal.replace(/[^\d.]/g, '');
+                    const parts = cleaned.split('.');
+                    let integerPart = parts[0] || '';
+                    let decimalPart = parts.length > 1 ? parts.slice(1).join('') : null;
+
+                    if (decimalPart !== null) {
+                        decimalPart = decimalPart.substring(0, 2);
+                    }
+
+                    if (integerPart) {
+                        integerPart = integerPart.replace(/^0+(?=\d)/, '');
+                        integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                    }
+
+                    let formatted = decimalPart !== null ? `${integerPart}.${decimalPart}` : integerPart;
+                    if (cleaned.endsWith('.') && decimalPart === '') {
+                        formatted = integerPart ? `${integerPart}.` : '0.';
+                    }
+
+                    event.target.value = formatted;
+                    return formatted;
+                },
+
+                tieneDeudaConSaldo() {
+                    const m = this.meses[this.mesIdx];
+                    return !!m.tiene_deuda && parseFloat(m.saldo_pendiente ?? m.monto_deuda_inicial ?? 0) > 0;
+                },
+
+                tieneDeudaDeclarada() {
+                    const m = this.meses[this.mesIdx];
+                    return (m.estado === 'Declarado' || m.estado === 'Procesando') && this.tieneDeudaConSaldo();
+                },
+
+                deudaPagadaDeclarada() {
+                    const m = this.meses[this.mesIdx];
+                    if ((m.estado !== 'Declarado' && m.estado !== 'Procesando') || !m.tiene_deuda || this.tieneDeudaConSaldo()) {
+                        return false;
+                    }
+                    return parseFloat(m.total_abonado ?? 0) > 0;
+                },
+
+                mostrarHoverDeuda(el) {
+                    if (!this.tieneDeudaConSaldo() || this.openDJ) {
+                        return;
+                    }
+                    this.hoverDeuda = true;
+                    this.$nextTick(() => {
+                        if (this.$refs.tooltipDeuda) {
+                            window.ubicarMenuFlotante(this.$refs.tooltipDeuda, el);
+                        }
+                    });
+                },
+
+                ocultarHoverDeuda() {
+                    this.hoverDeuda = false;
+                },
+
+                abrirDesde(detail) {
+                    const mismo = this.openDJ && this.clienteId === detail.clienteId && this.mesIdx === detail.mesIdx;
+                    this.clienteId = detail.clienteId;
+                    this.mesIdx = detail.mesIdx;
+                    this.meses = detail.meses;
+                    this.regimen = detail.regimen || '';
+                    this.rentaSugerida = detail.rentaSugerida || '';
+                    this.departamento = detail.departamento || '';
+                    this.razonSocial = detail.razonSocial || '';
+                    this.etiquetaPeriodo = detail.etiquetaPeriodo || '';
+                    if (mismo) {
+                        this.openDJ = false;
+                        return;
+                    }
+                    this.hoverDeuda = false;
+                    this.panelLiquidacionAbierto = false;
+                    this.panelLiquidacionPlameAbierto = false;
+                    this.deudaAbiertaKey = null;
+                    this.deudaCargada = false;
+                    this.deudas = [];
+                    this.activeTab = 'declaracion';
+                    this.importacion['621'] = { abierta: false, cargando: false, error: '', resultado: null, aplicada: false, marcarDeclarado: true };
+                    this.importacion['601'] = { abierta: false, cargando: false, error: '', resultado: null, aplicada: false, marcarDeclarado: true };
+                    this.cruceDj = { igv: null, renta: null };
+                    this.preservarSunat = null;
+                    this.openDJ = true;
+                    this.sincronizarDesdeMes();
+                    this.hidratarDeudas(this.meses[this.mesIdx].deudas || []);
+                    this.abonos = this.meses[this.mesIdx].abonos || [];
+                    this.$nextTick(() => {
+                        if (this.$refs.menuDJ && detail.anchor) {
+                            window.ubicarMenuFlotante(this.$refs.menuDJ, detail.anchor);
+                        }
+                    });
+                    if (this.tieneDeuda && !this.deudaCargada) {
+                        this.cargarDeuda();
+                    }
+                },
+
+                async actualizarEstadoMaestro(idx) {
+                    const mes = this.meses[idx];
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+                        const response = await fetch('{{ route('control.update') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: mes.periodo,
+                                estado_compras_ventas: mes.sire || 'Pendiente',
+                                estado_pdt621: mes.pdt || 'Pendiente',
+                                estado_ple: mes.ple || 'Pendiente',
+                            }),
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Error al guardar estado.');
+                        }
+                        if (data.operacion_id) {
+                            mes.operacion_id = data.operacion_id;
+                        }
+                        if (data.estado) {
+                            mes.estado = data.estado;
+                        }
+                        if (data.kpis) {
+                            window.dispatchEvent(new CustomEvent('kpis-actualizados', { detail: data.kpis }));
+                        }
+                    } catch (err) {
+                        alert('No se pudo actualizar el estado: ' + err.message);
+                    }
+                },
+
+                abrirMenuDJ(ancla) {
+                    this.hoverDeuda = false;
+                    this.panelLiquidacionAbierto = false;
+                    this.panelLiquidacionPlameAbierto = false;
+                    this.deudaAbiertaKey = null;
+                    this.openDJ = !this.openDJ;
+                    if (this.openDJ) {
+                        this.sincronizarDesdeMes();
+                        this.$nextTick(() => window.ubicarMenuFlotante(this.$refs.menuDJ, ancla));
+                        if (this.tieneDeuda && !this.deudaCargada) {
+                            this.cargarDeuda();
+                        }
+                    }
+                },
+
+                abrirMenuDJConTab(ancla, tabName) {
+                    this.hoverDeuda = false;
+                    this.activeTab = tabName;
+                    this.panelLiquidacionAbierto = false;
+                    this.panelLiquidacionPlameAbierto = false;
+                    this.deudaAbiertaKey = null;
+                    this.openDJ = true;
+                    this.sincronizarDesdeMes();
+                    this.$nextTick(() => window.ubicarMenuFlotante(this.$refs.menuDJ, ancla));
+                    this.cargarDeuda();
+                },
+
+                sincronizarDesdeMes() {
+                    const m = this.meses[this.mesIdx];
+                    this.vencimientoOficialPdt = m.vencimiento_oficial_pdt || '';
+                    this.tieneDeuda = !!m.tiene_deuda;
+                    this.tributoCodigo = m.tributo_codigo || '1011';
+                    this.esIgvJusto = !!m.es_igv_justo;
+                    if (m.monto_deuda_inicial) {
+                        this.montoDeuda = this.formatearNumeroConComas(m.monto_deuda_inicial);
+                    } else if (this.cacheDeuda && this.cacheDeuda.montoDeuda) {
+                        this.montoDeuda = this.cacheDeuda.montoDeuda;
+                    }
+                    this.vencimientoDeuda = m.vencimiento_deuda || (this.cacheDeuda?.vencimientoDeuda || '');
+                    if (!this.vencimientoDeuda && !this.esIgvJusto && this.vencimientoOficialPdt) {
+                        this.vencimientoDeuda = this.vencimientoOficialPdt;
+                    }
+                    if (this.vencimientoDeuda && this.vencimientoOficialPdt && this.vencimientoDeuda !== this.vencimientoOficialPdt && !this.esIgvJusto) {
+                        this.editandoFechaManual = true;
+                    } else if (this.cacheDeuda?.editandoFechaManual !== undefined) {
+                        this.editandoFechaManual = !!this.cacheDeuda.editandoFechaManual;
+                    } else {
+                        this.editandoFechaManual = false;
+                    }
+                    this.inicializarLiquidacion();
+                },
+
+                tooltipDJ() {
+                    if (this.tieneDeudaConSaldo()) {
+                        return null;
+                    }
+                    const m = this.meses[this.mesIdx];
+                    return 'DJ: ' + (m.estado || 'Pendiente');
+                },
+
+                calcularEstadoMaestro(sire, pdt, ple) {
+                    const s = sire || 'Pendiente';
+                    const p = pdt || 'Pendiente';
+                    const l = ple || 'Pendiente';
+                    if (s === 'Declarado' && p === 'Declarado' && l === 'Declarado') {
+                        return 'Declarado';
+                    }
+                    if (s === 'Procesando' || p === 'Procesando' || l === 'Procesando'
+                        || s === 'Declarado' || p === 'Declarado' || l === 'Declarado') {
+                        return 'Procesando';
+                    }
+                    return 'Pendiente';
+                },
+
+                async cambiarEstadoIndividual(campo, nuevoEstado) {
+                    const m = this.meses[this.mesIdx];
+                    m[campo] = nuevoEstado;
+                    m.estado = this.calcularEstadoMaestro(m.sire, m.pdt, m.ple);
+                    if (typeof this.actualizarEstadoMaestro === 'function') {
+                        await this.actualizarEstadoMaestro(this.mesIdx);
+                    }
+                },
+
+                async marcarTodoEstado(nuevoEstado) {
+                    const m = this.meses[this.mesIdx];
+                    m.sire = nuevoEstado;
+                    m.pdt = nuevoEstado;
+                    m.ple = nuevoEstado;
+                    m.estado = nuevoEstado;
+                    if (typeof this.actualizarEstadoMaestro === 'function') {
+                        await this.actualizarEstadoMaestro(this.mesIdx);
+                    }
+                },
+
+                async cambiarEstado(nuevoEstado) {
+                    await this.marcarTodoEstado(nuevoEstado);
+                    this.openDJ = false;
+                },
+
+                hayTributoGuardado() {
+                    const locales = (this.deudas || []).some((deuda) => !!deuda.id);
+                    const delMes = (this.meses[this.mesIdx].deudas || []).some((deuda) => !!deuda.id);
+                    return locales || delMes;
+                },
+
+                encuadrarMenuDJ() {
+                    const menu = this.$refs.menuDJ;
+                    if (!menu || !menu._anclaMenu || typeof window.ubicarMenuFlotante !== 'function') {
+                        return;
+                    }
+                    this.$nextTick(() => {
+                        if (!this.openDJ || !menu._anclaMenu) {
+                            return;
+                        }
+                        window.ubicarMenuFlotante(menu, menu._anclaMenu);
+                    });
+                },
+
+                reubicarMenuDeudaCompleto() {
+                    const menu = this.$refs.menuDJ;
+                    if (!menu || !menu._anclaMenu || typeof window.ubicarMenuFlotante !== 'function') {
+                        return;
+                    }
+                    this.$nextTick(() => {
+                        window.ubicarMenuFlotante(menu, menu._anclaMenu);
+                    });
+                },
+
+                revertirDeudaNoGuardada() {
+                    if (this.hayTributoGuardado()) {
+                        this.deudas = this.deudas.filter((deuda) => !!deuda.id);
+                        return;
+                    }
+
+                    const persistido = !!this.meses[this.mesIdx].tiene_deuda;
+                    this.tieneDeuda = false;
+                    this.meses[this.mesIdx].tiene_deuda = false;
+                    this.deudas = [];
+                    this.deudaAbierta = -1;
+                    if (persistido) {
+                        this.sincronizarToggleDeuda(false);
+                    }
+                },
+
+                async toggleTieneDeuda() {
+                    const activar = !this.tieneDeuda;
+
+                    if (!activar) {
+                        this.tieneDeuda = false;
+                        this.meses[this.mesIdx].tiene_deuda = false;
+
+                        const montoLimpio = this.limpiarMoneda(this.montoDeuda);
+                        if (montoLimpio > 0 || this.vencimientoDeuda || (this.abonos && this.abonos.length > 0)) {
+                            this.cacheDeuda = {
+                                montoDeuda: this.montoDeuda,
+                                monto_deuda_inicial: montoLimpio,
+                                vencimientoDeuda: this.vencimientoDeuda,
+                                vencimiento_deuda_dmy: this.meses[this.mesIdx].vencimiento_deuda_dmy || '',
+                                vencimiento_oficial_pdt: this.vencimientoOficialPdt,
+                                tributoCodigo: this.tributoCodigo,
+                                esIgvJusto: this.esIgvJusto,
+                                editandoFechaManual: this.editandoFechaManual,
+                                total_abonado: this.meses[this.mesIdx].total_abonado || 0,
+                                saldo_pendiente: this.meses[this.mesIdx].saldo_pendiente || 0,
+                                abonos: [...(this.abonos || [])]
+                            };
+                        }
+
+                        await this.sincronizarToggleDeuda(false);
+                        return;
+                    }
+
+                    this.deudaDescartada = false;
+                    if (this.cacheDeuda) {
+                        this.montoDeuda = this.cacheDeuda.montoDeuda || '';
+                        this.vencimientoDeuda = this.cacheDeuda.vencimientoDeuda || '';
+                        this.tributoCodigo = this.cacheDeuda.tributoCodigo || '1011';
+                        this.esIgvJusto = !!this.cacheDeuda.esIgvJusto;
+                        this.editandoFechaManual = !!this.cacheDeuda.editandoFechaManual;
+                        this.abonos = [...(this.cacheDeuda.abonos || [])];
+                        this.meses[this.mesIdx].abonos = this.abonos;
+                        this.meses[this.mesIdx].monto_deuda_inicial = this.cacheDeuda.monto_deuda_inicial;
+                        this.meses[this.mesIdx].vencimiento_deuda = this.cacheDeuda.vencimientoDeuda;
+                        this.meses[this.mesIdx].vencimiento_deuda_dmy = this.cacheDeuda.vencimiento_deuda_dmy;
+                        this.meses[this.mesIdx].total_abonado = this.cacheDeuda.total_abonado;
+                        this.meses[this.mesIdx].saldo_pendiente = this.cacheDeuda.saldo_pendiente;
+                        this.meses[this.mesIdx].tributo_codigo = this.tributoCodigo;
+                        this.meses[this.mesIdx].es_igv_justo = this.esIgvJusto;
+                    }
+
+                    if (!this.vencimientoDeuda && !this.esIgvJusto && this.vencimientoOficialPdt) {
+                        this.vencimientoDeuda = this.vencimientoOficialPdt;
+                    }
+
+                    if (this.deudas.length === 0) {
+                        this.agregarTributo();
+                    }
+
+                    this.tieneDeuda = true;
+                    if (this.hayTributoGuardado()) {
+                        this.meses[this.mesIdx].tiene_deuda = true;
+                        await this.sincronizarToggleDeuda(true);
+                    }
+
+                    if (!this.cacheDeuda && !this.deudaCargada) {
+                        await this.cargarDeuda();
+                        if (this.deudas.length === 0) {
+                            this.agregarTributo();
+                        }
+                    }
+                },
+
+                descartarDeudaAlCerrar(keepalive = false) {
+                    if (this.tieneDeuda || this.deudaDescartada) {
+                        return;
+                    }
+
+                    const mes = this.meses[this.mesIdx];
+                    const hayDatos = !!(this.cacheDeuda || mes.monto_deuda_inicial || (mes.deudas && mes.deudas.length > 0) || this.deudas.length || (mes.abonos && mes.abonos.length > 0) || (this.abonos && this.abonos.length > 0));
+                    if (!hayDatos) {
+                        return;
+                    }
+
+                    this.deudaDescartada = true;
+                    this.cacheDeuda = null;
+                    this.abonos = [];
+                    this.montoDeuda = '';
+                    this.esIgvJusto = false;
+                    this.editandoFechaManual = false;
+                    this.vencimientoDeuda = (!this.esIgvJusto && this.vencimientoOficialPdt) ? this.vencimientoOficialPdt : '';
+                    mes.tiene_deuda = false;
+                    mes.monto_deuda_inicial = 0;
+                    mes.vencimiento_deuda = '';
+                    mes.vencimiento_deuda_dmy = '';
+                    mes.abonos = [];
+                    mes.total_abonado = 0;
+                    mes.saldo_pendiente = 0;
+                    mes.es_igv_justo = false;
+                    mes.tributo_codigo = mes.tributo_codigo || '1011';
+                    mes.deudas = [];
+                    this.deudas = [];
+
+                    const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                    const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                    window.fetch('{{ route('control.update') }}', {
+                        method: 'POST',
+                        keepalive: keepalive,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            cliente_id: this.clienteId,
+                            periodo: mes.periodo,
+                            tiene_deuda: false,
+                            descartar_deuda: true,
+                        }),
+                    }).catch(function () {});
+                },
+
+                async sincronizarToggleDeuda(activo) {
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const montoLimpio = this.limpiarMoneda(this.montoDeuda);
+
+                        const response = await fetch('{{ route('control.update') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: this.meses[this.mesIdx].periodo,
+                                tiene_deuda: activo,
+                                tributo_codigo: this.tributoCodigo || '1011',
+                                es_igv_justo: this.tributoCodigo === '1011' ? this.esIgvJusto : false,
+                                monto_deuda_inicial: montoLimpio > 0 ? montoLimpio : (this.cacheDeuda?.monto_deuda_inicial ?? null),
+                                vencimiento_deuda: this.vencimientoDeuda || (this.cacheDeuda?.vencimientoDeuda || null),
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (this.deudaDescartada && !activo) {
+                            return;
+                        }
+                        if (data.operacion_id) {
+                            this.meses[this.mesIdx].operacion_id = data.operacion_id;
+                        }
+                        this.meses[this.mesIdx].tiene_deuda = !!data.tiene_deuda;
+                        if (data.tributo_codigo) this.meses[this.mesIdx].tributo_codigo = data.tributo_codigo;
+                        if (data.tributo_nombre) this.meses[this.mesIdx].tributo_nombre = data.tributo_nombre;
+                        if (data.tributo_nombre_corto) this.meses[this.mesIdx].tributo_nombre_corto = data.tributo_nombre_corto;
+                        if (data.tributo_etiqueta) this.meses[this.mesIdx].tributo_etiqueta = data.tributo_etiqueta;
+                        this.meses[this.mesIdx].es_igv_justo = !!data.es_igv_justo;
+                        if (data.monto_deuda_inicial !== undefined && data.monto_deuda_inicial !== null) {
+                            this.meses[this.mesIdx].monto_deuda_inicial = parseFloat(data.monto_deuda_inicial || 0);
+                        }
+                        if (data.vencimiento_deuda) this.meses[this.mesIdx].vencimiento_deuda = data.vencimiento_deuda;
+                        if (data.vencimiento_deuda_dmy) this.meses[this.mesIdx].vencimiento_deuda_dmy = data.vencimiento_deuda_dmy;
+                        if (data.total_abonado !== undefined) this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado || 0);
+                        if (data.saldo_pendiente !== undefined) this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente || 0);
+                        if (data.abonos) {
+                            this.abonos = data.abonos;
+                            this.meses[this.mesIdx].abonos = this.abonos;
+                        }
+
+                        if (activo && !this.montoDeuda && data.monto_deuda_inicial) {
+                            this.montoDeuda = this.formatearNumeroConComas(data.monto_deuda_inicial);
+                        }
+                    } catch (err) {
+                        console.error('Error al sincronizar estado de deuda:', err);
+                    }
+                },
+
+                deudasPorPagar() {
+                    return (this.meses[this.mesIdx].deudas || []).filter((deuda) => parseFloat(deuda.saldo_pendiente || 0) > 0);
+                },
+
+                declaracionDeCodigo(codigo) {
+                    for (const bloque of this.declaraciones || []) {
+                        if ((bloque.tributos || []).some((tributo) => tributo.codigo === codigo)) {
+                            return bloque.id;
+                        }
+                    }
+                    if (codigo === '3041' || codigo === '3051') {
+                        return 'pdt_601';
+                    }
+                    return 'pdt_621';
+                },
+
+                declaracionDe(deuda) {
+                    if (deuda && deuda.declaracion) {
+                        return deuda.declaracion;
+                    }
+                    return this.declaracionDeCodigo(deuda?.tributo_codigo);
+                },
+
+                deudasDelBloque(id) {
+                    return this.deudas.filter((deuda) => this.declaracionDe(deuda) === id);
+                },
+
+                resumenBloque(id) {
+                    const filas = this.deudasDelBloque(id).filter((deuda) => !!deuda.id);
+                    const saldo = filas.reduce((suma, deuda) => suma + (parseFloat(deuda.saldo_pendiente) || 0), 0);
+                    return { hay: filas.length > 0, saldo: Math.round(saldo * 100) / 100 };
+                },
+
+                totalMontoAPagar() {
+                    const deudasValidas = (this.deudas || []).filter(d => !!d.id || (parseFloat(d.monto_deuda_inicial || 0) > 0) || (parseFloat(d.borrador_monto || 0) > 0));
+                    if (deudasValidas.length > 0) {
+                        const total = deudasValidas.reduce((acc, d) => acc + (parseFloat(d.monto_deuda_inicial || d.borrador_monto || 0)), 0);
+                        return Math.round(total * 100) / 100;
+                    }
+                    const mes = this.meses[this.mesIdx];
+                    return Math.round((parseFloat(mes?.monto_deuda_inicial || 0)) * 100) / 100;
+                },
+
+                totalMontoPagado() {
+                    const deudasValidas = (this.deudas || []).filter(d => !!d.id || (parseFloat(d.monto_deuda_inicial || 0) > 0) || (parseFloat(d.borrador_monto || 0) > 0));
+                    if (deudasValidas.length > 0) {
+                        const total = deudasValidas.reduce((acc, d) => {
+                            const abonosSum = (d.abonos || []).reduce((a, b) => a + (parseFloat(b.monto || 0)), 0);
+                            return acc + (abonosSum > 0 ? abonosSum : (parseFloat(d.total_abonado || 0)));
+                        }, 0);
+                        return Math.round(total * 100) / 100;
+                    }
+                    const mes = this.meses[this.mesIdx];
+                    const abonosMes = (this.abonos || mes?.abonos || []).reduce((a, b) => a + (parseFloat(b.monto || 0)), 0);
+                    return Math.round((abonosMes > 0 ? abonosMes : parseFloat(mes?.total_abonado || 0)) * 100) / 100;
+                },
+
+                totalMontoPorPagar() {
+                    const aPagar = this.totalMontoAPagar();
+                    const pagado = this.totalMontoPagado();
+                    return Math.max(0, Math.round((aPagar - pagado) * 100) / 100);
+                },
+
+                tributosLibres(bloque) {
+                    return (bloque.tributos || []).filter((tributo) => !this.codigoUsado(tributo.codigo));
+                },
+
+                borradorSinTributo(declaracionId) {
+                    return this.deudas.some((deuda) => !deuda.tributo_codigo && this.declaracionDe(deuda) === declaracionId);
+                },
+
+                etiquetaTributo(opcion) {
+                    if (!opcion) {
+                        return '';
+                    }
+                    return opcion.etiqueta;
+                },
+
+                codigoUsado(codigo) {
+                    return this.deudas.some((deuda) => {
+                        if (this.deudaPersistida(deuda)) {
+                            return deuda.tributo_codigo === codigo;
+                        }
+                        return deuda.borrador_codigo === codigo;
+                    });
+                },
+
+                deudaPersistida(deuda) {
+                    return !!deuda.id || parseFloat(deuda.monto_deuda_inicial || 0) > 0 || (deuda.abonos || []).length > 0;
+                },
+
+                nombreTributo(codigo) {
+                    for (const bloque of this.declaraciones || []) {
+                        const tributo = (bloque.tributos || []).find((item) => item.codigo === codigo);
+                        if (tributo) {
+                            return tributo.nombre_corto || tributo.nombre;
+                        }
+                    }
+                    return 'Tributo';
+                },
+
+                tributoUsadoPorOtra(codigo, deuda) {
+                    return this.deudas.some((otra) => {
+                        if (otra === deuda || !codigo) {
+                            return false;
+                        }
+                        if (this.deudaPersistida(otra)) {
+                            return otra.tributo_codigo === codigo;
+                        }
+                        return otra.borrador_codigo === codigo;
+                    });
+                },
+
+                igvJustoEnEdicion(deuda) {
+                    return !!deuda.borrador_igv && deuda.borrador_codigo === '1011';
+                },
+
+                prepararBorrador(deuda) {
+                    deuda.borrador_codigo = deuda.tributo_codigo || '';
+                    deuda.borrador_monto = deuda.monto || '';
+                    deuda.borrador_vencimiento = deuda.vencimiento || '';
+                    deuda.borrador_igv = !!deuda.es_igv_justo;
+                },
+
+                revertirCampos(deuda) {
+                    if (!this.deudaPersistida(deuda)) {
+                        return;
+                    }
+                    this.prepararBorrador(deuda);
+                },
+
+                normalizarDeuda(raw) {
+                    const codigo = raw && Object.prototype.hasOwnProperty.call(raw, 'tributo_codigo')
+                        ? (raw.tributo_codigo || '')
+                        : '1011';
+                    const deuda = {
+                        id: raw?.id || null,
+                        localKey: raw?.localKey || ('t-' + (raw?.id || (Date.now() + Math.random()))),
+                        tributo_codigo: codigo,
+                        declaracion: raw?.declaracion || this.declaracionDeCodigo(codigo),
+                        tributo_nombre_corto: raw?.tributo_nombre_corto || (codigo ? this.nombreTributo(codigo) : 'Nuevo tributo'),
+                        es_igv_justo: !!raw?.es_igv_justo,
+                        monto: raw?.monto_deuda_inicial ? this.formatearNumeroConComas(raw.monto_deuda_inicial) : (raw?.monto || ''),
+                        vencimiento: raw?.vencimiento_deuda || raw?.vencimiento || this.vencimientoOficialPdt || this.meses[this.mesIdx].vencimiento_oficial_pdt || '',
+                        vencimiento_deuda_dmy: raw?.vencimiento_deuda_dmy || '',
+                        monto_deuda_inicial: parseFloat(raw?.monto_deuda_inicial || 0),
+                        saldo_pendiente: parseFloat(raw?.saldo_pendiente || 0),
+                        total_abonado: parseFloat(raw?.total_abonado || 0),
+                        abonos: raw?.abonos || [],
+                        nuevoMonto: '',
+                        nuevaFecha: new Date().toISOString().split('T')[0],
+                        nuevoMedio: '',
+                        nuevaObs: '',
+                        saving: false,
+                        guardado: false,
+                        savingAbono: false,
+                        abonoGuardado: false,
+                        calculandoIgv: false,
+                    };
+                    this.prepararBorrador(deuda);
+                    return deuda;
+                },
+
+                hidratarDeudas(lista) {
+                    const guardadas = (lista || [])
+                        .filter(d => d && (d.id || (parseFloat(d.monto_deuda_inicial) || 0) > 0 || (d.abonos && d.abonos.length > 0)))
+                        .map(d => this.normalizarDeuda(d));
+                    const codigos = new Set(guardadas.map(d => d.tributo_codigo));
+                    const borradores = (this.deudas || []).filter((deuda) => !deuda.id && (parseFloat(deuda.borrador_monto || deuda.monto_deuda_inicial || 0) > 0 || (deuda.abonos && deuda.abonos.length > 0)) && !codigos.has(deuda.tributo_codigo) && !codigos.has(deuda.borrador_codigo));
+                    this.deudas = guardadas.concat(borradores);
+                    this.meses[this.mesIdx].deudas = guardadas;
+                    if (!this.deudas.some((deuda) => deuda.localKey === this.deudaAbiertaKey)) {
+                        this.deudaAbiertaKey = null;
+                    }
+                },
+
+                aplicarRespuestaDeuda(data) {
+                    const mes = this.meses[this.mesIdx];
+                    if (data.operacion_id) {
+                        mes.operacion_id = data.operacion_id;
+                    }
+                    mes.tiene_deuda = !!data.tiene_deuda;
+                    this.tieneDeuda = !!data.tiene_deuda;
+                    if (data.monto_deuda_inicial !== undefined && data.monto_deuda_inicial !== null) {
+                        mes.monto_deuda_inicial = parseFloat(data.monto_deuda_inicial || 0);
+                        this.montoDeuda = this.formatearNumeroConComas(data.monto_deuda_inicial);
+                    }
+                    if (data.total_abonado !== undefined) {
+                        mes.total_abonado = parseFloat(data.total_abonado || 0);
+                    }
+                    if (data.saldo_pendiente !== undefined) {
+                        mes.saldo_pendiente = parseFloat(data.saldo_pendiente || 0);
+                    }
+                    if (Array.isArray(data.deudas)) {
+                        const abierta = this.deudas.find((deuda) => deuda.localKey === this.deudaAbiertaKey);
+                        const codigo = abierta ? (abierta.borrador_codigo || abierta.tributo_codigo) : null;
+                        const abiertaId = abierta ? abierta.id : null;
+                        this.hidratarDeudas(data.deudas);
+                        const nueva = this.deudas.find((deuda) => (abiertaId && deuda.id === abiertaId) || (codigo && deuda.tributo_codigo === codigo));
+                        if (nueva) {
+                            this.deudaAbiertaKey = nueva.localKey;
+                        }
+                    }
+
+                    this.cacheDeuda = {
+                        montoDeuda: this.montoDeuda,
+                        monto_deuda_inicial: parseFloat(mes.monto_deuda_inicial || 0),
+                        vencimientoDeuda: this.vencimientoDeuda,
+                        vencimiento_deuda_dmy: mes.vencimiento_deuda_dmy || '',
+                        vencimiento_oficial_pdt: this.vencimientoOficialPdt,
+                        tributoCodigo: this.tributoCodigo,
+                        esIgvJusto: this.esIgvJusto,
+                        editandoFechaManual: this.editandoFechaManual,
+                        total_abonado: parseFloat(mes.total_abonado || 0),
+                        saldo_pendiente: parseFloat(mes.saldo_pendiente || 0),
+                        abonos: [...(this.abonos || [])]
+                    };
+                },
+
+                alCambiarTributo(deuda) {
+                    if (!deuda.borrador_codigo) {
+                        if (!this.deudaPersistida(deuda)) {
+                            deuda.tributo_nombre_corto = 'Nuevo tributo';
+                        }
+                        deuda.borrador_igv = false;
+                        this.encuadrarMenuDJ();
+                        return;
+                    }
+                    if (!this.deudaPersistida(deuda)) {
+                        deuda.tributo_nombre_corto = this.nombreTributo(deuda.borrador_codigo);
+                        deuda.declaracion = this.declaracionDeCodigo(deuda.borrador_codigo);
+                    }
+                    if (deuda.borrador_codigo !== '1011') {
+                        deuda.borrador_igv = false;
+                    }
+                    this.encuadrarMenuDJ();
+                },
+
+                agregarTributo(codigo, declaracionId) {
+                    if (!codigo) {
+                        if (!declaracionId) {
+                            return;
+                        }
+                        const borrador = this.deudas.find((deuda) => !deuda.tributo_codigo && this.declaracionDe(deuda) === declaracionId);
+                        if (borrador) {
+                            this.deudaAbiertaKey = borrador.localKey;
+                            return;
+                        }
+                        const bloque = (this.declaraciones || []).find((item) => item.id === declaracionId);
+                        if (!bloque || this.tributosLibres(bloque).length === 0) {
+                            return;
+                        }
+                        const deuda = this.normalizarDeuda({
+                            tributo_codigo: '',
+                            declaracion: declaracionId,
+                            tributo_nombre_corto: 'Nuevo tributo',
+                        });
+                        this.deudas.push(deuda);
+                        this.deudaAbiertaKey = deuda.localKey;
+                        this.$nextTick(() => {
+                            const paneles = this.$root.querySelectorAll('[data-deuda-formulario]');
+                            for (const panel of paneles) {
+                                if (panel.offsetParent !== null) {
+                                    panel.querySelector('select')?.focus();
+                                    break;
+                                }
+                            }
+                        });
+                        return;
+                    }
+                    const existente = this.deudas.find((deuda) => deuda.tributo_codigo === codigo);
+                    if (existente) {
+                        this.deudaAbiertaKey = existente.localKey;
+                        return;
+                    }
+                    const deuda = this.normalizarDeuda({
+                        tributo_codigo: codigo,
+                        declaracion: this.declaracionDeCodigo(codigo),
+                        tributo_nombre_corto: this.nombreTributo(codigo),
+                    });
+                    this.deudas.push(deuda);
+                    this.deudaAbiertaKey = deuda.localKey;
+                },
+
+                async guardarTributo(deuda) {
+                    deuda.saving = true;
+                    deuda.guardado = false;
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+                        const response = await fetch('{{ route('control.update') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: this.meses[this.mesIdx].periodo,
+                                tiene_deuda: true,
+                                guardar_tributo: true,
+                                deuda_id: deuda.id,
+                                tributo_codigo: deuda.borrador_codigo,
+                                es_igv_justo: deuda.borrador_codigo === '1011' && !!deuda.borrador_igv,
+                                monto_deuda_inicial: this.limpiarMoneda(deuda.borrador_monto),
+                                vencimiento_deuda: deuda.borrador_vencimiento || null,
+                            }),
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            const detalle = data.errors ? Object.values(data.errors).flat()[0] : null;
+                            throw new Error(detalle || data.message || 'Error al guardar el tributo.');
+                        }
+                        const codigoEnviado = deuda.borrador_codigo;
+                        this.aplicarRespuestaDeuda(data);
+                        this.encuadrarMenuDJ();
+                        const guardada = this.deudas.find(d => d.tributo_codigo === codigoEnviado && d.id);
+                        if (guardada) {
+                            guardada.guardado = true;
+                            setTimeout(() => { guardada.guardado = false; }, 2200);
+                        }
+                    } catch (err) {
+                        alert(err.message || 'No se pudo guardar el tributo.');
+                    } finally {
+                        deuda.saving = false;
+                    }
+                },
+
+                async eliminarTributo(deuda) {
+                    if (!deuda.id) {
+                        this.deudas = this.deudas.filter(d => d !== deuda);
+                        return;
+                    }
+                    if (!confirm('¿Eliminar este tributo y sus pagos?')) {
+                        return;
+                    }
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+                        const response = await fetch('{{ route('control.update') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: this.meses[this.mesIdx].periodo,
+                                tiene_deuda: true,
+                                eliminar_deuda_id: deuda.id,
+                            }),
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'No se pudo eliminar el tributo.');
+                        }
+                        this.deudas = this.deudas.filter(d => d.localKey !== deuda.localKey);
+                        this.aplicarRespuestaDeuda(data);
+                        this.encuadrarMenuDJ();
+                    } catch (err) {
+                        alert(err.message || 'No se pudo eliminar el tributo.');
+                    }
+                },
+
+                async toggleIgvJusto(deuda) {
+                    if (!deuda) {
+                        return;
+                    }
+                    deuda.borrador_igv = !deuda.borrador_igv;
+                    if (!deuda.borrador_igv) {
+                        deuda.borrador_vencimiento = this.vencimientoOficialPdt || this.meses[this.mesIdx].vencimiento_oficial_pdt || '';
+                        return;
+                    }
+                    deuda.calculandoIgv = true;
+                    const clave = deuda.localKey;
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+                        const response = await fetch('{{ route('control.calcular_igv_justo') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: this.meses[this.mesIdx].periodo,
+                            }),
+                        });
+                        const data = await response.json();
+                        if (this.deudaAbiertaKey === clave && deuda.borrador_igv && response.ok && data.fecha_vencimiento) {
+                            deuda.borrador_vencimiento = data.fecha_vencimiento;
+                        } else if (!(response.ok && data.fecha_vencimiento)) {
+                            alert(data.message || 'No se pudo calcular el cronograma de IGV Justo.');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    } finally {
+                        deuda.calculandoIgv = false;
+                    }
+                },
+
+                habilitarEdicionFecha() {
+                    this.editandoFechaManual = true;
+                    this.$nextTick(() => {
+                        if (this.$refs.inputVencimiento) {
+                            this.$refs.inputVencimiento.focus();
+                            if (typeof this.$refs.inputVencimiento.showPicker === 'function') {
+                                try { this.$refs.inputVencimiento.showPicker(); } catch (e) {}
+                            }
+                        }
+                    });
+                },
+
+                restablecerFechaSunat() {
+                    const oficial = this.vencimientoOficialPdt || this.meses[this.mesIdx].vencimiento_oficial_pdt;
+                    if (oficial) {
+                        this.vencimientoDeuda = oficial;
+                    }
+                    this.editandoFechaManual = false;
+                },
+
+                async calcularVencimientoIgvJusto() {
+                    this.calculandoIgv = true;
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch('{{ route('control.calcular_igv_justo') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: this.meses[this.mesIdx].periodo,
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (response.ok && data.fecha_vencimiento) {
+                            this.vencimientoDeuda = data.fecha_vencimiento;
+                            this.igvJustoMensaje = data.mensaje || '';
+                        } else {
+                            alert(data.message || 'No se pudo calcular el cronograma de IGV Justo.');
+                        }
+                    } catch (err) {
+                        console.error('Error al calcular IGV Justo:', err);
+                    } finally {
+                        this.calculandoIgv = false;
+                    }
+                },
+
+                async cargarDeuda() {
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch('{{ route('control.deuda') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: this.meses[this.mesIdx].periodo,
+                            }),
+                        });
+
+                        const data = await response.json();
+                        this.deudaCargada = true;
+                        this.abonos = data.abonos || [];
+                        this.meses[this.mesIdx].abonos = this.abonos;
+                        if (data.operacion_id) {
+                            this.meses[this.mesIdx].operacion_id = data.operacion_id;
+                        }
+                        if (!this.tieneDeuda) {
+                            this.meses[this.mesIdx].tiene_deuda = !!data.tiene_deuda;
+                        }
+                        this.meses[this.mesIdx].tributo_codigo = data.tributo_codigo || '1011';
+                        this.meses[this.mesIdx].tributo_nombre = data.tributo_nombre;
+                        this.meses[this.mesIdx].tributo_nombre_corto = data.tributo_nombre_corto;
+                        this.meses[this.mesIdx].tributo_etiqueta = data.tributo_etiqueta;
+                        this.meses[this.mesIdx].es_igv_justo = !!data.es_igv_justo;
+                        this.meses[this.mesIdx].monto_deuda_inicial = parseFloat(data.monto_deuda_inicial || 0);
+                        this.meses[this.mesIdx].vencimiento_deuda = data.vencimiento_deuda || '';
+                        this.meses[this.mesIdx].vencimiento_deuda_dmy = data.vencimiento_deuda_dmy || '';
+                        this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado || 0);
+                        this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente || 0);
+
+                        if (!this.tieneDeuda) {
+                            this.tieneDeuda = !!data.tiene_deuda;
+                        }
+                        if (data.vencimiento_oficial_pdt) {
+                            this.vencimientoOficialPdt = data.vencimiento_oficial_pdt;
+                            this.meses[this.mesIdx].vencimiento_oficial_pdt = data.vencimiento_oficial_pdt;
+                            this.meses[this.mesIdx].vencimiento_oficial_pdt_dmy = data.vencimiento_oficial_pdt_dmy;
+                        }
+                        this.tributoCodigo = data.tributo_codigo || '1011';
+                        this.esIgvJusto = !!data.es_igv_justo;
+                        if (data.monto_deuda_inicial) {
+                            this.montoDeuda = this.formatearNumeroConComas(data.monto_deuda_inicial);
+                        } else if (this.cacheDeuda && this.cacheDeuda.montoDeuda) {
+                            this.montoDeuda = this.cacheDeuda.montoDeuda;
+                        }
+                        if (data.vencimiento_deuda) {
+                            this.vencimientoDeuda = data.vencimiento_deuda || '';
+                        } else if (this.cacheDeuda && this.cacheDeuda.vencimientoDeuda) {
+                            this.vencimientoDeuda = this.cacheDeuda.vencimientoDeuda;
+                        } else if (!this.esIgvJusto && this.vencimientoOficialPdt) {
+                            this.vencimientoDeuda = this.vencimientoOficialPdt;
+                        }
+
+                        if (this.vencimientoDeuda && this.vencimientoOficialPdt && this.vencimientoDeuda !== this.vencimientoOficialPdt && !this.esIgvJusto) {
+                            this.editandoFechaManual = true;
+                        }
+
+                        if (data.tiene_deuda || data.monto_deuda_inicial || (this.abonos && this.abonos.length > 0)) {
+                            this.cacheDeuda = {
+                                montoDeuda: this.montoDeuda,
+                                monto_deuda_inicial: parseFloat(data.monto_deuda_inicial || (this.cacheDeuda?.monto_deuda_inicial ?? 0)),
+                                vencimientoDeuda: this.vencimientoDeuda,
+                                vencimiento_deuda_dmy: data.vencimiento_deuda_dmy || (this.cacheDeuda?.vencimiento_deuda_dmy ?? ''),
+                                vencimiento_oficial_pdt: this.vencimientoOficialPdt,
+                                tributoCodigo: this.tributoCodigo,
+                                esIgvJusto: this.esIgvJusto,
+                                editandoFechaManual: this.editandoFechaManual,
+                                total_abonado: parseFloat(data.total_abonado || 0),
+                                saldo_pendiente: parseFloat(data.saldo_pendiente || 0),
+                                abonos: [...(this.abonos || [])]
+                            };
+                        }
+                        if (Array.isArray(data.deudas)) {
+                            this.hidratarDeudas(data.deudas);
+                        }
+                        if (data.saldo_pendiente !== undefined) {
+                            this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente || 0);
+                        }
+                        if (data.monto_deuda_inicial !== undefined && data.monto_deuda_inicial !== null) {
+                            this.meses[this.mesIdx].monto_deuda_inicial = parseFloat(data.monto_deuda_inicial || 0);
+                        }
+                        if (data.total_abonado !== undefined) {
+                            this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado || 0);
+                        }
+                    } catch (err) {
+                        console.error('Error al cargar deuda:', err);
+                    }
+                },
+
+                async guardarConfigDeuda() {
+                    this.savingDeuda = true;
+                    this.guardadoDeudaExitoso = false;
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const montoLimpio = this.limpiarMoneda(this.montoDeuda);
+
+                        const response = await fetch('{{ route('control.update') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: this.meses[this.mesIdx].periodo,
+                                tiene_deuda: this.tieneDeuda,
+                                tributo_codigo: this.tieneDeuda ? this.tributoCodigo : null,
+                                es_igv_justo: this.tieneDeuda && this.tributoCodigo === '1011' ? this.esIgvJusto : false,
+                                monto_deuda_inicial: this.tieneDeuda ? montoLimpio : null,
+                                vencimiento_deuda: this.tieneDeuda ? (this.vencimientoDeuda || null) : null,
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Error al guardar deuda.');
+                        }
+
+                        if (data.operacion_id) {
+                            this.meses[this.mesIdx].operacion_id = data.operacion_id;
+                        }
+                        this.meses[this.mesIdx].tiene_deuda = !!data.tiene_deuda;
+                        this.meses[this.mesIdx].tributo_codigo = data.tributo_codigo;
+                        this.meses[this.mesIdx].tributo_nombre = data.tributo_nombre;
+                        this.meses[this.mesIdx].tributo_nombre_corto = data.tributo_nombre_corto;
+                        this.meses[this.mesIdx].tributo_etiqueta = data.tributo_etiqueta;
+                        this.meses[this.mesIdx].es_igv_justo = !!data.es_igv_justo;
+                        this.meses[this.mesIdx].monto_deuda_inicial = parseFloat(data.monto_deuda_inicial || 0);
+                        this.meses[this.mesIdx].vencimiento_deuda = data.vencimiento_deuda || '';
+                        this.meses[this.mesIdx].vencimiento_deuda_dmy = data.vencimiento_deuda_dmy || '';
+                        this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado || 0);
+                        this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente || 0);
+
+                        if (data.abonos) {
+                            this.abonos = data.abonos;
+                            this.meses[this.mesIdx].abonos = this.abonos;
+                        }
+
+                        this.montoDeuda = this.formatearNumeroConComas(data.monto_deuda_inicial);
+
+                        this.cacheDeuda = {
+                            montoDeuda: this.montoDeuda,
+                            monto_deuda_inicial: parseFloat(data.monto_deuda_inicial || 0),
+                            vencimientoDeuda: this.vencimientoDeuda,
+                            vencimiento_deuda_dmy: data.vencimiento_deuda_dmy || '',
+                            vencimiento_oficial_pdt: this.vencimientoOficialPdt,
+                            tributoCodigo: this.tributoCodigo,
+                            esIgvJusto: this.esIgvJusto,
+                            editandoFechaManual: this.editandoFechaManual,
+                            total_abonado: parseFloat(data.total_abonado || 0),
+                            saldo_pendiente: parseFloat(data.saldo_pendiente || 0),
+                            abonos: [...(this.abonos || [])]
+                        };
+
+                        this.guardadoDeudaExitoso = true;
+                        setTimeout(() => { this.guardadoDeudaExitoso = false; }, 2200);
+                    } catch (err) {
+                        console.error('Error al guardar datos de deuda:', err);
+                        alert('No se pudo guardar la configuración de deuda: ' + err.message);
+                    } finally {
+                        this.savingDeuda = false;
+                    }
+                },
+
+                async registrarAbono(deuda) {
+                    if (!deuda || !deuda.id || !this.meses[this.mesIdx].operacion_id) {
+                        alert('Guarde el tributo antes de registrar un pago.');
+                        return;
+                    }
+
+                    const montoLimpio = this.limpiarMoneda(deuda.nuevoMonto);
+                    if (montoLimpio <= 0) {
+                        alert('Ingrese un monto válido para el pago.');
+                        return;
+                    }
+                    if (!deuda.nuevoMedio) {
+                        alert('Seleccione el medio de pago: detracciones, caja, bancos, compensación de renta anual o ITAN.');
+                        return;
+                    }
+
+                    deuda.savingAbono = true;
+                    deuda.abonoGuardado = false;
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch('{{ route('abonos_deudas.store') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                operacion_id: this.meses[this.mesIdx].operacion_id,
+                                deuda_tributaria_id: deuda.id,
+                                monto: montoLimpio,
+                                fecha_pago: deuda.nuevaFecha,
+                                medio_pago: deuda.nuevoMedio,
+                                observacion: deuda.nuevaObs || null,
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Error al guardar el pago.');
+                        }
+
+                        deuda.abonos.unshift(data.abono);
+                        deuda.total_abonado = parseFloat(data.total_abonado);
+                        deuda.saldo_pendiente = parseFloat(data.saldo_pendiente);
+                        this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado_mes ?? data.total_abonado);
+                        this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente_mes ?? data.saldo_pendiente);
+                        const enMes = (this.meses[this.mesIdx].deudas || []).find(d => d.id === deuda.id);
+                        if (enMes) {
+                            enMes.abonos = deuda.abonos;
+                            enMes.saldo_pendiente = deuda.saldo_pendiente;
+                            enMes.total_abonado = deuda.total_abonado;
+                        }
+                        deuda.nuevoMonto = '';
+                        deuda.nuevoMedio = '';
+                        deuda.nuevaObs = '';
+                        deuda.abonoGuardado = true;
+                        setTimeout(() => { deuda.abonoGuardado = false; }, 2200);
+                    } catch (err) {
+                        alert('Error al registrar el pago: ' + err.message);
+                    } finally {
+                        deuda.savingAbono = false;
+                    }
+                },
+
+                async eliminarAbono(deuda, abonoId) {
+                    if (!confirm('¿Desea eliminar este pago?')) {
+                        return;
+                    }
+
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch(`/abonos-deudas/${abonoId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Error al eliminar el pago.');
+                        }
+
+                        if (deuda && deuda.abonos) {
+                            deuda.abonos = deuda.abonos.filter(a => a.id !== abonoId);
+                            deuda.total_abonado = parseFloat(data.total_abonado);
+                            deuda.saldo_pendiente = parseFloat(data.saldo_pendiente);
+                        }
+                        this.meses[this.mesIdx].total_abonado = parseFloat(data.total_abonado_mes ?? data.total_abonado);
+                        this.meses[this.mesIdx].saldo_pendiente = parseFloat(data.saldo_pendiente_mes ?? data.saldo_pendiente);
+                    } catch (err) {
+                        alert('Error al eliminar el pago: ' + err.message);
+                    }
+                },
+
+                // --- Métodos de Hoja de Liquidación Tributaria (PDT 621 & PLAME 601) ---
+                inicializarLiquidacion() {
+                    const mes = this.meses[this.mesIdx];
+                    this.olvidarImportacionSunat();
+                    this.saldoFavorSugerido = parseFloat(mes?.saldo_favor_anterior_sugerido || 0);
+                    this.retencionesSugeridas = parseFloat(mes?.retenciones_saldo_anterior_sugerido || 0);
+                    this.percepcionesSugeridas = parseFloat(mes?.percepciones_saldo_anterior_sugerido || 0);
+                    this.rentaSugeridaM1 = parseFloat(mes?.renta_saldo_anterior_sugerido || 0);
+                    this.itanSugeridoM1 = parseFloat(mes?.itan_saldo_anterior_sugerido || 0);
+
+                    let tasaPorDefecto = 1.0;
+                    const reg = (this.regimen || '').toUpperCase();
+                    if (reg === 'RER' || reg === 'GENERAL' || reg === 'RG') {
+                        tasaPorDefecto = 1.5;
+                    }
+
+                    const depto = (this.departamento || '').toUpperCase().trim();
+                    const esSelvaSugerido = ['LORETO', 'UCAYALI', 'SAN MARTIN', 'SAN MARTÍN', 'AMAZONAS', 'MADRE DE DIOS'].includes(depto);
+                    const guardada = mes?.liquidacion || null;
+                    const marcaSunat = guardada ? {
+                        igv: !!guardada.igv_determinado_por_sunat,
+                        renta: !!guardada.renta_determinado_por_sunat,
+                        igv_resultante_pagar: parseFloat(guardada.igv_resultante_pagar || 0),
+                        igv_saldo_favor_siguiente: parseFloat(guardada.igv_saldo_favor_siguiente || 0),
+                        igv_retenciones_saldo_siguiente: parseFloat(guardada.igv_retenciones_saldo_siguiente || 0),
+                        igv_percepciones_saldo_siguiente: parseFloat(guardada.igv_percepciones_saldo_siguiente || 0),
+                        renta_calculada: parseFloat(guardada.renta_calculada || 0),
+                        renta_resultante_pagar: parseFloat(guardada.renta_resultante_pagar || 0),
+                        renta_saldo_favor_siguiente: parseFloat(guardada.renta_saldo_favor_siguiente || 0),
+                        renta_tributo_codigo: guardada.renta_tributo_codigo || null,
+                    } : null;
+
+                    if (mes && mes.liquidacion) {
+                        const l = mes.liquidacion;
+                        // Arrastre 100% automático: si en base de datos el saldo anterior guardado es 0 o vacío, pero existe saldo sugerido M-1, jalarlo automáticamente
+                        const sfAnterior = (parseFloat(l.igv_saldo_favor_anterior || 0) > 0)
+                            ? l.igv_saldo_favor_anterior
+                            : this.saldoFavorSugerido;
+
+                        const retAnterior = (parseFloat(l.igv_retenciones_saldo_anterior || 0) > 0)
+                            ? l.igv_retenciones_saldo_anterior
+                            : this.retencionesSugeridas;
+
+                        const percAnterior = (parseFloat(l.igv_percepciones_saldo_anterior || 0) > 0)
+                            ? l.igv_percepciones_saldo_anterior
+                            : this.percepcionesSugeridas;
+
+                        const rentaAnt = (parseFloat(l.renta_saldo_favor_anterior || 0) > 0)
+                            ? l.renta_saldo_favor_anterior
+                            : this.rentaSugeridaM1;
+
+                        const itanAnt = (parseFloat(l.renta_itan_saldo_anterior || 0) > 0)
+                            ? l.renta_itan_saldo_anterior
+                            : this.itanSugeridoM1;
+
+                        this.liquidacion = {
+                            es_zona_selva: !!l.es_zona_selva,
+                            ventas_base: l.ventas_base > 0 ? this.formatearNumeroConComas(l.ventas_base) : '',
+                            igv_ventas: l.igv_ventas > 0 ? this.formatearNumeroConComas(l.igv_ventas) : (l.es_zona_selva ? '0.00' : ''),
+                            igv_descuentos_base: l.igv_descuentos_base > 0 ? this.formatearNumeroConComas(l.igv_descuentos_base) : '',
+                            igv_descuentos: l.igv_descuentos > 0 ? this.formatearNumeroConComas(l.igv_descuentos) : '',
+                            ventas_no_gravadas: l.ventas_no_gravadas > 0 ? this.formatearNumeroConComas(l.ventas_no_gravadas) : '',
+                            igv_ventas_ley_base: l.igv_ventas_ley_base > 0 ? this.formatearNumeroConComas(l.igv_ventas_ley_base) : '',
+                            igv_ventas_ley: l.igv_ventas_ley > 0 ? this.formatearNumeroConComas(l.igv_ventas_ley) : '',
+                            compras_base: l.compras_base > 0 ? this.formatearNumeroConComas(l.compras_base) : '',
+                            igv_compras: l.igv_compras > 0 ? this.formatearNumeroConComas(l.igv_compras) : (l.es_zona_selva ? '0.00' : ''),
+                            igv_compras_ley_base: l.igv_compras_ley_base > 0 ? this.formatearNumeroConComas(l.igv_compras_ley_base) : '',
+                            igv_compras_ley: l.igv_compras_ley > 0 ? this.formatearNumeroConComas(l.igv_compras_ley) : '',
+                            igv_compras_mixtas_base: l.igv_compras_mixtas_base > 0 ? this.formatearNumeroConComas(l.igv_compras_mixtas_base) : '',
+                            igv_compras_mixtas: l.igv_compras_mixtas > 0 ? this.formatearNumeroConComas(l.igv_compras_mixtas) : '',
+                            igv_importaciones_base: l.igv_importaciones_base > 0 ? this.formatearNumeroConComas(l.igv_importaciones_base) : '',
+                            igv_importaciones: l.igv_importaciones > 0 ? this.formatearNumeroConComas(l.igv_importaciones) : '',
+                            compras_destino_no_gravadas: l.compras_destino_no_gravadas > 0 ? this.formatearNumeroConComas(l.compras_destino_no_gravadas) : '',
+                            igv_importaciones_mixtas_base: l.igv_importaciones_mixtas_base > 0 ? this.formatearNumeroConComas(l.igv_importaciones_mixtas_base) : '',
+                            igv_importaciones_mixtas: l.igv_importaciones_mixtas > 0 ? this.formatearNumeroConComas(l.igv_importaciones_mixtas) : '',
+                            importaciones_destino_no_gravadas: l.importaciones_destino_no_gravadas > 0 ? this.formatearNumeroConComas(l.importaciones_destino_no_gravadas) : '',
+                            compras_internas_no_gravadas: l.compras_internas_no_gravadas > 0 ? this.formatearNumeroConComas(l.compras_internas_no_gravadas) : '',
+                            compras_importadas_no_gravadas: l.compras_importadas_no_gravadas > 0 ? this.formatearNumeroConComas(l.compras_importadas_no_gravadas) : '',
+                            igv_saldo_favor_anterior: sfAnterior > 0 ? this.formatearNumeroConComas(sfAnterior) : '',
+                            igv_retenciones_saldo_anterior: retAnterior > 0 ? this.formatearNumeroConComas(retAnterior) : '',
+                            igv_retenciones: l.igv_retenciones > 0 ? this.formatearNumeroConComas(l.igv_retenciones) : '',
+                            igv_retenciones_saldo_siguiente: parseFloat(l.igv_retenciones_saldo_siguiente || 0),
+                            igv_percepciones_saldo_anterior: percAnterior > 0 ? this.formatearNumeroConComas(percAnterior) : '',
+                            igv_percepciones: l.igv_percepciones > 0 ? this.formatearNumeroConComas(l.igv_percepciones) : '',
+                            igv_percepciones_saldo_siguiente: parseFloat(l.igv_percepciones_saldo_siguiente || 0),
+                            igv_saldo_favor_siguiente: parseFloat(l.igv_saldo_favor_siguiente || 0),
+                            igv_resultante_pagar: parseFloat(l.igv_resultante_pagar || 0),
+                            renta_base_ingresos: l.renta_base_ingresos > 0 ? this.formatearNumeroConComas(l.renta_base_ingresos) : '',
+                            renta_tasa: l.renta_tasa > 0 ? l.renta_tasa : tasaPorDefecto,
+                            renta_calculada: l.renta_calculada > 0 ? this.formatearNumeroConComas(l.renta_calculada) : '',
+                            renta_saldo_favor_anterior: rentaAnt > 0 ? this.formatearNumeroConComas(rentaAnt) : '',
+                            renta_itan_saldo_anterior: itanAnt > 0 ? this.formatearNumeroConComas(itanAnt) : '',
+                            renta_compensacion_itan: l.renta_compensacion_itan > 0 ? this.formatearNumeroConComas(l.renta_compensacion_itan) : '',
+                            renta_itan_saldo_siguiente: parseFloat(l.renta_itan_saldo_siguiente || 0),
+                            renta_retenciones: l.renta_retenciones > 0 ? this.formatearNumeroConComas(l.renta_retenciones) : '',
+                            renta_saldo_favor_siguiente: parseFloat(l.renta_saldo_favor_siguiente || 0),
+                            renta_resultante_pagar: parseFloat(l.renta_resultante_pagar || 0),
+                            plame_essalud_base: l.plame_essalud_base > 0 ? this.formatearNumeroConComas(l.plame_essalud_base) : '',
+                            plame_essalud_a_pagar: l.plame_essalud_a_pagar > 0 ? this.formatearNumeroConComas(l.plame_essalud_a_pagar) : '',
+                            plame_onp_a_pagar: l.plame_onp_a_pagar > 0 ? this.formatearNumeroConComas(l.plame_onp_a_pagar) : '',
+                            plame_renta_4ta_base: l.plame_renta_4ta_base > 0 ? this.formatearNumeroConComas(l.plame_renta_4ta_base) : '',
+                            plame_renta_4ta_a_pagar: l.plame_renta_4ta_a_pagar > 0 ? this.formatearNumeroConComas(l.plame_renta_4ta_a_pagar) : '',
+                            plame_renta_5ta_a_pagar: l.plame_renta_5ta_a_pagar > 0 ? this.formatearNumeroConComas(l.plame_renta_5ta_a_pagar) : '',
+                            plame_afp_a_pagar: l.plame_afp_a_pagar > 0 ? this.formatearNumeroConComas(l.plame_afp_a_pagar) : '',
+                            notas_liquidacion: l.notas_liquidacion || '',
+                        };
+                    } else {
+                        // Mes no inicializado: Arrastre 100% automático desde M-1
+                        this.liquidacion = {
+                            es_zona_selva: esSelvaSugerido,
+                            ventas_base: '',
+                            igv_ventas: esSelvaSugerido ? '0.00' : '',
+                            igv_descuentos_base: '',
+                            igv_descuentos: '',
+                            ventas_no_gravadas: '',
+                            igv_ventas_ley_base: '',
+                            igv_ventas_ley: '',
+                            compras_base: '',
+                            igv_compras: esSelvaSugerido ? '0.00' : '',
+                            igv_compras_ley_base: '',
+                            igv_compras_ley: '',
+                            igv_compras_mixtas_base: '',
+                            igv_compras_mixtas: '',
+                            igv_importaciones_base: '',
+                            igv_importaciones: '',
+                            compras_destino_no_gravadas: '',
+                            igv_importaciones_mixtas_base: '',
+                            igv_importaciones_mixtas: '',
+                            importaciones_destino_no_gravadas: '',
+                            compras_internas_no_gravadas: '',
+                            compras_importadas_no_gravadas: '',
+                            igv_saldo_favor_anterior: this.saldoFavorSugerido > 0 ? this.formatearNumeroConComas(this.saldoFavorSugerido) : '',
+                            igv_retenciones_saldo_anterior: this.retencionesSugeridas > 0 ? this.formatearNumeroConComas(this.retencionesSugeridas) : '',
+                            igv_retenciones: '',
+                            igv_retenciones_saldo_siguiente: 0,
+                            igv_percepciones_saldo_anterior: this.percepcionesSugeridas > 0 ? this.formatearNumeroConComas(this.percepcionesSugeridas) : '',
+                            igv_percepciones: '',
+                            igv_percepciones_saldo_siguiente: 0,
+                            igv_saldo_favor_siguiente: 0,
+                            igv_resultante_pagar: 0,
+                            renta_base_ingresos: '',
+                            renta_tasa: tasaPorDefecto,
+                            renta_calculada: '',
+                            renta_saldo_favor_anterior: this.rentaSugeridaM1 > 0 ? this.formatearNumeroConComas(this.rentaSugeridaM1) : '',
+                            renta_itan_saldo_anterior: this.itanSugeridoM1 > 0 ? this.formatearNumeroConComas(this.itanSugeridoM1) : '',
+                            renta_compensacion_itan: '',
+                            renta_itan_saldo_siguiente: 0,
+                            renta_retenciones: '',
+                            renta_saldo_favor_siguiente: 0,
+                            renta_resultante_pagar: 0,
+                            plame_essalud_base: '',
+                            plame_essalud_a_pagar: '',
+                            plame_onp_a_pagar: '',
+                            plame_renta_4ta_base: '',
+                            plame_renta_4ta_a_pagar: '',
+                            plame_renta_5ta_a_pagar: '',
+                            plame_afp_a_pagar: '',
+                            notas_liquidacion: '',
+                        };
+                    }
+                    this.otrasCasillasIgv = [
+                        'igv_ventas_ley', 'igv_compras_ley', 'igv_compras_mixtas', 'igv_importaciones',
+                        'igv_importaciones_mixtas', 'compras_destino_no_gravadas', 'importaciones_destino_no_gravadas',
+                    ].some((campo) => this.limpiarMoneda(this.liquidacion[campo]) > 0);
+                    this.recalcularTotalesLiquidacion();
+                    this.anclarDeterminacionGuardada(marcaSunat);
+                },
+
+                onVentasBaseInput() {
+                    const base = this.limpiarMoneda(this.liquidacion.ventas_base);
+                    if (this.liquidacion.es_zona_selva) {
+                        this.liquidacion.igv_ventas = '0.00';
+                    } else if (base > 0) {
+                        const igv = Math.round(base * 0.18 * 100) / 100;
+                        this.liquidacion.igv_ventas = this.formatearNumeroConComas(igv);
+                    } else {
+                        this.liquidacion.igv_ventas = '';
+                    }
+
+                    this.sincronizarBaseRenta();
+                    this.recalcularTotalesLiquidacion();
+                },
+
+                onDescuentosBaseInput() {
+                    const base = this.limpiarMoneda(this.liquidacion.igv_descuentos_base);
+                    if (!this.liquidacion.es_zona_selva && base > 0) {
+                        this.liquidacion.igv_descuentos = this.formatearNumeroConComas(Math.round(base * 0.18 * 100) / 100);
+                    } else if (base <= 0) {
+                        this.liquidacion.igv_descuentos = '';
+                    }
+                    this.sincronizarBaseRenta();
+                    this.recalcularTotalesLiquidacion();
+                },
+
+                sincronizarBaseRenta() {
+                    const base = this.limpiarMoneda(this.liquidacion.ventas_base);
+                    const descuentos = this.limpiarMoneda(this.liquidacion.igv_descuentos_base);
+                    const noGravadas = this.limpiarMoneda(this.liquidacion.ventas_no_gravadas);
+                    const totalIngresos = Math.max(0, Math.round((base - descuentos + noGravadas) * 100) / 100);
+                    this.liquidacion.renta_base_ingresos = totalIngresos > 0 ? this.formatearNumeroConComas(totalIngresos) : '';
+                },
+
+                onVentasNoGravadasInput() {
+                    this.sincronizarBaseRenta();
+                    this.recalcularTotalesLiquidacion();
+                },
+
+                onComprasBaseInput() {
+                    if (this.liquidacion.es_zona_selva) {
+                        this.liquidacion.igv_compras = '0.00';
+                        this.recalcularTotalesLiquidacion();
+                        return;
+                    }
+                    const base = this.limpiarMoneda(this.liquidacion.compras_base);
+                    if (base > 0) {
+                        const igv = Math.round(base * 0.18 * 100) / 100;
+                        this.liquidacion.igv_compras = this.formatearNumeroConComas(igv);
+                    } else {
+                        this.liquidacion.igv_compras = '';
+                    }
+                    this.recalcularTotalesLiquidacion();
+                },
+
+                toggleZonaSelva() {
+                    this.liquidacion.es_zona_selva = !this.liquidacion.es_zona_selva;
+                    if (this.liquidacion.es_zona_selva) {
+                        this.liquidacion.igv_ventas = '0.00';
+                        this.liquidacion.igv_compras = '0.00';
+                        this.liquidacion.igv_resultante_pagar = 0;
+                        this.liquidacion.igv_saldo_favor_siguiente = 0;
+                        this.liquidacion.igv_retenciones_saldo_siguiente = 0;
+                        this.liquidacion.igv_percepciones_saldo_siguiente = 0;
+                    } else {
+                        const base = this.limpiarMoneda(this.liquidacion.ventas_base);
+                        this.liquidacion.igv_ventas = base > 0 ? this.formatearNumeroConComas(Math.round(base * 0.18 * 100) / 100) : '';
+                        const compras = this.limpiarMoneda(this.liquidacion.compras_base);
+                        this.liquidacion.igv_compras = compras > 0 ? this.formatearNumeroConComas(Math.round(compras * 0.18 * 100) / 100) : '';
+                    }
+                    this.recalcularTotalesLiquidacion();
+                },
+
+                recalcularTotalesLiquidacion(origen = 'usuario') {
+                    if (origen !== 'sunat') {
+                        this.determinacionSunat.igv = false;
+                        this.determinacionSunat.renta = false;
+                    }
+                    if (this.liquidacion.es_zona_selva) {
+                        this.liquidacion.igv_ventas = '0.00';
+                        this.liquidacion.igv_compras = '0.00';
+                        this.liquidacion.igv_resultante_pagar = 0;
+                        this.liquidacion.igv_saldo_favor_siguiente = 0;
+                        this.liquidacion.igv_retenciones_saldo_siguiente = 0;
+                        this.liquidacion.igv_percepciones_saldo_siguiente = 0;
+                    } else {
+                        const debito = Math.round((
+                            this.limpiarMoneda(this.liquidacion.igv_ventas)
+                            + this.limpiarMoneda(this.liquidacion.igv_ventas_ley)
+                            - this.limpiarMoneda(this.liquidacion.igv_descuentos)
+                        ) * 100) / 100;
+                        const credito = Math.round((
+                            this.limpiarMoneda(this.liquidacion.igv_compras)
+                            + this.limpiarMoneda(this.liquidacion.igv_compras_ley)
+                            + this.limpiarMoneda(this.liquidacion.igv_compras_mixtas)
+                            + this.limpiarMoneda(this.liquidacion.igv_importaciones)
+                            + this.limpiarMoneda(this.liquidacion.igv_importaciones_mixtas)
+                        ) * 100) / 100;
+                        const saldoAnterior = this.limpiarMoneda(this.liquidacion.igv_saldo_favor_anterior);
+
+                        const retencionesMes = this.limpiarMoneda(this.liquidacion.igv_retenciones);
+                        const retencionesAnt = this.limpiarMoneda(this.liquidacion.igv_retenciones_saldo_anterior);
+                        const totalRetenciones = Math.round((retencionesAnt + retencionesMes) * 100) / 100;
+
+                        const percepcionesMes = this.limpiarMoneda(this.liquidacion.igv_percepciones);
+                        const percepcionesAnt = this.limpiarMoneda(this.liquidacion.igv_percepciones_saldo_anterior);
+                        const totalPercepciones = Math.round((percepcionesAnt + percepcionesMes) * 100) / 100;
+
+                        const netoFiscal = Math.round((debito - credito - saldoAnterior) * 100) / 100;
+
+                        if (netoFiscal < 0) {
+                            this.liquidacion.igv_saldo_favor_siguiente = Math.round(Math.abs(netoFiscal) * 100) / 100;
+                            this.liquidacion.igv_resultante_pagar = 0;
+                            this.liquidacion.igv_retenciones_saldo_siguiente = totalRetenciones;
+                            this.liquidacion.igv_percepciones_saldo_siguiente = totalPercepciones;
+                        } else if (netoFiscal === 0) {
+                            this.liquidacion.igv_saldo_favor_siguiente = 0;
+                            this.liquidacion.igv_resultante_pagar = 0;
+                            this.liquidacion.igv_retenciones_saldo_siguiente = totalRetenciones;
+                            this.liquidacion.igv_percepciones_saldo_siguiente = totalPercepciones;
+                        } else {
+                            this.liquidacion.igv_saldo_favor_siguiente = 0;
+                            if (totalRetenciones >= netoFiscal) {
+                                this.liquidacion.igv_retenciones_saldo_siguiente = Math.round((totalRetenciones - netoFiscal) * 100) / 100;
+                                this.liquidacion.igv_percepciones_saldo_siguiente = totalPercepciones;
+                                this.liquidacion.igv_resultante_pagar = 0;
+                            } else {
+                                const resto = Math.round((netoFiscal - totalRetenciones) * 100) / 100;
+                                this.liquidacion.igv_retenciones_saldo_siguiente = 0;
+                                if (totalPercepciones >= resto) {
+                                    this.liquidacion.igv_percepciones_saldo_siguiente = Math.round((totalPercepciones - resto) * 100) / 100;
+                                    this.liquidacion.igv_resultante_pagar = 0;
+                                } else {
+                                    this.liquidacion.igv_percepciones_saldo_siguiente = 0;
+                                    this.liquidacion.igv_resultante_pagar = Math.round((resto - totalPercepciones) * 100) / 100;
+                                }
+                            }
+                        }
+                    }
+
+                    const reg = (this.regimen || '').toUpperCase();
+                    const esRus = reg === 'RUS';
+                    const esRer = reg === 'RER';
+
+                    if (esRus) {
+                        this.liquidacion.renta_base_ingresos = '';
+                        this.liquidacion.renta_calculada = '';
+                        this.liquidacion.renta_resultante_pagar = 0;
+                        this.liquidacion.renta_saldo_favor_siguiente = 0;
+                        this.liquidacion.renta_itan_saldo_siguiente = 0;
+                    } else {
+                        const ingresos = this.limpiarMoneda(this.liquidacion.renta_base_ingresos);
+                        const tasa = parseFloat(this.liquidacion.renta_tasa || (esRer ? 1.5 : 1.0));
+                        const rentaCalc = Math.round(ingresos * (tasa / 100));
+                        this.liquidacion.renta_calculada = rentaCalc > 0 ? this.formatearNumeroConComas(rentaCalc) : (ingresos > 0 ? '0.00' : '');
+
+                        if (esRer) {
+                            const ret3ra = this.limpiarMoneda(this.liquidacion.renta_retenciones);
+                            const itan = this.limpiarMoneda(this.liquidacion.renta_compensacion_itan);
+                            const itanSaldoAnt = this.limpiarMoneda(this.liquidacion.renta_itan_saldo_anterior);
+                            this.liquidacion.renta_resultante_pagar = Math.max(0, Math.round((rentaCalc - ret3ra - itan) * 100) / 100);
+                            this.liquidacion.renta_saldo_favor_siguiente = 0;
+                            this.liquidacion.renta_itan_saldo_siguiente = Math.max(0, Math.round((itanSaldoAnt - itan) * 100) / 100);
+                        } else {
+                            const saldoAnt = this.limpiarMoneda(this.liquidacion.renta_saldo_favor_anterior);
+                            const itanSaldoAnt = this.limpiarMoneda(this.liquidacion.renta_itan_saldo_anterior);
+                            const itanComp = this.limpiarMoneda(this.liquidacion.renta_compensacion_itan);
+                            const ret3ra = this.limpiarMoneda(this.liquidacion.renta_retenciones);
+
+                            // ITAN remanente para M+1 (Ley 28424 Art. 8)
+                            this.liquidacion.renta_itan_saldo_siguiente = Math.max(0, Math.round((itanSaldoAnt - itanComp) * 100) / 100);
+
+                            // Orden legal de aplicación de compensaciones en PDT 621:
+                            const totalComp = Math.round((saldoAnt + itanComp + ret3ra) * 100) / 100;
+
+                            if (totalComp >= rentaCalc) {
+                                this.liquidacion.renta_resultante_pagar = 0;
+                                const remanente = Math.round((totalComp - rentaCalc) * 100) / 100;
+                                // Casilla 303: saldo a favor de renta que pasa al siguiente mes del ejercicio
+                                this.liquidacion.renta_saldo_favor_siguiente = Math.min(saldoAnt, remanente);
+                            } else {
+                                this.liquidacion.renta_resultante_pagar = Math.round((rentaCalc - totalComp) * 100) / 100;
+                                this.liquidacion.renta_saldo_favor_siguiente = 0;
+                            }
+                        }
+                    }
+                },
+
+                aplicarSaldoAnteriorSugerido() {
+                    if (this.saldoFavorSugerido > 0) {
+                        this.liquidacion.igv_saldo_favor_anterior = this.formatearNumeroConComas(this.saldoFavorSugerido);
+                        this.recalcularTotalesLiquidacion();
+                    }
+                },
+
+                aplicarRetencionesSugeridas() {
+                    if (this.retencionesSugeridas > 0) {
+                        this.liquidacion.igv_retenciones_saldo_anterior = this.formatearNumeroConComas(this.retencionesSugeridas);
+                        this.recalcularTotalesLiquidacion();
+                    }
+                },
+
+                aplicarPercepcionesSugeridas() {
+                    if (this.percepcionesSugeridas > 0) {
+                        this.liquidacion.igv_percepciones_saldo_anterior = this.formatearNumeroConComas(this.percepcionesSugeridas);
+                        this.recalcularTotalesLiquidacion();
+                    }
+                },
+
+                aplicarRentaSugeridaM1() {
+                    if (this.rentaSugeridaM1 > 0) {
+                        this.liquidacion.renta_saldo_favor_anterior = this.formatearNumeroConComas(this.rentaSugeridaM1);
+                        this.recalcularTotalesLiquidacion();
+                    }
+                },
+
+                aplicarItanSugeridoM1() {
+                    if (this.itanSugeridoM1 > 0) {
+                        this.liquidacion.renta_itan_saldo_anterior = this.formatearNumeroConComas(this.itanSugeridoM1);
+                        this.recalcularTotalesLiquidacion();
+                    }
+                },
+
+                aplicarCompensacionItanTotal() {
+                    const itanDisp = this.limpiarMoneda(this.liquidacion.renta_itan_saldo_anterior);
+                    const rentaCalc = this.limpiarMoneda(this.liquidacion.renta_calculada);
+                    const saldoAnt = this.limpiarMoneda(this.liquidacion.renta_saldo_favor_anterior);
+                    const ret3ra = this.limpiarMoneda(this.liquidacion.renta_retenciones);
+
+                    // Deuda de renta pendiente antes de aplicar ITAN
+                    const deudaPrevia = Math.max(0, Math.round((rentaCalc - saldoAnt - ret3ra) * 100) / 100);
+                    const compensar = Math.min(itanDisp, deudaPrevia > 0 ? deudaPrevia : itanDisp);
+                    this.liquidacion.renta_compensacion_itan = compensar > 0 ? this.formatearNumeroConComas(compensar) : '';
+                    this.recalcularTotalesLiquidacion();
+                },
+
+                onPlameEssaludBaseInput() {
+                    const base = this.limpiarMoneda(this.liquidacion.plame_essalud_base);
+                    if (base > 0) {
+                        // En 2026, la RMV es S/ 1,130.00. El aporte legal mínimo de EsSalud (9%) es S/ 101.70
+                        const essalud = Math.round(Math.max(base * 0.09, 101.70) * 100) / 100;
+                        this.liquidacion.plame_essalud_a_pagar = this.formatearNumeroConComas(essalud);
+                    } else {
+                        this.liquidacion.plame_essalud_a_pagar = '';
+                    }
+                },
+
+                onPlameRenta4taBaseInput() {
+                    const base = this.limpiarMoneda(this.liquidacion.plame_renta_4ta_base);
+                    if (base > 0) {
+                        const renta4ta = Math.round(base * 0.08 * 100) / 100;
+                        this.liquidacion.plame_renta_4ta_a_pagar = this.formatearNumeroConComas(renta4ta);
+                    } else {
+                        this.liquidacion.plame_renta_4ta_a_pagar = '';
+                    }
+                },
+
+                totalPlamePagar() {
+                    return Math.round((
+                        this.limpiarMoneda(this.liquidacion.plame_essalud_a_pagar) +
+                        this.limpiarMoneda(this.liquidacion.plame_onp_a_pagar) +
+                        this.limpiarMoneda(this.liquidacion.plame_renta_4ta_a_pagar) +
+                        this.limpiarMoneda(this.liquidacion.plame_renta_5ta_a_pagar) +
+                        this.limpiarMoneda(this.liquidacion.plame_afp_a_pagar)
+                    ) * 100) / 100;
+                },
+
+                rentaCodigoSugerido() {
+                    if (this.rentaSugerida) {
+                        return this.rentaSugerida;
+                    }
+                    const reg = (this.regimen || '').toUpperCase();
+                    if (reg === 'RER') return '3111';
+                    if (reg === 'GENERAL' || reg === 'RG') return '3031';
+                    return '3121';
+                },
+
+                olvidarImportacionSunat() {
+                    this.preservarSunat = null;
+                    this.determinacionSunat.igv = false;
+                    this.determinacionSunat.renta = false;
+                    this.cruceDj = { igv: null, renta: null };
+                    this.otrasCasillasIgv = false;
+                    ['621', '601'].forEach((formulario) => {
+                        this.importacion[formulario].abierta = false;
+                        this.importacion[formulario].cargando = false;
+                        this.importacion[formulario].error = '';
+                        this.importacion[formulario].resultado = null;
+                        this.importacion[formulario].aplicada = false;
+                    });
+                },
+
+                anclarDeterminacionGuardada(marca) {
+                    if (!marca || (!marca.igv && !marca.renta)) {
+                        return;
+                    }
+
+                    const preservar = {};
+                    if (marca.igv) {
+                        preservar.igv_resultante_pagar = marca.igv_resultante_pagar;
+                        preservar.igv_saldo_favor_siguiente = marca.igv_saldo_favor_siguiente;
+                        preservar.igv_retenciones_saldo_siguiente = marca.igv_retenciones_saldo_siguiente;
+                        preservar.igv_percepciones_saldo_siguiente = marca.igv_percepciones_saldo_siguiente;
+                        this.determinacionSunat.igv = true;
+                    }
+                    if (marca.renta) {
+                        preservar.renta_calculada = marca.renta_calculada;
+                        preservar.renta_resultante_pagar = marca.renta_resultante_pagar;
+                        preservar.renta_saldo_favor_siguiente = marca.renta_saldo_favor_siguiente;
+                        if (marca.renta_tributo_codigo) {
+                            preservar.renta_tributo_codigo = marca.renta_tributo_codigo;
+                        }
+                        this.determinacionSunat.renta = true;
+                    }
+                    this.preservarSunat = preservar;
+                    this.restaurarOficiales(preservar);
+                },
+
+                soltarConstancia(formulario, event) {
+                    const archivos = event.dataTransfer && event.dataTransfer.files
+                        ? Array.from(event.dataTransfer.files)
+                        : [];
+                    this.enviarConstancia(formulario, archivos);
+                },
+
+                subirConstancia(formulario, event) {
+                    const archivos = event.target.files ? Array.from(event.target.files) : [];
+                    event.target.value = '';
+                    this.enviarConstancia(formulario, archivos);
+                },
+
+                async enviarConstancia(formulario, archivos) {
+                    if (!archivos.length) {
+                        return;
+                    }
+
+                    const estado = this.importacion[formulario];
+                    estado.cargando = true;
+                    estado.error = '';
+                    estado.resultado = null;
+                    estado.aplicada = false;
+
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+                        const body = new FormData();
+                        body.append('cliente_id', this.clienteId);
+                        body.append('periodo', this.meses[this.mesIdx].periodo);
+                        body.append('formulario', formulario);
+                        archivos.slice(0, 3).forEach((archivo) => body.append('archivos[]', archivo));
+
+                        const response = await fetch('{{ route('control.liquidacion.importar') }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body,
+                        });
+                        const data = await response.json();
+                        if (!response.ok) {
+                            const detalle = data.errors ? Object.values(data.errors).flat()[0] : null;
+                            throw new Error(detalle || data.message || 'No se pudo leer la declaración.');
+                        }
+
+                        estado.resultado = data;
+                        if (!data.bloqueado) {
+                            await this.aplicarConstancia(formulario, data);
+                        }
+                    } catch (err) {
+                        estado.error = err.message || 'No se pudo leer la declaración.';
+                    } finally {
+                        estado.cargando = false;
+                    }
+                },
+
+                async aplicarConstancia(formulario, resultado) {
+                    if (!resultado || resultado.bloqueado) {
+                        return;
+                    }
+
+                    const campos = resultado.campos || {};
+                    const montos = [
+                        'ventas_base', 'igv_ventas', 'igv_descuentos_base', 'igv_descuentos',
+                        'ventas_no_gravadas', 'igv_ventas_ley_base', 'igv_ventas_ley',
+                        'compras_base', 'igv_compras', 'igv_compras_ley_base', 'igv_compras_ley',
+                        'igv_compras_mixtas_base', 'igv_compras_mixtas', 'igv_importaciones_base', 'igv_importaciones',
+                        'compras_destino_no_gravadas', 'igv_importaciones_mixtas_base', 'igv_importaciones_mixtas',
+                        'importaciones_destino_no_gravadas', 'compras_internas_no_gravadas', 'compras_importadas_no_gravadas',
+                        'igv_saldo_favor_anterior', 'igv_retenciones_saldo_anterior', 'igv_retenciones',
+                        'igv_percepciones_saldo_anterior', 'igv_percepciones',
+                        'renta_base_ingresos', 'renta_saldo_favor_anterior', 'renta_itan_saldo_anterior',
+                        'renta_compensacion_itan', 'renta_retenciones',
+                        'plame_essalud_base', 'plame_essalud_a_pagar', 'plame_onp_a_pagar',
+                        'plame_renta_4ta_base', 'plame_renta_4ta_a_pagar', 'plame_renta_5ta_a_pagar', 'plame_afp_a_pagar',
+                    ];
+                    montos.forEach((campo) => {
+                        if (Object.prototype.hasOwnProperty.call(campos, campo)) {
+                            this.liquidacion[campo] = this.formatearNumeroConComas(campos[campo]);
+                        }
+                    });
+
+                    if (Object.prototype.hasOwnProperty.call(campos, 'renta_tasa')) {
+                        this.liquidacion.renta_tasa = campos.renta_tasa;
+                    }
+                    if (Object.prototype.hasOwnProperty.call(campos, 'es_zona_selva')) {
+                        this.liquidacion.es_zona_selva = !!campos.es_zona_selva;
+                    }
+                    if (campos.notas_liquidacion && !String(this.liquidacion.notas_liquidacion || '').trim()) {
+                        this.liquidacion.notas_liquidacion = campos.notas_liquidacion;
+                    }
+
+                    const preservar = resultado.preservar || {};
+                    this.recalcularTotalesLiquidacion('sunat');
+
+                    if (formulario === '621') {
+                        this.preservarSunat = preservar.tributo_1016 !== undefined ? preservar : null;
+                        if (preservar.renta_tributo_codigo) {
+                            this.rentaSugerida = String(preservar.renta_tributo_codigo);
+                        }
+                        const control = resultado.control || {};
+                        this.cruceDj = {
+                            igv: control.igv === null || control.igv === undefined ? null : parseFloat(control.igv),
+                            renta: control.renta === null || control.renta === undefined ? null : parseFloat(control.renta),
+                        };
+                        this.otrasCasillasIgv = [
+                            'igv_ventas_ley', 'igv_compras_ley', 'igv_compras_mixtas', 'igv_importaciones',
+                            'igv_importaciones_mixtas', 'compras_destino_no_gravadas', 'importaciones_destino_no_gravadas',
+                        ].some((campo) => this.limpiarMoneda(this.liquidacion[campo]) > 0);
+                    }
+
+                    this.importacion[formulario].aplicada = true;
+                    if ((resultado.pagos_registrados || 0) > 0 || (resultado.pagos && resultado.pagos.length > 0)) {
+                        this.deudaCargada = false;
+                        await this.cargarDeuda();
+                    }
+                },
+
+                async actualizarRegimenFicha(nuevoRegimen) {
+                    if (!nuevoRegimen) return;
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch('{{ route('control.actualizar_regimen') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                regimen: nuevoRegimen,
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Error al actualizar régimen.');
+                        }
+
+                        // Sincronizar estado local en el panel de control
+                        this.regimen = data.regimen_sigla || nuevoRegimen;
+                        if (data.renta_codigo) {
+                            this.rentaSugerida = String(data.renta_codigo);
+                            if (this.liquidacion) {
+                                this.liquidacion.renta_tributo_codigo = String(data.renta_codigo);
+                            }
+                        }
+                        if (this.importacion['621']?.resultado?.regimen_discrepancia) {
+                            this.importacion['621'].resultado.regimen_discrepancia = null;
+                        }
+
+                        // Ajustar tasa sugerida de acuerdo al nuevo régimen
+                        const regNorm = (this.regimen || '').toUpperCase();
+                        if (regNorm === 'RER') {
+                            this.liquidacion.renta_tasa = 1.5;
+                        } else if (regNorm === 'RMT') {
+                            this.liquidacion.renta_tasa = 1.0;
+                        }
+                        this.recalcularTotalesLiquidacion();
+
+                        // Emitir evento para actualizar en vivo la fila del cliente en la matriz
+                        window.dispatchEvent(new CustomEvent('cliente-regimen-actualizado', {
+                            detail: {
+                                clienteId: this.clienteId,
+                                regimen: this.regimen,
+                            }
+                        }));
+
+                        alert('✅ ' + data.message);
+                    } catch (err) {
+                        alert('Error al actualizar régimen: ' + err.message);
+                    }
+                },
+
+                cruceCuadra(impuesto) {
+                    const oficial = this.cruceDj[impuesto];
+                    if (oficial === null || oficial === undefined || Number.isNaN(oficial)) {
+                        return false;
+                    }
+                    const calculado = impuesto === 'igv'
+                        ? parseFloat(this.liquidacion.igv_resultante_pagar || 0)
+                        : parseFloat(this.liquidacion.renta_resultante_pagar || 0);
+
+                    return Math.abs(calculado - oficial) < 0.05;
+                },
+
+                restaurarOficiales(preservar) {
+                    const numericos = [
+                        'igv_resultante_pagar', 'igv_saldo_favor_siguiente',
+                        'igv_retenciones_saldo_siguiente', 'igv_percepciones_saldo_siguiente',
+                        'renta_resultante_pagar', 'renta_saldo_favor_siguiente',
+                    ];
+                    numericos.forEach((campo) => {
+                        if (Object.prototype.hasOwnProperty.call(preservar, campo) && preservar[campo] !== null) {
+                            this.liquidacion[campo] = parseFloat(preservar[campo]);
+                        }
+                    });
+                    if (Object.prototype.hasOwnProperty.call(preservar, 'renta_calculada') && preservar.renta_calculada !== null) {
+                        this.liquidacion.renta_calculada = this.formatearNumeroConComas(preservar.renta_calculada);
+                    }
+                },
+
+                async marcarDeclaradoSiCorresponde() {
+                    const mes = this.meses[this.mesIdx];
+                    let cambio = false;
+                    if (this.importacion['621'].aplicada && this.importacion['621'].marcarDeclarado && mes.pdt !== 'Declarado') {
+                        mes.pdt = 'Declarado';
+                        cambio = true;
+                    }
+                    if (this.importacion['601'].aplicada && this.importacion['601'].marcarDeclarado && mes.ple !== 'Declarado') {
+                        mes.ple = 'Declarado';
+                        cambio = true;
+                    }
+                    if (!cambio) {
+                        return;
+                    }
+
+                    mes.estado = this.calcularEstadoMaestro(mes.sire, mes.pdt, mes.ple);
+                    await this.actualizarEstadoMaestro(this.mesIdx);
+                },
+
+                async guardarLiquidacion(actualizarDeudas = true) {
+                    this.savingLiquidacion = true;
+                    this.guardadoLiquidacionExitoso = false;
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const payload = {
+                            cliente_id: this.clienteId,
+                            periodo: this.meses[this.mesIdx].periodo,
+                            es_zona_selva: this.liquidacion.es_zona_selva,
+                            ventas_base: this.limpiarMoneda(this.liquidacion.ventas_base),
+                            igv_ventas: this.limpiarMoneda(this.liquidacion.igv_ventas),
+                            igv_descuentos_base: this.limpiarMoneda(this.liquidacion.igv_descuentos_base),
+                            igv_descuentos: this.limpiarMoneda(this.liquidacion.igv_descuentos),
+                            ventas_no_gravadas: this.limpiarMoneda(this.liquidacion.ventas_no_gravadas),
+                            igv_ventas_ley_base: this.limpiarMoneda(this.liquidacion.igv_ventas_ley_base),
+                            igv_ventas_ley: this.limpiarMoneda(this.liquidacion.igv_ventas_ley),
+                            compras_base: this.limpiarMoneda(this.liquidacion.compras_base),
+                            igv_compras: this.limpiarMoneda(this.liquidacion.igv_compras),
+                            igv_compras_ley_base: this.limpiarMoneda(this.liquidacion.igv_compras_ley_base),
+                            igv_compras_ley: this.limpiarMoneda(this.liquidacion.igv_compras_ley),
+                            igv_compras_mixtas_base: this.limpiarMoneda(this.liquidacion.igv_compras_mixtas_base),
+                            igv_compras_mixtas: this.limpiarMoneda(this.liquidacion.igv_compras_mixtas),
+                            igv_importaciones_base: this.limpiarMoneda(this.liquidacion.igv_importaciones_base),
+                            igv_importaciones: this.limpiarMoneda(this.liquidacion.igv_importaciones),
+                            compras_destino_no_gravadas: this.limpiarMoneda(this.liquidacion.compras_destino_no_gravadas),
+                            igv_importaciones_mixtas_base: this.limpiarMoneda(this.liquidacion.igv_importaciones_mixtas_base),
+                            igv_importaciones_mixtas: this.limpiarMoneda(this.liquidacion.igv_importaciones_mixtas),
+                            importaciones_destino_no_gravadas: this.limpiarMoneda(this.liquidacion.importaciones_destino_no_gravadas),
+                            compras_internas_no_gravadas: this.limpiarMoneda(this.liquidacion.compras_internas_no_gravadas),
+                            compras_importadas_no_gravadas: this.limpiarMoneda(this.liquidacion.compras_importadas_no_gravadas),
+                            igv_saldo_favor_anterior: this.limpiarMoneda(this.liquidacion.igv_saldo_favor_anterior),
+                            igv_retenciones_saldo_anterior: this.limpiarMoneda(this.liquidacion.igv_retenciones_saldo_anterior),
+                            igv_retenciones: this.limpiarMoneda(this.liquidacion.igv_retenciones),
+                            igv_percepciones_saldo_anterior: this.limpiarMoneda(this.liquidacion.igv_percepciones_saldo_anterior),
+                            igv_percepciones: this.limpiarMoneda(this.liquidacion.igv_percepciones),
+                            renta_base_ingresos: this.limpiarMoneda(this.liquidacion.renta_base_ingresos),
+                            renta_tasa: parseFloat(this.liquidacion.renta_tasa || 0),
+                            renta_calculada: this.limpiarMoneda(this.liquidacion.renta_calculada),
+                            renta_saldo_favor_anterior: this.limpiarMoneda(this.liquidacion.renta_saldo_favor_anterior),
+                            renta_itan_saldo_anterior: this.limpiarMoneda(this.liquidacion.renta_itan_saldo_anterior),
+                            renta_compensacion_itan: this.limpiarMoneda(this.liquidacion.renta_compensacion_itan),
+                            renta_retenciones: this.limpiarMoneda(this.liquidacion.renta_retenciones),
+                            plame_essalud_base: this.limpiarMoneda(this.liquidacion.plame_essalud_base),
+                            plame_essalud_a_pagar: this.limpiarMoneda(this.liquidacion.plame_essalud_a_pagar),
+                            plame_onp_a_pagar: this.limpiarMoneda(this.liquidacion.plame_onp_a_pagar),
+                            plame_renta_4ta_base: this.limpiarMoneda(this.liquidacion.plame_renta_4ta_base),
+                            plame_renta_4ta_a_pagar: this.limpiarMoneda(this.liquidacion.plame_renta_4ta_a_pagar),
+                            plame_renta_5ta_a_pagar: this.limpiarMoneda(this.liquidacion.plame_renta_5ta_a_pagar),
+                            plame_afp_a_pagar: this.limpiarMoneda(this.liquidacion.plame_afp_a_pagar),
+                            renta_tributo_codigo: this.rentaCodigoSugerido(),
+                            vencimiento_deuda: this.vencimientoDeuda || null,
+                            notas_liquidacion: this.liquidacion.notas_liquidacion || null,
+                            actualizar_deudas: actualizarDeudas,
+                        };
+
+                        if (this.determinacionSunat.igv && this.preservarSunat) {
+                            payload.respetar_igv_sunat = true;
+                            const igvOficial = {
+                                igv_resultante_pagar: 'igv_resultante_oficial',
+                                igv_saldo_favor_siguiente: 'igv_saldo_favor_oficial',
+                                igv_retenciones_saldo_siguiente: 'igv_retenciones_siguiente_oficial',
+                                igv_percepciones_saldo_siguiente: 'igv_percepciones_siguiente_oficial',
+                            };
+                            Object.entries(igvOficial).forEach(([origen, destino]) => {
+                                if (Object.prototype.hasOwnProperty.call(this.preservarSunat, origen)) {
+                                    payload[destino] = this.preservarSunat[origen];
+                                }
+                            });
+                            if (Object.prototype.hasOwnProperty.call(this.preservarSunat, 'tributo_1016')) {
+                                payload.tributo_igv_105 = this.preservarSunat.tributo_1016;
+                            }
+                        }
+                        if (this.preservarSunat && Object.prototype.hasOwnProperty.call(this.preservarSunat, 'tributo_1016')) {
+                            payload.tributo_igv_105 = this.preservarSunat.tributo_1016;
+                        }
+                        if (this.determinacionSunat.renta && this.preservarSunat) {
+                            payload.respetar_renta_sunat = true;
+                            const rentaOficial = {
+                                renta_calculada: 'renta_calculada_oficial',
+                                renta_resultante_pagar: 'renta_resultante_oficial',
+                                renta_saldo_favor_siguiente: 'renta_saldo_favor_oficial',
+                            };
+                            Object.entries(rentaOficial).forEach(([origen, destino]) => {
+                                if (Object.prototype.hasOwnProperty.call(this.preservarSunat, origen)) {
+                                    payload[destino] = this.preservarSunat[origen];
+                                }
+                            });
+                            if (this.preservarSunat.renta_tributo_codigo) {
+                                payload.renta_tributo_codigo = this.preservarSunat.renta_tributo_codigo;
+                            }
+                        }
+
+                        const response = await fetch('{{ route('control.liquidacion') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify(payload),
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            const detalle = data.errors ? Object.values(data.errors).flat()[0] : null;
+                            throw new Error(detalle || data.message || 'Error al guardar la liquidación.');
+                        }
+
+                        this.meses[this.mesIdx].liquidacion = data.liquidacion;
+                        if (data.liquidacion) {
+                            this.liquidacion.renta_itan_saldo_siguiente = parseFloat(data.liquidacion.renta_itan_saldo_siguiente || 0);
+                            this.liquidacion.renta_saldo_favor_siguiente = parseFloat(data.liquidacion.renta_saldo_favor_siguiente || 0);
+                            this.liquidacion.igv_saldo_favor_siguiente = parseFloat(data.liquidacion.igv_saldo_favor_siguiente || 0);
+                            this.liquidacion.igv_retenciones_saldo_siguiente = parseFloat(data.liquidacion.igv_retenciones_saldo_siguiente || 0);
+                            this.liquidacion.igv_percepciones_saldo_siguiente = parseFloat(data.liquidacion.igv_percepciones_saldo_siguiente || 0);
+                        }
+                        if (data.operacion_id) {
+                            this.meses[this.mesIdx].operacion_id = data.operacion_id;
+                        }
+                        if (actualizarDeudas) {
+                            this.aplicarRespuestaDeuda(data);
+                        }
+                        if (data.kpis) {
+                            window.dispatchEvent(new CustomEvent('kpis-actualizados', { detail: data.kpis }));
+                        }
+
+                        this.guardadoLiquidacionExitoso = true;
+                        await this.marcarDeclaradoSiCorresponde();
+                        this.encuadrarMenuDJ();
+                        setTimeout(() => { this.guardadoLiquidacionExitoso = false; }, 2500);
+                    } catch (err) {
+                        console.error('Error al guardar liquidación:', err);
+                        alert(err.message || 'No se pudo guardar la liquidación.');
+                    } finally {
+                        this.savingLiquidacion = false;
+                    }
+                },
+
+                async limpiarHojaLiquidacion() {
+                    const tieneLiquidacionGuardada = !!this.meses[this.mesIdx]?.liquidacion;
+                    const deudasLiquidacion = (this.deudas || []).filter(d => this.codigosLiquidacion.includes(d.tributo_codigo));
+                    const abonosTotales = deudasLiquidacion.reduce((acc, d) => acc + (parseFloat(d.monto_abonado || 0)), 0);
+                    const deudasPendientes = deudasLiquidacion.filter(d => parseFloat(d.saldo_pendiente || d.monto_deuda_inicial || 0) > 0);
+
+                    // Escenario 1: Solo está digitada en pantalla (no guardada en base de datos ni con deudas)
+                    if (!tieneLiquidacionGuardada && deudasPendientes.length === 0) {
+                        this.resetearCamposLiquidacionLocal();
+                        return;
+                    }
+
+                    // Escenario 2: Hay datos guardados en base de datos o deudas PDT / PLAME
+                    let mensajeConfirmacion = '¿Deseas restablecer la Hoja de Liquidación a cero?';
+                    if (abonosTotales > 0) {
+                        mensajeConfirmacion = '⚠️ Esta liquidación tiene tributos con pagos registrados (S/ ' + this.formatearNumeroConComas(abonosTotales) + '). Limpiar la liquidación restablecerá los valores a cero y eliminará las deudas y todos sus pagos asociados. ¿Deseas continuar?';
+                    } else if (deudasPendientes.length > 0) {
+                        mensajeConfirmacion = '¿Deseas restablecer a cero la Hoja de Liquidación y eliminar los tributos (IGV, Renta y PLAME) generados para este mes?';
+                    }
+
+                    if (!confirm(mensajeConfirmacion)) {
+                        return;
+                    }
+
+                    this.savingLiquidacion = true;
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch('{{ route('control.liquidacion.limpiar') }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                cliente_id: this.clienteId,
+                                periodo: this.meses[this.mesIdx].periodo,
+                            }),
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Error al limpiar la liquidación.');
+                        }
+
+                        this.meses[this.mesIdx].liquidacion = null;
+                        this.resetearCamposLiquidacionLocal();
+                        this.aplicarRespuestaDeuda(data);
+
+                        if (data.kpis) {
+                            window.dispatchEvent(new CustomEvent('kpis-actualizados', { detail: data.kpis }));
+                        }
+
+                        this.encuadrarMenuDJ();
+                    } catch (err) {
+                        console.error('Error al limpiar liquidación:', err);
+                        alert(err.message || 'No se pudo limpiar la liquidación.');
+                    } finally {
+                        this.savingLiquidacion = false;
+                    }
+                },
+
+                resetearCamposLiquidacionLocal() {
+                    const reg = (this.regimen || '').toUpperCase();
+                    let tasaPorDefecto = (reg === 'RER' || reg === 'GENERAL' || reg === 'RG') ? 1.5 : 1.0;
+                    const depto = (this.departamento || '').toUpperCase().trim();
+                    const esSelvaSugerido = ['LORETO', 'UCAYALI', 'SAN MARTIN', 'SAN MARTÍN', 'AMAZONAS', 'MADRE DE DIOS'].includes(depto);
+
+                    this.liquidacion = {
+                        es_zona_selva: esSelvaSugerido,
+                        ventas_base: '',
+                        igv_ventas: esSelvaSugerido ? '0.00' : '',
+                        igv_descuentos_base: '',
+                        igv_descuentos: '',
+                        ventas_no_gravadas: '',
+                        igv_ventas_ley_base: '',
+                        igv_ventas_ley: '',
+                        compras_base: '',
+                        igv_compras: esSelvaSugerido ? '0.00' : '',
+                        igv_compras_ley_base: '',
+                        igv_compras_ley: '',
+                        igv_compras_mixtas_base: '',
+                        igv_compras_mixtas: '',
+                        igv_importaciones_base: '',
+                        igv_importaciones: '',
+                        compras_destino_no_gravadas: '',
+                        igv_importaciones_mixtas_base: '',
+                        igv_importaciones_mixtas: '',
+                        importaciones_destino_no_gravadas: '',
+                        compras_internas_no_gravadas: '',
+                        compras_importadas_no_gravadas: '',
+                        igv_saldo_favor_anterior: '',
+                        igv_retenciones_saldo_anterior: '',
+                        igv_retenciones: '',
+                        igv_retenciones_saldo_siguiente: 0,
+                        igv_percepciones_saldo_anterior: '',
+                        igv_percepciones: '',
+                        igv_percepciones_saldo_siguiente: 0,
+                        igv_saldo_favor_siguiente: 0,
+                        igv_resultante_pagar: 0,
+                        renta_base_ingresos: '',
+                        renta_tasa: tasaPorDefecto,
+                        renta_calculada: '',
+                        renta_saldo_favor_anterior: '',
+                        renta_itan_saldo_anterior: '',
+                        renta_compensacion_itan: '',
+                        renta_itan_saldo_siguiente: 0,
+                        renta_retenciones: '',
+                        renta_saldo_favor_siguiente: 0,
+                        renta_resultante_pagar: 0,
+                        plame_essalud_base: '',
+                        plame_essalud_a_pagar: '',
+                        plame_onp_a_pagar: '',
+                        plame_renta_4ta_base: '',
+                        plame_renta_4ta_a_pagar: '',
+                        plame_renta_5ta_a_pagar: '',
+                        plame_afp_a_pagar: '',
+                        notas_liquidacion: '',
+                    };
+                    this.olvidarImportacionSunat();
+                    this.recalcularTotalesLiquidacion();
+                }
+            };
+        }
+</script>

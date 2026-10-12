@@ -51,24 +51,23 @@ class ControlBalanceController extends Controller
         $aperturaBalance = $this->periodoEnApertura();
 
         // FILTRO INTELIGENTE: Consulta estricta para regímenes MYPE y General (excluye RUS y RER).
-        // Carga clientes vigentes en el año fiscal, excluyendo bajas previas al año consultado.
-        $clientes = Cliente::where(function ($query) use ($anio) {
-            $query->where('estado', 'activo')
-                ->orWhere('estado', 'suspendido')
-                ->orWhere(function ($q) use ($anio) {
-                    $q->where('estado', 'retirado')
-                        ->whereNotNull('mes_baja')
-                        ->where('mes_baja', '>=', "{$anio}-01");
-                });
-        })
+        // Carga clientes vigentes en el año fiscal, respetando la cartera del usuario si es asistente.
+        $clientes = Cliente::query()
+            ->paraUsuario()
+            ->vigentesEnEjercicio($anio)
             ->whereIn('regimen_tributario', RegimenTributario::valoresConLibrosElectronicos())
             ->with(['controlBalances' => fn ($query) => $query->where('anio', $anio)])
             ->orderBy('numero')
             ->get();
 
-        $kpis = $this->calcularKpis($anio, $clientes);
-
         $matrizClientes = [];
+        $totalClientes = $clientes->count();
+        $totalObligacionesAnio = 0;
+        $balancesDeclarados = 0;
+        $balancesProcesando = 0;
+        $balancesPendientes = 0;
+        $djAnualDeclaradas = 0;
+        $djAnualPendientes = 0;
 
         foreach ($clientes as $cliente) {
             $balance = $cliente->controlBalances->first();
@@ -99,13 +98,19 @@ class ControlBalanceController extends Controller
                     continue;
                 }
 
+                $totalObligacionesAnio++;
                 $cExigibles++;
                 $estado = $balance?->getEstadoMes($m) ?? 'Pendiente';
                 $nota = $balance?->getNotaMes($m) ?? '';
 
-                if ($estado === 'Declarado') {
-                    $cDeclaradas++;
-                }
+                match ($estado) {
+                    'Declarado' => [
+                        $balancesDeclarados++,
+                        $cDeclaradas++,
+                    ],
+                    'Proceso', 'Procesando' => $balancesProcesando++,
+                    default => $balancesPendientes++,
+                };
 
                 $meses[] = [
                     'numero' => $m,
@@ -120,6 +125,12 @@ class ControlBalanceController extends Controller
             $cPorcentaje = $cExigibles > 0 ? (int) round(($cDeclaradas / $cExigibles) * 100) : 100;
             $djAnualEstado = $balance?->dj_anual ?? 'Pendiente';
 
+            if ($djAnualEstado === 'Declarado') {
+                $djAnualDeclaradas++;
+            } else {
+                $djAnualPendientes++;
+            }
+
             $matrizClientes[] = [
                 // CORRELATIVO ORIGINAL: Conserva su ID/Posición original del directorio general de clientes
                 'numero' => $cliente->numero,
@@ -130,6 +141,21 @@ class ControlBalanceController extends Controller
                 'porcentaje' => $cPorcentaje,
             ];
         }
+
+        $porcentajeAvance = $totalObligacionesAnio > 0
+            ? (int) round(($balancesDeclarados / $totalObligacionesAnio) * 100)
+            : 0;
+
+        $kpis = [
+            'totalClientes' => $totalClientes,
+            'totalObligacionesAnio' => $totalObligacionesAnio,
+            'balancesDeclarados' => $balancesDeclarados,
+            'balancesProcesando' => $balancesProcesando,
+            'balancesPendientes' => $balancesPendientes,
+            'porcentajeAvance' => $porcentajeAvance,
+            'djAnualDeclaradas' => $djAnualDeclaradas,
+            'djAnualPendientes' => $djAnualPendientes,
+        ];
 
         return view('balances.index', array_merge(compact(
             'anio',
@@ -236,15 +262,9 @@ class ControlBalanceController extends Controller
      */
     public function calcularKpis(int $anio, ?Collection $clientesExistentes = null): array
     {
-        $clientes = $clientesExistentes ?? Cliente::where(function ($query) use ($anio) {
-            $query->where('estado', 'activo')
-                ->orWhere('estado', 'suspendido')
-                ->orWhere(function ($q) use ($anio) {
-                    $q->where('estado', 'retirado')
-                        ->whereNotNull('mes_baja')
-                        ->where('mes_baja', '>=', "{$anio}-01");
-                });
-        })
+        $clientes = $clientesExistentes ?? Cliente::query()
+            ->paraUsuario()
+            ->vigentesEnEjercicio($anio)
             ->whereIn('regimen_tributario', RegimenTributario::valoresConLibrosElectronicos())
             ->with(['controlBalances' => fn ($query) => $query->where('anio', $anio)])
             ->get();
