@@ -70,6 +70,19 @@ class Operacion extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::deleting(function (Operacion $operacion): void {
+            $operacion->deudasTributarias()->get()->each(function (DeudaTributaria $deuda): void {
+                $deuda->delete();
+            });
+            $operacion->abonosDeuda()->get()->each(function (AbonoDeuda $abono): void {
+                $abono->delete();
+            });
+            $operacion->liquidacionPeriodo()?->delete();
+        });
+    }
+
     /**
      * Relación inversa (1 a N): La operación mensual pertenece a un cliente.
      */

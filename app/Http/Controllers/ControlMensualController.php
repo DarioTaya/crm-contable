@@ -10,6 +10,7 @@ use App\Models\Cliente;
 use App\Models\CronogramaSunat;
 use App\Models\DeudaTributaria;
 use App\Models\LiquidacionPeriodo;
+use App\Models\MovimientoDetraccion;
 use App\Models\Operacion;
 use App\Services\Catalogos\CatalogoSunat;
 use App\Services\ControlImpuestos\CalculadorLiquidacionService;
@@ -548,7 +549,9 @@ class ControlMensualController extends Controller
                 }
                 $deuda = $operacion->deudasTributarias()->whereKey($validated['eliminar_deuda_id'])->first();
                 if ($deuda) {
-                    $deuda->abonos()->delete();
+                    $deuda->abonos()->get()->each(function (AbonoDeuda $abono): void {
+                        $abono->delete();
+                    });
                     $deuda->delete();
                 }
                 $operacion->refrescarResumenDeudas();
@@ -576,14 +579,18 @@ class ControlMensualController extends Controller
                 }
                 if (! $validated['tiene_deuda'] && $request->boolean('descartar_deuda')) {
                     $operacion->deudasTributarias()->get()->each(function (DeudaTributaria $deuda): void {
-                        $deuda->abonos()->delete();
+                        $deuda->abonos()->get()->each(function (AbonoDeuda $abono): void {
+                            $abono->delete();
+                        });
                         $deuda->delete();
                     });
                     $operacion->tributo_codigo = null;
                     $operacion->es_igv_justo = false;
                     $operacion->monto_deuda_inicial = null;
                     $operacion->vencimiento_deuda = null;
-                    $operacion->abonosDeuda()->delete();
+                    $operacion->abonosDeuda()->get()->each(function (AbonoDeuda $abono): void {
+                        $abono->delete();
+                    });
                 }
             } elseif ($request->has('tributo_codigo')) {
                 $operacion->tributo_codigo = $validated['tributo_codigo'];
@@ -1069,12 +1076,23 @@ class ControlMensualController extends Controller
                     ->get();
 
                 foreach ($deudasLiquidacion as $deuda) {
-                    $deuda->abonos()->delete();
+                    $deuda->abonos()->get()->each(function (AbonoDeuda $abono): void {
+                        $abono->delete();
+                    });
                     $deuda->delete();
                 }
 
                 // Limpiar también abonos huérfanos sin deuda_tributaria_id vinculados a la operación
-                $operacion->abonosDeuda()->whereNull('deuda_tributaria_id')->delete();
+                $operacion->abonosDeuda()->whereNull('deuda_tributaria_id')->get()->each(function (AbonoDeuda $abono): void {
+                    $abono->delete();
+                });
+
+                // Asegurar que no queden cargos residuales de detracciones vinculados a este periodo
+                MovimientoDetraccion::withoutGlobalScopes()
+                    ->where('cliente_id', $cliente->id)
+                    ->where('periodo', $validated['periodo'])
+                    ->where('origen', 'control_impuestos')
+                    ->delete();
 
                 $operacion->refrescarResumenDeudas();
 

@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 class AbonoDeuda extends Model
 {
@@ -130,8 +131,15 @@ class AbonoDeuda extends Model
     /**
      * Acceso al cliente a través de la operación.
      */
-    public function cliente(): BelongsTo
+    public function cliente(): HasOneThrough
     {
-        return $this->operacion->cliente();
+        return $this->hasOneThrough(
+            Cliente::class,
+            Operacion::class,
+            'id',
+            'id',
+            'operacion_id',
+            'cliente_id'
+        );
     }
 }

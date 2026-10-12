@@ -60,6 +60,12 @@ class DeudaTributaria extends Model
                     ->value('estudio_id');
             }
         });
+
+        static::deleting(function (DeudaTributaria $deuda): void {
+            $deuda->abonos()->get()->each(function (AbonoDeuda $abono): void {
+                $abono->delete();
+            });
+        });
     }
 
     public function operacion(): BelongsTo

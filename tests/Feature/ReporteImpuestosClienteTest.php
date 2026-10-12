@@ -340,6 +340,159 @@ class ReporteImpuestosClienteTest extends TestCase
         $this->assertNotContains('3081', $codigos);
     }
 
+    public function test_vista_dividida_en_dos_muestra_tablas_paralelas_con_determinacion_vs_pagos(): void
+    {
+        $cliente = $this->cliente('MYPE', 'EMPRESA TABLAS PARALELAS SAC', '20111000140');
+
+        // Periodo Enero 2026: IGV S/ 1000 pagado S/ 600 (Debe S/ 400)
+        $this->guardarTributo($cliente, '01-2026', '1011', 1000, '2026-02-18');
+        $deuda = DeudaTributaria::query()->where('tributo_codigo', '1011')->firstOrFail();
+        $this->postJson(route('abonos_deudas.store'), [
+            'operacion_id' => $deuda->operacion_id,
+            'deuda_tributaria_id' => $deuda->id,
+            'monto' => 600,
+            'fecha_pago' => '2026-02-15',
+            'medio_pago' => 'bancos',
+        ])->assertOk();
+
+        $response = $this->get(route('clientes.operaciones', $cliente));
+
+        // Cabeceras de los 2 bloques paralelos en la tabla
+        $response->assertSee('1. Determinación según DJ · ¿Cuándo y cuánto se tenía que pagar?');
+        $response->assertSee('2. Cumplimiento y Pagos · ¿Cuándo y cuánto se pagó según DJ?');
+
+        // Columnas
+        $response->assertSee('A Pagar (DJ)');
+        $response->assertSee('Cuándo se Pagó');
+        $response->assertSee('Monto Pagado');
+        $response->assertSee('Saldo (Debe)');
+
+        // Datos del periodo
+        $response->assertSee('ENE-26');
+        $response->assertSee('1,000.00');
+        $response->assertSee('600.00');
+        $response->assertSee('Debe 400.00');
+
+        // Modal y scripts
+        $response->assertSee('modalDetalle: {', false);
+        $response->assertSee('abrirModal(', false);
+    }
+
+    public function test_transicion_de_rer_a_rmt_muestra_banner_contable_y_badges_por_mes(): void
+    {
+        $cliente = $this->cliente('MYPE', 'CLIENTE ASCENSO RER RMT SAC', '20111000150');
+
+        // Enero a Abril: tributó bajo RER (3111)
+        $this->guardarTributo($cliente, '01-2026', '3111', 120, '2026-02-18');
+        $this->guardarTributo($cliente, '02-2026', '3111', 130, '2026-03-18');
+
+        // Mayo: superó los 525,000 y ascendió a RMT (3121)
+        $this->guardarTributo($cliente, '05-2026', '3121', 450, '2026-06-18');
+
+        $response = $this->get(route('clientes.operaciones', $cliente));
+
+        // Banner contable de transición
+        $response->assertSee('Transición de Régimen Tributario');
+        $response->assertSee('Corte en Mayo 2026 (05-2026)');
+        $response->assertSee('Art. 121 LIR');
+
+        $reporte = $response->viewData('reporteImpuestos');
+        $this->assertTrue($reporte['analisis_regimen']['hubo_transicion']);
+        $this->assertSame('05-2026', $reporte['analisis_regimen']['periodo_transicion']);
+        $this->assertSame('Mayo', $reporte['analisis_regimen']['mes_transicion_nombre']);
+
+        // Verificación de los meses en filas_periodos
+        $pdt = collect($reporte['bloques'])->firstWhere('id', 'pdt_621');
+        $filas = $pdt['filas_periodos'];
+
+        // Mes 1 (Enero): debe tener sigla RER
+        $this->assertSame('RER', $filas[0]['regimen']['sigla']);
+        $this->assertSame('RER 1.5%', $filas[0]['regimen']['nombre']);
+        $this->assertFalse($filas[0]['regimen']['es_transicion']);
+
+        // Mes 5 (Mayo): debe tener sigla RMT y es_transicion = true
+        $this->assertSame('RMT', $filas[4]['regimen']['sigla']);
+        $this->assertSame('RMT 1%', $filas[4]['regimen']['nombre']);
+        $this->assertTrue($filas[4]['regimen']['es_transicion']);
+    }
+
+    public function test_pdt_621_muestra_columnas_independientes_igv_y_renta_con_montos_reales_y_diferencias(): void
+    {
+        $cliente = $this->cliente('MYPE', 'CONTABILIDAD EXACTA SAC', '20111000160');
+
+        // Periodo 01-2026: IGV 7,764 y Renta 827 (ambos cancelados)
+        $this->guardarTributo($cliente, '01-2026', '1011', 7764, '2026-02-18');
+        $deudaIgv1 = DeudaTributaria::query()->where('tributo_codigo', '1011')->firstOrFail();
+        $this->postJson(route('abonos_deudas.store'), [
+            'operacion_id' => $deudaIgv1->operacion_id,
+            'deuda_tributaria_id' => $deudaIgv1->id,
+            'monto' => 7764,
+            'fecha_pago' => '2026-02-16',
+            'medio_pago' => 'bancos',
+        ])->assertOk();
+
+        $this->guardarTributo($cliente, '01-2026', '3111', 827, '2026-02-18');
+        $deudaRta1 = DeudaTributaria::query()->where('tributo_codigo', '3111')->firstOrFail();
+        $this->postJson(route('abonos_deudas.store'), [
+            'operacion_id' => $deudaRta1->operacion_id,
+            'deuda_tributaria_id' => $deudaRta1->id,
+            'monto' => 827,
+            'fecha_pago' => '2026-02-16',
+            'medio_pago' => 'bancos',
+        ])->assertOk();
+
+        // Periodo 06-2026: IGV 10,375 (pagado 6,747, debe 3,628) y Renta 1,223 (cancelado)
+        $this->guardarTributo($cliente, '06-2026', '1011', 10375, '2026-07-18');
+        $deudaIgv6 = DeudaTributaria::query()->where('tributo_codigo', '1011')->where('monto_deuda_inicial', 10375)->firstOrFail();
+        $this->postJson(route('abonos_deudas.store'), [
+            'operacion_id' => $deudaIgv6->operacion_id,
+            'deuda_tributaria_id' => $deudaIgv6->id,
+            'monto' => 6747,
+            'fecha_pago' => '2026-07-15',
+            'medio_pago' => 'detracciones',
+        ])->assertOk();
+
+        $this->guardarTributo($cliente, '06-2026', '3111', 1223, '2026-07-18');
+        $deudaRta6 = DeudaTributaria::query()->where('tributo_codigo', '3111')->where('monto_deuda_inicial', 1223)->firstOrFail();
+        $this->postJson(route('abonos_deudas.store'), [
+            'operacion_id' => $deudaRta6->operacion_id,
+            'deuda_tributaria_id' => $deudaRta6->id,
+            'monto' => 1223,
+            'fecha_pago' => '2026-07-15',
+            'medio_pago' => 'bancos',
+        ])->assertOk();
+
+        $response = $this->get(route('clientes.operaciones', $cliente));
+
+        // Cabeceras con los códigos oficiales SUNAT
+        $response->assertSee('4011 IGV (18%)');
+        $response->assertSee('4017 Renta');
+        $response->assertSee('4011 IGV Pag.');
+        $response->assertSee('4017 Rta Pag.');
+
+        // Importes de Enero 2026
+        $response->assertSee('7,764.00');
+        $response->assertSee('827.00');
+        $response->assertSee('8,591.00');
+
+        // Importes de Junio 2026
+        $response->assertSee('10,375.00');
+        $response->assertSee('1,223.00');
+        $response->assertSee('6,747.00');
+        $response->assertSee('Debe 3,628.00');
+
+        // Totales y fila contable de diferencias
+        $response->assertSee('DIFERENCIAS / SALDOS PENDIENTES');
+        $response->assertSee('3,628.00');
+
+        $reporte = $response->viewData('reporteImpuestos');
+        $pdt = collect($reporte['bloques'])->firstWhere('id', 'pdt_621');
+        $this->assertEquals(1813900, $pdt['totales']['totales_columnas']['igv']['determinado_centavos']);
+        $this->assertEquals(205000, $pdt['totales']['totales_columnas']['renta']['determinado_centavos']);
+        $this->assertEquals(362800, $pdt['totales']['diferencias']['igv_centavos']);
+        $this->assertEquals(0, $pdt['totales']['diferencias']['renta_centavos']);
+    }
+
     private function cliente(string $regimen, string $razonSocial, string $ruc): Cliente
     {
         return Cliente::create([

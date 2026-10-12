@@ -41,32 +41,92 @@ class ExtractoDetraccionesService
             $descripcion .= " - NPS {$npsOOperacion}";
         }
 
-        return MovimientoDetraccion::withoutGlobalScopes()->updateOrCreate(
-            ['abono_deuda_id' => $abono->id],
-            [
-                'estudio_id' => $abono->estudio_id ?? $cliente->estudio_id,
-                'cliente_id' => $cliente->id,
-                'tipo' => 'retiro',
-                'fecha' => $abono->fecha_pago ?? now()->toDateString(),
-                'periodo' => $periodo ?: null,
-                'monto' => $abono->monto,
-                'descripcion' => $descripcion,
-                'numero_operacion' => $npsOOperacion,
-                'numero_constancia' => null,
-                'comprobante_referencia' => 'PDT / Impuestos',
-                'adquiriente_ruc' => null,
-                'adquiriente_razon_social' => null,
-                'tipo_bien' => null,
-                'origen' => 'control_impuestos',
-                'metadatos' => [
-                    'abono_id' => $abono->id,
-                    'operacion_id' => $abono->operacion_id,
-                    'deuda_tributaria_id' => $abono->deuda_tributaria_id,
-                    'observacion_original' => $abono->observacion,
-                    'medio_pago' => $abono->medio_pago,
-                ],
-            ]
-        );
+        return $this->actualizarOCrearMovimientoRetiro($abono, $cliente, $periodo, $tributoNombre, $npsOOperacion, $descripcion);
+    }
+
+    private function actualizarOCrearMovimientoRetiro(
+        AbonoDeuda $abono,
+        Cliente $cliente,
+        string $periodo,
+        string $tributoNombre,
+        ?string $npsOOperacion,
+        string $descripcion,
+    ): MovimientoDetraccion {
+        // Buscar si ya existe un movimiento de retiro para este abono o para el mismo pago
+        $movimiento = MovimientoDetraccion::withoutGlobalScopes()
+            ->where('cliente_id', $cliente->id)
+            ->where('tipo', 'retiro')
+            ->where(function ($q) use ($abono, $npsOOperacion, $periodo, $tributoNombre): void {
+                $q->where('abono_deuda_id', $abono->id);
+
+                if ($npsOOperacion) {
+                    $q->orWhere('numero_operacion', $npsOOperacion);
+                }
+
+                $q->orWhere(function ($sub) use ($abono, $periodo, $tributoNombre): void {
+                    $sub->where('origen', 'control_impuestos')
+                        ->where('periodo', $periodo)
+                        ->where('monto', $abono->monto)
+                        ->where(function ($crit) use ($abono, $tributoNombre): void {
+                            $crit->where('descripcion', 'like', "%{$tributoNombre}%")
+                                ->orWhere('metadatos->deuda_tributaria_id', $abono->deuda_tributaria_id);
+                        });
+                });
+            })
+            ->orderByRaw('CASE WHEN abono_deuda_id = ? THEN 0 ELSE 1 END', [$abono->id])
+            ->first();
+
+        $datos = [
+            'estudio_id' => $abono->estudio_id ?? $cliente->estudio_id,
+            'cliente_id' => $cliente->id,
+            'tipo' => 'retiro',
+            'fecha' => $abono->fecha_pago ?? now()->toDateString(),
+            'periodo' => $periodo ?: null,
+            'monto' => $abono->monto,
+            'descripcion' => $descripcion,
+            'numero_operacion' => $npsOOperacion,
+            'numero_constancia' => null,
+            'comprobante_referencia' => 'PDT / Impuestos',
+            'adquiriente_ruc' => null,
+            'adquiriente_razon_social' => null,
+            'tipo_bien' => null,
+            'origen' => 'control_impuestos',
+            'abono_deuda_id' => $abono->id,
+            'metadatos' => [
+                'abono_id' => $abono->id,
+                'operacion_id' => $abono->operacion_id,
+                'deuda_tributaria_id' => $abono->deuda_tributaria_id,
+                'observacion_original' => $abono->observacion,
+                'medio_pago' => $abono->medio_pago,
+            ],
+        ];
+
+        if ($movimiento) {
+            $movimiento->update($datos);
+
+            // Eliminar duplicados residuales si existieran con el mismo abono_deuda_id o mismo NPS en el mismo cliente
+            MovimientoDetraccion::withoutGlobalScopes()
+                ->where('cliente_id', $cliente->id)
+                ->where('id', '!=', $movimiento->id)
+                ->where('tipo', 'retiro')
+                ->where(function ($q) use ($abono, $npsOOperacion, $periodo, $tributoNombre): void {
+                    $q->where('abono_deuda_id', $abono->id);
+                    if ($npsOOperacion) {
+                        $q->orWhere('numero_operacion', $npsOOperacion);
+                    }
+                    $q->orWhere(function ($sub) use ($abono, $periodo, $tributoNombre): void {
+                        $sub->where('origen', 'control_impuestos')
+                            ->where('periodo', $periodo)
+                            ->where('monto', $abono->monto)
+                            ->where('descripcion', 'like', "%{$tributoNombre}%");
+                    });
+                })
+                ->delete();
+
+            return $movimiento;
+        }
+
+        return MovimientoDetraccion::withoutGlobalScopes()->create($datos);
     }
 
     /**
@@ -75,7 +135,10 @@ class ExtractoDetraccionesService
     public function eliminarSincronizacion(AbonoDeuda $abono): void
     {
         MovimientoDetraccion::withoutGlobalScopes()
-            ->where('abono_deuda_id', $abono->id)
+            ->where(function ($q) use ($abono): void {
+                $q->where('abono_deuda_id', $abono->id)
+                    ->orWhere('metadatos->abono_id', $abono->id);
+            })
             ->delete();
     }
 
@@ -84,6 +147,14 @@ class ExtractoDetraccionesService
      */
     public function sincronizarHistoricoCliente(Cliente $cliente): int
     {
+        // Limpiar movimientos huérfanos generados desde control_impuestos cuyo abono fue eliminado
+        MovimientoDetraccion::withoutGlobalScopes()
+            ->where('cliente_id', $cliente->id)
+            ->where('origen', 'control_impuestos')
+            ->whereNotNull('abono_deuda_id')
+            ->whereNotIn('abono_deuda_id', AbonoDeuda::withoutGlobalScopes()->select('id'))
+            ->delete();
+
         $abonos = AbonoDeuda::query()
             ->whereHas('operacion', function ($q) use ($cliente) {
                 $q->where('cliente_id', $cliente->id);

@@ -1032,14 +1032,18 @@ class CargaMasivaControlImpuestos
         $operacion->deudasTributarias()->get()->each(function (DeudaTributaria $deuda) use ($declaraciones): void {
             $dec = app(CatalogoSunat::class)->declaracionDe($deuda->tributo_codigo);
             if ($dec !== null && in_array($dec, $declaraciones, true)) {
-                $deuda->abonos()->delete();
+                $deuda->abonos()->get()->each(function (AbonoDeuda $abono): void {
+                    $abono->delete();
+                });
                 $deuda->delete();
             }
         });
 
         if (in_array('pdt_621', $declaraciones, true)) {
             $operacion->liquidacionPeriodo()?->delete();
-            $operacion->abonosDeuda()->whereNull('deuda_tributaria_id')->delete();
+            $operacion->abonosDeuda()->whereNull('deuda_tributaria_id')->get()->each(function (AbonoDeuda $abono): void {
+                $abono->delete();
+            });
         }
 
         $operacion->unsetRelation('deudasTributarias');
