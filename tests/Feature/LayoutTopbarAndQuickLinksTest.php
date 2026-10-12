@@ -273,6 +273,7 @@ class LayoutTopbarAndQuickLinksTest extends TestCase
         $response->assertSeeInOrder([
             'aria-label="Alternar menú lateral"',
             'Consultas Rápidas',
+            'title="Tipo de Cambio SUNAT"',
             'title="Cronograma SUNAT"',
             'aria-label="Configuración"',
             'Cuenta de Carlos Administrador',
@@ -287,7 +288,7 @@ class LayoutTopbarAndQuickLinksTest extends TestCase
             'Balances',
             'Rta. 3ra',
         ]);
-        $response->assertSee("tipo: 'sire'", false);
+        $response->assertSee("tipo: 'pdt_621'", false);
         $response->assertSee('Cronograma SUNAT 2026');
         $response->assertSee('Último dígito del RUC');
         $response->assertSee('Fecha límite');

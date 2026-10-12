@@ -59,7 +59,7 @@ class TipoCambioController extends Controller
     /**
      * Copia el tipo de cambio oficial del mes elegido. El mes en curso también se completa solo.
      */
-    public function sincronizar(Request $request): RedirectResponse
+    public function sincronizar(Request $request): RedirectResponse|JsonResponse
     {
         $hoy = now('America/Lima');
         $anio = (int) $request->input('anio');
@@ -67,12 +67,49 @@ class TipoCambioController extends Controller
         [$anioVisible, $mesVisible] = $this->periodoVisible($anio, $mes, $hoy);
 
         if ($anio !== $anioVisible || $mes !== $mesVisible) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'mensaje' => 'Ese mes todavía no tiene tipo de cambio publicado.',
+                ], 422);
+            }
+
             return redirect()
                 ->route('tipo-cambio.index', ['anio' => $anioVisible, 'mes' => $mesVisible])
                 ->with('error', 'Ese mes todavía no tiene tipo de cambio publicado.');
         }
 
         $resultado = $this->tipoCambioSunat->sincronizarMes($anio, $mes);
+
+        if ($request->expectsJson()) {
+            if (! $resultado['ok']) {
+                return response()->json([
+                    'ok' => false,
+                    'mensaje' => 'No se pudo copiar el tipo de cambio de SUNAT. Inténtalo de nuevo en unos minutos.',
+                ], 500);
+            }
+
+            if ($resultado['dias'] === 0) {
+                return response()->json([
+                    'ok' => false,
+                    'mensaje' => 'SUNAT no publicó cotizaciones para ese mes.',
+                ], 404);
+            }
+
+            $datos = $this->tipoCambioSunat->datosMes($anio, $mes, false);
+            $nombre = lcfirst($this->nombreMes($anio, $mes));
+            $mensaje = $resultado['dias'] === 1
+                ? 'Se copió 1 cotización de '.$nombre.'.'
+                : 'Se copiaron '.$resultado['dias'].' cotizaciones de '.$nombre.'.';
+
+            return response()->json([
+                'ok' => true,
+                'dias' => $resultado['dias'],
+                'mensaje' => $mensaje,
+                'datos' => $datos,
+            ]);
+        }
+
         $destino = redirect()->route('tipo-cambio.index', ['anio' => $anio, 'mes' => $mes]);
 
         if (! $resultado['ok']) {
@@ -89,6 +126,20 @@ class TipoCambioController extends Controller
             : 'Se copiaron '.$resultado['dias'].' cotizaciones de '.$nombre.'.';
 
         return $destino->with('success', $mensaje);
+    }
+
+    /**
+     * Devuelve el calendario mensual de cotizaciones en JSON para la ventana flotante de acceso rápido.
+     */
+    public function mes(Request $request): JsonResponse
+    {
+        $hoy = now('America/Lima');
+        $anioPedido = (int) $request->input('anio', $hoy->year);
+        $mesPedido = (int) $request->input('mes', $hoy->month);
+
+        $datos = $this->tipoCambioSunat->datosMes($anioPedido, $mesPedido, true);
+
+        return response()->json($datos);
     }
 
     /**
@@ -124,42 +175,7 @@ class TipoCambioController extends Controller
      */
     private function calendario(int $anio, int $mes, Collection $historial, Carbon $hoy): array
     {
-        $porDia = [];
-
-        foreach ($historial as $fila) {
-            $porDia[(int) $fila->fecha->day] = [
-                'compra' => number_format((float) $fila->compra, 3, '.', ''),
-                'venta' => number_format((float) $fila->venta, 3, '.', ''),
-            ];
-        }
-
-        $primero = Carbon::create($anio, $mes, 1, 0, 0, 0, 'America/Lima');
-        $cursor = $primero->copy()->startOfWeek(Carbon::SUNDAY);
-        $fin = $primero->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
-        $semanas = [];
-        $semana = [];
-
-        while ($cursor->lte($fin)) {
-            $delMes = $cursor->year === $anio && $cursor->month === $mes;
-            $tasas = $delMes ? ($porDia[$cursor->day] ?? null) : null;
-
-            $semana[] = [
-                'dia' => $cursor->day,
-                'del_mes' => $delMes,
-                'hoy' => $delMes && $cursor->isSameDay($hoy),
-                'compra' => $tasas['compra'] ?? null,
-                'venta' => $tasas['venta'] ?? null,
-            ];
-
-            if (count($semana) === 7) {
-                $semanas[] = $semana;
-                $semana = [];
-            }
-
-            $cursor->addDay();
-        }
-
-        return $semanas;
+        return $this->tipoCambioSunat->calendario($anio, $mes, $historial, $hoy);
     }
 
     /**
@@ -169,17 +185,7 @@ class TipoCambioController extends Controller
      */
     private function periodoVecino(int $anio, int $mes, int $delta, Carbon $hoy): ?array
     {
-        $fecha = Carbon::create($anio, $mes, 1, 0, 0, 0, 'America/Lima')->addMonths($delta);
-
-        if ($fecha->year < 2010 || $fecha->year > $hoy->year) {
-            return null;
-        }
-
-        if ($fecha->year === $hoy->year && $fecha->month > $hoy->month) {
-            return null;
-        }
-
-        return ['anio' => $fecha->year, 'mes' => $fecha->month];
+        return $this->tipoCambioSunat->periodoVecino($anio, $mes, $delta, $hoy);
     }
 
     /**
@@ -187,17 +193,7 @@ class TipoCambioController extends Controller
      */
     private function periodoVisible(int $anio, int $mes, Carbon $hoy): array
     {
-        if ($anio < 2010 || $anio > $hoy->year) {
-            $anio = $hoy->year;
-        }
-
-        $mesMaximo = $anio === $hoy->year ? $hoy->month : 12;
-
-        if ($mes < 1 || $mes > $mesMaximo) {
-            $mes = $mesMaximo;
-        }
-
-        return [$anio, $mes];
+        return $this->tipoCambioSunat->periodoVisible($anio, $mes, $hoy);
     }
 
     /**
@@ -217,9 +213,7 @@ class TipoCambioController extends Controller
 
     private function nombreMes(int $anio, int $mes): string
     {
-        $texto = ucfirst(Carbon::createFromDate($anio, $mes, 1)->locale('es')->isoFormat('MMMM [de] YYYY'));
-
-        return $this->setiembre($texto);
+        return $this->tipoCambioSunat->nombreMes($anio, $mes);
     }
 
     private function nombreMesCorto(int $mes): string

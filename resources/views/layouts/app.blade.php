@@ -527,6 +527,8 @@
                             </div>
                         </div>
 
+                        <x-navegacion.tipo-cambio-barra :tipoCambio="$tipoCambioBarra" />
+
                         <x-navegacion.cronograma-barra :cronograma="$cronogramaBarra" />
 
                         <x-navegacion.menu-configuracion />

@@ -9,6 +9,7 @@ use App\Services\Catalogos\CatalogoSunat;
 use App\Services\CronogramaSunatService;
 use App\Services\Navegacion\SelectorEmpresa;
 use App\Services\SunatBuzonSyncService;
+use App\Services\TipoCambioSunatService;
 use App\Support\IdentidadMarca;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
@@ -57,7 +58,37 @@ class AppServiceProvider extends ServiceProvider
                 'cronogramaBarra',
                 $this->obtenerCronogramaBarra(),
             );
+            $view->with(
+                'tipoCambioBarra',
+                $this->obtenerTipoCambioBarra(),
+            );
         });
+    }
+
+    /**
+     * Entrega los datos básicos del tipo de cambio para la barra superior sin sobrecargar el HTML.
+     *
+     * @return array{anio: int, mes: int, vigente: ?array}
+     */
+    private function obtenerTipoCambioBarra(): array
+    {
+        try {
+            $hoy = now('America/Lima');
+
+            return [
+                'anio' => $hoy->year,
+                'mes' => $hoy->month,
+                'vigente' => app(TipoCambioSunatService::class)->vigenteAlmacenado(),
+            ];
+        } catch (\Throwable) {
+            $hoy = now('America/Lima');
+
+            return [
+                'anio' => (int) $hoy->year,
+                'mes' => (int) $hoy->month,
+                'vigente' => null,
+            ];
+        }
     }
 
     /**

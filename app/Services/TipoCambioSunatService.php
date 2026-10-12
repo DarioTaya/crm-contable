@@ -304,6 +304,193 @@ class TipoCambioSunatService
     }
 
     /**
+     * Tipo de cambio vigente guardado en base de datos o en caché, sin realizar llamadas HTTP externas.
+     *
+     * @return array{
+     *     fecha: string,
+     *     fecha_corta: string,
+     *     fecha_iso: string,
+     *     compra: float,
+     *     venta: float,
+     *     compra_texto: string,
+     *     venta_texto: string,
+     *     diferencia_texto: string,
+     *     moneda: string,
+     *     consultado_en: string
+     * }|null
+     */
+    public function vigenteAlmacenado(): ?array
+    {
+        $hoy = now('America/Lima')->toDateString();
+        $cacheado = Cache::get(self::CLAVE_VIGENTE);
+
+        if ($this->esLaCotizacionDeHoy($cacheado, $hoy) && $this->sigueFresco($cacheado)) {
+            return $cacheado;
+        }
+
+        $delDia = $this->cotizacionDelDia($hoy);
+
+        if ($delDia !== null) {
+            return $this->recordar($delDia);
+        }
+
+        if (is_array($cacheado) && ! $this->esFallo($cacheado) && $this->sigueFresco($cacheado)) {
+            return $cacheado;
+        }
+
+        return $this->ultimaPublicacion($hoy) ?? $this->ultimoDisponible();
+    }
+
+    /**
+     * Entrega la información mensual y el calendario de cotizaciones para el módulo y la barra de acceso rápido.
+     *
+     * @return array{
+     *     anio: int,
+     *     mes: int,
+     *     nombre_mes: string,
+     *     es_mes_actual: bool,
+     *     mes_anterior: ?array{anio: int, mes: int},
+     *     mes_siguiente: ?array{anio: int, mes: int},
+     *     vigente: ?array{
+     *         fecha: string,
+     *         fecha_corta: string,
+     *         fecha_iso: string,
+     *         compra: float,
+     *         venta: float,
+     *         compra_texto: string,
+     *         venta_texto: string,
+     *         diferencia_texto: string,
+     *         moneda: string,
+     *         consultado_en: string
+     *     },
+     *     semanas: list<list<array{dia: int, del_mes: bool, hoy: bool, compra: ?string, venta: ?string}>>,
+     *     dias_semana: list<string>,
+     *     tiene_datos: bool,
+     *     url_completa: string
+     * }
+     */
+    public function datosMes(int $anio, int $mes, bool $asegurarOnline = false): array
+    {
+        $hoy = now('America/Lima');
+        [$anio, $mes] = $this->periodoVisible($anio, $mes, $hoy);
+
+        if ($asegurarOnline && $anio === $hoy->year && $mes === $hoy->month) {
+            $this->asegurarMesEnCurso();
+        }
+
+        $vigente = $asegurarOnline ? $this->vigente() : $this->vigenteAlmacenado();
+        $historial = $this->historial($anio, $mes);
+        $semanas = $this->calendario($anio, $mes, $historial, $hoy);
+
+        return [
+            'anio' => $anio,
+            'mes' => $mes,
+            'nombre_mes' => $this->nombreMes($anio, $mes),
+            'es_mes_actual' => $anio === $hoy->year && $mes === $hoy->month,
+            'mes_anterior' => $this->periodoVecino($anio, $mes, -1, $hoy),
+            'mes_siguiente' => $this->periodoVecino($anio, $mes, 1, $hoy),
+            'vigente' => $vigente,
+            'semanas' => $semanas,
+            'dias_semana' => ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
+            'tiene_datos' => $historial->isNotEmpty(),
+            'url_completa' => route('tipo-cambio.index', ['anio' => $anio, 'mes' => $mes]),
+        ];
+    }
+
+    /**
+     * Calendario del mes, de domingo a sábado, estructurado para matriz visual.
+     *
+     * @param  Collection<int, TipoCambioSunat>  $historial
+     * @return list<list<array{dia: int, del_mes: bool, hoy: bool, compra: ?string, venta: ?string}>>
+     */
+    public function calendario(int $anio, int $mes, Collection $historial, Carbon $hoy): array
+    {
+        $porDia = [];
+
+        foreach ($historial as $fila) {
+            $porDia[(int) $fila->fecha->day] = [
+                'compra' => number_format((float) $fila->compra, 3, '.', ''),
+                'venta' => number_format((float) $fila->venta, 3, '.', ''),
+            ];
+        }
+
+        $primero = Carbon::create($anio, $mes, 1, 0, 0, 0, 'America/Lima');
+        $cursor = $primero->copy()->startOfWeek(Carbon::SUNDAY);
+        $fin = $primero->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
+        $semanas = [];
+        $semana = [];
+
+        while ($cursor->lte($fin)) {
+            $delMes = $cursor->year === $anio && $cursor->month === $mes;
+            $tasas = $delMes ? ($porDia[$cursor->day] ?? null) : null;
+
+            $semana[] = [
+                'dia' => $cursor->day,
+                'del_mes' => $delMes,
+                'hoy' => $delMes && $cursor->isSameDay($hoy),
+                'compra' => $tasas['compra'] ?? null,
+                'venta' => $tasas['venta'] ?? null,
+            ];
+
+            if (count($semana) === 7) {
+                $semanas[] = $semana;
+                $semana = [];
+            }
+
+            $cursor->addDay();
+        }
+
+        return $semanas;
+    }
+
+    /**
+     * @return array{anio: int, mes: int}|null
+     */
+    public function periodoVecino(int $anio, int $mes, int $delta, Carbon $hoy): ?array
+    {
+        $fecha = Carbon::create($anio, $mes, 1, 0, 0, 0, 'America/Lima')->addMonths($delta);
+
+        if ($fecha->year < 2010 || $fecha->year > $hoy->year) {
+            return null;
+        }
+
+        if ($fecha->year === $hoy->year && $fecha->month > $hoy->month) {
+            return null;
+        }
+
+        return ['anio' => $fecha->year, 'mes' => $fecha->month];
+    }
+
+    /**
+     * @return array{0: int, 1: int}
+     */
+    public function periodoVisible(int $anio, int $mes, Carbon $hoy): array
+    {
+        if ($anio < 2010 || $anio > $hoy->year) {
+            $anio = $hoy->year;
+        }
+
+        $mesMaximo = $anio === $hoy->year ? $hoy->month : 12;
+
+        if ($mes < 1 || $mes > $mesMaximo) {
+            $mes = $mesMaximo;
+        }
+
+        return [$anio, $mes];
+    }
+
+    public function nombreMes(int $anio, int $mes): string
+    {
+        $texto = ucfirst(Carbon::createFromDate($anio, $mes, 1)->locale('es')->isoFormat('MMMM [de] YYYY'));
+
+        return str_replace(
+            ['Septiembre', 'septiembre'],
+            ['Setiembre', 'setiembre'],
+            $texto
+        );
+    }
+
+    /**
      * Presenta una tasa con los decimales que publica SUNAT, como mínimo tres.
      */
     public function formatearTasa(float|string $tasa): string

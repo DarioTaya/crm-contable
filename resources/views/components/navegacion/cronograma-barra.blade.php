@@ -50,7 +50,7 @@
 <div
     x-data="{
         abierto: false,
-        tipo: 'sire',
+        tipo: 'pdt_621',
         alternar() {
             this.abierto = !this.abierto;
             if (this.abierto) {
@@ -105,7 +105,7 @@
             <div class="shrink-0 border-b border-slate-200 px-3 py-2">
                 <p class="text-[13px] font-semibold leading-none text-slate-900">Cronograma SUNAT {{ $anio }}</p>
                 @foreach ($detalles as $clave => $detalle)
-                    <p class="mt-1 text-[10px] leading-none text-slate-500" x-show="tipo === '{{ $clave }}'" @if ($clave !== 'sire') x-cloak @endif>{{ $detalle }}</p>
+                    <p class="mt-1 text-[10px] leading-none text-slate-500" x-show="tipo === '{{ $clave }}'" @if ($clave !== 'pdt_621') x-cloak @endif>{{ $detalle }}</p>
                 @endforeach
                 <div class="mt-2 flex rounded-lg bg-slate-100 p-0.5" role="tablist" aria-label="Tipo de cronograma">
                     @foreach ($menus as $clave => $etiqueta)
@@ -122,7 +122,7 @@
             </div>
 
             @foreach ($bloques as $clave => $filas)
-                <div x-show="tipo === '{{ $clave }}'" @if ($clave !== 'sire') x-cloak @endif>
+                <div x-show="tipo === '{{ $clave }}'" @if ($clave !== 'pdt_621') x-cloak @endif>
                     @if ($clave === 'balance_mensual')
                         <table class="w-full border-collapse text-[11px] leading-none">
                             <thead class="sticky top-0 z-10">

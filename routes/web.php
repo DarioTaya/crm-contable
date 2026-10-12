@@ -160,8 +160,9 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
     Route::patch('/notificaciones/{notificacion}/toggle', [NotificacionController::class, 'toggleLeido'])->name('notificaciones.toggle');
     Route::post('/clientes/{cliente}/operaciones', [OperacionController::class, 'storeOrUpdate'])->name('clientes.operaciones.store')->can('registrarOperaciones', 'cliente');
 
-    // Cronograma Tributario SUNAT
+    // Tipo de Cambio SUNAT
     Route::get('/tipo-cambio', [TipoCambioController::class, 'index'])->name('tipo-cambio.index');
+    Route::get('/tipo-cambio/mes', [TipoCambioController::class, 'mes'])->name('tipo-cambio.mes');
     Route::post('/tipo-cambio/sincronizar', [TipoCambioController::class, 'sincronizar'])->name('tipo-cambio.sincronizar');
     Route::get('/tipo-cambio/actual', [TipoCambioController::class, 'actual'])->name('tipo-cambio.actual');
 

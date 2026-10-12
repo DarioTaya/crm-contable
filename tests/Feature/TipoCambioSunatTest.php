@@ -346,6 +346,63 @@ class TipoCambioSunatTest extends TestCase
             ->assertSuccessful();
     }
 
+    public function test_endpoint_mes_json_returns_calendar_structure_and_rates(): void
+    {
+        TipoCambioSunat::query()->create([
+            'fecha' => '2026-10-05',
+            'compra' => 3.750,
+            'venta' => 3.758,
+        ]);
+
+        $response = $this->actingAs($this->usuario())
+            ->getJson(route('tipo-cambio.mes', ['anio' => 2026, 'mes' => 10]));
+
+        $response->assertOk();
+        $response->assertJsonStructure([
+            'anio',
+            'mes',
+            'nombre_mes',
+            'es_mes_actual',
+            'mes_anterior',
+            'mes_siguiente',
+            'vigente',
+            'semanas',
+            'dias_semana',
+            'tiene_datos',
+            'url_completa',
+        ]);
+        $response->assertJson([
+            'anio' => 2026,
+            'mes' => 10,
+            'tiene_datos' => true,
+        ]);
+    }
+
+    public function test_ajax_sync_returns_json_and_updates_month(): void
+    {
+        $this->travelTo(Carbon::parse('2026-10-12 12:00:00', 'America/Lima'));
+        $this->publicarMes('12/10/2026|3.750|3.760|', [
+            ['fecPublica' => '10/10/2026', 'valTipo' => '3.748', 'codTipo' => 'C'],
+            ['fecPublica' => '10/10/2026', 'valTipo' => '3.755', 'codTipo' => 'V'],
+        ]);
+
+        $response = $this->actingAs($this->usuario())
+            ->postJson(route('tipo-cambio.sincronizar'), [
+                'anio' => 2026,
+                'mes' => 10,
+            ]);
+
+        $response->assertOk();
+        $response->assertJson([
+            'ok' => true,
+            'dias' => 1,
+        ]);
+        $fila = TipoCambioSunat::query()->whereDate('fecha', '2026-10-10')->first();
+        $this->assertNotNull($fila);
+        $this->assertEquals(3.748, (float) $fila->compra);
+        $this->assertEquals(3.755, (float) $fila->venta);
+    }
+
     private function publicar(string $cuerpo): void
     {
         config([
