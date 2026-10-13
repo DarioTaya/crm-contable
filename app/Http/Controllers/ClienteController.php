@@ -994,6 +994,19 @@ class ClienteController extends Controller
         $nodeExecutable = realpath($this->getNodeExecutable()) ?: $this->getNodeExecutable();
 
         // Control de concurrencia: si ya existía una sesión previa colgada para ESTE mismo cliente, limpiarla
+        $browserPidFile = storage_path("framework/login_browser_sunat_{$ruc}.pid");
+        if (file_exists($browserPidFile)) {
+            $oldBrowserPid = (int) @file_get_contents($browserPidFile);
+            if ($oldBrowserPid > 0) {
+                if (DIRECTORY_SEPARATOR === '\\') {
+                    @pclose(@popen("cmd.exe /c taskkill /F /T /PID {$oldBrowserPid} >NUL 2>&1", 'r'));
+                } else {
+                    @exec("kill -9 {$oldBrowserPid} 2>/dev/null");
+                }
+            }
+            @unlink($browserPidFile);
+        }
+
         $pidFile = storage_path("framework/login_pid_sunat_{$ruc}.pid");
         if (file_exists($pidFile)) {
             $oldPid = (int) @file_get_contents($pidFile);
@@ -1132,6 +1145,19 @@ class ClienteController extends Controller
         $nodeExecutable = realpath($this->getNodeExecutable()) ?: $this->getNodeExecutable();
 
         // Control de concurrencia: si ya existía una sesión previa colgada para ESTE mismo cliente, limpiarla
+        $browserPidFile = storage_path("framework/login_browser_sunafil_{$ruc}.pid");
+        if (file_exists($browserPidFile)) {
+            $oldBrowserPid = (int) @file_get_contents($browserPidFile);
+            if ($oldBrowserPid > 0) {
+                if (DIRECTORY_SEPARATOR === '\\') {
+                    @pclose(@popen("cmd.exe /c taskkill /F /T /PID {$oldBrowserPid} >NUL 2>&1", 'r'));
+                } else {
+                    @exec("kill -9 {$oldBrowserPid} 2>/dev/null");
+                }
+            }
+            @unlink($browserPidFile);
+        }
+
         $pidFile = storage_path("framework/login_pid_sunafil_{$ruc}.pid");
         if (file_exists($pidFile)) {
             $oldPid = (int) @file_get_contents($pidFile);

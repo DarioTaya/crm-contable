@@ -441,7 +441,7 @@
                     <div class="relative">
                     <button type="button"
                        @click.stop="abrirMenuSunat($event, '{{ route('clientes.sunat', $cliente) }}', '{{ addslashes($cliente->razon_social) }}', '{{ $cliente->ruc }}')"
-                       class="group flex w-full items-center justify-between gap-3 rounded-xl border-2 border-emerald-200 bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-3.5 text-left text-white shadow-md transition-all hover:from-emerald-600 hover:to-teal-700 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]">
+                       class="group cursor-pointer flex w-full items-center justify-between gap-3 rounded-xl border-2 border-emerald-200 bg-gradient-to-r from-emerald-500 to-teal-600 px-5 py-3.5 text-left text-white shadow-md transition-all hover:from-emerald-600 hover:to-teal-700 hover:shadow-lg hover:scale-[1.01] active:scale-[0.99]">
                         <div class="flex items-center gap-3">
                             <span class="text-2xl">🚀</span>
                             <div>

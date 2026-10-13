@@ -138,12 +138,12 @@
         </div>
 
         {{-- ════════════════════ MODAL HUD PREMIUM DE ACCESO RÁPIDO (1 CLIC) ════════════════════ --}}
-        <div x-show="hudAcceso.abierto"
+        <div x-show="hudAcceso.abierto && !hudAcceso.completado"
              x-cloak
-             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter="transition ease-out duration-200"
              x-transition:enter-start="opacity-0 scale-95"
              x-transition:enter-end="opacity-100 scale-100"
-             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave="transition ease-in duration-75"
              x-transition:leave-start="opacity-100 scale-100"
              x-transition:leave-end="opacity-0 scale-95"
              class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
@@ -607,23 +607,18 @@
                 },
                 abrirMenuSunat(event, url, nombre, ruc) {
                     document.querySelectorAll('[data-ancla-sunat]').forEach((nodo) => nodo.removeAttribute('data-ancla-sunat'));
-                    event.currentTarget.setAttribute('data-ancla-sunat', '1');
+                    const boton = event.currentTarget;
+                    boton.setAttribute('data-ancla-sunat', '1');
                     this.menuSunat.url = url;
                     this.menuSunat.nombre = nombre;
                     this.menuSunat.ruc = ruc;
-                    window.posicionarMenuAccesosSunat(this.menuSunat);
                     this.menuSunat.abierto = true;
-                    if (!this._oyendoScrollSunat) {
-                        this._oyendoScrollSunat = true;
-                        const seguir = () => {
-                            if (!this.menuSunat.abierto) {
-                                return;
-                            }
-                            window.posicionarMenuAccesosSunat(this.menuSunat);
-                        };
-                        window.addEventListener('scroll', seguir, true);
-                        window.addEventListener('resize', seguir);
-                    }
+                    this.$nextTick(() => {
+                        const panel = document.getElementById('menu-accesos-sunat-flotante');
+                        if (panel && typeof window.ubicarMenuFlotante === 'function') {
+                            window.ubicarMenuFlotante(panel, boton);
+                        }
+                    });
                 },
                 elegirAccesoSunat(destino) {
                     const url = this.menuSunat.url + '?destino=' + encodeURIComponent(destino);
@@ -680,9 +675,8 @@
                             this.hudAcceso.nombreNavegador = bName;
                             this.hudAcceso.progreso = 100;
                             this.hudAcceso.completado = true;
-                            this.hudAcceso.faseTexto = '¡Sesión lista!';
-                            // Se cierra de inmediato para desaparecer por completo antes de que la ventana tome el foco
                             this.hudAcceso.abierto = false;
+                            this.hudAcceso.faseTexto = '¡Sesión lista!';
                         } else {
                             this.hudAcceso.error = data.message || 'No se pudo iniciar la sesión automática.';
                             this.hudAcceso.progreso = 0;

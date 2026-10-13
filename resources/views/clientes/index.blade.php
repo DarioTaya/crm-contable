@@ -247,7 +247,7 @@
                                 <button type="button"
                                    @click.stop="abrirMenuSunat($event, '{{ route('clientes.sunat', $cliente) }}', '{{ addslashes($cliente->razon_social) }}', '{{ $cliente->ruc }}')"
                                    title="Accesos SUNAT con Clave SOL"
-                                   class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-emerald-700 hover:shadow active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
+                                   class="cursor-pointer inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-emerald-700 hover:shadow active:scale-95 focus:outline-none focus:ring-2 focus:ring-emerald-500/40">
                                     <span class="text-xs">🚀</span>
                                     <span>SUNAT</span>
                                 </button>
@@ -256,7 +256,7 @@
                                 <a href="{{ route('clientes.sunafil', $cliente) }}"
                                    @click.prevent="lanzarAcceso('{{ route('clientes.sunafil', $cliente) }}', 'SUNAFIL', '{{ addslashes($cliente->razon_social) }}', '{{ $cliente->ruc }}')"
                                    title="Ingreso Automático a Casilla Electrónica SUNAFIL (1 Clic)"
-                                   class="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-blue-700 hover:shadow active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500/40">
+                                   class="cursor-pointer inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-2.5 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-blue-700 hover:shadow active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500/40">
                                     <span class="text-xs">👷</span>
                                     <span>SUNAFIL</span>
                                 </a>
@@ -369,12 +369,12 @@
     @include('clientes.partials.menu-accesos-sunat')
 
     {{-- ════════════════════ MODAL HUD PREMIUM DE ACCESO RÁPIDO ════════════════════ --}}
-    <div x-show="abierto"
+    <div x-show="abierto && !completado"
          x-cloak
-         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0 scale-95"
          x-transition:enter-end="opacity-100 scale-100"
-         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave="transition ease-in duration-75"
          x-transition:leave-start="opacity-100 scale-100"
          x-transition:leave-end="opacity-0 scale-95"
          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
@@ -663,23 +663,18 @@
 
             abrirMenuSunat(event, url, nombre, ruc) {
                 document.querySelectorAll('[data-ancla-sunat]').forEach((nodo) => nodo.removeAttribute('data-ancla-sunat'));
-                event.currentTarget.setAttribute('data-ancla-sunat', '1');
+                const boton = event.currentTarget;
+                boton.setAttribute('data-ancla-sunat', '1');
                 this.menuSunat.url = url;
                 this.menuSunat.nombre = nombre;
                 this.menuSunat.ruc = ruc;
-                window.posicionarMenuAccesosSunat(this.menuSunat);
                 this.menuSunat.abierto = true;
-                if (!this._oyendoScrollSunat) {
-                    this._oyendoScrollSunat = true;
-                    const seguir = () => {
-                        if (!this.menuSunat.abierto) {
-                            return;
-                        }
-                        window.posicionarMenuAccesosSunat(this.menuSunat);
-                    };
-                    window.addEventListener('scroll', seguir, true);
-                    window.addEventListener('resize', seguir);
-                }
+                this.$nextTick(() => {
+                    const panel = document.getElementById('menu-accesos-sunat-flotante');
+                    if (panel && typeof window.ubicarMenuFlotante === 'function') {
+                        window.ubicarMenuFlotante(panel, boton);
+                    }
+                });
             },
 
             elegirAccesoSunat(destino) {
@@ -738,9 +733,8 @@
                         this.nombreNavegador = bName;
                         this.progreso = 100;
                         this.completado = true;
-                        this.faseTexto = '¡Sesión lista!';
-                        // Se cierra de inmediato para desaparecer por completo antes de que la ventana tome el foco
                         this.abierto = false;
+                        this.faseTexto = '¡Sesión lista!';
                     } else {
                         this.error = data.message || 'No se pudo iniciar la sesión automática.';
                         this.progreso = 0;
