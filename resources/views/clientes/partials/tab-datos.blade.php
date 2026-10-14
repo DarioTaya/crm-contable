@@ -1416,7 +1416,7 @@
             </div>
         </div>
 
-        {{-- Card de Ayuda --}}
+        {{-- Card de Ayuda SIRE/SOL --}}
         <div class="rounded-xl border border-amber-200 bg-amber-50/50 shadow-xs">
             <div class="px-6 py-4">
                 <div class="flex items-start gap-3">
@@ -1426,22 +1426,215 @@
                         </svg>
                     </div>
                     <div>
-                        <h4 class="text-sm font-semibold text-amber-900">Cómo obtener las credenciales</h4>
+                        <h4 class="text-sm font-semibold text-amber-900">Cómo obtener credenciales de SIRE / Factoring / GRE</h4>
                         <ol class="mt-2 space-y-1.5 text-xs text-amber-800 list-decimal list-inside">
                             <li>Ingresar al portal <span class="font-semibold">SUNAT SOL</span> con la Clave SOL del contribuyente.</li>
                             <li>Navegar a: <span class="font-mono bg-amber-100 px-1 py-0.5 rounded text-[11px]">Empresas &gt; Credenciales de API SUNAT &gt; Credenciales de API SUNAT &gt; Gestión Credenciales de API SUNAT</span>.</li>
                             <li>Registrar una aplicación. En <span class="font-bold text-amber-950">'Alcance'</span> seleccionar obligatoriamente <span class="font-bold underline text-amber-950">'Desktop'</span> <span class="text-amber-700">(SUNAT bloquea las llamadas API SIRE con Error 401 si se selecciona 'Web')</span>.</li>
                             <li>Marcar obligatoriamente el check: <span class="font-semibold font-mono bg-amber-100 px-1 py-0.5 rounded text-[11px]">'MIGE RCE y RVIE - SIRE /v1/contribuyente/migeigv'</span>.</li>
-                            <li>Copiar el <span class="font-semibold">'ID'</span> y la <span class="font-semibold">'CLAVE'</span> y pegarlos en este formulario.</li>
+                            <li>Copiar el <span class="font-semibold">'ID'</span> y la <span class="font-semibold">'CLAVE'</span> y pegarlos en el formulario superior.</li>
                         </ol>
-                        <p class="mt-3 text-[11px] text-amber-700 flex items-center gap-1.5">
-                            <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                            </svg>
-                            El Client Secret se almacena cifrado con AES-256-CBC en la base de datos.
-                        </p>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        {{-- ═══════════════════ CARD: CREDENCIALES API SUNAT — VALIDEZ DE COMPROBANTES (CPE) ═══════════════════ --}}
+        <div class="rounded-xl border border-teal-200 bg-white shadow-xs overflow-hidden" x-data="cpeCredentialsForm()">
+            <div class="border-b border-teal-100 bg-teal-50/40 px-6 py-4 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-100 text-teal-700">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-base font-semibold text-gray-900">Credenciales API SUNAT — Consulta de Validez CPE</h3>
+                            <span class="inline-flex items-center rounded-md bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-800 tracking-wide">OFICIAL SUNAT</span>
+                        </div>
+                        <p class="text-xs text-gray-600">ID y Clave exclusivos para la API de Consulta de Validez integrada (Facturas, Boletas, NC, ND, Guías y condición de Habido).</p>
+                    </div>
+                </div>
+                <div class="text-right shrink-0">
+                    <template x-if="clientIdVisible">
+                        <div>
+                            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700">
+                                <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                                Configurado
+                            </span>
+                            <p class="mt-1 max-w-[16rem] truncate font-mono text-xs text-gray-800" x-text="clientIdVisible" title="Client ID CPE"></p>
+                        </div>
+                    </template>
+                    <template x-if="!clientIdVisible">
+                        <span class="inline-flex items-center gap-1.5 rounded-full bg-gray-50 border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-500">
+                            <span class="h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+                            Sin configurar
+                        </span>
+                    </template>
+                </div>
+            </div>
+
+            <div class="px-6 py-5 space-y-5">
+                {{-- Ruta de navegación exacta en SUNAT SOL --}}
+                <div class="rounded-lg border border-teal-200 bg-teal-50/60 p-3.5 text-xs text-teal-900">
+                    <div class="flex items-start gap-2.5">
+                        <svg class="h-4 w-4 text-teal-700 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                        </svg>
+                        <div class="space-y-1">
+                            <p class="font-semibold text-teal-950">Ruta oficial en el portal SUNAT Operaciones en Línea (SOL):</p>
+                            <p class="font-mono bg-white/80 border border-teal-200 rounded px-2 py-1 text-[11px] text-teal-900 select-all font-medium">
+                                EMPRESAS &gt; COMPROBANTES DE PAGO &gt; Consulta de Validez de Comprobante de Pago &gt; Consulta de Validez de Comprobante de Pago &gt; Credenciales de API SUNAT
+                            </p>
+                            <p class="text-[11px] text-teal-800">
+                                Registre una aplicación (Nombre y URL) para obtener el <strong>Id</strong> y la <strong>Clave</strong> exclusivos de este servicio web.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Toast de feedback --}}
+                <div x-show="toast.mostrar"
+                     x-cloak
+                     x-transition
+                     class="flex items-center gap-3 rounded-lg border px-4 py-3"
+                     :class="toast.tipo === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'">
+                    <template x-if="toast.tipo === 'success'">
+                        <svg class="h-4 w-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                        </svg>
+                    </template>
+                    <template x-if="toast.tipo === 'error'">
+                        <svg class="h-4 w-4 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                        </svg>
+                    </template>
+                    <p class="text-sm font-medium" x-text="toast.mensaje"></p>
+                </div>
+
+                {{-- Resultado del Test de Conexión en Vivo --}}
+                <div x-show="testResultado !== null" x-cloak class="rounded-lg border p-3.5 text-xs transition"
+                     :class="testResultado?.success ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-rose-50 border-rose-300 text-rose-900'">
+                    <div class="flex items-start gap-2.5">
+                        <template x-if="testResultado?.success">
+                            <svg class="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                        </template>
+                        <template x-if="!testResultado?.success">
+                            <svg class="h-4 w-4 text-rose-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                        </template>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-sm" x-text="testResultado?.message"></p>
+                            <template x-if="testResultado?.latencia_ms">
+                                <p class="text-[11px] mt-0.5 opacity-80" x-text="'Tiempo de respuesta: ' + testResultado.latencia_ms + ' ms'"></p>
+                            </template>
+                        </div>
+                        <button type="button" @click="testResultado = null" class="text-gray-400 hover:text-gray-600 font-bold px-1">&times;</button>
+                    </div>
+                </div>
+
+                <form @submit.prevent="guardar" autocomplete="off" class="space-y-4">
+                    {{-- Señuelos anti autofill --}}
+                    <div class="hidden" aria-hidden="true">
+                        <input type="text" name="usuario_cpe_fake" tabindex="-1">
+                        <input type="password" name="clave_cpe_fake" tabindex="-1">
+                    </div>
+
+                    {{-- Client ID CPE --}}
+                    <div>
+                        <label for="cpe_client_id" class="block text-sm font-medium text-gray-700 mb-1">Id de Aplicación (Validez CPE)</label>
+                        <input type="text"
+                               id="cpe_client_id"
+                               name="sunat_cpe_client_id"
+                               autocomplete="off"
+                               spellcheck="false"
+                               data-1p-ignore
+                               data-lpignore="true"
+                               readonly
+                               @focus="$el.removeAttribute('readonly')"
+                               x-model="form.sunat_cpe_client_id"
+                               placeholder="Ej: 49b922f1-e6a5-43a9-9fdd-8c03c3323cc2"
+                               class="block w-full rounded-lg border-gray-300 shadow-xs focus:border-teal-500 focus:ring-teal-500 sm:text-sm font-mono" />
+                    </div>
+
+                    {{-- Client Secret CPE --}}
+                    <div>
+                        <label for="cpe_client_secret" class="block text-sm font-medium text-gray-700 mb-1">Clave de Aplicación (Validez CPE)</label>
+                        <div class="relative">
+                            <input type="text"
+                                   id="cpe_client_secret"
+                                   name="sunat_cpe_client_secret"
+                                   autocomplete="off"
+                                   spellcheck="false"
+                                   data-1p-ignore
+                                   data-lpignore="true"
+                                   readonly
+                                   @focus="prepararSecreto($el)"
+                                   x-model="form.sunat_cpe_client_secret"
+                                   :style="mostrarSecret ? '' : '-webkit-text-security: disc'"
+                                   placeholder="{{ ! empty($cliente->sunat_cpe_client_secret) ? '••••••••••••••••' : 'Ej: hpj9ALEkYYhajchPQzu3GA==' }}"
+                                   class="block w-full rounded-lg border-gray-300 shadow-xs focus:border-teal-500 focus:ring-teal-500 sm:text-sm font-mono pr-10" />
+                            <button type="button"
+                                    @click="alternarSecreto()"
+                                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition"
+                                    title="Mostrar / ocultar clave">
+                                <template x-if="!mostrarSecret">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                    </svg>
+                                </template>
+                                <template x-if="mostrarSecret">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
+                                    </svg>
+                                </template>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- Botones de Acción --}}
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+                        <button type="submit"
+                                :disabled="guardando"
+                                class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                            <template x-if="!guardando">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                </svg>
+                            </template>
+                            <template x-if="guardando">
+                                <svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                            </template>
+                            <span x-text="guardando ? 'Guardando...' : 'Guardar Credenciales CPE'"></span>
+                        </button>
+
+                        <button type="button"
+                                @click="probarConexion()"
+                                :disabled="probando || !form.sunat_cpe_client_id"
+                                class="inline-flex items-center gap-2 rounded-lg border border-teal-300 bg-teal-50 px-3.5 py-2.5 text-sm font-semibold text-teal-800 shadow-2xs hover:bg-teal-100 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer">
+                            <template x-if="!probando">
+                                <svg class="h-4 w-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 0 1 7.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 0 1 1.06 0Z" />
+                                </svg>
+                            </template>
+                            <template x-if="probando">
+                                <svg class="h-4 w-4 animate-spin text-teal-600" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                                </svg>
+                            </template>
+                            <span x-text="probando ? 'Probando conexión con SUNAT...' : 'Probar Conexión con SUNAT'"></span>
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

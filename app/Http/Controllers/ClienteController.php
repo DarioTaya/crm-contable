@@ -13,6 +13,7 @@ use App\Services\Impuestos\ReporteCreditosFiscalesCliente;
 use App\Services\Impuestos\ReporteImpuestosCliente;
 use App\Services\SunafilBuzonSyncService;
 use App\Services\SunatBuzonSyncService;
+use App\Services\SunatValidezCpeService;
 use App\Services\WhatsAppService;
 use App\Support\AccesosSunat;
 use App\Support\NodeBinary;
@@ -1373,6 +1374,57 @@ class ClienteController extends Controller
             'success' => true,
             'message' => 'Credenciales API SUNAT actualizadas correctamente.',
         ]);
+    }
+
+    /**
+     * Actualiza las credenciales de API SUNAT para Consulta de Validez de Comprobantes (CPE).
+     */
+    public function updateCpeCredentials(Request $request, Cliente $cliente): JsonResponse
+    {
+        $validated = $request->validate([
+            'sunat_cpe_client_id' => ['nullable', 'string', 'max:255'],
+            'sunat_cpe_client_secret' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $secret = $request->input('sunat_cpe_client_secret');
+
+        if (
+            blank($secret)
+            || str_contains((string) $secret, '*')
+            || str_contains((string) $secret, '•')
+            || stripos((string) $secret, 'password') !== false
+        ) {
+            unset($validated['sunat_cpe_client_secret']);
+        }
+
+        $datosActualizar = [];
+
+        if (filled($validated['sunat_cpe_client_id'] ?? null)) {
+            $datosActualizar['sunat_cpe_client_id'] = trim($validated['sunat_cpe_client_id'], " \t\n\r\0\x0B\"'");
+        }
+
+        if (array_key_exists('sunat_cpe_client_secret', $validated)) {
+            $datosActualizar['sunat_cpe_client_secret'] = trim($validated['sunat_cpe_client_secret'], " \t\n\r\0\x0B\"'");
+        }
+
+        $cliente->update($datosActualizar);
+
+        Cache::forget("sunat_cpe_token_{$cliente->id}");
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Credenciales API SUNAT (Validez de Comprobantes) actualizadas correctamente.',
+        ]);
+    }
+
+    /**
+     * Prueba la conexión a la API de Validez de SUNAT para el cliente.
+     */
+    public function testCpeApiConnection(Cliente $cliente, SunatValidezCpeService $cpeService): JsonResponse
+    {
+        $resultado = $cpeService->testConnection($cliente);
+
+        return response()->json($resultado);
     }
 
     /**

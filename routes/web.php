@@ -24,6 +24,7 @@ use App\Http\Controllers\QuickLinkController;
 use App\Http\Controllers\SelectorEmpresaController;
 use App\Http\Controllers\TipoCambioController;
 use App\Http\Controllers\UsuarioController;
+use App\Http\Controllers\ValidezComprobanteController;
 use App\Http\Controllers\VisorXmlController;
 use App\Http\Middleware\RecordarEmpresaActiva;
 use Illuminate\Support\Facades\Route;
@@ -100,6 +101,14 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
     Route::post('/visor-xml/parse', [VisorXmlController::class, 'parse'])->name('cpe.parse');
     Route::post('/visor-xml/descargar-pdf', [VisorXmlController::class, 'descargarPdf'])->name('cpe.descargar-pdf');
 
+    // Validación de Comprobantes de Pago con API SUNAT (Consulta Integrada de Validez)
+    Route::get('/validez-comprobantes', [ValidezComprobanteController::class, 'index'])->name('validez-cpe.index');
+    Route::post('/validez-comprobantes/validar-individual', [ValidezComprobanteController::class, 'validarIndividual'])->name('validez-cpe.validar-individual');
+    Route::post('/validez-comprobantes/cargar-archivo', [ValidezComprobanteController::class, 'cargarArchivo'])->name('validez-cpe.cargar-archivo');
+    Route::post('/validez-comprobantes/validar-lote', [ValidezComprobanteController::class, 'validarLote'])->name('validez-cpe.validar-lote');
+    Route::get('/validez-comprobantes/plantilla-ejemplo', [ValidezComprobanteController::class, 'descargarPlantilla'])->name('validez-cpe.plantilla');
+    Route::post('/validez-comprobantes/exportar-reporte', [ValidezComprobanteController::class, 'exportarReporte'])->name('validez-cpe.exportar-reporte');
+
     // Acceso rápido de empresas (barra superior). La cartera no se incrusta en el layout.
     Route::get('/acceso-rapido/empresas', [SelectorEmpresaController::class, 'index'])->name('acceso-rapido.empresas');
     Route::post('/acceso-rapido/empresa', [SelectorEmpresaController::class, 'seleccionar'])->name('acceso-rapido.seleccionar');
@@ -153,6 +162,8 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
     Route::post('/clientes/{cliente}/actualizar-estado-sunat', [ClienteController::class, 'actualizarEstadoSunat'])->name('clientes.actualizar-estado-sunat')->can('update', 'cliente');
     Route::put('/clientes/{cliente}/credenciales', [ClienteController::class, 'updateCredenciales'])->name('clientes.credenciales.update')->can('gestionarCredenciales', 'cliente');
     Route::put('/clientes/{cliente}/api-credentials', [ClienteController::class, 'updateApiCredentials'])->name('clientes.api-credentials.update')->can('gestionarCredenciales', 'cliente');
+    Route::put('/clientes/{cliente}/cpe-credentials', [ClienteController::class, 'updateCpeCredentials'])->name('clientes.cpe-credentials.update')->can('gestionarCredenciales', 'cliente');
+    Route::post('/clientes/{cliente}/probar-api-cpe', [ClienteController::class, 'testCpeApiConnection'])->name('clientes.api-cpe.test')->can('gestionarCredenciales', 'cliente');
     Route::get('/clientes/{cliente}/sunat', [ClienteController::class, 'loginSunat'])->name('clientes.sunat')->can('sincronizar', 'cliente');
     Route::get('/clientes/{cliente}/sunafil', [ClienteController::class, 'loginSunafil'])->name('clientes.sunafil')->can('sincronizar', 'cliente');
     Route::post('/clientes/{cliente}/buzon/sync', [ClienteController::class, 'syncBuzon'])->name('clientes.buzon.sync')->can('sincronizar', 'cliente');

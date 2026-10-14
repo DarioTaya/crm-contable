@@ -1047,6 +1047,134 @@
         }
 
         /**
+         * Componente Alpine para el formulario de credenciales API SUNAT - Validez de Comprobantes (CPE).
+         * Ruta SUNAT: Empresas > Comprobantes de Pago > Consulta de Validez de Comprobante de Pago > Credenciales de API SUNAT
+         */
+        function cpeCredentialsForm() {
+            const clientIdGuardado = @json($cliente->sunat_cpe_client_id ?? '');
+            const secretGuardado = @json($cliente->sunat_cpe_client_secret ?? '');
+            const mascara = '••••••••••••••••';
+
+            return {
+                clientIdVisible: clientIdGuardado,
+                form: {
+                    sunat_cpe_client_id: clientIdGuardado,
+                    sunat_cpe_client_secret: secretGuardado ? mascara : '',
+                },
+                secretoReal: secretGuardado,
+                mostrarSecret: false,
+                guardando: false,
+                probando: false,
+                testResultado: null,
+                toast: { mostrar: false, mensaje: '', tipo: 'success' },
+
+                alternarSecreto() {
+                    this.mostrarSecret = !this.mostrarSecret;
+                    if (this.mostrarSecret) {
+                        if (!this.form.sunat_cpe_client_secret || this.form.sunat_cpe_client_secret === mascara) {
+                            this.form.sunat_cpe_client_secret = this.secretoReal;
+                        }
+                    } else if (this.secretoReal && this.form.sunat_cpe_client_secret === this.secretoReal) {
+                        this.form.sunat_cpe_client_secret = mascara;
+                    }
+                },
+
+                prepararSecreto(el) {
+                    el.removeAttribute('readonly');
+                    if (!this.mostrarSecret && this.form.sunat_cpe_client_secret === mascara) {
+                        this.form.sunat_cpe_client_secret = '';
+                    }
+                },
+
+                async guardar() {
+                    this.guardando = true;
+                    this.toast.mostrar = false;
+
+                    let secret = (this.form.sunat_cpe_client_secret || '').trim();
+                    if (!secret || secret === mascara || /^[•*]+$/.test(secret)) {
+                        secret = null;
+                    }
+
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const body = {
+                            _method: 'PUT',
+                            sunat_cpe_client_id: (this.form.sunat_cpe_client_id || '').trim() || null,
+                            sunat_cpe_client_secret: secret,
+                        };
+
+                        const response = await fetch('{{ route("clientes.cpe-credentials.update", $cliente) }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json'
+                            },
+                            body: JSON.stringify(body)
+                        });
+
+                        const data = await response.json();
+
+                        if (!response.ok) {
+                            throw new Error(data.message || 'Error al guardar las credenciales CPE.');
+                        }
+
+                        this.clientIdVisible = body.sunat_cpe_client_id || '';
+                        if (secret) {
+                            this.secretoReal = secret;
+                        }
+                        this.mostrarSecret = false;
+                        this.form.sunat_cpe_client_secret = this.secretoReal ? mascara : '';
+
+                        this.toast.tipo = 'success';
+                        this.toast.mensaje = data.message || 'Credenciales CPE guardadas correctamente.';
+                        this.toast.mostrar = true;
+                        setTimeout(() => this.toast.mostrar = false, 5000);
+                    } catch (err) {
+                        this.toast.tipo = 'error';
+                        this.toast.mensaje = err.message || 'Error inesperado al guardar.';
+                        this.toast.mostrar = true;
+                        setTimeout(() => this.toast.mostrar = false, 5000);
+                    } finally {
+                        this.guardando = false;
+                    }
+                },
+
+                async probarConexion() {
+                    if (this.probando) return;
+                    this.probando = true;
+                    this.testResultado = null;
+
+                    try {
+                        const tokenEl = document.querySelector('meta[name="csrf-token"]');
+                        const csrfToken = tokenEl ? tokenEl.getAttribute('content') : '';
+
+                        const response = await fetch('{{ route("clientes.api-cpe.test", $cliente) }}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-TOKEN': csrfToken,
+                                'Accept': 'application/json'
+                            }
+                        });
+
+                        const data = await response.json();
+                        this.testResultado = data;
+                    } catch (err) {
+                        this.testResultado = {
+                            success: false,
+                            message: 'Error de red al intentar probar la conexión: ' + err.message
+                        };
+                    } finally {
+                        this.probando = false;
+                    }
+                }
+            };
+        }
+
+        /**
          * Componente Alpine para la bandeja de alertas en el expediente digital del cliente.
          */
         function expedienteAlertas(config) {

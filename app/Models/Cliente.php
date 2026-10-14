@@ -58,6 +58,18 @@ class Cliente extends Model
         'es_buen_contribuyente',
         'sunat_client_id',
         'sunat_client_secret',
+        'sunat_cpe_client_id',
+        'sunat_cpe_client_secret',
+    ];
+
+    /**
+     * Atributos ocultos para la serialización.
+     *
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'sunat_client_secret',
+        'sunat_cpe_client_secret',
     ];
 
     /**
@@ -74,9 +86,18 @@ class Cliente extends Model
             'fecha_baja' => 'date',
             'es_buen_contribuyente' => 'boolean',
             'sunat_client_secret' => 'encrypted',
+            'sunat_cpe_client_secret' => 'encrypted',
             'fecha_sincronizacion_sunat' => 'datetime',
             'deleted_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Determina si el cliente tiene configuradas las credenciales de API SUNAT para Validez de CPE.
+     */
+    public function tieneCredencialesCpe(): bool
+    {
+        return filled($this->sunat_cpe_client_id) && filled($this->sunat_cpe_client_secret);
     }
 
     /**
