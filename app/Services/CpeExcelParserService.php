@@ -179,14 +179,17 @@ class CpeExcelParserService
             return ['filas' => [], 'total' => 0, 'formato_detectado' => $formato];
         }
 
-        // Encontrar la fila de encabezados (usualmente la fila 0, o en reportes Contasis puede estar en la fila 1 a 4)
-        $indiceEncabezado = 0;
+        // Encontrar la fila de encabezados examinando hasta las primeras 25 filas
+        // (los reportes de New Contasis suelen tener 6-8 filas de título/período antes de los encabezados)
+        $indiceEncabezado = -1;
         $mapaColumnas = [];
 
-        foreach (array_slice($filasBrutas, 0, 8) as $idx => $fila) {
+        foreach (array_slice($filasBrutas, 0, 25) as $idx => $fila) {
             $map = $this->identificarColumnas($fila);
-            // Si detecta al menos serie y número o serie y ruc
-            if (isset($map['numero_serie']) && isset($map['numero'])) {
+            $tieneNumero = isset($map['numero']) || isset($map['numero_serie']);
+            $tieneIdentificador = isset($map['num_ruc']) || isset($map['fecha_emision']) || isset($map['cod_comp']);
+
+            if ($tieneNumero && $tieneIdentificador) {
                 $indiceEncabezado = $idx;
                 $mapaColumnas = $map;
                 break;
@@ -202,6 +205,7 @@ class CpeExcelParserService
                 'numero' => 3,
                 'fecha_emision' => 4,
                 'monto' => 5,
+                'razon_social' => null,
             ];
             $indiceEncabezado = is_numeric($filasBrutas[0][0] ?? null) ? -1 : 0;
         }
@@ -209,38 +213,83 @@ class CpeExcelParserService
         $filasNormalizadas = [];
         $filasDatos = array_slice($filasBrutas, $indiceEncabezado + 1);
 
-        foreach ($filasDatos as $i => $fila) {
+        foreach ($filasDatos as $fila) {
+            // Descartar filas de totales, resúmenes o metadatos de software contable (ej. "TOTAL REGISTRO:", "Generado automáticamente...")
+            $filaTexto = strtoupper(implode(' ', array_map('strval', $fila)));
+            if (
+                str_contains($filaTexto, 'TOTAL REGISTRO') ||
+                str_contains($filaTexto, 'TOTAL GENERAL') ||
+                str_contains($filaTexto, 'RESUMEN') ||
+                str_contains($filaTexto, 'GENERADO AUTOM') ||
+                str_contains($filaTexto, 'NEWCONTASIS') ||
+                str_contains($filaTexto, 'VAN :') ||
+                str_contains($filaTexto, 'VIENEN :')
+            ) {
+                continue;
+            }
+
+            // RUC Emisor / Proveedor
             $rucRaw = $mapaColumnas['num_ruc'] !== null ? ($fila[$mapaColumnas['num_ruc']] ?? '') : '';
             $numRuc = preg_replace('/\D/', '', (string) $rucRaw);
 
-            // Si no hay RUC y tenemos RUC por defecto (ej. Ventas propias)
-            if (strlen($numRuc) !== 11 && filled($rucEmisorPorDefecto)) {
+            // Si no hay RUC o es inválido y se proveyó RUC por defecto (ej. en Registro de Ventas)
+            if (strlen($numRuc) !== 11 && strlen($numRuc) !== 8 && filled($rucEmisorPorDefecto)) {
                 $numRuc = preg_replace('/\D/', '', (string) $rucEmisorPorDefecto);
             }
 
+            // Tipo de Comprobante (01=Factura, 03=Boleta, 07=NC, 08=ND, R1/02=Honorarios)
             $tipoRaw = $mapaColumnas['cod_comp'] !== null ? ($fila[$mapaColumnas['cod_comp']] ?? '01') : '01';
             $codComp = $this->normalizarTipoComprobante($tipoRaw);
 
-            $serieRaw = $mapaColumnas['numero_serie'] !== null ? ($fila[$mapaColumnas['numero_serie']] ?? '') : '';
-            $numeroSerie = strtoupper(trim((string) $serieRaw));
+            // Serie y Número Correlativo
+            $serieRaw = $mapaColumnas['numero_serie'] !== null ? trim((string) ($fila[$mapaColumnas['numero_serie']] ?? '')) : '';
+            $numeroRaw = $mapaColumnas['numero'] !== null ? trim((string) ($fila[$mapaColumnas['numero']] ?? '')) : '';
 
-            $numeroRaw = $mapaColumnas['numero'] !== null ? ($fila[$mapaColumnas['numero']] ?? '0') : '0';
-            $numero = (string) (int) preg_replace('/\D/', '', (string) $numeroRaw);
-            if ($numero === '0' && filled($numeroRaw)) {
-                $numero = trim((string) $numeroRaw);
+            // Caso New Contasis / Concar: Si la columna 'NUMERO' contiene Serie y Correlativo juntos con guion
+            // Ejemplo: "00F007-0000000472035" o "00FE02-0000000005733" o "F001-1245"
+            if (empty($serieRaw) && str_contains($numeroRaw, '-')) {
+                $partes = explode('-', $numeroRaw, 2);
+                $serieRaw = trim($partes[0]);
+                $numeroRaw = trim($partes[1]);
+            } elseif (str_contains($serieRaw, '-') && empty($numeroRaw)) {
+                $partes = explode('-', $serieRaw, 2);
+                $serieRaw = trim($partes[0]);
+                $numeroRaw = trim($partes[1]);
             }
 
+            // Normalizar Serie:
+            // En New Contasis las series electrónicas vienen con padding a 6 caracteres: "00F007", "00E001", "00FE02", "00FF01".
+            // Una serie de CPE en SUNAT es de exactamente 4 caracteres alfanuméricos (ej: F007, E001, FE02, B001, 0001).
+            $numeroSerie = strtoupper(trim($serieRaw));
+            if (strlen($numeroSerie) > 4) {
+                if (preg_match('/^0+([A-Z0-9]{4})$/', $numeroSerie, $matches)) {
+                    $numeroSerie = $matches[1];
+                } elseif (preg_match('/^0+([A-Z0-9]{1,4})$/', $numeroSerie, $matches)) {
+                    $numeroSerie = str_pad($matches[1], 4, '0', STR_PAD_LEFT);
+                }
+            }
+
+            // Normalizar Correlativo:
+            // En New Contasis viene con padding de ceros a la izquierda (ej: "0000000472035").
+            // SUNAT exige el número de comprobante sin ceros a la izquierda innecesarios (ej: "472035").
+            $numeroLimpio = ltrim(preg_replace('/\D/', '', $numeroRaw), '0');
+            $numero = $numeroLimpio !== '' ? $numeroLimpio : '0';
+
+            // Fecha de Emisión (normalizada a DD/MM/AAAA para SUNAT)
             $fechaRaw = $mapaColumnas['fecha_emision'] !== null ? ($fila[$mapaColumnas['fecha_emision']] ?? '') : '';
             $fechaEmision = (new SunatValidezCpeService)->normalizarFechaSunat($fechaRaw);
 
+            // Importe Total (Moneda Original):
+            // En Notas de Crédito, New Contasis registra importes en negativo (-260.00). SUNAT requiere valor positivo.
             $montoRaw = $mapaColumnas['monto'] !== null ? ($fila[$mapaColumnas['monto']] ?? '0') : '0';
-            $montoFloat = (float) str_replace(',', '', (string) $montoRaw);
+            $montoFloat = abs((float) str_replace(',', '', (string) $montoRaw));
             $monto = number_format($montoFloat, 2, '.', '');
 
+            // Razón Social / Denominación del emisor
             $razonSocial = $mapaColumnas['razon_social'] !== null ? trim((string) ($fila[$mapaColumnas['razon_social']] ?? '')) : '';
 
-            // Solo agregar filas que tengan al menos serie o número
-            if (filled($numeroSerie) && filled($numero)) {
+            // Solo agregar filas válidas con serie, número y RUC formal
+            if (filled($numeroSerie) && filled($numero) && $numero !== '0' && (strlen($numRuc) === 11 || strlen($numRuc) === 8)) {
                 $filasNormalizadas[] = [
                     'item' => count($filasNormalizadas) + 1,
                     'numRuc' => $numRuc,
@@ -280,51 +329,69 @@ class CpeExcelParserService
         foreach ($encabezados as $idx => $texto) {
             $col = Str::slug(trim((string) $texto), '_');
 
-            // RUC Emisor
+            // RUC Emisor (Soporta 'R.U.C.', 'RUC', 'RUC Emisor', 'RUC Proveedor')
             if ($map['num_ruc'] === null) {
-                if (in_array($col, ['ruc', 'ruc_emisor', 'ruc_proveedor', 'num_ruc', 'documento_proveedor', 'nro_ruc', 'ruc_del_emisor'])) {
+                if (in_array($col, [
+                    'ruc', 'r_u_c', 'ruc_emisor', 'ruc_proveedor', 'num_ruc',
+                    'documento_proveedor', 'nro_ruc', 'ruc_del_emisor', 'nro_de_ruc',
+                ])) {
                     $map['num_ruc'] = $idx;
                 }
             }
 
-            // Tipo Comprobante
+            // Tipo Comprobante (Soporta 'D.', 'TD', 'Tipo', 'Tipo Doc', 'Cod Comp')
             if ($map['cod_comp'] === null) {
-                if (in_array($col, ['td', 'tipo', 'tipo_comp', 'tipo_comprobante', 'cod_comp', 'tipo_doc', 'codigo_comprobante', 'cd'])) {
+                if (in_array($col, [
+                    'd', 'td', 'tipo', 'tipo_comp', 'tipo_comprobante', 'cod_comp',
+                    'tipo_doc', 'codigo_comprobante', 'cd', 'tipo_de_documento',
+                ])) {
                     $map['cod_comp'] = $idx;
                 }
             }
 
             // Serie
             if ($map['numero_serie'] === null) {
-                if (in_array($col, ['serie', 'ser', 'numero_serie', 'num_serie', 'nro_serie'])) {
+                if (in_array($col, ['serie', 'ser', 'numero_serie', 'num_serie', 'nro_serie', 'serie_cpe'])) {
                     $map['numero_serie'] = $idx;
                 }
             }
 
-            // Número / Correlativo
+            // Número / Correlativo / Documento combinado
             if ($map['numero'] === null) {
-                if (in_array($col, ['numero', 'num', 'correlativo', 'nro_doc', 'nro_comprobante', 'nro', 'numero_comprobante', 'numero_documento'])) {
+                if (in_array($col, [
+                    'numero', 'num', 'correlativo', 'nro_doc', 'nro_comprobante',
+                    'nro', 'numero_comprobante', 'numero_documento', 'documento', 'comprobante',
+                ])) {
                     $map['numero'] = $idx;
                 }
             }
 
-            // Fecha Emisión
+            // Fecha Emisión (Soporta 'F.EMIS.', 'Fecha', 'Fecha Emision', 'Fec Emision')
             if ($map['fecha_emision'] === null) {
-                if (in_array($col, ['fecha', 'fecha_emision', 'fec_emi', 'fec_emision', 'fecha_comp', 'fec_doc', 'fecha_de_emision'])) {
+                if (in_array($col, [
+                    'femis', 'f_emis', 'f_emision', 'fecha', 'fecha_emision', 'fec_emi',
+                    'fec_emision', 'fecha_comp', 'fec_doc', 'fecha_de_emision', 'femision',
+                ])) {
                     $map['fecha_emision'] = $idx;
                 }
             }
 
-            // Monto / Total
+            // Monto / Total en Moneda Original
             if ($map['monto'] === null) {
-                if (in_array($col, ['total', 'monto', 'importe', 'importe_total', 'precio_venta', 'total_compra', 'total_venta'])) {
+                if (in_array($col, [
+                    'total', 'monto', 'importe', 'importe_total', 'precio_venta',
+                    'total_compra', 'total_venta', 'total_moneda_original', 'imp_total',
+                ])) {
                     $map['monto'] = $idx;
                 }
             }
 
             // Razón Social
             if ($map['razon_social'] === null) {
-                if (in_array($col, ['razon_social', 'proveedor', 'nombre_o_razon_social', 'apellidos_y_nombres', 'cliente_razon_social'])) {
+                if (in_array($col, [
+                    'razon_social', 'proveedor', 'nombre_o_razon_social',
+                    'apellidos_y_nombres', 'cliente_razon_social', 'denominacion',
+                ])) {
                     $map['razon_social'] = $idx;
                 }
             }
@@ -385,12 +452,145 @@ class CpeExcelParserService
     }
 
     /**
-     * Genera la plantilla oficial descargable en formato CSV con delimitador coma y UTF-8 con BOM.
+     * Genera la plantilla oficial descargable en formato Excel nativo (.xlsx) con estilos y formato de texto.
+     */
+    public function generarPlantillaXlsx(): string
+    {
+        $tempFile = tempnam(sys_get_temp_dir(), 'cpe_tpl_').'.xlsx';
+        $zip = new ZipArchive;
+
+        if ($zip->open($tempFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            return $this->generarPlantillaCsv();
+        }
+
+        // [Content_Types].xml
+        $contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+            .'<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+            .'<Default Extension="xml" ContentType="application/xml"/>'
+            .'<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+            .'<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            .'<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+            .'</Types>';
+        $zip->addFromString('[Content_Types].xml', $contentTypes);
+
+        // _rels/.rels
+        $rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+            .'</Relationships>';
+        $zip->addFromString('_rels/.rels', $rels);
+
+        // xl/_rels/workbook.xml.rels
+        $wbRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            .'<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+            .'<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>'
+            .'</Relationships>';
+        $zip->addFromString('xl/_rels/workbook.xml.rels', $wbRels);
+
+        // xl/workbook.xml
+        $workbook = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            .'<sheets>'
+            .'<sheet name="Plantilla CPE SUNAT" sheetId="1" r:id="rId1"/>'
+            .'</sheets>'
+            .'</workbook>';
+        $zip->addFromString('xl/workbook.xml', $workbook);
+
+        // xl/styles.xml
+        $styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            .'<fonts count="2">'
+            .'<font><sz val="10"/><name val="Segoe UI"/></font>'
+            .'<font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Segoe UI"/></font>'
+            .'</fonts>'
+            .'<fills count="3">'
+            .'<fill><patternFill patternType="none"/></fill>'
+            .'<fill><patternFill patternType="gray125"/></fill>'
+            .'<fill><patternFill patternType="solid"><fgColor rgb="FF0F766E"/></patternFill></fill>'
+            .'</fills>'
+            .'<borders count="1"><border><left/><right/><top/><bottom/></border></borders>'
+            .'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+            .'<cellXfs count="3">'
+            .'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
+            .'<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>'
+            .'<xf numFmtId="49" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
+            .'</cellXfs>'
+            .'</styleSheet>';
+        $zip->addFromString('xl/styles.xml', $styles);
+
+        // Estructura de columnas
+        $cols = [
+            'A' => ['w' => 17, 'title' => 'RUC Emisor'],
+            'B' => ['w' => 45, 'title' => 'Razón Social (Opcional)'],
+            'C' => ['w' => 12, 'title' => 'Tipo CPE'],
+            'D' => ['w' => 12, 'title' => 'Serie'],
+            'E' => ['w' => 14, 'title' => 'Número'],
+            'F' => ['w' => 16, 'title' => 'Fecha Emisión'],
+            'G' => ['w' => 22, 'title' => 'Importe Total (Moneda Original)'],
+        ];
+
+        $sampleRows = [
+            ['20498456856', 'EMPRESA DE TRANSPORTES Y SERVICIOS GENERALES TRANSMOTAR S.A.C.', '01', 'F007', '472035', '01/08/2026', '620.00'],
+            ['20140441083', 'TIRESOL SAC', '01', 'F001', '577369', '25/08/2026', '3366.36'],
+            ['20100084768', 'PEVISA AUTO PARTS S.A.C.', '01', 'F050', '256275', '31/08/2026', '432.97'],
+            ['20609720400', 'AMICARGO EXPRESS E.I.R.L.', '01', 'E001', '3359', '01/09/2026', '260.00'],
+            ['20609720400', 'AMICARGO EXPRESS E.I.R.L. (Nota de Crédito)', '07', 'E001', '53', '04/09/2026', '260.00'],
+            ['10741301275', 'HUAMANI APAZA YANIRA', '01', 'F001', '1245', '14/10/2026', '1500.00'],
+        ];
+
+        $sheetXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+            .'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+            .'<cols>';
+        $cIdx = 1;
+        foreach ($cols as $col) {
+            $sheetXml .= '<col min="'.$cIdx.'" max="'.$cIdx.'" width="'.$col['w'].'" customWidth="1"/>';
+            $cIdx++;
+        }
+        $sheetXml .= '</cols><sheetData>';
+
+        // Fila 1: Encabezados
+        $sheetXml .= '<row r="1">';
+        $cLetters = array_keys($cols);
+        foreach ($cLetters as $letter) {
+            $val = htmlspecialchars($cols[$letter]['title'], ENT_XML1);
+            $sheetXml .= '<c r="'.$letter.'1" t="inlineStr" s="1"><is><t>'.$val.'</t></is></c>';
+        }
+        $sheetXml .= '</row>';
+
+        // Filas de ejemplo (formato texto para preservar ceros a la izquierda en RUC, Serie y Número)
+        $rowNum = 2;
+        foreach ($sampleRows as $row) {
+            $sheetXml .= '<row r="'.$rowNum.'">';
+            foreach ($row as $colIdx => $val) {
+                $letter = $cLetters[$colIdx];
+                $valXml = htmlspecialchars((string) $val, ENT_XML1);
+                $s = ($colIdx <= 5) ? '2' : '0';
+                $sheetXml .= '<c r="'.$letter.$rowNum.'" t="inlineStr" s="'.$s.'"><is><t>'.$valXml.'</t></is></c>';
+            }
+            $sheetXml .= '</row>';
+            $rowNum++;
+        }
+
+        $sheetXml .= '</sheetData></worksheet>';
+        $zip->addFromString('xl/worksheets/sheet1.xml', $sheetXml);
+
+        $zip->close();
+
+        $content = file_get_contents($tempFile);
+        @unlink($tempFile);
+
+        return $content ?: '';
+    }
+
+    /**
+     * Genera la plantilla oficial descargable en formato CSV con UTF-8 y BOM para apertura limpia en Excel.
      */
     public function generarPlantillaCsv(): string
     {
         $salida = fopen('php://memory', 'w+');
-        // Escribir BOM UTF-8 para apertura limpia en Excel
+        // Escribir BOM UTF-8 para apertura limpia en Microsoft Excel en español
         fwrite($salida, "\xEF\xBB\xBF");
 
         fputcsv($salida, [
@@ -400,13 +600,16 @@ class CpeExcelParserService
             'Serie',
             'Número',
             'Fecha Emisión (DD/MM/AAAA)',
-            'Importe Total',
+            'Importe Total (Moneda Original)',
         ]);
 
         // Filas de ejemplo real
-        fputcsv($salida, ['20100047218', 'BANCO DE CREDITO DEL PERU', '01', 'F001', '1245', now()->format('d/m/Y'), '1500.00']);
-        fputcsv($salida, ['20504787010', 'TELEFONICA DEL PERU S.A.A.', '01', 'F002', '5890', now()->subDays(3)->format('d/m/Y'), '245.50']);
-        fputcsv($salida, ['20100070970', 'SUPERMERCADOS PERUANOS S.A.', '03', 'B001', '9843', now()->subDays(7)->format('d/m/Y'), '89.90']);
+        fputcsv($salida, ['20498456856', 'EMPRESA DE TRANSPORTES TRANSMOTAR S.A.C.', '01', 'F007', '472035', '01/08/2026', '620.00']);
+        fputcsv($salida, ['20140441083', 'TIRESOL SAC', '01', 'F001', '577369', '25/08/2026', '3366.36']);
+        fputcsv($salida, ['20100084768', 'PEVISA AUTO PARTS S.A.C.', '01', 'F050', '256275', '31/08/2026', '432.97']);
+        fputcsv($salida, ['20609720400', 'AMICARGO EXPRESS E.I.R.L.', '01', 'E001', '3359', '01/09/2026', '260.00']);
+        fputcsv($salida, ['20609720400', 'AMICARGO EXPRESS E.I.R.L. (NC)', '07', 'E001', '53', '04/09/2026', '260.00']);
+        fputcsv($salida, ['10741301275', 'HUAMANI APAZA YANIRA', '01', 'F001', '1245', '14/10/2026', '1500.00']);
 
         rewind($salida);
         $contenido = stream_get_contents($salida);

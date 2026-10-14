@@ -251,143 +251,198 @@
             </form>
         </div>
 
-        {{-- RESULTADO DE LA CONSULTA INDIVIDUAL --}}
+        {{-- RESULTADO DE LA CONSULTA INDIVIDUAL (Diseño Ejecutivo Bancario / Fintech) --}}
         <template x-if="resultadoIndividual">
-            <div class="rounded-2xl border bg-white p-6 shadow-xs space-y-6 transition"
-                 :class="{
-                     'border-emerald-300': resultadoIndividual.severidad === 'success',
-                     'border-amber-300': resultadoIndividual.severidad === 'warning',
-                     'border-rose-300': resultadoIndividual.severidad === 'danger'
-                 }">
+            <div class="rounded-xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden transition-all duration-300">
 
-                {{-- Banner Principal con Veredicto Tributario --}}
-                <div class="rounded-xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                {{-- 1. Barra de Encabezado Superior: Estado de Auditoría & Timestamp --}}
+                <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3"
                      :class="{
-                         'bg-emerald-50 text-emerald-950 border border-emerald-200': resultadoIndividual.severidad === 'success',
-                         'bg-amber-50 text-amber-950 border border-amber-200': resultadoIndividual.severidad === 'warning',
-                         'bg-rose-50 text-rose-950 border border-rose-200': resultadoIndividual.severidad === 'danger'
+                         'bg-emerald-50/50': resultadoIndividual.severidad === 'success',
+                         'bg-amber-50/50': resultadoIndividual.severidad === 'warning',
+                         'bg-rose-50/50': resultadoIndividual.severidad === 'danger'
                      }">
-                    <div class="flex items-start gap-3.5">
+                    <div class="flex items-center gap-2.5">
+                        {{-- Badge de Estado con Pulso --}}
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-tight"
+                              :class="{
+                                  'bg-emerald-100/90 text-emerald-800 border border-emerald-300/80': resultadoIndividual.severidad === 'success',
+                                  'bg-amber-100/90 text-amber-800 border border-amber-300/80': resultadoIndividual.severidad === 'warning',
+                                  'bg-rose-100/90 text-rose-800 border border-rose-300/80': resultadoIndividual.severidad === 'danger'
+                              }">
+                            <span class="h-2 w-2 rounded-full"
+                                  :class="{
+                                      'bg-emerald-600 animate-pulse': resultadoIndividual.severidad === 'success',
+                                      'bg-amber-600 animate-pulse': resultadoIndividual.severidad === 'warning',
+                                      'bg-rose-600 animate-pulse': resultadoIndividual.severidad === 'danger'
+                                  }"></span>
+                            <span x-text="resultadoIndividual.es_valido_credito_fiscal ? 'APTO PARA CRÉDITO FISCAL & GASTO' : (resultadoIndividual.severidad === 'warning' ? 'OBSERVADO — REPARO TRIBUTARIO' : 'COMPROBANTE NO VÁLIDO')"></span>
+                        </span>
+
+                        <span class="hidden sm:inline text-slate-300">|</span>
+                        <span class="hidden sm:inline text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                            Arts. 18-19 LIGV · Art. 54 LIR
+                        </span>
+                    </div>
+
+                    <div class="flex items-center gap-2 text-right">
+                        <span class="text-[11px] font-mono text-slate-400 flex items-center gap-1">
+                            <svg class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                            <span x-text="resultadoIndividual.consultado_at?.substring(0, 19).replace('T', ' ')"></span>
+                        </span>
+                        <span class="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
+                            Oficial SUNAT
+                        </span>
+                    </div>
+                </div>
+
+                {{-- 2. Tira de Datos Clave del Comprobante (Diseño Minimalista Tabular) --}}
+                <div class="px-5 py-3.5 bg-white border-b border-slate-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                    <div>
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Comprobante</span>
+                        <p class="font-bold text-slate-900 font-mono mt-0.5 text-sm"
+                           x-text="(individual.codComp === '01' ? 'Factura ' : (individual.codComp === '03' ? 'Boleta ' : (individual.codComp === '07' ? 'Nota Crédito ' : 'Doc. '))) + individual.numeroSerie + '-' + individual.numero"></p>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">RUC Emisor</span>
+                        <p class="font-bold text-slate-900 font-mono mt-0.5 text-sm" x-text="individual.numRuc"></p>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Fecha Emisión</span>
+                        <p class="font-semibold text-slate-800 font-mono mt-0.5" x-text="individual.fechaEmision"></p>
+                    </div>
+                    <div>
+                        <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Monto Consultado</span>
+                        <p class="font-bold text-slate-900 font-mono mt-0.5"
+                           x-text="individual.monto ? (individual.monto + ' (Moneda Original)') : 'No especificado'"></p>
+                    </div>
+                </div>
+
+                {{-- 3. Conclusión de Auditoría Tributaria (Texto Ejecutivo en Tipografía Fina y Legible) --}}
+                <div class="px-5 py-3 flex items-start gap-3"
+                     :class="{
+                         'bg-emerald-50/30 text-emerald-950': resultadoIndividual.severidad === 'success',
+                         'bg-amber-50/30 text-amber-950': resultadoIndividual.severidad === 'warning',
+                         'bg-rose-50/30 text-rose-950': resultadoIndividual.severidad === 'danger'
+                     }">
+                    <div class="mt-0.5 shrink-0">
                         <template x-if="resultadoIndividual.severidad === 'success'">
-                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white shadow-xs">
-                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <div class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                                 </svg>
                             </div>
                         </template>
                         <template x-if="resultadoIndividual.severidad === 'warning'">
-                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs">
-                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                            <div class="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-white">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008Z" />
                                 </svg>
                             </div>
                         </template>
                         <template x-if="resultadoIndividual.severidad === 'danger'">
-                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-500 text-white shadow-xs">
-                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <div class="flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 text-white">
+                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                                 </svg>
                             </div>
                         </template>
+                    </div>
+                    <div class="space-y-0.5">
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Dictamen Tributario</span>
+                        <p class="text-xs text-slate-700 leading-relaxed font-normal" x-text="resultadoIndividual.diagnostico"></p>
+                    </div>
+                </div>
 
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <span class="text-xs uppercase font-extrabold tracking-wider"
-                                      :class="{
-                                          'text-emerald-700': resultadoIndividual.severidad === 'success',
-                                          'text-amber-700': resultadoIndividual.severidad === 'warning',
-                                          'text-rose-700': resultadoIndividual.severidad === 'danger'
-                                      }">Diagnóstico Tributario</span>
-                                <span class="text-xs font-mono text-gray-500" x-text="resultadoIndividual.consultado_at?.substring(0, 19).replace('T', ' ')"></span>
+                {{-- 4. Las 3 Tarjetas de Validación Técnica SUNAT (Micro-Cards Elegantes) --}}
+                <div class="p-5 bg-white border-t border-slate-100">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+                        {{-- Card 1: Estado CPE --}}
+                        <div class="rounded-lg border border-slate-200/80 bg-slate-50/40 p-3 hover:bg-slate-50 transition">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Comprobante en SUNAT</span>
+                                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-700 font-semibold"
+                                      x-text="'Cód. ' + (resultadoIndividual.estado_cp?.codigo ?? '—')"></span>
                             </div>
-                            <h3 class="text-lg font-bold mt-0.5" x-text="resultadoIndividual.diagnostico"></h3>
+                            <div class="mt-1.5 flex items-center gap-1.5">
+                                <template x-if="resultadoIndividual.estado_cp?.codigo === '1'">
+                                    <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                    </svg>
+                                </template>
+                                <span class="text-xs font-bold text-slate-800" x-text="resultadoIndividual.estado_cp?.label || 'DESCONOCIDO'"></span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-0.5" x-text="resultadoIndividual.estado_cp?.descripcion || '—'"></p>
+                        </div>
+
+                        {{-- Card 2: Estado RUC --}}
+                        <div class="rounded-lg border border-slate-200/80 bg-slate-50/40 p-3 hover:bg-slate-50 transition">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Padrón RUC Emisor</span>
+                                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-700 font-semibold"
+                                      x-text="'Cód. ' + (resultadoIndividual.estado_ruc?.codigo ?? '—')"></span>
+                            </div>
+                            <div class="mt-1.5 flex items-center gap-1.5">
+                                <template x-if="resultadoIndividual.estado_ruc?.es_activo">
+                                    <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                    </svg>
+                                </template>
+                                <template x-if="!resultadoIndividual.estado_ruc?.es_activo">
+                                    <svg class="h-4 w-4 text-rose-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                </template>
+                                <span class="text-xs font-bold text-slate-800" x-text="resultadoIndividual.estado_ruc?.label || 'NO DISPONIBLE'"></span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-0.5" x-text="resultadoIndividual.estado_ruc?.descripcion || '—'"></p>
+                        </div>
+
+                        {{-- Card 3: Condición de Domicilio --}}
+                        <div class="rounded-lg border border-slate-200/80 bg-slate-50/40 p-3 hover:bg-slate-50 transition">
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Condición Domicilio</span>
+                                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-700 font-semibold"
+                                      x-text="'Cód. ' + (resultadoIndividual.condicion_domicilio?.codigo ?? '—')"></span>
+                            </div>
+                            <div class="mt-1.5 flex items-center gap-1.5">
+                                <template x-if="resultadoIndividual.condicion_domicilio?.es_habido">
+                                    <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                    </svg>
+                                </template>
+                                <template x-if="!resultadoIndividual.condicion_domicilio?.es_habido">
+                                    <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                </template>
+                                <span class="text-xs font-bold text-slate-800" x-text="resultadoIndividual.condicion_domicilio?.label || 'NO DISPONIBLE'"></span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-0.5" x-text="resultadoIndividual.condicion_domicilio?.descripcion || '—'"></p>
                         </div>
                     </div>
 
-                    <div class="text-right shrink-0">
-                        <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider"
-                              :class="{
-                                  'bg-emerald-200/80 text-emerald-900': resultadoIndividual.severidad === 'success',
-                                  'bg-amber-200/80 text-amber-900': resultadoIndividual.severidad === 'warning',
-                                  'bg-rose-200/80 text-rose-900': resultadoIndividual.severidad === 'danger'
-                              }">
-                            <template x-if="resultadoIndividual.es_valido_credito_fiscal">
-                                <span>✓ Crédito Fiscal Apto</span>
-                            </template>
-                            <template x-if="!resultadoIndividual.es_valido_credito_fiscal">
-                                <span>⚠ Sin Crédito Fiscal</span>
-                            </template>
-                        </span>
-                    </div>
+                    {{-- Observaciones devueltas por SUNAT si existen --}}
+                    <template x-if="resultadoIndividual.observaciones && resultadoIndividual.observaciones.length > 0">
+                        <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-900">
+                            <h4 class="font-bold mb-1 flex items-center gap-1.5 text-xs text-amber-800">
+                                <svg class="h-3.5 w-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008Z" />
+                                </svg>
+                                Observaciones oficiales de SUNAT:
+                            </h4>
+                            <ul class="list-disc list-inside space-y-0.5 text-[11px] text-amber-900 font-mono">
+                                <template x-for="(obs, idx) in resultadoIndividual.observaciones" :key="idx">
+                                    <li x-text="obs"></li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
                 </div>
 
-                {{-- Métricas Técnicas de SUNAT (3 Tarjetas) --}}
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {{-- 1. Estado CPE --}}
-                    <div class="rounded-xl border border-gray-200 p-4 bg-gray-50/50">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Estado del Comprobante (CPE)</span>
-                        <div class="mt-2 flex items-center justify-between">
-                            <span class="text-lg font-black text-gray-900" x-text="resultadoIndividual.estado_cp?.label || 'DESCONOCIDO'"></span>
-                            <span class="rounded px-2 py-0.5 text-xs font-mono font-bold"
-                                  :class="{
-                                      'bg-emerald-100 text-emerald-800': resultadoIndividual.estado_cp?.color === 'success',
-                                      'bg-rose-100 text-rose-800': resultadoIndividual.estado_cp?.color === 'danger',
-                                      'bg-blue-100 text-blue-800': resultadoIndividual.estado_cp?.color === 'info',
-                                      'bg-gray-200 text-gray-800': !resultadoIndividual.estado_cp?.color
-                                  }"
-                                  x-text="'Código: ' + (resultadoIndividual.estado_cp?.codigo ?? '—')">
-                            </span>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1" x-text="resultadoIndividual.estado_cp?.descripcion || '—'"></p>
-                    </div>
-
-                    {{-- 2. Estado RUC --}}
-                    <div class="rounded-xl border border-gray-200 p-4 bg-gray-50/50">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Estado RUC Emisor</span>
-                        <div class="mt-2 flex items-center justify-between">
-                            <span class="text-lg font-black text-gray-900" x-text="resultadoIndividual.estado_ruc?.label || 'NO DISPONIBLE'"></span>
-                            <template x-if="resultadoIndividual.estado_ruc?.codigo">
-                                <span class="rounded px-2 py-0.5 text-xs font-mono font-bold"
-                                      :class="resultadoIndividual.estado_ruc?.es_activo ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
-                                      x-text="'Código: ' + resultadoIndividual.estado_ruc.codigo">
-                                </span>
-                            </template>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1" x-text="resultadoIndividual.estado_ruc?.descripcion || 'Información provista por el padrón SUNAT.'"></p>
-                    </div>
-
-                    {{-- 3. Condición de Domicilio --}}
-                    <div class="rounded-xl border border-gray-200 p-4 bg-gray-50/50">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500">Condición de Domicilio</span>
-                        <div class="mt-2 flex items-center justify-between">
-                            <span class="text-lg font-black text-gray-900" x-text="resultadoIndividual.condicion_domicilio?.label || 'NO DISPONIBLE'"></span>
-                            <template x-if="resultadoIndividual.condicion_domicilio?.codigo">
-                                <span class="rounded px-2 py-0.5 text-xs font-mono font-bold"
-                                      :class="resultadoIndividual.condicion_domicilio?.es_habido ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
-                                      x-text="'Código: ' + resultadoIndividual.condicion_domicilio.codigo">
-                                </span>
-                            </template>
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1" x-text="resultadoIndividual.condicion_domicilio?.descripcion || 'Exigencia sustancial para deducción de costo/gasto.'"></p>
-                    </div>
-                </div>
-
-                {{-- Observaciones devueltas por SUNAT si existen --}}
-                <template x-if="resultadoIndividual.observaciones && resultadoIndividual.observaciones.length > 0">
-                    <div class="rounded-xl border border-amber-200 bg-amber-50/60 p-4 text-xs text-amber-900">
-                        <h4 class="font-bold mb-1 flex items-center gap-1.5">
-                            <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-                            </svg>
-                            Observaciones Oficiales de SUNAT:
-                        </h4>
-                        <ul class="list-disc list-inside space-y-0.5">
-                            <template x-for="(obs, idx) in resultadoIndividual.observaciones" :key="idx">
-                                <li x-text="obs"></li>
-                            </template>
-                        </ul>
-                    </div>
-                </template>
             </div>
         </template>
     </div>
@@ -410,20 +465,39 @@
                     </p>
                 </div>
 
-                {{-- Enlace de Descarga de Plantilla --}}
+                {{-- Enlaces de Descarga de Plantilla (XLSX y CSV) --}}
                 <div class="shrink-0 flex items-center gap-2">
-                    <a :href="rutas.plantilla"
-                       class="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-2xs hover:bg-gray-50 transition">
-                        <svg class="h-4 w-4 text-teal-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <a :href="rutas.plantilla + '?formato=xlsx'"
+                       class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50/50 px-3 py-1.5 text-xs font-semibold text-emerald-800 shadow-2xs hover:bg-emerald-100/60 transition">
+                        <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                         </svg>
-                        Descargar Plantilla (.csv)
+                        Descargar Plantilla Excel (.xlsx)
+                    </a>
+                    <a :href="rutas.plantilla + '?formato=csv'"
+                       class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 shadow-2xs hover:bg-gray-50 transition">
+                        CSV
                     </a>
                 </div>
             </div>
 
+            {{-- Banner Clave Contable: Moneda Original --}}
+            <div class="mb-4 rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 flex items-start gap-3">
+                <div class="rounded-lg bg-sky-600 p-1.5 text-white shrink-0 mt-0.5 shadow-2xs">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                </div>
+                <div class="text-xs text-sky-950 space-y-0.5">
+                    <p class="font-bold text-sky-900">Regla Contable Clave: Validar en MONEDA ORIGINAL (Soles o Dólares)</p>
+                    <p class="text-sky-800 leading-relaxed">
+                        Al exportar el Registro de Compras o Ventas desde <strong>New Contasis</strong> (o su sistema contable), seleccione la opción <strong>"Moneda Original"</strong>. La API de SUNAT valida el importe total exactamente en la divisa en que fue emitido el comprobante (ej: si una factura fue emitida por <strong>US$ 3,366.36</strong>, debe enviarse ese valor original y no su equivalente en Soles al tipo de cambio).
+                    </p>
+                </div>
+            </div>
+
             {{-- Selector de Tipo de Registro (Compras vs Ventas) --}}
-            <div class="mb-4 flex items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-200">
+            <div class="mb-4 flex flex-wrap items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-200">
                 <span class="text-xs font-bold text-gray-700">Tipo de Registro a Auditar:</span>
                 <label class="inline-flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer">
                     <input type="radio" name="tipo_registro" value="compras" x-model="tipoRegistro" class="text-teal-600 focus:ring-teal-500">
@@ -435,7 +509,7 @@
                 </label>
             </div>
 
-            {{-- Drag & Drop Dropzone --}}
+            {{-- Drag & Drop Dropzone Inteligente --}}
             <div class="relative rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50/60 p-8 text-center hover:bg-gray-50/90 transition"
                  :class="{ 'border-teal-500 bg-teal-50/40': arrastrando }"
                  @dragover.prevent="arrastrando = true"
@@ -448,8 +522,8 @@
                        class="sr-only"
                        @change="manejarArchivoInput($event)">
 
-                <div class="space-y-2">
-                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-100 text-teal-600">
+                <div class="space-y-3">
+                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-100 text-teal-600 shadow-2xs">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                         </svg>
@@ -462,8 +536,21 @@
                         <span>o arrástrelo y suéltelo en este recuadro</span>
                     </div>
 
+                    {{-- Badges de compatibilidad contable --}}
+                    <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
+                        <span class="inline-flex items-center gap-1 rounded-md bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-700 border border-teal-200">
+                            ✓ New Contasis (Compras y Ventas)
+                        </span>
+                        <span class="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 border border-blue-200">
+                            ✓ SIRE SUNAT (RCE / RVIE)
+                        </span>
+                        <span class="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-700 border border-gray-200">
+                            ✓ Excel (.xlsx) / CSV
+                        </span>
+                    </div>
+
                     <p class="text-[11px] text-gray-500">
-                        Formatos soportados: Excel (.xlsx), CSV delimitado por comas o punto y coma. Tamaño máximo: 15 MB.
+                        El sistema reconoce automáticamente series combinadas (ej: <code class="font-mono font-bold text-gray-700">00F007-0000000472035</code>), convierte importes negativos de Notas de Crédito e ignora filas de totales.
                     </p>
                 </div>
             </div>

@@ -212,15 +212,26 @@ class ValidezComprobanteController extends Controller
     }
 
     /**
-     * Descarga la plantilla oficial en formato CSV para validación masiva.
+     * Descarga la plantilla oficial en formato Excel (.xlsx) o CSV para validación masiva.
      */
-    public function descargarPlantilla(): Response
+    public function descargarPlantilla(Request $request): Response
     {
-        $csv = $this->parserService->generarPlantillaCsv();
+        $formato = strtolower((string) $request->query('formato', 'xlsx'));
 
-        return response($csv, 200, [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="plantilla_validacion_cpe_crm.csv"',
+        if ($formato === 'csv') {
+            $csv = $this->parserService->generarPlantillaCsv();
+
+            return response($csv, 200, [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="plantilla_validacion_cpe_crm.csv"',
+            ]);
+        }
+
+        $xlsx = $this->parserService->generarPlantillaXlsx();
+
+        return response($xlsx, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="plantilla_validacion_cpe_crm.xlsx"',
         ]);
     }
 
