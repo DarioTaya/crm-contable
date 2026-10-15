@@ -72,7 +72,10 @@ class ValidezComprobanteTest extends TestCase
         $response->assertOk()
             ->assertSee('Consulta de Validez de Comprobantes de Pago')
             ->assertSee('Validez CPE (API)')
-            ->assertSee('EMPRESA TEST CON CPE S.A.C.');
+            ->assertSee('EMPRESA TEST CON CPE S.A.C.')
+            ->assertSee('N°')
+            ->assertSee('Haga clic en cualquier parte de este recuadro para seleccionar su archivo')
+            ->assertViewHas('tiposComprobante', fn (array $tipos) => $tipos[0]['codigo'] === '01' && str_contains($tipos[0]['descripcion'], 'Factura Electrónica'));
     }
 
     /**

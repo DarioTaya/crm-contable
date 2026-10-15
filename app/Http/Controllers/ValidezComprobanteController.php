@@ -54,7 +54,18 @@ class ValidezComprobanteController extends Controller
             'cpe_client_id' => $c->sunat_cpe_client_id,
         ]);
 
-        $tiposComprobante = SunatValidezCpeService::TIPOS_COMPROBANTE;
+        $tiposComprobante = [
+            ['codigo' => '01', 'descripcion' => 'Factura Electrónica', 'abreviatura' => 'FAC'],
+            ['codigo' => '03', 'descripcion' => 'Boleta de Venta Electrónica', 'abreviatura' => 'BOL'],
+            ['codigo' => '07', 'descripcion' => 'Nota de Crédito Electrónica', 'abreviatura' => 'NC'],
+            ['codigo' => '08', 'descripcion' => 'Nota de Débito Electrónica', 'abreviatura' => 'ND'],
+            ['codigo' => '09', 'descripcion' => 'Guía de Remisión Remitente', 'abreviatura' => 'GRR'],
+            ['codigo' => '31', 'descripcion' => 'Guía de Remisión Transportista', 'abreviatura' => 'GRT'],
+            ['codigo' => '20', 'descripcion' => 'Comprobante de Retención', 'abreviatura' => 'RET'],
+            ['codigo' => '40', 'descripcion' => 'Comprobante de Percepción', 'abreviatura' => 'PER'],
+            ['codigo' => 'R1', 'descripcion' => 'Recibo por Honorarios Electrónico', 'abreviatura' => 'RxH'],
+            ['codigo' => 'R7', 'descripcion' => 'Nota de Crédito por Honorarios', 'abreviatura' => 'NCR'],
+        ];
 
         return view('validez_cpe.index', compact(
             'clientesData',
