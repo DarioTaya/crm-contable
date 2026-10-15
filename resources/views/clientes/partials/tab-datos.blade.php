@@ -1552,7 +1552,7 @@
 
                     {{-- Client ID CPE --}}
                     <div>
-                        <label for="cpe_client_id" class="block text-sm font-medium text-gray-700 mb-1">Id de Aplicación (Validez CPE)</label>
+                        <label for="cpe_client_id" class="block text-sm font-semibold text-slate-700 mb-1">Id de Aplicación (Validez CPE)</label>
                         <input type="text"
                                id="cpe_client_id"
                                name="sunat_cpe_client_id"
@@ -1564,12 +1564,12 @@
                                @focus="$el.removeAttribute('readonly')"
                                x-model="form.sunat_cpe_client_id"
                                placeholder="Ej: 49b922f1-e6a5-43a9-9fdd-8c03c3323cc2"
-                               class="block w-full rounded-lg border-gray-300 shadow-xs focus:border-teal-500 focus:ring-teal-500 sm:text-sm font-mono" />
+                               class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none" />
                     </div>
 
                     {{-- Client Secret CPE --}}
                     <div>
-                        <label for="cpe_client_secret" class="block text-sm font-medium text-gray-700 mb-1">Clave de Aplicación (Validez CPE)</label>
+                        <label for="cpe_client_secret" class="block text-sm font-semibold text-slate-700 mb-1">Clave de Aplicación (Validez CPE)</label>
                         <div class="relative">
                             <input type="text"
                                    id="cpe_client_secret"
@@ -1583,10 +1583,10 @@
                                    x-model="form.sunat_cpe_client_secret"
                                    :style="mostrarSecret ? '' : '-webkit-text-security: disc'"
                                    placeholder="{{ ! empty($cliente->sunat_cpe_client_secret) ? '••••••••••••••••' : 'Ej: hpj9ALEkYYhajchPQzu3GA==' }}"
-                                   class="block w-full rounded-lg border-gray-300 shadow-xs focus:border-teal-500 focus:ring-teal-500 sm:text-sm font-mono pr-10" />
+                                   class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none pr-10" />
                             <button type="button"
                                     @click="alternarSecreto()"
-                                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition"
+                                    class="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 transition"
                                     title="Mostrar / ocultar clave">
                                 <template x-if="!mostrarSecret">
                                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -1607,7 +1607,7 @@
                     <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
                         <button type="submit"
                                 :disabled="guardando"
-                                class="inline-flex items-center gap-2 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                class="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-bold text-white shadow-xs hover:bg-teal-700 focus:outline-none focus:ring-4 focus:ring-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer">
                             <template x-if="!guardando">
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />

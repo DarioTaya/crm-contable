@@ -40,16 +40,16 @@
             </div>
 
             {{-- Selector de Cliente / Empresa Consultante --}}
-            <div class="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-gray-50/80 p-3 rounded-xl border border-gray-200/80">
+            <div class="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-slate-50/80 p-3 rounded-2xl border border-slate-200/90 shadow-2xs">
                 <div class="text-left">
-                    <label for="cliente_selector" class="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                    <label for="cliente_selector" class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
                         Empresa Consultante:
                     </label>
                     <div class="relative">
                         <select id="cliente_selector"
                                 x-model="clienteId"
                                 @change="cambiarCliente()"
-                                class="block w-full sm:w-72 rounded-lg border-gray-300 bg-white py-1.5 pl-3 pr-8 text-xs font-medium text-gray-900 shadow-2xs focus:border-teal-500 focus:outline-none focus:ring-1 focus:ring-teal-500">
+                                class="block w-full sm:w-80 rounded-xl border border-slate-200/90 bg-white py-2 pl-3.5 pr-8 text-xs font-semibold text-slate-800 shadow-2xs outline-none hover:border-slate-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none transition-all cursor-pointer">
                             <template x-for="c in clientes" :key="c.id">
                                 <option :value="c.id" x-text="c.ruc + ' — ' + c.razon_social + (c.tiene_credenciales ? ' ✓' : ' (Sin API)')"></option>
                             </template>
@@ -138,37 +138,51 @@
 
     {{-- ═══════════════════════════ PESTAÑA 1: CONSULTA INDIVIDUAL ═══════════════════════════ --}}
     <div x-show="tab === 'individual'" x-cloak class="space-y-6">
-        <div class="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xs">
-            <h2 class="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <svg class="h-5 w-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                </svg>
-                Datos del Comprobante a Verificar
-            </h2>
+        {{-- Card de Formulario de Consulta Individual --}}
+        <div class="rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-7 shadow-xs">
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-2.5">
+                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700 border border-teal-200/60 shadow-2xs">
+                        <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-sm sm:text-base font-bold text-slate-900">
+                            Datos del Comprobante a Verificar
+                        </h2>
+                        <p class="text-xs text-slate-500">Ingrese los 6 campos tributarios requeridos por la API oficial de SUNAT</p>
+                    </div>
+                </div>
+            </div>
 
             <form @submit.prevent="ejecutarConsultaIndividual()" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                 {{-- RUC Emisor --}}
                 <div class="xl:col-span-2">
-                    <label for="ind_ruc" class="block text-xs font-semibold text-gray-700 mb-1">
-                        RUC Emisor (Proveedor o Empresa) <span class="text-rose-500">*</span>
+                    <label for="ind_ruc" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        <span>RUC Emisor (Proveedor)</span>
+                        <span class="text-rose-500 ml-0.5">*</span>
                     </label>
-                    <input type="text"
-                           id="ind_ruc"
-                           x-model="individual.numRuc"
-                           maxlength="11"
-                           placeholder="Ej: 20100047218"
-                           class="block w-full rounded-lg border-gray-300 shadow-2xs focus:border-teal-500 focus:ring-teal-500 text-sm font-mono"
-                           required />
+                    <div class="relative">
+                        <input type="text"
+                               id="ind_ruc"
+                               x-model="individual.numRuc"
+                               maxlength="11"
+                               placeholder="Ej: 20100047218"
+                               class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none"
+                               required />
+                    </div>
                 </div>
 
                 {{-- Tipo Comprobante --}}
                 <div class="xl:col-span-1">
-                    <label for="ind_tipo" class="block text-xs font-semibold text-gray-700 mb-1">
-                        Tipo de CPE <span class="text-rose-500">*</span>
+                    <label for="ind_tipo" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        <span>Tipo de CPE</span>
+                        <span class="text-rose-500 ml-0.5">*</span>
                     </label>
                     <select id="ind_tipo"
                             x-model="individual.codComp"
-                            class="block w-full rounded-lg border-gray-300 shadow-2xs focus:border-teal-500 focus:ring-teal-500 text-sm"
+                            class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none cursor-pointer"
                             required>
                         <template x-for="(label, cod) in tiposCpe" :key="cod">
                             <option :value="cod" x-text="cod + ' - ' + label"></option>
@@ -178,64 +192,67 @@
 
                 {{-- Serie --}}
                 <div>
-                    <label for="ind_serie" class="block text-xs font-semibold text-gray-700 mb-1">
-                        Serie <span class="text-rose-500">*</span>
+                    <label for="ind_serie" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        <span>Serie</span>
+                        <span class="text-rose-500 ml-0.5">*</span>
                     </label>
                     <input type="text"
                            id="ind_serie"
                            x-model="individual.numeroSerie"
                            maxlength="5"
-                           placeholder="Ej: F001"
-                           class="block w-full rounded-lg border-gray-300 shadow-2xs focus:border-teal-500 focus:ring-teal-500 text-sm uppercase font-mono"
+                           placeholder="Ej: F001 / E001"
+                           class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-sm font-mono uppercase text-slate-800 placeholder-slate-400 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none"
                            required />
                 </div>
 
                 {{-- Número Correlativo --}}
                 <div>
-                    <label for="ind_numero" class="block text-xs font-semibold text-gray-700 mb-1">
-                        Número <span class="text-rose-500">*</span>
+                    <label for="ind_numero" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        <span>Número</span>
+                        <span class="text-rose-500 ml-0.5">*</span>
                     </label>
                     <input type="text"
                            id="ind_numero"
                            x-model="individual.numero"
                            maxlength="12"
                            placeholder="Ej: 1245"
-                           class="block w-full rounded-lg border-gray-300 shadow-2xs focus:border-teal-500 focus:ring-teal-500 text-sm font-mono"
+                           class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none"
                            required />
                 </div>
 
                 {{-- Fecha de Emisión --}}
                 <div>
-                    <label for="ind_fecha" class="block text-xs font-semibold text-gray-700 mb-1">
-                        Fecha Emisión <span class="text-rose-500">*</span>
+                    <label for="ind_fecha" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        <span>Fecha Emisión</span>
+                        <span class="text-rose-500 ml-0.5">*</span>
                     </label>
                     <input type="date"
                            id="ind_fecha"
                            x-model="individual.fechaEmision"
-                           class="block w-full rounded-lg border-gray-300 shadow-2xs focus:border-teal-500 focus:ring-teal-500 text-sm font-mono"
+                           class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-sm font-mono text-slate-800 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none"
                            required />
                 </div>
 
                 {{-- Importe Total --}}
                 <div>
-                    <label for="ind_monto" class="block text-xs font-semibold text-gray-700 mb-1">
-                        Monto Total (S/)
+                    <label for="ind_monto" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
+                        <span>Total (Moneda Orig.)</span>
                     </label>
                     <input type="number"
                            id="ind_monto"
                            step="0.01"
                            x-model="individual.monto"
                            placeholder="0.00"
-                           class="block w-full rounded-lg border-gray-300 shadow-2xs focus:border-teal-500 focus:ring-teal-500 text-sm font-mono" />
+                           class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none" />
                 </div>
 
                 {{-- Botón de Acción --}}
                 <div class="sm:col-span-2 lg:col-span-3 xl:col-span-6 flex items-center justify-end gap-3 pt-2">
                     <button type="submit"
                             :disabled="consultandoIndividual || !clienteActual?.tiene_credenciales"
-                            class="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer">
+                            class="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-teal-700 hover:shadow active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer">
                         <template x-if="!consultandoIndividual">
-                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                             </svg>
                         </template>
@@ -252,189 +269,217 @@
         </div>
 
         {{-- RESULTADO DE LA CONSULTA INDIVIDUAL (Diseño Ejecutivo Bancario / Fintech) --}}
+        {{-- RESULTADO DE LA CONSULTA INDIVIDUAL (Diseño Ejecutivo / Certificado Oficial de Auditoría) --}}
         <template x-if="resultadoIndividual">
-            <div class="rounded-xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden transition-all duration-300">
+            <div class="rounded-2xl border bg-white shadow-sm overflow-hidden transition-all duration-300"
+                 :class="{
+                     'border-slate-200 border-t-4 border-t-emerald-600': resultadoIndividual.severidad === 'success',
+                     'border-slate-200 border-t-4 border-t-amber-500': resultadoIndividual.severidad === 'warning',
+                     'border-slate-200 border-t-4 border-t-rose-600': resultadoIndividual.severidad === 'danger'
+                 }">
 
-                {{-- 1. Barra de Encabezado Superior: Estado de Auditoría & Timestamp --}}
-                <div class="px-5 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3"
+                {{-- Encabezado: Dictamen Superior y Metadatos Oficiales --}}
+                <div class="px-6 py-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
                      :class="{
-                         'bg-emerald-50/50': resultadoIndividual.severidad === 'success',
-                         'bg-amber-50/50': resultadoIndividual.severidad === 'warning',
-                         'bg-rose-50/50': resultadoIndividual.severidad === 'danger'
+                         'bg-emerald-50/40': resultadoIndividual.severidad === 'success',
+                         'bg-amber-50/40': resultadoIndividual.severidad === 'warning',
+                         'bg-rose-50/40': resultadoIndividual.severidad === 'danger'
                      }">
-                    <div class="flex items-center gap-2.5">
-                        {{-- Badge de Estado con Pulso --}}
-                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold tracking-tight"
-                              :class="{
-                                  'bg-emerald-100/90 text-emerald-800 border border-emerald-300/80': resultadoIndividual.severidad === 'success',
-                                  'bg-amber-100/90 text-amber-800 border border-amber-300/80': resultadoIndividual.severidad === 'warning',
-                                  'bg-rose-100/90 text-rose-800 border border-rose-300/80': resultadoIndividual.severidad === 'danger'
-                              }">
-                            <span class="h-2 w-2 rounded-full"
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black tracking-wide"
                                   :class="{
-                                      'bg-emerald-600 animate-pulse': resultadoIndividual.severidad === 'success',
-                                      'bg-amber-600 animate-pulse': resultadoIndividual.severidad === 'warning',
-                                      'bg-rose-600 animate-pulse': resultadoIndividual.severidad === 'danger'
-                                  }"></span>
-                            <span x-text="resultadoIndividual.es_valido_credito_fiscal ? 'APTO PARA CRÉDITO FISCAL & GASTO' : (resultadoIndividual.severidad === 'warning' ? 'OBSERVADO — REPARO TRIBUTARIO' : 'COMPROBANTE NO VÁLIDO')"></span>
-                        </span>
-
-                        <span class="hidden sm:inline text-slate-300">|</span>
-                        <span class="hidden sm:inline text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                            Arts. 18-19 LIGV · Art. 54 LIR
-                        </span>
+                                      'bg-emerald-100/90 text-emerald-900 border border-emerald-300': resultadoIndividual.severidad === 'success',
+                                      'bg-amber-100/90 text-amber-900 border border-amber-300': resultadoIndividual.severidad === 'warning',
+                                      'bg-rose-100/90 text-rose-900 border border-rose-300': resultadoIndividual.severidad === 'danger'
+                                  }">
+                                <span class="h-2 w-2 rounded-full"
+                                      :class="{
+                                          'bg-emerald-600 animate-pulse': resultadoIndividual.severidad === 'success',
+                                          'bg-amber-600 animate-pulse': resultadoIndividual.severidad === 'warning',
+                                          'bg-rose-600 animate-pulse': resultadoIndividual.severidad === 'danger'
+                                      }"></span>
+                                <span x-text="resultadoIndividual.es_valido_credito_fiscal ? '✓ APTO PARA CRÉDITO FISCAL & DEDUCCIÓN DE GASTO' : (resultadoIndividual.severidad === 'warning' ? '⚠ OBSERVADO — RIESGO DE REPARO TRIBUTARIO' : '✕ COMPROBANTE NO VÁLIDO / NO REGISTRADO')"></span>
+                            </span>
+                        </div>
+                        <p class="mt-1.5 text-xs text-slate-600 font-medium">
+                            Conforme a los <strong class="text-slate-800">Arts. 18° y 19° del TUO de la Ley del IGV</strong> y <strong class="text-slate-800">Art. 37° de la Ley del Impuesto a la Renta</strong>.
+                        </p>
                     </div>
 
-                    <div class="flex items-center gap-2 text-right">
-                        <span class="text-[11px] font-mono text-slate-400 flex items-center gap-1">
-                            <svg class="h-3.5 w-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="inline-flex items-center gap-1 rounded-lg bg-teal-50 border border-teal-200 px-2.5 py-1 text-[11px] font-bold text-teal-800">
+                            <svg class="h-3.5 w-3.5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
                             </svg>
-                            <span x-text="resultadoIndividual.consultado_at?.substring(0, 19).replace('T', ' ')"></span>
+                            Constancia Oficial SUNAT OAuth 2.0
                         </span>
-                        <span class="inline-flex items-center rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-slate-600">
-                            Oficial SUNAT
-                        </span>
+                        <span class="text-[11px] font-mono text-slate-400" x-text="resultadoIndividual.consultado_at?.substring(0, 19).replace('T', ' ')"></span>
                     </div>
                 </div>
 
-                {{-- 2. Tira de Datos Clave del Comprobante (Diseño Minimalista Tabular) --}}
-                <div class="px-5 py-3.5 bg-white border-b border-slate-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                {{-- Las 3 Columnas Clave de Validación (Tiles Métricas de Alta Definición) --}}
+                <div class="p-6 bg-white border-b border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {{-- Tile 1: Estado CPE --}}
+                    <div class="p-4 rounded-xl border border-slate-200/90 bg-slate-50/40 hover:bg-white hover:shadow-xs transition-all duration-150">
+                        <div class="flex items-center justify-between text-xs text-slate-500 mb-2">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">1. Estado en SUNAT</span>
+                            <span class="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-700"
+                                  x-text="'Cód. ' + (resultadoIndividual.estado_cp?.codigo ?? '—')"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <template x-if="resultadoIndividual.estado_cp?.codigo === '1'">
+                                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 shrink-0">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                    </svg>
+                                </div>
+                            </template>
+                            <template x-if="resultadoIndividual.estado_cp?.codigo !== '1'">
+                                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100 text-rose-700 shrink-0">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                    </svg>
+                                </div>
+                            </template>
+                            <span class="text-sm font-black tracking-tight"
+                                  :class="resultadoIndividual.estado_cp?.codigo === '1' ? 'text-emerald-800' : 'text-rose-800'"
+                                  x-text="resultadoIndividual.estado_cp?.label || 'DESCONOCIDO'"></span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-2 leading-snug" x-text="resultadoIndividual.estado_cp?.descripcion || '—'"></p>
+                    </div>
+
+                    {{-- Tile 2: Padrón RUC --}}
+                    <div class="p-4 rounded-xl border border-slate-200/90 bg-slate-50/40 hover:bg-white hover:shadow-xs transition-all duration-150">
+                        <div class="flex items-center justify-between text-xs text-slate-500 mb-2">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">2. Padrón RUC Emisor</span>
+                            <span class="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-700"
+                                  x-text="'Cód. ' + (resultadoIndividual.estado_ruc?.codigo ?? '—')"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <template x-if="resultadoIndividual.estado_ruc?.es_activo">
+                                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 shrink-0">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z" />
+                                    </svg>
+                                </div>
+                            </template>
+                            <template x-if="!resultadoIndividual.estado_ruc?.es_activo">
+                                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-100 text-rose-700 shrink-0">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                </div>
+                            </template>
+                            <span class="text-sm font-black tracking-tight"
+                                  :class="resultadoIndividual.estado_ruc?.es_activo ? 'text-emerald-800' : 'text-rose-800'"
+                                  x-text="resultadoIndividual.estado_ruc?.label || 'NO DISPONIBLE'"></span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-2 leading-snug" x-text="resultadoIndividual.estado_ruc?.descripcion || '—'"></p>
+                    </div>
+
+                    {{-- Tile 3: Condición de Domicilio --}}
+                    <div class="p-4 rounded-xl border border-slate-200/90 bg-slate-50/40 hover:bg-white hover:shadow-xs transition-all duration-150">
+                        <div class="flex items-center justify-between text-xs text-slate-500 mb-2">
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">3. Condición de Domicilio</span>
+                            <span class="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200/80 text-slate-700"
+                                  x-text="'Cód. ' + (resultadoIndividual.condicion_domicilio?.codigo ?? '—')"></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <template x-if="resultadoIndividual.condicion_domicilio?.es_habido">
+                                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 shrink-0">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+                                    </svg>
+                                </div>
+                            </template>
+                            <template x-if="!resultadoIndividual.condicion_domicilio?.es_habido">
+                                <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-700 shrink-0">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008Z" />
+                                    </svg>
+                                </div>
+                            </template>
+                            <span class="text-sm font-black tracking-tight"
+                                  :class="resultadoIndividual.condicion_domicilio?.es_habido ? 'text-emerald-800' : 'text-amber-800'"
+                                  x-text="resultadoIndividual.condicion_domicilio?.label || 'NO DISPONIBLE'"></span>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mt-2 leading-snug" x-text="resultadoIndividual.condicion_domicilio?.descripcion || '—'"></p>
+                    </div>
+                </div>
+
+                {{-- Tira Minimalista de Atributos del Comprobante Consultado --}}
+                <div class="px-6 py-3.5 bg-slate-50/70 border-b border-slate-100 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                     <div>
-                        <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Comprobante</span>
-                        <p class="font-bold text-slate-900 font-mono mt-0.5 text-sm"
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Documento</span>
+                        <p class="font-mono font-bold text-slate-900 mt-0.5"
                            x-text="(individual.codComp === '01' ? 'Factura ' : (individual.codComp === '03' ? 'Boleta ' : (individual.codComp === '07' ? 'Nota Crédito ' : 'Doc. '))) + individual.numeroSerie + '-' + individual.numero"></p>
                     </div>
                     <div>
-                        <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">RUC Emisor</span>
-                        <p class="font-bold text-slate-900 font-mono mt-0.5 text-sm" x-text="individual.numRuc"></p>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">RUC Proveedor</span>
+                        <p class="font-mono font-bold text-slate-900 mt-0.5" x-text="individual.numRuc"></p>
                     </div>
                     <div>
-                        <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Fecha Emisión</span>
-                        <p class="font-semibold text-slate-800 font-mono mt-0.5" x-text="individual.fechaEmision"></p>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Fecha de Emisión</span>
+                        <p class="font-mono font-semibold text-slate-800 mt-0.5" x-text="individual.fechaEmision"></p>
                     </div>
                     <div>
-                        <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Monto Consultado</span>
-                        <p class="font-bold text-slate-900 font-mono mt-0.5"
-                           x-text="individual.monto ? (individual.monto + ' (Moneda Original)') : 'No especificado'"></p>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Importe Validado</span>
+                        <p class="font-mono font-bold text-slate-900 mt-0.5"
+                           x-text="individual.monto ? ('S/ ' + individual.monto + ' (Moneda Orig.)') : 'No informado'"></p>
                     </div>
                 </div>
 
-                {{-- 3. Conclusión de Auditoría Tributaria (Texto Ejecutivo en Tipografía Fina y Legible) --}}
-                <div class="px-5 py-3 flex items-start gap-3"
-                     :class="{
-                         'bg-emerald-50/30 text-emerald-950': resultadoIndividual.severidad === 'success',
-                         'bg-amber-50/30 text-amber-950': resultadoIndividual.severidad === 'warning',
-                         'bg-rose-50/30 text-rose-950': resultadoIndividual.severidad === 'danger'
-                     }">
-                    <div class="mt-0.5 shrink-0">
-                        <template x-if="resultadoIndividual.severidad === 'success'">
-                            <div class="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white">
-                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                                </svg>
-                            </div>
-                        </template>
-                        <template x-if="resultadoIndividual.severidad === 'warning'">
-                            <div class="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-white">
-                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008Z" />
-                                </svg>
-                            </div>
-                        </template>
-                        <template x-if="resultadoIndividual.severidad === 'danger'">
-                            <div class="flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 text-white">
-                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="3" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
-                                </svg>
-                            </div>
-                        </template>
-                    </div>
-                    <div class="space-y-0.5">
-                        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Dictamen Tributario</span>
-                        <p class="text-xs text-slate-700 leading-relaxed font-normal" x-text="resultadoIndividual.diagnostico"></p>
-                    </div>
-                </div>
-
-                {{-- 4. Las 3 Tarjetas de Validación Técnica SUNAT (Micro-Cards Elegantes) --}}
-                <div class="p-5 bg-white border-t border-slate-100">
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-
-                        {{-- Card 1: Estado CPE --}}
-                        <div class="rounded-lg border border-slate-200/80 bg-slate-50/40 p-3 hover:bg-slate-50 transition">
-                            <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Comprobante en SUNAT</span>
-                                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-700 font-semibold"
-                                      x-text="'Cód. ' + (resultadoIndividual.estado_cp?.codigo ?? '—')"></span>
-                            </div>
-                            <div class="mt-1.5 flex items-center gap-1.5">
-                                <template x-if="resultadoIndividual.estado_cp?.codigo === '1'">
-                                    <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                {{-- Dictamen y Efecto Tributario Oficial --}}
+                <div class="p-6">
+                    <div class="rounded-xl p-4 flex items-start gap-3.5"
+                         :class="{
+                             'bg-emerald-50/80 border border-emerald-200 text-emerald-950': resultadoIndividual.severidad === 'success',
+                             'bg-amber-50/80 border border-amber-200 text-amber-950': resultadoIndividual.severidad === 'warning',
+                             'bg-rose-50/80 border border-rose-200 text-rose-950': resultadoIndividual.severidad === 'danger'
+                         }">
+                        <div class="mt-0.5 shrink-0">
+                            <template x-if="resultadoIndividual.severidad === 'success'">
+                                <div class="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-white shadow-2xs">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                                     </svg>
-                                </template>
-                                <span class="text-xs font-bold text-slate-800" x-text="resultadoIndividual.estado_cp?.label || 'DESCONOCIDO'"></span>
-                            </div>
-                            <p class="text-[11px] text-slate-500 mt-0.5" x-text="resultadoIndividual.estado_cp?.descripcion || '—'"></p>
-                        </div>
-
-                        {{-- Card 2: Estado RUC --}}
-                        <div class="rounded-lg border border-slate-200/80 bg-slate-50/40 p-3 hover:bg-slate-50 transition">
-                            <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Padrón RUC Emisor</span>
-                                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-700 font-semibold"
-                                      x-text="'Cód. ' + (resultadoIndividual.estado_ruc?.codigo ?? '—')"></span>
-                            </div>
-                            <div class="mt-1.5 flex items-center gap-1.5">
-                                <template x-if="resultadoIndividual.estado_ruc?.es_activo">
-                                    <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                                    </svg>
-                                </template>
-                                <template x-if="!resultadoIndividual.estado_ruc?.es_activo">
-                                    <svg class="h-4 w-4 text-rose-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                </div>
+                            </template>
+                            <template x-if="resultadoIndividual.severidad === 'warning'">
+                                <div class="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-white shadow-2xs">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008Z" />
                                     </svg>
-                                </template>
-                                <span class="text-xs font-bold text-slate-800" x-text="resultadoIndividual.estado_ruc?.label || 'NO DISPONIBLE'"></span>
-                            </div>
-                            <p class="text-[11px] text-slate-500 mt-0.5" x-text="resultadoIndividual.estado_ruc?.descripcion || '—'"></p>
-                        </div>
-
-                        {{-- Card 3: Condición de Domicilio --}}
-                        <div class="rounded-lg border border-slate-200/80 bg-slate-50/40 p-3 hover:bg-slate-50 transition">
-                            <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Condición Domicilio</span>
-                                <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200/70 text-slate-700 font-semibold"
-                                      x-text="'Cód. ' + (resultadoIndividual.condicion_domicilio?.codigo ?? '—')"></span>
-                            </div>
-                            <div class="mt-1.5 flex items-center gap-1.5">
-                                <template x-if="resultadoIndividual.condicion_domicilio?.es_habido">
-                                    <svg class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </div>
+                            </template>
+                            <template x-if="resultadoIndividual.severidad === 'danger'">
+                                <div class="flex h-6 w-6 items-center justify-center rounded-full bg-rose-600 text-white shadow-2xs">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
                                     </svg>
-                                </template>
-                                <template x-if="!resultadoIndividual.condicion_domicilio?.es_habido">
-                                    <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008Z" />
-                                    </svg>
-                                </template>
-                                <span class="text-xs font-bold text-slate-800" x-text="resultadoIndividual.condicion_domicilio?.label || 'NO DISPONIBLE'"></span>
-                            </div>
-                            <p class="text-[11px] text-slate-500 mt-0.5" x-text="resultadoIndividual.condicion_domicilio?.descripcion || '—'"></p>
+                                </div>
+                            </template>
                         </div>
-                    </div>
-
-                    {{-- Observaciones devueltas por SUNAT si existen --}}
-                    <template x-if="resultadoIndividual.observaciones && resultadoIndividual.observaciones.length > 0">
-                        <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50/60 p-3 text-xs text-amber-900">
-                            <h4 class="font-bold mb-1 flex items-center gap-1.5 text-xs text-amber-800">
-                                <svg class="h-3.5 w-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008Z" />
-                                </svg>
-                                Observaciones oficiales de SUNAT:
+                        <div class="flex-1 space-y-1">
+                            <h4 class="text-xs font-bold uppercase tracking-wider opacity-90">
+                                Diagnóstico Tributario & Dictamen Contable
                             </h4>
-                            <ul class="list-disc list-inside space-y-0.5 text-[11px] text-amber-900 font-mono">
+                            <p class="text-xs leading-relaxed font-normal" x-text="resultadoIndividual.diagnostico"></p>
+                        </div>
+                    </div>
+
+                    {{-- Observaciones SUNAT si existen --}}
+                    <template x-if="resultadoIndividual.observaciones && resultadoIndividual.observaciones.length > 0">
+                        <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-xs text-amber-900">
+                            <h5 class="font-bold mb-1 flex items-center gap-1.5 text-xs text-amber-800">
+                                <svg class="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m0 3.75h.007v.008H12v-.008Z" />
+                                </svg>
+                                Observaciones oficiales emitidas por la API de SUNAT:
+                            </h5>
+                            <ul class="list-disc list-inside space-y-1 text-xs text-amber-900 font-mono mt-2">
                                 <template x-for="(obs, idx) in resultadoIndividual.observaciones" :key="idx">
                                     <li x-text="obs"></li>
                                 </template>
@@ -442,7 +487,6 @@
                         </div>
                     </template>
                 </div>
-
             </div>
         </template>
     </div>
@@ -496,17 +540,40 @@
                 </div>
             </div>
 
-            {{-- Selector de Tipo de Registro (Compras vs Ventas) --}}
-            <div class="mb-4 flex flex-wrap items-center gap-4 bg-gray-50 p-3 rounded-xl border border-gray-200">
-                <span class="text-xs font-bold text-gray-700">Tipo de Registro a Auditar:</span>
-                <label class="inline-flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer">
-                    <input type="radio" name="tipo_registro" value="compras" x-model="tipoRegistro" class="text-teal-600 focus:ring-teal-500">
-                    <span>Registro de Compras (Emisores son Proveedores)</span>
-                </label>
-                <label class="inline-flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer">
-                    <input type="radio" name="tipo_registro" value="ventas" x-model="tipoRegistro" class="text-teal-600 focus:ring-teal-500">
-                    <span>Registro de Ventas (Emisor es <strong x-text="clienteActual?.ruc || 'la empresa'"></strong>)</span>
-                </label>
+            {{-- Selector de Tipo de Registro (Compras vs Ventas) - Control Segmentado Premium --}}
+            <div class="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2.5 rounded-2xl bg-slate-50 border border-slate-200/90 shadow-2xs">
+                <div class="flex items-center gap-2.5 px-2">
+                    <div class="flex h-7 w-7 items-center justify-center rounded-lg bg-teal-100 text-teal-700">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="text-xs font-bold text-slate-800">Tipo de Registro a Auditar</span>
+                        <p class="text-[11px] text-slate-500">Define si los comprobantes corresponden a compras de terceros o ventas propias</p>
+                    </div>
+                </div>
+
+                <div class="inline-flex p-1 rounded-xl bg-slate-200/60 border border-slate-300/40 text-xs shrink-0">
+                    <button type="button"
+                            @click="tipoRegistro = 'compras'"
+                            class="relative px-4 py-2 rounded-lg font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer outline-none focus:outline-none"
+                            :class="tipoRegistro === 'compras' ? 'bg-teal-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                        </svg>
+                        <span>Registro de Compras (Proveedores)</span>
+                    </button>
+                    <button type="button"
+                            @click="tipoRegistro = 'ventas'"
+                            class="relative px-4 py-2 rounded-lg font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer outline-none focus:outline-none"
+                            :class="tipoRegistro === 'ventas' ? 'bg-teal-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6H2.25m0 0v8.25m0 0a60.2 60.2 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V15M3.75 4.5H20.25a1.5 1.5 0 0 1 1.5 1.5v10.5a1.5 1.5 0 0 1-1.5 1.5H3.75a1.5 1.5 0 0 1-1.5-1.5V6a1.5 1.5 0 0 1 1.5-1.5Z" />
+                        </svg>
+                        <span>Registro de Ventas (Emisión Propia)</span>
+                    </button>
+                </div>
             </div>
 
             {{-- Drag & Drop Dropzone Inteligente --}}
@@ -681,130 +748,165 @@
                 </div>
 
                 {{-- Tabla de Resultados con Filtro y Búsqueda --}}
-                <div class="rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-xs">
+                <div class="rounded-2xl border border-slate-200/90 bg-white overflow-hidden shadow-xs">
                     {{-- Barra de Búsqueda y Píldoras de Filtro --}}
-                    <div class="p-4 border-b border-gray-200 bg-gray-50/50 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                    <div class="p-4 border-b border-slate-200/90 bg-slate-50/70 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                         <div class="flex items-center gap-2 flex-wrap">
-                            <span class="text-xs font-bold text-gray-500 uppercase">Filtrar por:</span>
+                            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Filtrar por:</span>
                             <button type="button"
                                     @click="cambiarFiltro('todos')"
-                                    class="rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer"
-                                    :class="filtroEstado === 'todos' ? 'bg-gray-800 text-white' : 'bg-white border text-gray-700 hover:bg-gray-100'">
+                                    class="rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer outline-none focus:outline-none"
+                                    :class="filtroEstado === 'todos' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100/70'">
                                 Todos (<span x-text="masivoFilas.length"></span>)
                             </button>
                             <button type="button"
                                     @click="cambiarFiltro('validos')"
-                                    class="rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer"
-                                    :class="filtroEstado === 'validos' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100'">
+                                    class="rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer outline-none focus:outline-none"
+                                    :class="filtroEstado === 'validos' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50/60 border border-emerald-200 text-emerald-800 hover:bg-emerald-100/70'">
                                 ✓ Aptos (<span x-text="kpis.validos"></span>)
                             </button>
                             <button type="button"
                                     @click="cambiarFiltro('observados')"
-                                    class="rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer"
-                                    :class="filtroEstado === 'observados' ? 'bg-amber-600 text-white' : 'bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100'">
+                                    class="rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer outline-none focus:outline-none"
+                                    :class="filtroEstado === 'observados' ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-50/60 border border-amber-200 text-amber-800 hover:bg-amber-100/70'">
                                 ⚠ Observados (<span x-text="kpis.observados"></span>)
                             </button>
                             <button type="button"
                                     @click="cambiarFiltro('rechazados')"
-                                    class="rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer"
-                                    :class="filtroEstado === 'rechazados' ? 'bg-rose-600 text-white' : 'bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-100'">
+                                    class="rounded-xl px-3 py-1.5 text-xs font-bold transition-all cursor-pointer outline-none focus:outline-none"
+                                    :class="filtroEstado === 'rechazados' ? 'bg-rose-600 text-white shadow-xs' : 'bg-rose-50/60 border border-rose-200 text-rose-800 hover:bg-rose-100/70'">
                                 ✕ Rechazados (<span x-text="kpis.rechazados"></span>)
                             </button>
                         </div>
 
                         {{-- Input de Búsqueda Rápida --}}
-                        <div class="w-full md:w-64">
+                        <div class="relative w-full md:w-72">
+                            <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                                </svg>
+                            </div>
                             <input type="text"
                                    x-model="busquedaTabla"
                                    @input="paginaActual = 1"
-                                   placeholder="Buscar por RUC, serie, número..."
-                                   class="block w-full rounded-lg border-gray-300 py-1.5 pl-3 pr-3 text-xs shadow-2xs focus:border-teal-500 focus:ring-teal-500 font-medium">
+                                   placeholder="Buscar por RUC, razón social, serie..."
+                                   class="block w-full rounded-xl border border-slate-200/90 bg-white py-2 pl-9 pr-3 text-xs font-mono text-slate-800 placeholder-slate-400 shadow-2xs outline-none hover:border-slate-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none transition-all">
                         </div>
                     </div>
 
-                    {{-- Data Table --}}
+                    {{-- Data Table con Arquitectura de 6 Columnas Compuestas y Amplio Diagnóstico --}}
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 text-left text-xs">
-                            <thead class="bg-gray-50 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        <table class="min-w-full divide-y divide-slate-200 text-left text-xs">
+                            <thead class="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
                                 <tr>
                                     <th class="py-3 px-3 w-12 text-center">#</th>
-                                    <th class="py-3 px-3">RUC Emisor</th>
-                                    <th class="py-3 px-3">Razón Social</th>
-                                    <th class="py-3 px-3">Comprobante</th>
-                                    <th class="py-3 px-3">Fecha</th>
-                                    <th class="py-3 px-3 text-right">Total</th>
-                                    <th class="py-3 px-3 text-center">Estado CPE</th>
-                                    <th class="py-3 px-3 text-center">Estado RUC</th>
-                                    <th class="py-3 px-3 text-center">Condición</th>
-                                    <th class="py-3 px-3">Diagnóstico Tributario</th>
+                                    <th class="py-3 px-4 w-64">Emisor / Proveedor</th>
+                                    <th class="py-3 px-4 w-44">Comprobante</th>
+                                    <th class="py-3 px-4 w-32 text-right">Total Validado</th>
+                                    <th class="py-3 px-4 w-40 text-center">Estado SUNAT</th>
+                                    <th class="py-3 px-4">Diagnóstico Tributario & Dictamen</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-gray-200 bg-white">
+                            <tbody class="divide-y divide-slate-100 bg-white">
                                 <template x-for="(fila, idx) in filasPaginadas" :key="fila.item">
-                                    <tr class="hover:bg-gray-50/80 transition"
+                                    <tr class="hover:bg-slate-50/80 transition"
                                         :class="{
-                                            'bg-emerald-50/20': fila.resultado?.es_valido_credito_fiscal,
-                                            'bg-amber-50/20': fila.resultado?.severidad === 'warning',
-                                            'bg-rose-50/20': fila.resultado?.severidad === 'danger'
+                                            'bg-emerald-50/25': fila.resultado?.es_valido_credito_fiscal,
+                                            'bg-amber-50/25': fila.resultado?.severidad === 'warning',
+                                            'bg-rose-50/25': fila.resultado?.severidad === 'danger'
                                         }">
-                                        <td class="py-2.5 px-3 text-center font-mono text-gray-400" x-text="fila.item"></td>
-                                        <td class="py-2.5 px-3 font-mono font-semibold text-gray-900" x-text="fila.numRuc"></td>
-                                        <td class="py-2.5 px-3 max-w-[12rem] truncate text-gray-700" :title="fila.razonSocial || '—'" x-text="fila.razonSocial || '—'"></td>
-                                        <td class="py-2.5 px-3 whitespace-nowrap">
-                                            <span class="font-mono font-bold text-gray-900" x-text="fila.numeroSerie + '-' + fila.numero"></span>
-                                            <span class="ml-1 text-[10px] text-gray-500 font-mono" x-text="'(' + fila.codComp + ')'"></span>
-                                        </td>
-                                        <td class="py-2.5 px-3 font-mono text-gray-600 whitespace-nowrap" x-text="fila.fechaEmision"></td>
-                                        <td class="py-2.5 px-3 font-mono font-bold text-gray-900 text-right whitespace-nowrap" x-text="'S/ ' + fila.monto"></td>
+                                        {{-- 1. Index --}}
+                                        <td class="py-3 px-3 text-center font-mono text-slate-400 font-semibold" x-text="fila.item"></td>
 
-                                        {{-- Estado CPE --}}
-                                        <td class="py-2.5 px-3 text-center whitespace-nowrap">
-                                            <span x-show="!fila.resultado" class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">Pendiente</span>
-                                            <span x-show="fila.resultado"
-                                                  class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase"
-                                                  :class="{
-                                                      'bg-emerald-100 text-emerald-800': fila.resultado?.estado_cp?.color === 'success',
-                                                      'bg-rose-100 text-rose-800': fila.resultado?.estado_cp?.color === 'danger',
-                                                      'bg-blue-100 text-blue-800': fila.resultado?.estado_cp?.color === 'info',
-                                                      'bg-gray-100 text-gray-700': !fila.resultado?.estado_cp?.color
-                                                  }"
-                                                  x-text="fila.resultado?.estado_cp?.label || 'ERROR'">
-                                            </span>
+                                        {{-- 2. Emisor / Proveedor (Razón Social + RUC) --}}
+                                        <td class="py-3 px-4">
+                                            <div class="font-bold text-slate-900 text-xs truncate max-w-[16rem]" :title="fila.razonSocial || '—'" x-text="fila.razonSocial || '—'"></div>
+                                            <div class="font-mono text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                                <span class="text-slate-400 font-sans text-[10px] font-semibold uppercase">RUC</span>
+                                                <span class="font-bold text-slate-700 select-all" x-text="fila.numRuc"></span>
+                                            </div>
                                         </td>
 
-                                        {{-- Estado RUC --}}
-                                        <td class="py-2.5 px-3 text-center whitespace-nowrap">
-                                            <span x-show="fila.resultado?.estado_ruc"
-                                                  class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase"
-                                                  :class="fila.resultado?.estado_ruc?.es_activo ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
-                                                  x-text="fila.resultado?.estado_ruc?.label">
-                                            </span>
-                                            <span x-show="!fila.resultado?.estado_ruc" class="text-gray-400">—</span>
+                                        {{-- 3. Comprobante (Serie-Número + Tipo + Fecha) --}}
+                                        <td class="py-3 px-4 whitespace-nowrap">
+                                            <div class="font-mono font-bold text-slate-900 text-xs" x-text="fila.numeroSerie + '-' + fila.numero"></div>
+                                            <div class="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                                                <span class="rounded bg-slate-100 border border-slate-200/80 px-1 py-0.2 font-mono text-[10px] font-bold text-slate-600" x-text="'CPE ' + fila.codComp"></span>
+                                                <span class="font-mono text-slate-500 text-[11px]" x-text="fila.fechaEmision"></span>
+                                            </div>
                                         </td>
 
-                                        {{-- Condición Domicilio --}}
-                                        <td class="py-2.5 px-3 text-center whitespace-nowrap">
-                                            <span x-show="fila.resultado?.condicion_domicilio"
-                                                  class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase"
-                                                  :class="fila.resultado?.condicion_domicilio?.es_habido ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
-                                                  x-text="fila.resultado?.condicion_domicilio?.label">
-                                            </span>
-                                            <span x-show="!fila.resultado?.condicion_domicilio" class="text-gray-400">—</span>
+                                        {{-- 4. Total Validado (Monto + Moneda Orig.) --}}
+                                        <td class="py-3 px-4 text-right whitespace-nowrap">
+                                            <div class="font-mono font-extrabold text-slate-900 text-xs" x-text="'S/ ' + fila.monto"></div>
+                                            <div class="text-[10px] text-slate-400 font-medium mt-0.5">Moneda Orig.</div>
                                         </td>
 
-                                        {{-- Diagnóstico Tributario --}}
-                                        <td class="py-2.5 px-3 max-w-[20rem]">
-                                            <p x-show="fila.resultado"
-                                               class="text-[11px] leading-tight"
-                                               :class="{
-                                                   'text-emerald-800 font-semibold': fila.resultado?.severidad === 'success',
-                                                   'text-amber-800 font-medium': fila.resultado?.severidad === 'warning',
-                                                   'text-rose-800 font-medium': fila.resultado?.severidad === 'danger'
-                                               }"
-                                               x-text="fila.resultado?.diagnostico"
-                                               :title="fila.resultado?.diagnostico">
-                                            </p>
-                                            <span x-show="!fila.resultado" class="text-gray-400 italic">En espera de validación</span>
+                                        {{-- 5. Estado SUNAT (Pill principal + Micro-pills) --}}
+                                        <td class="py-3 px-4 text-center whitespace-nowrap">
+                                            <span x-show="!fila.resultado" class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500 border border-slate-200">Pendiente</span>
+                                            <template x-if="fila.resultado">
+                                                <div class="flex flex-col items-center gap-1">
+                                                    {{-- Estado CPE --}}
+                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-2xs"
+                                                          :class="{
+                                                              'bg-emerald-100 text-emerald-800 border border-emerald-300/80': fila.resultado?.estado_cp?.color === 'success',
+                                                              'bg-rose-100 text-rose-800 border border-rose-300/80': fila.resultado?.estado_cp?.color === 'danger',
+                                                              'bg-sky-100 text-sky-800 border border-sky-300/80': fila.resultado?.estado_cp?.color === 'info',
+                                                              'bg-slate-100 text-slate-700 border border-slate-300/80': !fila.resultado?.estado_cp?.color
+                                                          }"
+                                                          x-text="fila.resultado?.estado_cp?.label || 'DESCONOCIDO'">
+                                                    </span>
+
+                                                    {{-- Micro-pills: Estado RUC & Condición --}}
+                                                    <div class="flex items-center justify-center gap-1 text-[10px] font-bold">
+                                                        <span x-show="fila.resultado?.estado_ruc"
+                                                              class="px-1.5 py-0.2 rounded font-semibold"
+                                                              :class="fila.resultado?.estado_ruc?.es_activo ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'"
+                                                              x-text="fila.resultado?.estado_ruc?.label"></span>
+                                                        <span x-show="fila.resultado?.condicion_domicilio"
+                                                              class="px-1.5 py-0.2 rounded font-semibold"
+                                                              :class="fila.resultado?.condicion_domicilio?.es_habido ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'"
+                                                              x-text="fila.resultado?.condicion_domicilio?.label"></span>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                        </td>
+
+                                        {{-- 6. Diagnóstico Tributario & Dictamen (Amplio y Espacioso) --}}
+                                        <td class="py-3 px-4">
+                                            <template x-if="fila.resultado">
+                                                <div class="p-2.5 rounded-xl border text-xs leading-relaxed transition-all shadow-2xs"
+                                                     :class="{
+                                                         'bg-emerald-50/70 border-emerald-200/80 text-emerald-950': fila.resultado?.severidad === 'success',
+                                                         'bg-amber-50/70 border-amber-200/80 text-amber-950': fila.resultado?.severidad === 'warning',
+                                                         'bg-rose-50/70 border-rose-200/80 text-rose-950': fila.resultado?.severidad === 'danger'
+                                                     }">
+                                                    <div class="flex items-start gap-2">
+                                                        <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-white text-[10px] font-black"
+                                                              :class="{
+                                                                  'bg-emerald-600': fila.resultado?.severidad === 'success',
+                                                                  'bg-amber-500': fila.resultado?.severidad === 'warning',
+                                                                  'bg-rose-600': fila.resultado?.severidad === 'danger'
+                                                              }">
+                                                            <span x-show="fila.resultado?.severidad === 'success'">✓</span>
+                                                            <span x-show="fila.resultado?.severidad === 'warning'">!</span>
+                                                            <span x-show="fila.resultado?.severidad === 'danger'">✕</span>
+                                                        </span>
+                                                        <div class="space-y-1 min-w-0">
+                                                            <p class="font-medium text-xs leading-snug" x-text="fila.resultado?.diagnostico"></p>
+                                                            <template x-if="fila.resultado?.observaciones && fila.resultado.observaciones.length > 0">
+                                                                <div class="text-[10px] text-amber-800 font-mono mt-1 pt-1 border-t border-amber-200/60 space-y-0.5">
+                                                                    <template x-for="(obs, oIdx) in fila.resultado.observaciones" :key="oIdx">
+                                                                        <div x-text="'• ' + obs"></div>
+                                                                    </template>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </template>
+                                            <span x-show="!fila.resultado" class="text-slate-400 italic text-xs">En espera de validación</span>
                                         </td>
                                     </tr>
                                 </template>
@@ -813,24 +915,24 @@
                     </div>
 
                     {{-- Barra de Paginación Inteligente y Rendimiento --}}
-                    <div class="px-4 py-3 border-t border-gray-200 bg-gray-50/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-gray-600">
+                    <div class="px-4 py-3.5 border-t border-slate-200/90 bg-slate-50/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-600">
                         <div class="flex items-center gap-2">
                             <span>Mostrando</span>
-                            <span class="font-bold text-gray-900" x-text="filasFiltradas.length > 0 ? ((paginaActual - 1) * (porPagina || filasFiltradas.length) + 1) : 0"></span>
+                            <span class="font-bold text-slate-900" x-text="filasFiltradas.length > 0 ? ((paginaActual - 1) * (porPagina || filasFiltradas.length) + 1) : 0"></span>
                             <span>a</span>
-                            <span class="font-bold text-gray-900" x-text="porPagina === 0 ? filasFiltradas.length : Math.min(paginaActual * porPagina, filasFiltradas.length)"></span>
+                            <span class="font-bold text-slate-900" x-text="porPagina === 0 ? filasFiltradas.length : Math.min(paginaActual * porPagina, filasFiltradas.length)"></span>
                             <span>de</span>
-                            <span class="font-bold text-gray-900" x-text="filasFiltradas.length"></span>
+                            <span class="font-bold text-slate-900" x-text="filasFiltradas.length"></span>
                             <span>comprobantes</span>
-                            <span x-show="filasFiltradas.length < masivoFilas.length" class="text-gray-400">
+                            <span x-show="filasFiltradas.length < masivoFilas.length" class="text-slate-400">
                                 (filtrados de <span x-text="masivoFilas.length"></span> en total)
                             </span>
                         </div>
 
                         <div class="flex flex-wrap items-center gap-3">
                             <div class="flex items-center gap-1.5">
-                                <span class="text-gray-500">Filas por pág:</span>
-                                <select x-model.number="porPagina" @change="paginaActual = 1" class="rounded-lg border-gray-300 py-1 pl-2 pr-6 text-xs bg-white focus:ring-teal-500 focus:border-teal-500 font-medium cursor-pointer">
+                                <span class="text-slate-500 font-medium">Filas por pág:</span>
+                                <select x-model.number="porPagina" @change="paginaActual = 1" class="rounded-xl border border-slate-200 bg-white py-1.5 pl-2.5 pr-7 text-xs font-semibold text-slate-700 outline-none hover:border-slate-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none transition-all cursor-pointer">
                                     <option :value="25">25</option>
                                     <option :value="50">50</option>
                                     <option :value="100">100</option>
@@ -839,13 +941,13 @@
                             </div>
 
                             <div class="flex items-center gap-1" x-show="totalPaginas > 1">
-                                <button type="button" @click="irAPagina(1)" :disabled="paginaActual <= 1" class="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium cursor-pointer">«</button>
-                                <button type="button" @click="irAPagina(paginaActual - 1)" :disabled="paginaActual <= 1" class="px-2.5 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium cursor-pointer">Ant.</button>
-                                <span class="px-2 font-semibold text-gray-700">
+                                <button type="button" @click="irAPagina(1)" :disabled="paginaActual <= 1" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 transition cursor-pointer outline-none focus:outline-none">«</button>
+                                <button type="button" @click="irAPagina(paginaActual - 1)" :disabled="paginaActual <= 1" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 transition cursor-pointer outline-none focus:outline-none">Ant.</button>
+                                <span class="px-2 font-semibold text-slate-700">
                                     Pág. <span x-text="paginaActual"></span> / <span x-text="totalPaginas"></span>
                                 </span>
-                                <button type="button" @click="irAPagina(paginaActual + 1)" :disabled="paginaActual >= totalPaginas" class="px-2.5 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium cursor-pointer">Sig.</button>
-                                <button type="button" @click="irAPagina(totalPaginas)" :disabled="paginaActual >= totalPaginas" class="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium cursor-pointer">»</button>
+                                <button type="button" @click="irAPagina(paginaActual + 1)" :disabled="paginaActual >= totalPaginas" class="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 transition cursor-pointer outline-none focus:outline-none">Sig.</button>
+                                <button type="button" @click="irAPagina(totalPaginas)" :disabled="paginaActual >= totalPaginas" class="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 transition cursor-pointer outline-none focus:outline-none">»</button>
                             </div>
                         </div>
                     </div>
