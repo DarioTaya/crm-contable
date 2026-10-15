@@ -1434,6 +1434,12 @@
                             <li>Marcar obligatoriamente el check: <span class="font-semibold font-mono bg-amber-100 px-1 py-0.5 rounded text-[11px]">'MIGE RCE y RVIE - SIRE /v1/contribuyente/migeigv'</span>.</li>
                             <li>Copiar el <span class="font-semibold">'ID'</span> y la <span class="font-semibold">'CLAVE'</span> y pegarlos en el formulario superior.</li>
                         </ol>
+                        <p class="mt-3 text-[11px] text-amber-700 flex items-center gap-1.5">
+                            <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                            </svg>
+                            El Client Secret se almacena cifrado con AES-256-CBC en la base de datos.
+                        </p>
                     </div>
                 </div>
             </div>

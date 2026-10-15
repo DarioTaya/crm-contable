@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Cliente;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Pool;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Crypt;
@@ -220,12 +222,14 @@ class SunatValidezCpeService
      * @param  array  $datos  [numRuc, codComp, numeroSerie, numero, fechaEmision, monto]
      * @return array Resultado enriquecido con interpretación y diagnóstico contable/tributario
      */
-    public function validarComprobante(Cliente $cliente, array $datos): array
+    /**
+     * Sanitiza y prepara el payload formal exigido por la API de Validez de SUNAT.
+     *
+     * @param  array  $datos  [numRuc, codComp, numeroSerie, numero, fechaEmision, monto]
+     * @return array{numRuc: string, codComp: string, numeroSerie: string, numero: string, fechaEmision: string, monto: string}
+     */
+    public function prepararPayload(array $datos): array
     {
-        $token = $this->getAccessToken($cliente);
-        $rucConsultante = $this->sanitizarTexto($cliente->ruc);
-
-        // Sanitización estricta de parámetros según especificaciones SUNAT
         $numRuc = preg_replace('/\D/', '', (string) ($datos['numRuc'] ?? $datos['ruc_emisor'] ?? ''));
         $codComp = str_pad(trim((string) ($datos['codComp'] ?? $datos['tipo_comprobante'] ?? '01')), 2, '0', STR_PAD_LEFT);
         $numeroSerie = strtoupper(trim((string) ($datos['numeroSerie'] ?? $datos['serie'] ?? '')));
@@ -238,11 +242,11 @@ class SunatValidezCpeService
         // Fecha de emisión normalizada a DD/MM/YYYY
         $fechaEmision = $this->normalizarFechaSunat($datos['fechaEmision'] ?? $datos['fecha_emision'] ?? null);
 
-        // Monto formateado con 2 decimales
-        $montoFloat = (float) str_replace(',', '', (string) ($datos['monto'] ?? $datos['total'] ?? '0'));
+        // Monto formateado con 2 decimales (absoluto positivo siempre, incluso en Notas de Crédito)
+        $montoFloat = abs((float) str_replace(',', '', (string) ($datos['monto'] ?? $datos['total'] ?? '0')));
         $monto = number_format($montoFloat, 2, '.', '');
 
-        $payload = [
+        return [
             'numRuc' => $numRuc,
             'codComp' => $codComp,
             'numeroSerie' => $numeroSerie,
@@ -250,7 +254,20 @@ class SunatValidezCpeService
             'fechaEmision' => $fechaEmision,
             'monto' => $monto,
         ];
+    }
 
+    /**
+     * Valida un comprobante individual contra la API de SUNAT y devuelve el resultado enriquecido.
+     *
+     * @param  Cliente  $cliente  Cliente del estudio con cuyas credenciales se efectúa la consulta
+     * @param  array  $datos  [numRuc, codComp, numeroSerie, numero, fechaEmision, monto]
+     * @return array Resultado enriquecido con interpretación y diagnóstico contable/tributario
+     */
+    public function validarComprobante(Cliente $cliente, array $datos): array
+    {
+        $token = $this->getAccessToken($cliente);
+        $rucConsultante = $this->sanitizarTexto($cliente->ruc);
+        $payload = $this->prepararPayload($datos);
         $url = sprintf(self::VALIDA_CPE_URL_TEMPLATE, $rucConsultante);
 
         try {
@@ -267,7 +284,7 @@ class SunatValidezCpeService
                     ->timeout(self::DEFAULT_TIMEOUT_SECONDS)
                     ->post($url, $payload);
             }
-        } catch (ConnectionException $e) {
+        } catch (ConnectionException) {
             return $this->armarRespuestaError($payload, 'Tiempo de espera agotado al conectar con el servicio de SUNAT.', 'timeout');
         } catch (Throwable $e) {
             return $this->armarRespuestaError($payload, "Error de comunicación con SUNAT: {$e->getMessage()}", 'error');
@@ -285,6 +302,122 @@ class SunatValidezCpeService
         $data = $json['data'] ?? [];
 
         return $this->interpretarRespuestaSunat($payload, $data, $json['message'] ?? 'Consulta exitosa');
+    }
+
+    /**
+     * Valida un conjunto o lote de comprobantes concurrentemente usando HTTP Pools.
+     * Garantiza máxima velocidad y resiliencia ante expiración de tokens.
+     *
+     * @param  Cliente  $cliente  Cliente con credenciales activas
+     * @param  list<array>  $comprobantes  Lista de comprobantes a validar
+     * @return list<array> Resultados enriquecidos con diagnóstico y metadatos
+     */
+    public function validarLoteComprobantes(Cliente $cliente, array $comprobantes): array
+    {
+        if (empty($comprobantes)) {
+            return [];
+        }
+
+        $token = $this->getAccessToken($cliente);
+        $rucConsultante = $this->sanitizarTexto($cliente->ruc);
+        $url = sprintf(self::VALIDA_CPE_URL_TEMPLATE, $rucConsultante);
+
+        $itemsPreparados = [];
+        foreach ($comprobantes as $idx => $cpe) {
+            $itemsPreparados[$idx] = [
+                'payload' => $this->prepararPayload($cpe),
+                'meta' => [
+                    'item' => $cpe['item'] ?? ($idx + 1),
+                    'razonSocial' => $cpe['razonSocial'] ?? '',
+                ],
+            ];
+        }
+
+        // Peticiones paralelas concurrentes con Http::pool (cURL multi)
+        $responses = Http::pool(function (Pool $pool) use ($itemsPreparados, $token, $url) {
+            $requests = [];
+            foreach ($itemsPreparados as $idx => $item) {
+                $requests[$idx] = $pool->withToken($token)
+                    ->acceptJson()
+                    ->timeout(self::DEFAULT_TIMEOUT_SECONDS)
+                    ->post($url, $item['payload']);
+            }
+
+            return $requests;
+        });
+
+        $resultados = [];
+        $reintentar401 = [];
+
+        foreach ($itemsPreparados as $idx => $item) {
+            $resp = $responses[$idx] ?? null;
+            $payload = $item['payload'];
+            $meta = $item['meta'];
+
+            if ($resp instanceof Response) {
+                if ($resp->status() === 401) {
+                    $reintentar401[$idx] = $item;
+
+                    continue;
+                }
+
+                if ($resp->successful()) {
+                    $json = $resp->json();
+                    $eval = $this->interpretarRespuestaSunat($payload, $json['data'] ?? [], $json['message'] ?? 'Consulta exitosa');
+                } else {
+                    $status = $resp->status();
+                    $body = $resp->json();
+                    $mensaje = $body['message'] ?? $resp->body() ?? "Error HTTP {$status} recibido de SUNAT.";
+                    $eval = $this->armarRespuestaError($payload, $mensaje, "http_{$status}");
+                }
+            } elseif ($resp instanceof Throwable) {
+                $eval = $this->armarRespuestaError($payload, "Error de comunicación con SUNAT: {$resp->getMessage()}", 'error');
+            } else {
+                $eval = $this->armarRespuestaError($payload, 'Respuesta no recibida de SUNAT.', 'error');
+            }
+
+            $eval['item'] = $meta['item'];
+            $eval['razonSocial'] = $meta['razonSocial'];
+            $resultados[$idx] = $eval;
+        }
+
+        // Si expiró el token en medio de las peticiones, refrescar y reintentar sólo los 401
+        if (! empty($reintentar401)) {
+            $nuevoToken = $this->getAccessToken($cliente, true);
+            $reintentosResp = Http::pool(function (Pool $pool) use ($reintentar401, $nuevoToken, $url) {
+                $requests = [];
+                foreach ($reintentar401 as $idx => $item) {
+                    $requests[$idx] = $pool->withToken($nuevoToken)
+                        ->acceptJson()
+                        ->timeout(self::DEFAULT_TIMEOUT_SECONDS)
+                        ->post($url, $item['payload']);
+                }
+
+                return $requests;
+            });
+
+            foreach ($reintentar401 as $idx => $item) {
+                $resp = $reintentosResp[$idx] ?? null;
+                $payload = $item['payload'];
+                $meta = $item['meta'];
+
+                if ($resp instanceof Response && $resp->successful()) {
+                    $json = $resp->json();
+                    $eval = $this->interpretarRespuestaSunat($payload, $json['data'] ?? [], $json['message'] ?? 'Consulta exitosa');
+                } else {
+                    $msg = ($resp instanceof Response) ? ($resp->json('message') ?? $resp->body()) : ($resp?->getMessage() ?? 'Error en reintento');
+                    $eval = $this->armarRespuestaError($payload, (string) $msg, 'http_retry_failed');
+                }
+
+                $eval['item'] = $meta['item'];
+                $eval['razonSocial'] = $meta['razonSocial'];
+                $resultados[$idx] = $eval;
+            }
+        }
+
+        ksort($resultados);
+
+        return array_values($resultados);
     }
 
     /**
@@ -434,26 +567,37 @@ class SunatValidezCpeService
 
         $str = trim((string) $valor);
 
-        // Si ya viene DD/MM/YYYY
-        if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $str)) {
-            return $str;
+        // Si viene D/M/AAAA o DD/MM/AAAA
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})/', $str, $m)) {
+            $dia = str_pad($m[1], 2, '0', STR_PAD_LEFT);
+            $mes = str_pad($m[2], 2, '0', STR_PAD_LEFT);
+
+            return "{$dia}/{$mes}/{$m[3]}";
         }
 
-        // Si viene YYYY-MM-DD
-        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})/', $str, $m)) {
-            return "{$m[3]}/{$m[2]}/{$m[1]}";
+        // Si viene YYYY-MM-DD o YYYY/MM/DD
+        if (preg_match('/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})/', $str, $m)) {
+            $mes = str_pad($m[2], 2, '0', STR_PAD_LEFT);
+            $dia = str_pad($m[3], 2, '0', STR_PAD_LEFT);
+
+            return "{$dia}/{$mes}/{$m[1]}";
         }
 
-        // Si viene DD-MM-YYYY
-        if (preg_match('/^(\d{2})-(\d{2})-(\d{4})/', $str, $m)) {
-            return "{$m[1]}/{$m[2]}/{$m[3]}";
+        // Si viene DD-MM-YYYY o D-M-YYYY
+        if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})/', $str, $m)) {
+            $dia = str_pad($m[1], 2, '0', STR_PAD_LEFT);
+            $mes = str_pad($m[2], 2, '0', STR_PAD_LEFT);
+
+            return "{$dia}/{$mes}/{$m[3]}";
         }
 
-        // Si es número de serie de fecha de Excel (e.g. 45548)
+        // Si es número de serie de fecha de Excel (e.g. 45548 o 46266)
+        // Usar gmdate() estrictamente para evitar que la zona horaria UTC-5 (America/Lima) reste 5 horas
+        // a las 00:00:00 UTC y traslade la fecha al día anterior.
         if (is_numeric($str) && (float) $str > 20000 && (float) $str < 60000) {
             $timestamp = ((int) $str - 25569) * 86400;
 
-            return date('d/m/Y', $timestamp);
+            return gmdate('d/m/Y', $timestamp);
         }
 
         try {

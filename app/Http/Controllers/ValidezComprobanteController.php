@@ -1,7 +1,5 @@
 <?php
 
-namespace App\Services;
-
 namespace App\Http\Controllers;
 
 use App\Models\Cliente;
@@ -179,31 +177,7 @@ class ValidezComprobanteController extends Controller
             ], 422);
         }
 
-        $resultados = [];
-
-        foreach ($validated['comprobantes'] as $cpe) {
-            try {
-                $eval = $this->validezService->validarComprobante($cliente, $cpe);
-                $eval['item'] = $cpe['item'] ?? null;
-                $eval['razonSocial'] = $cpe['razonSocial'] ?? '';
-                $resultados[] = $eval;
-            } catch (Throwable $e) {
-                $resultados[] = [
-                    'success' => false,
-                    'item' => $cpe['item'] ?? null,
-                    'razonSocial' => $cpe['razonSocial'] ?? '',
-                    'comprobante' => $cpe,
-                    'estado_cp' => ['label' => 'ERROR', 'color' => 'danger', 'es_valido' => false],
-                    'estado_tributario' => 'ERROR',
-                    'severidad' => 'danger',
-                    'diagnostico' => $e->getMessage(),
-                    'es_valido_credito_fiscal' => false,
-                ];
-            }
-
-            // Pequeña pausa de 50ms para no saturar el rate limit de SUNAT
-            usleep(50000);
-        }
+        $resultados = $this->validezService->validarLoteComprobantes($cliente, $validated['comprobantes']);
 
         return response()->json([
             'success' => true,

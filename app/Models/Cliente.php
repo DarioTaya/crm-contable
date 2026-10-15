@@ -97,7 +97,7 @@ class Cliente extends Model
      */
     public function tieneCredencialesCpe(): bool
     {
-        return filled($this->sunat_cpe_client_id) && filled($this->sunat_cpe_client_secret);
+        return filled($this->sunat_cpe_client_id) && filled($this->getRawOriginal('sunat_cpe_client_secret'));
     }
 
     /**

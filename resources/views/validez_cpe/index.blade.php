@@ -687,25 +687,25 @@
                         <div class="flex items-center gap-2 flex-wrap">
                             <span class="text-xs font-bold text-gray-500 uppercase">Filtrar por:</span>
                             <button type="button"
-                                    @click="filtroEstado = 'todos'"
+                                    @click="cambiarFiltro('todos')"
                                     class="rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer"
                                     :class="filtroEstado === 'todos' ? 'bg-gray-800 text-white' : 'bg-white border text-gray-700 hover:bg-gray-100'">
                                 Todos (<span x-text="masivoFilas.length"></span>)
                             </button>
                             <button type="button"
-                                    @click="filtroEstado = 'validos'"
+                                    @click="cambiarFiltro('validos')"
                                     class="rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer"
                                     :class="filtroEstado === 'validos' ? 'bg-emerald-600 text-white' : 'bg-emerald-50 border border-emerald-200 text-emerald-800 hover:bg-emerald-100'">
                                 ✓ Aptos (<span x-text="kpis.validos"></span>)
                             </button>
                             <button type="button"
-                                    @click="filtroEstado = 'observados'"
+                                    @click="cambiarFiltro('observados')"
                                     class="rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer"
                                     :class="filtroEstado === 'observados' ? 'bg-amber-600 text-white' : 'bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100'">
                                 ⚠ Observados (<span x-text="kpis.observados"></span>)
                             </button>
                             <button type="button"
-                                    @click="filtroEstado = 'rechazados'"
+                                    @click="cambiarFiltro('rechazados')"
                                     class="rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer"
                                     :class="filtroEstado === 'rechazados' ? 'bg-rose-600 text-white' : 'bg-rose-50 border border-rose-200 text-rose-800 hover:bg-rose-100'">
                                 ✕ Rechazados (<span x-text="kpis.rechazados"></span>)
@@ -716,6 +716,7 @@
                         <div class="w-full md:w-64">
                             <input type="text"
                                    x-model="busquedaTabla"
+                                   @input="paginaActual = 1"
                                    placeholder="Buscar por RUC, serie, número..."
                                    class="block w-full rounded-lg border-gray-300 py-1.5 pl-3 pr-3 text-xs shadow-2xs focus:border-teal-500 focus:ring-teal-500 font-medium">
                         </div>
@@ -739,7 +740,7 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-200 bg-white">
-                                <template x-for="(fila, idx) in filasFiltradas" :key="fila.item">
+                                <template x-for="(fila, idx) in filasPaginadas" :key="fila.item">
                                     <tr class="hover:bg-gray-50/80 transition"
                                         :class="{
                                             'bg-emerald-50/20': fila.resultado?.es_valido_credito_fiscal,
@@ -758,69 +759,95 @@
 
                                         {{-- Estado CPE --}}
                                         <td class="py-2.5 px-3 text-center whitespace-nowrap">
-                                            <template x-if="!fila.resultado">
-                                                <span class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">Pendiente</span>
-                                            </template>
-                                            <template x-if="fila.resultado">
-                                                <span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase"
-                                                      :class="{
-                                                          'bg-emerald-100 text-emerald-800': fila.resultado.estado_cp?.color === 'success',
-                                                          'bg-rose-100 text-rose-800': fila.resultado.estado_cp?.color === 'danger',
-                                                          'bg-blue-100 text-blue-800': fila.resultado.estado_cp?.color === 'info',
-                                                          'bg-gray-100 text-gray-700': !fila.resultado.estado_cp?.color
-                                                      }"
-                                                      x-text="fila.resultado.estado_cp?.label || 'ERROR'">
-                                                </span>
-                                            </template>
+                                            <span x-show="!fila.resultado" class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">Pendiente</span>
+                                            <span x-show="fila.resultado"
+                                                  class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase"
+                                                  :class="{
+                                                      'bg-emerald-100 text-emerald-800': fila.resultado?.estado_cp?.color === 'success',
+                                                      'bg-rose-100 text-rose-800': fila.resultado?.estado_cp?.color === 'danger',
+                                                      'bg-blue-100 text-blue-800': fila.resultado?.estado_cp?.color === 'info',
+                                                      'bg-gray-100 text-gray-700': !fila.resultado?.estado_cp?.color
+                                                  }"
+                                                  x-text="fila.resultado?.estado_cp?.label || 'ERROR'">
+                                            </span>
                                         </td>
 
                                         {{-- Estado RUC --}}
                                         <td class="py-2.5 px-3 text-center whitespace-nowrap">
-                                            <template x-if="fila.resultado?.estado_ruc">
-                                                <span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase"
-                                                      :class="fila.resultado.estado_ruc.es_activo ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
-                                                      x-text="fila.resultado.estado_ruc.label">
-                                                </span>
-                                            </template>
-                                            <template x-if="!fila.resultado?.estado_ruc">
-                                                <span class="text-gray-400">—</span>
-                                            </template>
+                                            <span x-show="fila.resultado?.estado_ruc"
+                                                  class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase"
+                                                  :class="fila.resultado?.estado_ruc?.es_activo ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
+                                                  x-text="fila.resultado?.estado_ruc?.label">
+                                            </span>
+                                            <span x-show="!fila.resultado?.estado_ruc" class="text-gray-400">—</span>
                                         </td>
 
                                         {{-- Condición Domicilio --}}
                                         <td class="py-2.5 px-3 text-center whitespace-nowrap">
-                                            <template x-if="fila.resultado?.condicion_domicilio">
-                                                <span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase"
-                                                      :class="fila.resultado.condicion_domicilio.es_habido ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
-                                                      x-text="fila.resultado.condicion_domicilio.label">
-                                                </span>
-                                            </template>
-                                            <template x-if="!fila.resultado?.condicion_domicilio">
-                                                <span class="text-gray-400">—</span>
-                                            </template>
+                                            <span x-show="fila.resultado?.condicion_domicilio"
+                                                  class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase"
+                                                  :class="fila.resultado?.condicion_domicilio?.es_habido ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'"
+                                                  x-text="fila.resultado?.condicion_domicilio?.label">
+                                            </span>
+                                            <span x-show="!fila.resultado?.condicion_domicilio" class="text-gray-400">—</span>
                                         </td>
 
                                         {{-- Diagnóstico Tributario --}}
                                         <td class="py-2.5 px-3 max-w-[20rem]">
-                                            <template x-if="fila.resultado">
-                                                <p class="text-[11px] leading-tight"
-                                                   :class="{
-                                                       'text-emerald-800 font-semibold': fila.resultado.severidad === 'success',
-                                                       'text-amber-800 font-medium': fila.resultado.severidad === 'warning',
-                                                       'text-rose-800 font-medium': fila.resultado.severidad === 'danger'
-                                                   }"
-                                                   x-text="fila.resultado.diagnostico"
-                                                   :title="fila.resultado.diagnostico">
-                                                </p>
-                                            </template>
-                                            <template x-if="!fila.resultado">
-                                                <span class="text-gray-400 italic">En espera de validación</span>
-                                            </template>
+                                            <p x-show="fila.resultado"
+                                               class="text-[11px] leading-tight"
+                                               :class="{
+                                                   'text-emerald-800 font-semibold': fila.resultado?.severidad === 'success',
+                                                   'text-amber-800 font-medium': fila.resultado?.severidad === 'warning',
+                                                   'text-rose-800 font-medium': fila.resultado?.severidad === 'danger'
+                                               }"
+                                               x-text="fila.resultado?.diagnostico"
+                                               :title="fila.resultado?.diagnostico">
+                                            </p>
+                                            <span x-show="!fila.resultado" class="text-gray-400 italic">En espera de validación</span>
                                         </td>
                                     </tr>
                                 </template>
                             </tbody>
                         </table>
+                    </div>
+
+                    {{-- Barra de Paginación Inteligente y Rendimiento --}}
+                    <div class="px-4 py-3 border-t border-gray-200 bg-gray-50/80 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-gray-600">
+                        <div class="flex items-center gap-2">
+                            <span>Mostrando</span>
+                            <span class="font-bold text-gray-900" x-text="filasFiltradas.length > 0 ? ((paginaActual - 1) * (porPagina || filasFiltradas.length) + 1) : 0"></span>
+                            <span>a</span>
+                            <span class="font-bold text-gray-900" x-text="porPagina === 0 ? filasFiltradas.length : Math.min(paginaActual * porPagina, filasFiltradas.length)"></span>
+                            <span>de</span>
+                            <span class="font-bold text-gray-900" x-text="filasFiltradas.length"></span>
+                            <span>comprobantes</span>
+                            <span x-show="filasFiltradas.length < masivoFilas.length" class="text-gray-400">
+                                (filtrados de <span x-text="masivoFilas.length"></span> en total)
+                            </span>
+                        </div>
+
+                        <div class="flex flex-wrap items-center gap-3">
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-gray-500">Filas por pág:</span>
+                                <select x-model.number="porPagina" @change="paginaActual = 1" class="rounded-lg border-gray-300 py-1 pl-2 pr-6 text-xs bg-white focus:ring-teal-500 focus:border-teal-500 font-medium cursor-pointer">
+                                    <option :value="25">25</option>
+                                    <option :value="50">50</option>
+                                    <option :value="100">100</option>
+                                    <option :value="0">Todas</option>
+                                </select>
+                            </div>
+
+                            <div class="flex items-center gap-1" x-show="totalPaginas > 1">
+                                <button type="button" @click="irAPagina(1)" :disabled="paginaActual <= 1" class="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium cursor-pointer">«</button>
+                                <button type="button" @click="irAPagina(paginaActual - 1)" :disabled="paginaActual <= 1" class="px-2.5 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium cursor-pointer">Ant.</button>
+                                <span class="px-2 font-semibold text-gray-700">
+                                    Pág. <span x-text="paginaActual"></span> / <span x-text="totalPaginas"></span>
+                                </span>
+                                <button type="button" @click="irAPagina(paginaActual + 1)" :disabled="paginaActual >= totalPaginas" class="px-2.5 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium cursor-pointer">Sig.</button>
+                                <button type="button" @click="irAPagina(totalPaginas)" :disabled="paginaActual >= totalPaginas" class="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium cursor-pointer">»</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -860,6 +887,30 @@
             masivoFilas: [],
             filtroEstado: 'todos',
             busquedaTabla: '',
+            paginaActual: 1,
+            porPagina: 50,
+
+            cambiarFiltro(estado) {
+                this.filtroEstado = estado;
+                this.paginaActual = 1;
+            },
+
+            irAPagina(p) {
+                if (p < 1) p = 1;
+                if (p > this.totalPaginas) p = this.totalPaginas;
+                this.paginaActual = p;
+            },
+
+            get totalPaginas() {
+                if (this.porPagina === 0) return 1;
+                return Math.max(1, Math.ceil(this.filasFiltradas.length / this.porPagina));
+            },
+
+            get filasPaginadas() {
+                if (this.porPagina === 0) return this.filasFiltradas;
+                const inicio = (this.paginaActual - 1) * this.porPagina;
+                return this.filasFiltradas.slice(inicio, inicio + this.porPagina);
+            },
 
             get clienteActual() {
                 return this.clientes.find(c => c.id == this.clienteId);
@@ -1006,6 +1057,7 @@
                         ...f,
                         resultado: null
                     }));
+                    this.paginaActual = 1;
 
                     if (this.masivoFilas.length === 0) {
                         alert('No se encontraron filas válidas en el archivo seleccionado.');
@@ -1085,6 +1137,7 @@
             limpiarTodo() {
                 this.detenerValidacionMasiva();
                 this.masivoFilas = [];
+                this.paginaActual = 1;
                 const inputEl = document.getElementById('archivo_masivo');
                 if (inputEl) inputEl.value = '';
             },

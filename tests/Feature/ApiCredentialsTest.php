@@ -206,7 +206,8 @@ class ApiCredentialsTest extends TestCase
         $response->assertSee('Sin comprobantes para este cliente');
 
         // Verificar que tab sire no está anidado dentro de operaciones
-        $content = $response->getContent();
+        $responseShow = $this->get(route('clientes.show', $cliente));
+        $content = $responseShow->getContent();
         $posOperaciones = strpos($content, "tab === 'operaciones'");
         $posSire = strpos($content, "tab === 'sire'");
         $posApi = strpos($content, 'Credenciales API SUNAT');
