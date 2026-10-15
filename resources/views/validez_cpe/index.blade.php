@@ -39,63 +39,69 @@
                 </p>
             </div>
 
-            {{-- Selector de Cliente / Empresa Consultante --}}
-            <div class="shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-slate-50/80 p-3 rounded-2xl border border-slate-200/90 shadow-2xs">
-                <div class="text-left">
-                    <label for="cliente_selector" class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
-                        Empresa Consultante:
-                    </label>
-                    <div class="relative">
-                        <select id="cliente_selector"
-                                x-model="clienteId"
-                                @change="cambiarCliente()"
-                                class="block w-full sm:w-80 rounded-xl border border-slate-200/90 bg-white py-2 pl-3.5 pr-8 text-xs font-semibold text-slate-800 shadow-2xs outline-none hover:border-slate-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none transition-all cursor-pointer">
-                            <template x-for="c in clientes" :key="c.id">
-                                <option :value="c.id" x-text="c.ruc + ' — ' + c.razon_social + (c.tiene_credenciales ? ' ✓' : ' (Sin API)')"></option>
-                            </template>
-                        </select>
+            {{-- Selector de Cliente / Empresa Consultante - Executive Floating Badge --}}
+            <div class="shrink-0 flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-3 rounded-2xl bg-slate-100/80 hover:bg-slate-100 transition-all p-2 pr-4 shadow-2xs">
+                    <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-teal-600 to-teal-800 text-white shadow-xs">
+                        <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                        </svg>
+                    </div>
+                    <div class="text-left">
+                        <div class="flex items-center gap-1.5">
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Empresa Consultante</span>
+                            <span x-show="clienteActual?.tiene_credenciales" class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" title="API SUNAT Conectada"></span>
+                        </div>
+                        <div class="relative">
+                            <select id="cliente_selector"
+                                    x-model="clienteId"
+                                    @change="cambiarCliente()"
+                                    class="bg-transparent border-0 p-0 pr-6 text-xs sm:text-sm font-bold text-slate-900 focus:ring-0 focus:outline-none cursor-pointer outline-none">
+                                <template x-for="c in clientes" :key="c.id">
+                                    <option :value="c.id" x-text="c.ruc + ' — ' + c.razon_social + (c.tiene_credenciales ? ' ✓' : ' (Sin API)')"></option>
+                                </template>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
                 {{-- Pill de Estado de Credenciales --}}
-                <div class="sm:pt-4">
-                    <template x-if="clienteActual?.tiene_credenciales">
-                        <span class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-800" title="API configurada y lista para consultas">
-                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
-                            API Conectada
-                        </span>
-                    </template>
-                    <template x-if="!clienteActual?.tiene_credenciales">
-                        <a :href="'/clientes/' + clienteId + '?tab=datos'"
-                           class="inline-flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-300 px-2.5 py-1 text-xs font-semibold text-amber-800 hover:bg-amber-100 transition"
-                           title="Haga clic para configurar Id y Clave en la ficha del cliente">
-                            <svg class="h-3.5 w-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
-                            </svg>
-                            Configurar API
-                        </a>
-                    </template>
-                </div>
+                <template x-if="clienteActual?.tiene_credenciales">
+                    <span class="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-200/80 px-3 py-2 text-xs font-bold text-emerald-800 shadow-2xs" title="API configurada y lista para consultas">
+                        <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+                        API Conectada
+                    </span>
+                </template>
+                <template x-if="!clienteActual?.tiene_credenciales">
+                    <a :href="'/clientes/' + clienteId + '?tab=datos'"
+                       class="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-amber-600 transition"
+                       title="Haga clic para configurar Id y Clave en la ficha del cliente">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                        </svg>
+                        Configurar API
+                    </a>
+                </template>
             </div>
         </div>
 
         {{-- Alerta si la empresa actual no tiene credenciales --}}
         <template x-if="!clienteActual?.tiene_credenciales">
-            <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-xs text-amber-900">
+            <div class="mt-4 rounded-2xl border border-amber-200/90 bg-amber-50/70 p-4 text-xs text-amber-900 shadow-2xs">
                 <div class="flex items-start gap-3">
                     <svg class="h-5 w-5 text-amber-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
                     </svg>
                     <div class="flex-1 min-w-0">
                         <p class="font-bold text-amber-950 text-sm">Esta empresa no tiene configuradas las Credenciales de API SUNAT para Validez de Comprobantes</p>
-                        <p class="mt-1 text-amber-800">
+                        <p class="mt-1 text-amber-800 leading-relaxed">
                             Para consultar comprobantes con la API de esta empresa, debe ingresar a SUNAT SOL en la ruta:
-                            <span class="font-mono font-semibold bg-amber-100/90 px-1 py-0.5 rounded text-[11px]">Empresas &gt; Comprobantes de Pago &gt; Consulta de Validez de Comprobante de Pago &gt; Credenciales de API SUNAT</span>,
+                            <span class="font-mono font-semibold bg-amber-100/90 px-1.5 py-0.5 rounded text-[11px]">Empresas &gt; Comprobantes de Pago &gt; Consulta de Validez de Comprobante de Pago &gt; Credenciales de API SUNAT</span>,
                             generar el <strong>Id</strong> y la <strong>Clave</strong>, y guardarlos en el expediente del cliente.
                         </p>
                         <div class="mt-2.5">
                             <a :href="'/clientes/' + clienteId + '?tab=datos'"
-                               class="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 font-semibold text-white hover:bg-amber-700 transition shadow-xs text-xs">
+                               class="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3.5 py-1.5 font-bold text-white hover:bg-amber-700 transition shadow-xs text-xs">
                                 <span>Ir a Configurar Credenciales de esta Empresa</span>
                                 <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
@@ -108,14 +114,14 @@
         </template>
     </div>
 
-    {{-- ═══════════════════════════ PESTAÑAS: INDIVIDUAL / MASIVO ═══════════════════════════ --}}
-    <div class="flex border-b border-gray-200 bg-white rounded-t-xl px-4 pt-3 shadow-2xs">
-        <nav class="flex gap-4">
+    {{-- ═══════════════════════════ PESTAÑAS: INDIVIDUAL / MASIVO (Floating Segmented Bar) ═══════════════════════════ --}}
+    <div class="flex items-center justify-between">
+        <div class="inline-flex p-1.5 rounded-2xl bg-slate-100 border border-slate-200/60 shadow-2xs text-xs">
             <button type="button"
                     @click="tab = 'individual'"
-                    class="pb-3 px-3 text-sm font-semibold border-b-2 transition flex items-center gap-2 cursor-pointer"
-                    :class="tab === 'individual' ? 'border-teal-600 text-teal-700' : 'border-transparent text-gray-500 hover:text-gray-700'">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    class="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer outline-none focus:outline-none"
+                    :class="tab === 'individual' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'">
+                <svg class="h-4 w-4" :class="tab === 'individual' ? 'text-teal-600' : 'text-slate-400'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                 </svg>
                 <span>Consulta Individual</span>
@@ -123,134 +129,138 @@
 
             <button type="button"
                     @click="tab = 'masivo'"
-                    class="pb-3 px-3 text-sm font-semibold border-b-2 transition flex items-center gap-2 cursor-pointer"
-                    :class="tab === 'masivo' ? 'border-teal-600 text-teal-700' : 'border-transparent text-gray-500 hover:text-gray-700'">
-                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    class="px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 flex items-center gap-2 cursor-pointer outline-none focus:outline-none"
+                    :class="tab === 'masivo' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'">
+                <svg class="h-4 w-4" :class="tab === 'masivo' ? 'text-teal-600' : 'text-slate-400'" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z" />
                 </svg>
                 <span>Validación Masiva (Excel / New Contasis / SIRE)</span>
                 <template x-if="masivoFilas.length > 0">
-                    <span class="rounded-full bg-teal-100 text-teal-800 text-[10px] font-bold px-2 py-0.5" x-text="masivoFilas.length"></span>
+                    <span class="rounded-full bg-teal-100 text-teal-800 text-[10px] font-extrabold px-2 py-0.5" x-text="masivoFilas.length"></span>
                 </template>
             </button>
-        </nav>
+        </div>
     </div>
 
     {{-- ═══════════════════════════ PESTAÑA 1: CONSULTA INDIVIDUAL ═══════════════════════════ --}}
     <div x-show="tab === 'individual'" x-cloak class="space-y-6">
-        {{-- Card de Formulario de Consulta Individual --}}
-        <div class="rounded-2xl border border-slate-200/90 bg-white p-6 sm:p-7 shadow-xs">
-            <div class="flex items-center justify-between mb-5">
-                <div class="flex items-center gap-2.5">
-                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-700 border border-teal-200/60 shadow-2xs">
-                        <svg class="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+        {{-- Formulario de Consulta Individual - Superficie Ejecutiva Unificada --}}
+        <div class="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-xs">
+            <div class="flex items-center justify-between pb-5 mb-6 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-teal-50 text-teal-700 shadow-2xs">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                         </svg>
                     </div>
                     <div>
-                        <h2 class="text-sm sm:text-base font-bold text-slate-900">
-                            Datos del Comprobante a Verificar
+                        <h2 class="text-base font-bold text-slate-900">
+                            Auditoría Individual de Comprobante
                         </h2>
-                        <p class="text-xs text-slate-500">Ingrese los 6 campos tributarios requeridos por la API oficial de SUNAT</p>
+                        <p class="text-xs text-slate-500">Parámetros tributarios oficiales consultados en tiempo real ante la API de SUNAT</p>
                     </div>
                 </div>
             </div>
 
-            <form @submit.prevent="ejecutarConsultaIndividual()" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-                {{-- RUC Emisor --}}
-                <div class="xl:col-span-2">
-                    <label for="ind_ruc" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                        <span>RUC Emisor (Proveedor)</span>
-                        <span class="text-rose-500 ml-0.5">*</span>
-                    </label>
-                    <div class="relative">
+            <form @submit.prevent="ejecutarConsultaIndividual()" class="space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                    {{-- RUC Emisor --}}
+                    <div class="xl:col-span-2">
+                        <label for="ind_ruc" class="block text-xs font-bold text-slate-700 mb-1.5">
+                            RUC Emisor (Proveedor) <span class="text-rose-500">*</span>
+                        </label>
+                        <div class="relative">
+                            <input type="text"
+                                   id="ind_ruc"
+                                   x-model="individual.numRuc"
+                                   maxlength="11"
+                                   placeholder="Ej: 20100047218"
+                                   class="block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 hover:border-slate-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none transition-all shadow-2xs"
+                                   required />
+                        </div>
+                    </div>
+
+                    {{-- Tipo Comprobante --}}
+                    <div class="xl:col-span-1">
+                        <label for="ind_tipo" class="block text-xs font-bold text-slate-700 mb-1.5">
+                            Tipo de CPE <span class="text-rose-500">*</span>
+                        </label>
+                        <select id="ind_tipo"
+                                x-model="individual.codComp"
+                                class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-xs font-bold text-slate-800 hover:border-slate-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none transition-all cursor-pointer shadow-2xs"
+                                required>
+                            <template x-for="(label, cod) in tiposCpe" :key="cod">
+                                <option :value="cod" x-text="cod + ' — ' + label"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    {{-- Serie --}}
+                    <div>
+                        <label for="ind_serie" class="block text-xs font-bold text-slate-700 mb-1.5">
+                            Serie <span class="text-rose-500">*</span>
+                        </label>
                         <input type="text"
-                               id="ind_ruc"
-                               x-model="individual.numRuc"
-                               maxlength="11"
-                               placeholder="Ej: 20100047218"
-                               class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none"
+                               id="ind_serie"
+                               x-model="individual.numeroSerie"
+                               maxlength="5"
+                               placeholder="Ej: F001"
+                               class="block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-mono uppercase text-slate-800 placeholder-slate-400 hover:border-slate-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none transition-all shadow-2xs"
                                required />
+                    </div>
+
+                    {{-- Número Correlativo --}}
+                    <div>
+                        <label for="ind_numero" class="block text-xs font-bold text-slate-700 mb-1.5">
+                            Número <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="text"
+                               id="ind_numero"
+                               x-model="individual.numero"
+                               maxlength="12"
+                               placeholder="Ej: 1245"
+                               class="block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 hover:border-slate-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none transition-all shadow-2xs"
+                               required />
+                    </div>
+
+                    {{-- Fecha de Emisión --}}
+                    <div>
+                        <label for="ind_fecha" class="block text-xs font-bold text-slate-700 mb-1.5">
+                            Fecha Emisión <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="date"
+                               id="ind_fecha"
+                               x-model="individual.fechaEmision"
+                               class="block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-mono text-slate-800 hover:border-slate-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none transition-all shadow-2xs cursor-pointer"
+                               required />
+                    </div>
+
+                    {{-- Importe Total --}}
+                    <div>
+                        <label for="ind_monto" class="block text-xs font-bold text-slate-700 mb-1.5">
+                            Total (Moneda Orig.)
+                        </label>
+                        <input type="number"
+                               id="ind_monto"
+                               step="0.01"
+                               x-model="individual.monto"
+                               placeholder="0.00"
+                               class="block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 hover:border-slate-300 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none transition-all shadow-2xs" />
                     </div>
                 </div>
 
-                {{-- Tipo Comprobante --}}
-                <div class="xl:col-span-1">
-                    <label for="ind_tipo" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                        <span>Tipo de CPE</span>
-                        <span class="text-rose-500 ml-0.5">*</span>
-                    </label>
-                    <select id="ind_tipo"
-                            x-model="individual.codComp"
-                            class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3 py-2.5 text-xs font-semibold text-slate-800 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none cursor-pointer"
-                            required>
-                        <template x-for="(label, cod) in tiposCpe" :key="cod">
-                            <option :value="cod" x-text="cod + ' - ' + label"></option>
-                        </template>
-                    </select>
-                </div>
+                {{-- Barra Inferior con el botón amado por el usuario --}}
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-slate-100">
+                    <p class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <svg class="h-4 w-4 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                        </svg>
+                        Consulta en memoria en tiempo real. Cero almacenamiento o huella en base de datos.
+                    </p>
 
-                {{-- Serie --}}
-                <div>
-                    <label for="ind_serie" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                        <span>Serie</span>
-                        <span class="text-rose-500 ml-0.5">*</span>
-                    </label>
-                    <input type="text"
-                           id="ind_serie"
-                           x-model="individual.numeroSerie"
-                           maxlength="5"
-                           placeholder="Ej: F001 / E001"
-                           class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-sm font-mono uppercase text-slate-800 placeholder-slate-400 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none"
-                           required />
-                </div>
-
-                {{-- Número Correlativo --}}
-                <div>
-                    <label for="ind_numero" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                        <span>Número</span>
-                        <span class="text-rose-500 ml-0.5">*</span>
-                    </label>
-                    <input type="text"
-                           id="ind_numero"
-                           x-model="individual.numero"
-                           maxlength="12"
-                           placeholder="Ej: 1245"
-                           class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none"
-                           required />
-                </div>
-
-                {{-- Fecha de Emisión --}}
-                <div>
-                    <label for="ind_fecha" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                        <span>Fecha Emisión</span>
-                        <span class="text-rose-500 ml-0.5">*</span>
-                    </label>
-                    <input type="date"
-                           id="ind_fecha"
-                           x-model="individual.fechaEmision"
-                           class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-sm font-mono text-slate-800 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none"
-                           required />
-                </div>
-
-                {{-- Importe Total --}}
-                <div>
-                    <label for="ind_monto" class="block text-[11px] font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                        <span>Total (Moneda Orig.)</span>
-                    </label>
-                    <input type="number"
-                           id="ind_monto"
-                           step="0.01"
-                           x-model="individual.monto"
-                           placeholder="0.00"
-                           class="block w-full rounded-xl border border-slate-200/90 bg-slate-50/50 px-3.5 py-2.5 text-sm font-mono text-slate-800 placeholder-slate-400 transition-all duration-150 outline-none hover:bg-white hover:border-slate-300 focus:bg-white focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10 focus:outline-none" />
-                </div>
-
-                {{-- Botón de Acción --}}
-                <div class="sm:col-span-2 lg:col-span-3 xl:col-span-6 flex items-center justify-end gap-3 pt-2">
                     <button type="submit"
                             :disabled="consultandoIndividual || !clienteActual?.tiene_credenciales"
-                            class="inline-flex items-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-teal-700 hover:shadow active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer">
+                            class="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-teal-700 hover:shadow active:scale-[0.99] focus:outline-none focus:ring-4 focus:ring-teal-600/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer">
                         <template x-if="!consultandoIndividual">
                             <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -576,8 +586,23 @@
                 </div>
             </div>
 
+            {{-- Notificación de Auto-Detección Inteligente del Archivo --}}
+            <template x-if="notificacionTipo.visible">
+                <div class="mb-4 rounded-2xl border border-teal-200 bg-teal-50/90 p-3.5 flex items-center justify-between text-xs text-teal-950 shadow-2xs transition-all">
+                    <div class="flex items-center gap-2.5">
+                        <div class="flex h-6 w-6 items-center justify-center rounded-lg bg-teal-600 text-white shrink-0">
+                            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                            </svg>
+                        </div>
+                        <span class="font-bold text-teal-900" x-text="notificacionTipo.mensaje"></span>
+                    </div>
+                    <button type="button" @click="notificacionTipo.visible = false" class="text-teal-700 hover:text-teal-950 font-bold p-1 cursor-pointer">✕</button>
+                </div>
+            </template>
+
             {{-- Drag & Drop Dropzone Inteligente --}}
-            <div class="relative rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50/60 p-8 text-center hover:bg-gray-50/90 transition"
+            <div class="relative rounded-3xl border-2 border-dashed border-slate-300/80 bg-slate-50/40 p-8 text-center hover:bg-teal-50/20 hover:border-teal-500/70 transition-all duration-200"
                  :class="{ 'border-teal-500 bg-teal-50/40': arrastrando }"
                  @dragover.prevent="arrastrando = true"
                  @dragleave.prevent="arrastrando = false"
@@ -800,7 +825,7 @@
                             <thead class="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
                                 <tr>
                                     <th class="py-3 px-3 w-12 text-center">#</th>
-                                    <th class="py-3 px-4 w-64">Emisor / Proveedor</th>
+                                    <th class="py-3 px-4 w-64" x-text="tipoRegistro === 'ventas' ? 'Cliente / Adquirente' : 'Emisor / Proveedor'"></th>
                                     <th class="py-3 px-4 w-44">Comprobante</th>
                                     <th class="py-3 px-4 w-32 text-right">Total Validado</th>
                                     <th class="py-3 px-4 w-40 text-center">Estado SUNAT</th>
@@ -818,11 +843,11 @@
                                         {{-- 1. Index --}}
                                         <td class="py-3 px-3 text-center font-mono text-slate-400 font-semibold" x-text="fila.item"></td>
 
-                                        {{-- 2. Emisor / Proveedor (Razón Social + RUC) --}}
+                                        {{-- 2. Emisor / Proveedor o Cliente / Adquirente --}}
                                         <td class="py-3 px-4">
                                             <div class="font-bold text-slate-900 text-xs truncate max-w-[16rem]" :title="fila.razonSocial || '—'" x-text="fila.razonSocial || '—'"></div>
                                             <div class="font-mono text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
-                                                <span class="text-slate-400 font-sans text-[10px] font-semibold uppercase">RUC</span>
+                                                <span class="text-slate-400 font-sans text-[10px] font-semibold uppercase" x-text="tipoRegistro === 'ventas' ? 'RECEPTOR' : 'RUC'"></span>
                                                 <span class="font-bold text-slate-700 select-all" x-text="fila.numRuc"></span>
                                             </div>
                                         </td>
@@ -971,6 +996,10 @@
             procesandoMasivo: false,
             abortController: null,
             tipoRegistro: 'compras',
+            notificacionTipo: {
+                visible: false,
+                mensaje: ''
+            },
             exportando: false,
 
             // Consulta individual
@@ -1153,6 +1182,21 @@
 
                     if (!resp.ok) {
                         throw new Error(data.message || 'Error al procesar archivo.');
+                    }
+
+                    // Sincronización inteligente del tipo de registro detectado
+                    if (data.tipo_registro) {
+                        const anterior = this.tipoRegistro;
+                        this.tipoRegistro = data.tipo_registro;
+                        if (anterior !== data.tipo_registro) {
+                            this.notificacionTipo = {
+                                visible: true,
+                                mensaje: data.tipo_registro === 'compras'
+                                    ? '✓ Archivo reconocido automáticamente como Registro de Compras (New Contasis). Modo sincronizado a Compras.'
+                                    : '✓ Archivo reconocido automáticamente como Registro de Ventas (New Contasis). Modo sincronizado a Ventas.'
+                            };
+                            setTimeout(() => { this.notificacionTipo.visible = false; }, 6000);
+                        }
                     }
 
                     this.masivoFilas = data.filas.map(f => ({

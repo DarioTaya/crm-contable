@@ -110,16 +110,16 @@ class SunatValidezCpeService
      * Tipos de Comprobantes de Pago Electrónicos más frecuentes en Perú.
      */
     public const TIPOS_COMPROBANTE = [
-        '01' => '01 - Factura Electrónica',
-        '03' => '03 - Boleta de Venta Electrónica',
-        '07' => '07 - Nota de Crédito Electrónica',
-        '08' => '08 - Nota de Débito Electrónica',
-        '09' => '09 - Guía de Remisión Remitente',
-        '31' => '31 - Guía de Remisión Transportista',
-        'R1' => 'R1 - Recibo por Honorarios Electrónico',
-        'R7' => 'R7 - Nota de Crédito por Honorarios',
-        '20' => '20 - Comprobante de Retención',
-        '40' => '40 - Comprobante de Percepción',
+        '01' => 'Factura Electrónica',
+        '03' => 'Boleta de Venta Electrónica',
+        '07' => 'Nota de Crédito Electrónica',
+        '08' => 'Nota de Débito Electrónica',
+        '09' => 'Guía de Remisión Remitente',
+        '31' => 'Guía de Remisión Transportista',
+        'R1' => 'Recibo por Honorarios Electrónico',
+        'R7' => 'Nota de Crédito por Honorarios',
+        '20' => 'Comprobante de Retención',
+        '40' => 'Comprobante de Percepción',
     ];
 
     /**

@@ -179,6 +179,33 @@ class CpeExcelParserService
             return ['filas' => [], 'total' => 0, 'formato_detectado' => $formato];
         }
 
+        // Auto-detección inteligente del tipo de registro y RUC de la empresa en encabezados (New Contasis / SIRE / PLE)
+        $tipoDetectado = null;
+        $rucEmpresaDetectado = null;
+
+        foreach (array_slice($filasBrutas, 0, 15) as $fHead) {
+            $fTexto = strtoupper(implode(' ', array_map('strval', $fHead)));
+
+            if ($tipoDetectado === null) {
+                if (str_contains($fTexto, 'REGISTRO DE COMPRAS') || str_contains($fTexto, 'REG. COMPRAS') || str_contains($fTexto, 'RCE')) {
+                    $tipoDetectado = 'compras';
+                } elseif (str_contains($fTexto, 'REGISTRO DE VENTAS') || str_contains($fTexto, 'REG. VENTAS') || str_contains($fTexto, 'RVIE')) {
+                    $tipoDetectado = 'ventas';
+                }
+            }
+
+            if ($rucEmpresaDetectado === null && preg_match('/R\.?U\.?C\.?\s*[:.-]?\s*([12]\d{10})/i', $fTexto, $mRuc)) {
+                $rucEmpresaDetectado = $mRuc[1];
+            }
+        }
+
+        // Si el archivo contiene explícitamente "REGISTRO DE COMPRAS", se prioriza como compras.
+        // Si contiene explícitamente "REGISTRO DE VENTAS", se prioriza como ventas.
+        // Si no se detectó en encabezados, se respeta la selección manual ($rucEmisorPorDefecto)
+        $esVentas = ($tipoDetectado === 'ventas') || ($tipoDetectado === null && filled($rucEmisorPorDefecto));
+        $tipoFinal = $esVentas ? 'ventas' : 'compras';
+        $rucEmpresaEmisora = $rucEmpresaDetectado ?: $rucEmisorPorDefecto;
+
         // Encontrar la fila de encabezados examinando hasta las primeras 25 filas
         // (los reportes de New Contasis suelen tener 6-8 filas de título/período antes de los encabezados)
         $indiceEncabezado = -1;
@@ -228,13 +255,25 @@ class CpeExcelParserService
                 continue;
             }
 
-            // RUC Emisor / Proveedor
+            // RUC y Razón Social de la fila
             $rucRaw = $mapaColumnas['num_ruc'] !== null ? ($fila[$mapaColumnas['num_ruc']] ?? '') : '';
-            $numRuc = preg_replace('/\D/', '', (string) $rucRaw);
+            $rucFila = preg_replace('/\D/', '', (string) $rucRaw);
+            $razonSocialFila = $mapaColumnas['razon_social'] !== null ? trim((string) ($fila[$mapaColumnas['razon_social']] ?? '')) : '';
 
-            // Si no hay RUC o es inválido y se proveyó RUC por defecto (ej. en Registro de Ventas)
-            if (strlen($numRuc) !== 11 && strlen($numRuc) !== 8 && filled($rucEmisorPorDefecto)) {
-                $numRuc = preg_replace('/\D/', '', (string) $rucEmisorPorDefecto);
+            if ($esVentas) {
+                // En Registro de Ventas (Emisión propia de la empresa):
+                // El emisor oficial del comprobante es la empresa auditada.
+                // El RUC/DNI en la fila del Excel corresponde al cliente receptor/adquirente.
+                $numRuc = $rucEmpresaEmisora ?: $rucFila;
+                $clienteDoc = (strlen($rucFila) === 11 || strlen($rucFila) === 8) ? $rucFila : null;
+                $razonSocial = filled($razonSocialFila)
+                    ? ($clienteDoc ? "{$razonSocialFila} (Doc: {$clienteDoc})" : $razonSocialFila)
+                    : ($clienteDoc ? "Cliente Doc: {$clienteDoc}" : 'Clientes Varios');
+            } else {
+                // En Registro de Compras (Proveedores):
+                // El emisor del comprobante ante SUNAT es el proveedor de la fila.
+                $numRuc = $rucFila;
+                $razonSocial = $razonSocialFila;
             }
 
             // Tipo de Comprobante (01=Factura, 03=Boleta, 07=NC, 08=ND, R1/02=Honorarios)
@@ -308,6 +347,9 @@ class CpeExcelParserService
             'filas' => $filasNormalizadas,
             'total' => count($filasNormalizadas),
             'formato_detectado' => $formato,
+            'tipo_registro' => $tipoFinal,
+            'tipo_detectado' => $tipoDetectado,
+            'ruc_empresa' => $rucEmpresaEmisora,
         ];
     }
 

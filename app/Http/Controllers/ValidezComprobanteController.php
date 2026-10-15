@@ -135,6 +135,8 @@ class ValidezComprobanteController extends Controller
                 'success' => true,
                 'total' => $resultado['total'],
                 'formato_detectado' => $resultado['formato_detectado'],
+                'tipo_registro' => $resultado['tipo_registro'] ?? ($esVentas ? 'ventas' : 'compras'),
+                'tipo_detectado' => $resultado['tipo_detectado'] ?? null,
                 'filas' => $resultado['filas'],
             ]);
         } catch (Throwable $e) {
