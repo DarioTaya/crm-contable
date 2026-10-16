@@ -25,3 +25,7 @@ Schedule::command('sunat:sincronizar-tipo-cambio')
     ->timezone('America/Lima')
     ->between('00:00', '09:00')
     ->withoutOverlapping();
+Schedule::command('sunat:sincronizar-ssco')
+    ->dailyAt('06:15')
+    ->timezone('America/Lima')
+    ->withoutOverlapping();

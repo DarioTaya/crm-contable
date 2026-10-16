@@ -117,6 +117,10 @@ class ConsultaPadronRuc
             }
 
             $apiRes = $clienteHttp->get("{$baseUrl}?numero={$ruc}");
+
+            if ($apiRes->status() === 401 && empty($token) && str_contains($baseUrl, '/v2/')) {
+                $apiRes = $clienteHttp->get("https://api.apis.net.pe/v1/ruc?numero={$ruc}");
+            }
         } catch (Throwable) {
             return $padron;
         }

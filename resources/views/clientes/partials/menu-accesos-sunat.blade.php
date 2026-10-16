@@ -66,7 +66,7 @@
 
         {{-- Pie Limpio y Sobrio --}}
         <div class="border-t border-slate-100 bg-white px-4 py-2 flex items-center justify-between text-slate-400">
-            <span class="text-[10px] text-slate-500">Inicia sesión en 1 clic como aplicación</span>
+            <span class="text-[10px] text-slate-500">Ingreso directo en 1 clic en tu navegador</span>
             <button
                 type="button"
                 @click="menuSunat.abierto = false"

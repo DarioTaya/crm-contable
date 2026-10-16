@@ -965,125 +965,165 @@ class ClienteController extends Controller
     }
 
     /**
-     * Lanza el script Puppeteer para autenticarse en SUNAT SOL con las credenciales del cliente.
-     *
-     * Ejecuta en segundo plano sin ventana en Windows usando WScript/VBScript y popen/pclose,
-     * garantizando que no se abra ninguna consola negra y sin bloquear el hilo de PHP.
+     * Lanza el motor Puppeteer para autenticarse en SUNAT SOL con las credenciales del cliente.
      */
     public function loginSunat(Request $request, Cliente $cliente): RedirectResponse|JsonResponse
     {
+        $destino = AccesosSunat::url($request->query('destino'));
+
+        return $this->ejecutarAccesoPortal(
+            request: $request,
+            cliente: $cliente,
+            portal: 'sunat',
+            scriptRelativePath: 'scripts/sunat_login.cjs',
+            destinoUrl: $destino,
+            sinCredencialesMsg: 'Este cliente no tiene credenciales SOL registradas.',
+            portalNombre: 'SUNAT SOL',
+        );
+    }
+
+    /**
+     * Lanza el motor Puppeteer para autenticarse en la Casilla Electrónica de SUNAFIL
+     * con las credenciales SOL del cliente.
+     */
+    public function loginSunafil(Request $request, Cliente $cliente): RedirectResponse|JsonResponse
+    {
+        return $this->ejecutarAccesoPortal(
+            request: $request,
+            cliente: $cliente,
+            portal: 'sunafil',
+            scriptRelativePath: 'scripts/sunafil_login.cjs',
+            destinoUrl: null,
+            sinCredencialesMsg: 'Este cliente no tiene credenciales SOL registradas para ingresar a SUNAFIL.',
+            portalNombre: 'Casilla SUNAFIL',
+        );
+    }
+
+    /**
+     * Ejecuta el acceso de 1 clic al portal estatal indicado sin bloquear el hilo con subprocesos previos.
+     */
+    private function ejecutarAccesoPortal(
+        Request $request,
+        Cliente $cliente,
+        string $portal,
+        string $scriptRelativePath,
+        ?string $destinoUrl,
+        string $sinCredencialesMsg,
+        string $portalNombre,
+    ): RedirectResponse|JsonResponse {
         $cliente->load('credencial');
 
+        $esAjax = $request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest';
+
         if (! $cliente->credencial || ! $cliente->credencial->usuario_sol || ! $cliente->credencial->clave_sol) {
-            if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            if ($esAjax) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Este cliente no tiene credenciales SOL registradas.',
+                    'message' => $sinCredencialesMsg,
                 ], 422);
             }
 
             return redirect()->back(fallback: route('clientes.show', $cliente))
-                ->with('error', 'Este cliente no tiene credenciales SOL registradas.');
+                ->with('error', $sinCredencialesMsg);
         }
 
         $ruc = $cliente->ruc;
         $usuarioSol = $cliente->credencial->usuario_sol;
-        $claveSol = $cliente->credencial->clave_sol; // Desencriptada automáticamente por el cast 'encrypted'
+        $claveSol = $cliente->credencial->clave_sol;
 
         $baseDir = realpath(base_path()) ?: base_path();
-        $scriptPath = realpath(base_path('scripts/sunat_login.cjs')) ?: base_path('scripts/sunat_login.cjs');
+        $scriptPath = realpath(base_path($scriptRelativePath)) ?: base_path($scriptRelativePath);
         $nodeExecutable = realpath($this->getNodeExecutable()) ?: $this->getNodeExecutable();
 
-        // Control de concurrencia: si ya existía una sesión previa colgada para ESTE mismo cliente, limpiarla
-        $browserPidFile = storage_path("framework/login_browser_sunat_{$ruc}.pid");
-        if (file_exists($browserPidFile)) {
-            $oldBrowserPid = (int) @file_get_contents($browserPidFile);
-            if ($oldBrowserPid > 0) {
-                if (DIRECTORY_SEPARATOR === '\\') {
-                    @pclose(@popen("cmd.exe /c taskkill /F /T /PID {$oldBrowserPid} >NUL 2>&1", 'r'));
-                } else {
-                    @exec("kill -9 {$oldBrowserPid} 2>/dev/null");
-                }
-            }
-            @unlink($browserPidFile);
-        }
-
-        $pidFile = storage_path("framework/login_pid_sunat_{$ruc}.pid");
-        if (file_exists($pidFile)) {
-            $oldPid = (int) @file_get_contents($pidFile);
-            if ($oldPid > 0) {
-                if (DIRECTORY_SEPARATOR === '\\') {
-                    @pclose(@popen("cmd.exe /c taskkill /F /T /PID {$oldPid} >NUL 2>&1", 'r'));
-                } else {
-                    @exec("kill -9 {$oldPid} 2>/dev/null");
-                }
-            }
-            @unlink($pidFile);
-        }
-
-        $signalFile = storage_path("framework/login_ready_sunat_{$ruc}.json");
+        $signalFile = storage_path("framework/login_ready_{$portal}_{$ruc}.json");
         if (file_exists($signalFile)) {
             @unlink($signalFile);
         }
 
         try {
-            // Cada ejecución tiene su archivo de log dedicado con uniqid para evitar bloqueos por uso concurrente en Windows
             $uniqueId = uniqid();
-            $logPath = $baseDir.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'logs'.DIRECTORY_SEPARATOR."sunat_login_{$ruc}_{$uniqueId}.log";
+            $logPath = $baseDir.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'logs'.DIRECTORY_SEPARATOR."{$portal}_login_{$ruc}_{$uniqueId}.log";
 
             if (DIRECTORY_SEPARATOR === '\\') {
-                // En Windows: Ejecución 100% oculta sin consola negra usando WScript/VBScript nativo
                 $vbsPath = realpath(base_path('scripts/run_hidden.vbs')) ?: base_path('scripts/run_hidden.vbs');
                 $logArg = '--log-file='.$logPath;
-                $destino = AccesosSunat::url($request->query('destino'));
-                $command = sprintf(
-                    'wscript.exe //B "%s" "%s" "%s" "%s" "%s" %s %s %s %s',
-                    $vbsPath,
-                    $baseDir,
-                    $logArg,
-                    $nodeExecutable,
-                    $scriptPath,
-                    escapeshellarg($ruc),
-                    escapeshellarg($usuarioSol),
-                    escapeshellarg($claveSol),
-                    escapeshellarg($destino)
-                );
+
+                if ($destinoUrl !== null) {
+                    $command = sprintf(
+                        'wscript.exe //B "%s" "%s" "%s" "%s" "%s" %s %s %s %s',
+                        $vbsPath,
+                        $baseDir,
+                        $logArg,
+                        $nodeExecutable,
+                        $scriptPath,
+                        escapeshellarg($ruc),
+                        escapeshellarg($usuarioSol),
+                        escapeshellarg($claveSol),
+                        escapeshellarg($destinoUrl)
+                    );
+                } else {
+                    $command = sprintf(
+                        'wscript.exe //B "%s" "%s" "%s" "%s" "%s" %s %s %s',
+                        $vbsPath,
+                        $baseDir,
+                        $logArg,
+                        $nodeExecutable,
+                        $scriptPath,
+                        escapeshellarg($ruc),
+                        escapeshellarg($usuarioSol),
+                        escapeshellarg($claveSol)
+                    );
+                }
             } else {
-                $destino = AccesosSunat::url($request->query('destino'));
-                $command = sprintf(
-                    'cd "%s" && "%s" "%s" %s %s %s %s > "%s" 2>&1 &',
-                    $baseDir,
-                    $nodeExecutable,
-                    $scriptPath,
-                    escapeshellarg($ruc),
-                    escapeshellarg($usuarioSol),
-                    escapeshellarg($claveSol),
-                    escapeshellarg($destino),
-                    $logPath
-                );
+                if ($destinoUrl !== null) {
+                    $command = sprintf(
+                        'cd "%s" && "%s" "%s" %s %s %s %s > "%s" 2>&1 &',
+                        $baseDir,
+                        $nodeExecutable,
+                        $scriptPath,
+                        escapeshellarg($ruc),
+                        escapeshellarg($usuarioSol),
+                        escapeshellarg($claveSol),
+                        escapeshellarg($destinoUrl),
+                        $logPath
+                    );
+                } else {
+                    $command = sprintf(
+                        'cd "%s" && "%s" "%s" %s %s %s > "%s" 2>&1 &',
+                        $baseDir,
+                        $nodeExecutable,
+                        $scriptPath,
+                        escapeshellarg($ruc),
+                        escapeshellarg($usuarioSol),
+                        escapeshellarg($claveSol),
+                        $logPath
+                    );
+                }
             }
 
             $this->iniciarProcesoEnSegundoPlano($command);
 
-            Log::info("Automatización SUNAT iniciada en segundo plano para cliente {$cliente->ruc}");
+            Log::info('Automatización '.strtoupper($portal)." iniciada en segundo plano para cliente {$cliente->ruc}");
 
-            if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            if ($esAjax) {
                 $senal = $this->esperarSenalDePortal($signalFile);
 
                 if (! $senal['ok']) {
                     return response()->json([
                         'success' => false,
-                        'message' => $senal['message'] ?? 'Error desconocido al iniciar sesión en SUNAT.',
+                        'message' => $senal['message'] ?? "Error desconocido al iniciar sesión en {$portalNombre}.",
                     ], 422);
                 }
 
                 $browserName = $senal['browser'];
-                $mensaje = "🚀 Sesión SUNAT lista para {$cliente->razon_social}. {$browserName} abierto en primer plano.";
+                $mensaje = $portal === 'sunat'
+                    ? "Sesión SUNAT lista para {$cliente->razon_social}. {$browserName} abierto en primer plano."
+                    : "Sesión SUNAFIL lista para {$cliente->razon_social}. {$browserName} abierto en la Casilla Electrónica.";
 
                 return response()->json([
                     'success' => true,
                     'message' => $mensaje,
-                    'portal' => 'SUNAT SOL',
+                    'portal' => $portalNombre,
                     'browser' => $browserName,
                     'cliente' => [
                         'id' => $cliente->id,
@@ -1093,16 +1133,20 @@ class ClienteController extends Controller
                 ]);
             }
 
+            $flashMsg = $portal === 'sunat'
+                ? "Sesión SUNAT lista para {$cliente->razon_social}. El navegador se abrirá con el portal listo."
+                : "Sesión SUNAFIL lista para {$cliente->razon_social}. El navegador se abrirá automáticamente en la Casilla Electrónica.";
+
             return redirect()->back(fallback: route('clientes.show', $cliente))
-                ->with('success', "🚀 Sesión SUNAT lista para {$cliente->razon_social}. El navegador se abrirá con el portal listo.");
+                ->with('success', $flashMsg);
 
         } catch (Throwable $e) {
-            Log::error('Excepción al lanzar proceso SUNAT: '.$e->getMessage(), [
+            Log::error('Excepción al lanzar proceso '.strtoupper($portal).': '.$e->getMessage(), [
                 'cliente_id' => $cliente->id,
                 'exception' => $e,
             ]);
 
-            if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
+            if ($esAjax) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Excepción al ejecutar el proceso: '.$e->getMessage(),
@@ -1111,154 +1155,6 @@ class ClienteController extends Controller
 
             return redirect()->back(fallback: route('clientes.show', $cliente))
                 ->with('error', 'Excepción al ejecutar el proceso: '.$e->getMessage());
-        }
-    }
-
-    /**
-     * Lanza el script Puppeteer para autenticarse en la Casilla Electrónica de SUNAFIL
-     * con las credenciales SOL del cliente.
-     *
-     * Ejecuta en segundo plano sin ventana en Windows usando WScript/VBScript y popen/pclose,
-     * garantizando que no se abra ninguna consola negra y sin bloquear el hilo de PHP.
-     */
-    public function loginSunafil(Request $request, Cliente $cliente): RedirectResponse|JsonResponse
-    {
-        $cliente->load('credencial');
-
-        if (! $cliente->credencial || ! $cliente->credencial->usuario_sol || ! $cliente->credencial->clave_sol) {
-            if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Este cliente no tiene credenciales SOL registradas para ingresar a SUNAFIL.',
-                ], 422);
-            }
-
-            return redirect()->back(fallback: route('clientes.show', $cliente))
-                ->with('error', 'Este cliente no tiene credenciales SOL registradas para ingresar a SUNAFIL.');
-        }
-
-        $ruc = $cliente->ruc;
-        $usuarioSol = $cliente->credencial->usuario_sol;
-        $claveSol = $cliente->credencial->clave_sol;
-
-        $baseDir = realpath(base_path()) ?: base_path();
-        $scriptPath = realpath(base_path('scripts/sunafil_login.cjs')) ?: base_path('scripts/sunafil_login.cjs');
-        $nodeExecutable = realpath($this->getNodeExecutable()) ?: $this->getNodeExecutable();
-
-        // Control de concurrencia: si ya existía una sesión previa colgada para ESTE mismo cliente, limpiarla
-        $browserPidFile = storage_path("framework/login_browser_sunafil_{$ruc}.pid");
-        if (file_exists($browserPidFile)) {
-            $oldBrowserPid = (int) @file_get_contents($browserPidFile);
-            if ($oldBrowserPid > 0) {
-                if (DIRECTORY_SEPARATOR === '\\') {
-                    @pclose(@popen("cmd.exe /c taskkill /F /T /PID {$oldBrowserPid} >NUL 2>&1", 'r'));
-                } else {
-                    @exec("kill -9 {$oldBrowserPid} 2>/dev/null");
-                }
-            }
-            @unlink($browserPidFile);
-        }
-
-        $pidFile = storage_path("framework/login_pid_sunafil_{$ruc}.pid");
-        if (file_exists($pidFile)) {
-            $oldPid = (int) @file_get_contents($pidFile);
-            if ($oldPid > 0) {
-                if (DIRECTORY_SEPARATOR === '\\') {
-                    @pclose(@popen("cmd.exe /c taskkill /F /T /PID {$oldPid} >NUL 2>&1", 'r'));
-                } else {
-                    @exec("kill -9 {$oldPid} 2>/dev/null");
-                }
-            }
-            @unlink($pidFile);
-        }
-
-        $signalFile = storage_path("framework/login_ready_sunafil_{$ruc}.json");
-        if (file_exists($signalFile)) {
-            @unlink($signalFile);
-        }
-
-        try {
-            // Cada ejecución tiene su archivo de log dedicado con uniqid para evitar bloqueos por uso concurrente en Windows
-            $uniqueId = uniqid();
-            $logPath = $baseDir.DIRECTORY_SEPARATOR.'storage'.DIRECTORY_SEPARATOR.'logs'.DIRECTORY_SEPARATOR."sunafil_login_{$ruc}_{$uniqueId}.log";
-
-            if (DIRECTORY_SEPARATOR === '\\') {
-                // En Windows: Ejecución 100% oculta sin consola negra usando WScript/VBScript nativo
-                $vbsPath = realpath(base_path('scripts/run_hidden.vbs')) ?: base_path('scripts/run_hidden.vbs');
-                $logArg = '--log-file='.$logPath;
-                $command = sprintf(
-                    'wscript.exe //B "%s" "%s" "%s" "%s" "%s" %s %s %s',
-                    $vbsPath,
-                    $baseDir,
-                    $logArg,
-                    $nodeExecutable,
-                    $scriptPath,
-                    escapeshellarg($ruc),
-                    escapeshellarg($usuarioSol),
-                    escapeshellarg($claveSol)
-                );
-            } else {
-                // En Linux/macOS: Desvinculación nativa con &
-                $command = sprintf(
-                    'cd "%s" && "%s" "%s" %s %s %s > "%s" 2>&1 &',
-                    $baseDir,
-                    $nodeExecutable,
-                    $scriptPath,
-                    escapeshellarg($ruc),
-                    escapeshellarg($usuarioSol),
-                    escapeshellarg($claveSol),
-                    $logPath
-                );
-            }
-
-            $this->iniciarProcesoEnSegundoPlano($command);
-
-            Log::info("Automatización SUNAFIL iniciada en segundo plano para cliente {$cliente->ruc}");
-
-            if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                $senal = $this->esperarSenalDePortal($signalFile);
-
-                if (! $senal['ok']) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => $senal['message'] ?? 'Error desconocido al iniciar sesión en SUNAFIL.',
-                    ], 422);
-                }
-
-                $browserName = $senal['browser'];
-                $mensaje = "👷 Sesión SUNAFIL lista para {$cliente->razon_social}. {$browserName} abierto en la Casilla Electrónica.";
-
-                return response()->json([
-                    'success' => true,
-                    'message' => $mensaje,
-                    'portal' => 'Casilla SUNAFIL',
-                    'browser' => $browserName,
-                    'cliente' => [
-                        'id' => $cliente->id,
-                        'ruc' => $cliente->ruc,
-                        'razon_social' => $cliente->razon_social,
-                    ],
-                ]);
-            }
-
-            return redirect()->back(fallback: route('clientes.show', $cliente))
-                ->with('success', "👷 Sesión SUNAFIL lista para {$cliente->razon_social}. El navegador se abrirá automáticamente en la Casilla Electrónica.");
-
-        } catch (Throwable $e) {
-            Log::error('Excepción al lanzar proceso SUNAFIL: '.$e->getMessage(), [
-                'cliente_id' => $cliente->id,
-                'exception' => $e,
-            ]);
-
-            if ($request->ajax() || $request->wantsJson() || $request->header('X-Requested-With') === 'XMLHttpRequest') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Excepción al ejecutar el proceso SUNAFIL: '.$e->getMessage(),
-                ], 500);
-            }
-
-            return redirect()->back(fallback: route('clientes.show', $cliente))
-                ->with('error', 'Excepción al ejecutar el proceso SUNAFIL: '.$e->getMessage());
         }
     }
 
@@ -1428,9 +1324,6 @@ class ClienteController extends Controller
     }
 
     /**
-     * Detecta dinámicamente la ruta del ejecutable de Node.js en Laragon o en el sistema operativo.
-     */
-    /**
      * Arranca el script sin heredar el pipe de PHP.
      *
      * pclose(popen()) esperaba a que cerraran el navegador, y el aviso de
@@ -1453,7 +1346,7 @@ class ClienteController extends Controller
     /**
      * Espera la señal "opening" o "ready" del script Puppeteer en disco.
      * Cierra la sesión PHP para no bloquear otras peticiones en el CRM.
-     * Consulta cada 40ms para entregar una respuesta ultra rápida apenas el portal esté listo.
+     * Consulta cada 20ms para entregar una respuesta inmediata apenas el portal esté listo.
      *
      * @return array{ok: bool, browser: string, message: ?string}
      */
@@ -1467,17 +1360,23 @@ class ClienteController extends Controller
         $browser = 'Google Chrome';
 
         while (microtime(true) < $limite) {
+            clearstatcache(true, $signalFile);
+
             if (is_file($signalFile)) {
                 $raw = (string) @file_get_contents($signalFile);
                 $data = json_decode($raw, true);
                 $estado = is_array($data) ? ($data['status'] ?? null) : null;
+
+                if (is_array($data) && is_string($data['browser'] ?? null) && $data['browser'] !== '') {
+                    $browser = $data['browser'];
+                }
 
                 if ($estado === 'opening' || $estado === 'ready') {
                     @unlink($signalFile);
 
                     return [
                         'ok' => true,
-                        'browser' => is_string($data['browser'] ?? null) ? $data['browser'] : $browser,
+                        'browser' => $browser,
                         'message' => null,
                     ];
                 }
@@ -1496,7 +1395,7 @@ class ClienteController extends Controller
                 }
             }
 
-            usleep(40000); // 40 milisegundos: respuesta casi instantánea al detectar la señal
+            usleep(20000); // 20 milisegundos: respuesta inmediata al detectar la señal
         }
 
         @unlink($signalFile);

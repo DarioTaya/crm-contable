@@ -420,6 +420,50 @@ class SelectorEmpresaTest extends TestCase
         $response->assertSee(':href="item.carpeta"', false);
     }
 
+    public function test_portal_launch_validates_credentials_and_enforces_portfolio_authorization(): void
+    {
+        $cartera = $this->cartera();
+        $ajena = Cliente::factory()->create(['razon_social' => 'EMPRESA EXTERNA SAC']);
+
+        // 1. Sin Clave SOL configurada devuelve 422 en JSON tanto para SUNAT como para SUNAFIL
+        $this->actingAs($cartera['admin'])
+            ->getJson(route('clientes.sunat', $cartera['asignada']))
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false);
+
+        $this->actingAs($cartera['admin'])
+            ->getJson(route('clientes.sunafil', $cartera['asignada']))
+            ->assertUnprocessable()
+            ->assertJsonPath('success', false);
+
+        // 2. Un asistente no puede lanzar accesos 1-clic de una empresa fuera de su cartera asignada
+        $this->actingAs($cartera['asistente'])
+            ->getJson(route('clientes.sunat', $cartera['privada']))
+            ->assertForbidden();
+
+        $this->actingAs($cartera['asistente'])
+            ->getJson(route('clientes.sunafil', $cartera['privada']))
+            ->assertForbidden();
+
+        // 3. Un administrador no puede lanzar accesos 1-clic de otro estudio contable (el global scope devuelve 404)
+        $this->actingAs($cartera['admin'])
+            ->getJson(route('clientes.sunat', $ajena))
+            ->assertNotFound();
+
+        // 4. Las vistas de listado y expediente incluyen el modal HUD optimizado de barra única
+        $this->actingAs($cartera['admin'])
+            ->get(route('clientes.index'))
+            ->assertOk()
+            ->assertSee('Perfil sincronizado')
+            ->assertSee('Ingreso directo en 1 clic en tu navegador');
+
+        $this->actingAs($cartera['admin'])
+            ->get(route('clientes.show', $cartera['asignada']))
+            ->assertOk()
+            ->assertSee('Perfil sincronizado')
+            ->assertSee('Ingreso directo en 1 clic en tu navegador');
+    }
+
     /**
      * @return array{admin: User, asistente: User, asignada: Cliente, privada: Cliente, baja: Cliente}
      */

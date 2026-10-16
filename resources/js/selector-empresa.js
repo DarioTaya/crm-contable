@@ -327,17 +327,32 @@ export function registrarSelectorEmpresa(Alpine) {
             this.lanzarAcceso(item.sunafil, 'SUNAFIL', item.razon_social, item.ruc);
         },
 
+        init() {
+            this._alRecuperarFoco = () => {
+                if (this.hud.completado) {
+                    this.hud.abierto = false;
+                    this.menuSunat.abierto = false;
+                }
+            };
+            window.addEventListener('focus', this._alRecuperarFoco);
+            document.addEventListener('visibilitychange', this._alRecuperarFoco);
+        },
+
         async lanzarAcceso(url, portal, nombre, ruc) {
             if (this.hud.animTimer) {
                 clearInterval(this.hud.animTimer);
             }
 
+            this.abierto = false;
+            this.menuSunat.abierto = false;
             this.hud.portal = portal;
             this.hud.clienteNombre = nombre;
             this.hud.clienteRuc = ruc;
             this.hud.icono = portal === 'SUNAT' ? '🚀' : '👷';
-            this.hud.progreso = 15;
-            this.hud.faseTexto = portal === 'SUNAT' ? 'Ingresando a SUNAT...' : 'Ingresando a SUNAFIL...';
+            this.hud.progreso = 22;
+            this.hud.faseTexto = portal === 'SUNAT'
+                ? 'Conectando con SUNAT SOL...'
+                : 'Conectando con Casilla SUNAFIL...';
             this.hud.completado = false;
             this.hud.error = null;
             this.hud.abierto = true;
@@ -345,17 +360,19 @@ export function registrarSelectorEmpresa(Alpine) {
             let step = 0;
             this.hud.animTimer = setInterval(() => {
                 step++;
-                if (step === 1 && this.hud.progreso < 40) {
-                    this.hud.progreso = 38;
-                    this.hud.faseTexto = 'Preparando el navegador...';
-                } else if (step === 2 && this.hud.progreso < 70) {
-                    this.hud.progreso = 68;
-                    this.hud.faseTexto = portal === 'SUNAT' ? 'Ingresando a SUNAT...' : 'Ingresando a SUNAFIL...';
-                } else if (step >= 3 && this.hud.progreso < 92) {
-                    this.hud.progreso = Math.min(92, this.hud.progreso + 4);
-                    this.hud.faseTexto = 'La ventana se abre cuando la sesión ya está lista...';
+                if (step === 1 && this.hud.progreso < 48) {
+                    this.hud.progreso = 48;
+                    this.hud.faseTexto = 'Autenticando credenciales Clave SOL...';
+                } else if (step === 2 && this.hud.progreso < 74) {
+                    this.hud.progreso = 74;
+                    this.hud.faseTexto = portal === 'SUNAT'
+                        ? 'Abriendo servicio en SUNAT...'
+                        : 'Abriendo Casilla Electrónica...';
+                } else if (step >= 3 && this.hud.progreso < 94) {
+                    this.hud.progreso = Math.min(94, this.hud.progreso + 5);
+                    this.hud.faseTexto = 'Listo, abriendo navegador...';
                 }
-            }, 250);
+            }, 180);
 
             try {
                 const respuesta = await fetch(url, {
@@ -373,6 +390,7 @@ export function registrarSelectorEmpresa(Alpine) {
                     this.hud.completado = true;
                     this.hud.faseTexto = '¡Sesión lista!';
                     this.hud.abierto = false;
+                    this.menuSunat.abierto = false;
                 } else {
                     this.hud.error = data.message || 'No se pudo iniciar la sesión automática.';
                     this.hud.progreso = 0;
@@ -395,6 +413,10 @@ export function registrarSelectorEmpresa(Alpine) {
             this.abort?.abort();
             if (this.hud.animTimer) {
                 clearInterval(this.hud.animTimer);
+            }
+            if (this._alRecuperarFoco) {
+                window.removeEventListener('focus', this._alRecuperarFoco);
+                document.removeEventListener('visibilitychange', this._alRecuperarFoco);
             }
         },
     }));

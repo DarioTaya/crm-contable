@@ -138,97 +138,88 @@
         </div>
 
         {{-- ════════════════════ MODAL HUD PREMIUM DE ACCESO RÁPIDO (1 CLIC) ════════════════════ --}}
-        <div x-show="hudAcceso.abierto && !hudAcceso.completado"
-             x-cloak
-             x-transition:enter="transition ease-out duration-200"
-             x-transition:enter-start="opacity-0 scale-95"
-             x-transition:enter-end="opacity-100 scale-100"
-             x-transition:leave="transition ease-in duration-75"
-             x-transition:leave-start="opacity-100 scale-100"
-             x-transition:leave-end="opacity-0 scale-95"
-             class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
-            
-            <div class="relative w-full max-w-md overflow-hidden rounded-2xl bg-white p-6 shadow-2xl border border-slate-100"
-                 @click.away="if (hudAcceso.completado || hudAcceso.error) hudAcceso.abierto = false">
+        <template x-teleport="body">
+            <div x-show="hudAcceso.abierto && !hudAcceso.completado"
+                 x-cloak
+                 @keydown.escape.window="if (hudAcceso.abierto && hudAcceso.error) hudAcceso.abierto = false"
+                 class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4"
+                 style="display: none;">
                 
-                {{-- Encabezado con Icono y Portal --}}
-                <div class="flex items-center gap-4 mb-4">
-                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl shadow-inner"
-                         :class="hudAcceso.portal === 'SUNAT' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-blue-50 text-blue-600 border border-blue-200'">
-                        <span x-text="hudAcceso.icono"></span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
-                                  :class="hudAcceso.portal === 'SUNAT' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'"
-                                  x-text="hudAcceso.portal === 'SUNAT' ? 'Portal SUNAT SOL' : 'Casilla Electrónica SUNAFIL'">
-                            </span>
+                <div class="relative w-full max-w-md overflow-hidden rounded-2xl bg-white p-6 shadow-2xl border border-slate-100"
+                     @click.away="if (hudAcceso.completado || hudAcceso.error) hudAcceso.abierto = false">
+                    
+                    {{-- Encabezado con Icono y Portal --}}
+                    <div class="flex items-center gap-4 mb-4">
+                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-2xl shadow-inner"
+                             :class="hudAcceso.portal === 'SUNAT' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-blue-50 text-blue-600 border border-blue-200'">
+                            <span x-text="hudAcceso.icono"></span>
                         </div>
-                        <h3 class="text-base font-bold text-slate-900 truncate mt-1" x-text="hudAcceso.clienteNombre"></h3>
-                        <p class="text-xs font-mono text-slate-500">RUC: <span x-text="hudAcceso.clienteRuc" class="font-semibold text-slate-700"></span></p>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                                      :class="hudAcceso.portal === 'SUNAT' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'"
+                                      x-text="hudAcceso.portal === 'SUNAT' ? 'Portal SUNAT SOL' : 'Casilla Electrónica SUNAFIL'">
+                                </span>
+                            </div>
+                            <h3 class="text-base font-bold text-slate-900 truncate mt-1" x-text="hudAcceso.clienteNombre"></h3>
+                            <p class="text-xs font-mono text-slate-500">RUC: <span x-text="hudAcceso.clienteRuc" class="font-semibold text-slate-700"></span></p>
+                        </div>
+                        <template x-if="hudAcceso.error">
+                            <button type="button" @click="hudAcceso.abierto = false" class="text-slate-400 hover:text-slate-600 text-lg font-bold leading-none" aria-label="Cerrar">&times;</button>
+                        </template>
                     </div>
+
+                    {{-- Estado de Error si ocurrió alguno --}}
                     <template x-if="hudAcceso.error">
-                        <button type="button" @click="hudAcceso.abierto = false" class="text-slate-400 hover:text-slate-600 text-lg font-bold leading-none">&times;</button>
-                    </template>
-                </div>
-
-                {{-- Estado de Error si ocurrió alguno --}}
-                <template x-if="hudAcceso.error">
-                    <div class="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2.5">
-                        <span class="text-base">⚠️</span>
-                        <div class="flex-1">
-                            <p class="font-bold">No se pudo iniciar el acceso automático</p>
-                            <p class="mt-0.5" x-text="hudAcceso.error"></p>
-                        </div>
-                    </div>
-                </template>
-
-                {{-- Barra de Progreso y Etapas --}}
-                <template x-if="!hudAcceso.error">
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between text-xs">
-                            <span class="font-medium text-slate-600 flex items-center gap-2">
-                                <template x-if="!hudAcceso.completado">
-                                    <svg class="animate-spin h-3.5 w-3.5" :class="hudAcceso.portal === 'SUNAT' ? 'text-emerald-600' : 'text-blue-600'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                </template>
-                                <template x-if="hudAcceso.completado">
-                                    <span class="text-emerald-600 font-bold">✓</span>
-                                </template>
-                                <span x-text="hudAcceso.faseTexto"></span>
-                            </span>
-                            <span class="font-mono font-bold text-slate-700" x-text="hudAcceso.progreso + '%'"></span>
-                        </div>
-
-                        {{-- Pista de progreso animada --}}
-                        <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 shadow-inner">
-                            <div class="h-full rounded-full transition-all duration-300 ease-out"
-                                 :class="hudAcceso.portal === 'SUNAT' ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-blue-600 to-indigo-500'"
-                                 :style="'width: ' + hudAcceso.progreso + '%'">
+                        <div class="mb-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2.5">
+                            <span class="text-base">⚠️</span>
+                            <div class="flex-1">
+                                <p class="font-bold">No se pudo iniciar el acceso automático</p>
+                                <p class="mt-0.5" x-text="hudAcceso.error"></p>
                             </div>
                         </div>
+                    </template>
 
-                        <div class="flex items-center justify-between pt-1 text-[11px] text-slate-400">
-                            <span x-text="(hudAcceso.nombreNavegador || 'Navegador') + ' · ventana normal'"></span>
-                            <span x-text="hudAcceso.completado ? 'Portal listo en pantalla' : 'Conexión cifrada'"></span>
+                    {{-- Barra de Progreso Única y Etapas --}}
+                    <template x-if="!hudAcceso.error">
+                        <div class="space-y-2.5">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="font-semibold text-slate-700 flex items-center gap-2">
+                                    <span class="h-2 w-2 shrink-0 rounded-full"
+                                          :class="hudAcceso.portal === 'SUNAT' ? 'bg-emerald-500' : 'bg-blue-600'"></span>
+                                    <span x-text="hudAcceso.faseTexto"></span>
+                                </span>
+                                <span class="font-mono font-bold tabular-nums text-slate-700" x-text="hudAcceso.progreso + '%'"></span>
+                            </div>
+
+                            {{-- Pista de progreso animada --}}
+                            <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 shadow-inner">
+                                <div class="h-full rounded-full transition-all duration-200 ease-out"
+                                     :class="hudAcceso.portal === 'SUNAT' ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-blue-600 to-indigo-500'"
+                                     :style="'width: ' + hudAcceso.progreso + '%'">
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-1 text-[11px] text-slate-400">
+                                <span x-text="(hudAcceso.nombreNavegador || 'Navegador predeterminado') + ' · Perfil sincronizado'"></span>
+                                <span x-text="hudAcceso.completado ? 'Portal listo en pantalla' : 'Sesión directa 1 clic'"></span>
+                            </div>
                         </div>
-                    </div>
-                </template>
+                    </template>
 
-                {{-- Botón de acción en caso de error --}}
-                <template x-if="hudAcceso.error">
-                    <div class="mt-4 flex justify-end">
-                        <button type="button"
-                                @click="hudAcceso.abierto = false"
-                                class="rounded-lg bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition">
-                            Entendido
-                        </button>
-                    </div>
-                </template>
+                    {{-- Botón de acción en caso de error --}}
+                    <template x-if="hudAcceso.error">
+                        <div class="mt-4 flex justify-end">
+                            <button type="button"
+                                    @click="hudAcceso.abierto = false"
+                                    class="rounded-lg bg-slate-100 hover:bg-slate-200 px-4 py-2 text-xs font-semibold text-slate-700 transition">
+                                Entendido
+                            </button>
+                        </div>
+                    </template>
+                </div>
             </div>
-        </div>
+        </template>
 
         {{-- Modal para cambiar el Estado en el Estudio (Activo / Suspendido / Retirado).
              Teletransportado al <body> para ser accesible desde el encabezado en todas las secciones. --}}
@@ -606,6 +597,11 @@
                     animTimer: null,
                 },
                 abrirMenuSunat(event, url, nombre, ruc) {
+                    if (this.menuSunat.abierto && this.menuSunat.url === url) {
+                        this.menuSunat.abierto = false;
+                        document.querySelectorAll('[data-ancla-sunat]').forEach((nodo) => nodo.removeAttribute('data-ancla-sunat'));
+                        return;
+                    }
                     document.querySelectorAll('[data-ancla-sunat]').forEach((nodo) => nodo.removeAttribute('data-ancla-sunat'));
                     const boton = event.currentTarget;
                     boton.setAttribute('data-ancla-sunat', '1');
@@ -621,43 +617,46 @@
                     });
                 },
                 elegirAccesoSunat(destino) {
-                    const url = this.menuSunat.url + '?destino=' + encodeURIComponent(destino);
+                    const separador = this.menuSunat.url.includes('?') ? '&' : '?';
+                    const url = this.menuSunat.url + separador + 'destino=' + encodeURIComponent(destino);
                     const nombre = this.menuSunat.nombre;
                     const ruc = this.menuSunat.ruc;
                     this.menuSunat.abierto = false;
+                    document.querySelectorAll('[data-ancla-sunat]').forEach((nodo) => nodo.removeAttribute('data-ancla-sunat'));
                     this.lanzarAcceso(url, 'SUNAT', nombre, ruc);
                 },
                 async lanzarAcceso(url, portal, nombre, ruc) {
                     if (this.hudAcceso.animTimer) clearInterval(this.hudAcceso.animTimer);
+                    this.menuSunat.abierto = false;
                     this.hudAcceso.portal = portal;
                     this.hudAcceso.clienteNombre = nombre;
                     this.hudAcceso.clienteRuc = ruc;
                     this.hudAcceso.icono = portal === 'SUNAT' ? '🚀' : '👷';
-                    this.hudAcceso.progreso = 15;
+                    this.hudAcceso.progreso = 22;
                     this.hudAcceso.faseTexto = portal === 'SUNAT'
-                        ? 'Ingresando a SUNAT...'
-                        : 'Ingresando a SUNAFIL...';
+                        ? 'Conectando con SUNAT SOL...'
+                        : 'Conectando con Casilla SUNAFIL...';
                     this.hudAcceso.completado = false;
                     this.hudAcceso.error = null;
                     this.hudAcceso.abierto = true;
 
-                    // Animación fluida sincronizada mientras el navegador inicia y se autentica
+                    // Animación fluida sincronizada mientras el navegador inicia y se autentica (~2.5-3.5s)
                     let step = 0;
                     this.hudAcceso.animTimer = setInterval(() => {
                         step++;
-                        if (step === 1 && this.hudAcceso.progreso < 40) {
-                            this.hudAcceso.progreso = 38;
-                            this.hudAcceso.faseTexto = 'Preparando el navegador...';
-                        } else if (step === 2 && this.hudAcceso.progreso < 70) {
-                            this.hudAcceso.progreso = 68;
+                        if (step === 1 && this.hudAcceso.progreso < 48) {
+                            this.hudAcceso.progreso = 48;
+                            this.hudAcceso.faseTexto = 'Autenticando credenciales Clave SOL...';
+                        } else if (step === 2 && this.hudAcceso.progreso < 74) {
+                            this.hudAcceso.progreso = 74;
                             this.hudAcceso.faseTexto = portal === 'SUNAT'
-                                ? 'Ingresando a SUNAT...'
-                                : 'Ingresando a SUNAFIL...';
-                        } else if (step >= 3 && this.hudAcceso.progreso < 92) {
-                            this.hudAcceso.progreso = Math.min(92, this.hudAcceso.progreso + 4);
-                            this.hudAcceso.faseTexto = 'La ventana se abre cuando la sesión ya está lista...';
+                                ? 'Abriendo servicio en SUNAT...'
+                                : 'Abriendo Casilla Electrónica...';
+                        } else if (step >= 3 && this.hudAcceso.progreso < 94) {
+                            this.hudAcceso.progreso = Math.min(94, this.hudAcceso.progreso + 5);
+                            this.hudAcceso.faseTexto = 'Listo, abriendo navegador...';
                         }
-                    }, 250);
+                    }, 180);
 
                     try {
                         const res = await fetch(url, {
@@ -676,6 +675,7 @@
                             this.hudAcceso.progreso = 100;
                             this.hudAcceso.completado = true;
                             this.hudAcceso.abierto = false;
+                            this.menuSunat.abierto = false;
                             this.hudAcceso.faseTexto = '¡Sesión lista!';
                         } else {
                             this.hudAcceso.error = data.message || 'No se pudo iniciar la sesión automática.';
@@ -689,6 +689,14 @@
                 },
                 init() {
                     window.expedienteClienteInstancia = this;
+                    const limpiarHudAlVolver = () => {
+                        if (this.hudAcceso.completado) {
+                            this.hudAcceso.abierto = false;
+                            this.menuSunat.abierto = false;
+                        }
+                    };
+                    window.addEventListener('focus', limpiarHudAlVolver);
+                    document.addEventListener('visibilitychange', limpiarHudAlVolver);
                     window.addEventListener('popstate', () => {
                         const seccion = this.seccionDesdeRuta(window.location.pathname);
                         if (this.tab === seccion) {

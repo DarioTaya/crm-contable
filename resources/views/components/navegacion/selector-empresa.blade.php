@@ -265,7 +265,7 @@
             </div>
 
             <div class="border-t border-slate-100 bg-white px-4 py-2 flex items-center justify-between text-slate-400">
-                <span class="text-[10px] text-slate-500">Inicia sesión en 1 clic como aplicación</span>
+                <span class="text-[10px] text-slate-500">Ingreso directo en 1 clic en tu navegador</span>
                 <button type="button" @click="menuSunat.abierto = false" class="cursor-pointer text-[10px] font-semibold text-slate-600 hover:text-slate-900 transition">Cerrar</button>
             </div>
         </div>
@@ -314,32 +314,27 @@
                 </template>
 
                 <template x-if="!hud.error">
-                    <div class="space-y-3">
+                    <div class="space-y-2.5">
                         <div class="flex items-center justify-between text-xs">
-                            <span class="flex items-center gap-2 font-medium text-slate-600">
-                                <template x-if="!hud.completado">
-                                    <svg class="h-3.5 w-3.5 animate-spin" :class="hud.portal === 'SUNAT' ? 'text-emerald-600' : 'text-blue-600'" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                                    </svg>
-                                </template>
-                                <template x-if="hud.completado">
-                                    <span class="font-bold text-emerald-600">✓</span>
-                                </template>
+                            <span class="flex items-center gap-2 font-semibold text-slate-700">
+                                <span
+                                    class="h-2 w-2 shrink-0 rounded-full"
+                                    :class="hud.portal === 'SUNAT' ? 'bg-emerald-500' : 'bg-blue-600'"
+                                ></span>
                                 <span x-text="hud.faseTexto"></span>
                             </span>
-                            <span class="font-mono font-bold text-slate-700" x-text="hud.progreso + '%'"></span>
+                            <span class="font-mono font-bold tabular-nums text-slate-700" x-text="hud.progreso + '%'"></span>
                         </div>
                         <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100 shadow-inner">
                             <div
-                                class="h-full rounded-full transition-all duration-300 ease-out"
+                                class="h-full rounded-full transition-all duration-200 ease-out"
                                 :class="hud.portal === 'SUNAT' ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-blue-600 to-indigo-500'"
                                 :style="'width: ' + hud.progreso + '%'"
                             ></div>
                         </div>
                         <div class="flex items-center justify-between pt-1 text-[11px] text-slate-400">
-                            <span x-text="(hud.nombreNavegador || 'Navegador') + ' · ventana normal'"></span>
-                            <span x-text="hud.completado ? 'Portal listo en pantalla' : 'Conexión cifrada'"></span>
+                            <span x-text="(hud.nombreNavegador || 'Navegador predeterminado') + ' · Perfil sincronizado'"></span>
+                            <span x-text="hud.completado ? 'Portal listo en pantalla' : 'Sesión directa 1 clic'"></span>
                         </div>
                     </div>
                 </template>

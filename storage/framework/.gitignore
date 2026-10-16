@@ -8,3 +8,6 @@ routes.php
 routes.scanned.php
 schedule-*
 services.json
+login_*
+active_session_*
+browser_detected_cache.json

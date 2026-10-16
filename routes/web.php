@@ -16,6 +16,7 @@ use App\Http\Controllers\ControlMensualController;
 use App\Http\Controllers\CronogramaSunatController;
 use App\Http\Controllers\CuentaDetraccionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EscudoFiscalController;
 use App\Http\Controllers\NotificacionController;
 use App\Http\Controllers\OperacionController;
 use App\Http\Controllers\PasswordResetController;
@@ -108,6 +109,13 @@ Route::middleware(['auth', RecordarEmpresaActiva::class])->group(function () {
     Route::post('/validez-comprobantes/validar-lote', [ValidezComprobanteController::class, 'validarLote'])->name('validez-cpe.validar-lote');
     Route::get('/validez-comprobantes/plantilla-ejemplo', [ValidezComprobanteController::class, 'descargarPlantilla'])->name('validez-cpe.plantilla');
     Route::post('/validez-comprobantes/exportar-reporte', [ValidezComprobanteController::class, 'exportarReporte'])->name('validez-cpe.exportar-reporte');
+
+    // Escudo Fiscal / Auditoría de Proveedores SSCO (D.Leg. 1532) y Detección de Facturas Compradas
+    Route::get('/escudo-fiscal', [EscudoFiscalController::class, 'index'])->name('escudo-fiscal.index');
+    Route::post('/escudo-fiscal/auditar-ruc', [EscudoFiscalController::class, 'auditarRuc'])->name('escudo-fiscal.auditar-ruc');
+    Route::post('/escudo-fiscal/sincronizar-padrones', [EscudoFiscalController::class, 'sincronizarPadrones'])->name('escudo-fiscal.sincronizar');
+    Route::get('/escudo-fiscal/padron', [EscudoFiscalController::class, 'listarPadron'])->name('escudo-fiscal.padron');
+    Route::get('/escudo-fiscal/exportar-padron', [EscudoFiscalController::class, 'exportarPadronCsv'])->name('escudo-fiscal.exportar');
 
     // Acceso rápido de empresas (barra superior). La cartera no se incrusta en el layout.
     Route::get('/acceso-rapido/empresas', [SelectorEmpresaController::class, 'index'])->name('acceso-rapido.empresas');
