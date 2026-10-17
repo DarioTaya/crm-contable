@@ -664,9 +664,109 @@ async function autenticarEnPasarelaSol(page, { ruc, usuario, clave, esperaFormul
     throw new Error('SUNAT no aceptó la Clave SOL o el servicio de autenticación no respondió a tiempo.');
 }
 
-// ─── Orquestador Principal de Lanzamiento ────────────────────────────────────
+/**
+ * El callback de OAuth todavía está canjeando el código. No hay que
+ * dar por abierto el servicio en esa página intermedia.
+ *
+ * @param {string} url
+ */
+function intercambioOauthPendiente(url) {
+    try {
+        return new URL(url).searchParams.has('code');
+    } catch (_) {
+        return false;
+    }
+}
 
-const URL_SUNAT_MENU_BASE = 'https://e-menu.sunat.gob.pe/cl-ti-itmenu/MenuInternet.htm';
+/**
+ * @returns {Promise<'login'|'puente'|'listo'|'navegando'>}
+ */
+async function estadoDelPortal(page) {
+    const url = page.url();
+    if (!url.startsWith('https://')) {
+        return 'navegando';
+    }
+
+    const enPasarela = url.includes('api-seguridad.sunat.gob.pe') || url.includes('/oauth2/') || url.includes('loginMenuSol');
+    const estado = await page.evaluate(() => {
+        const input = document.querySelector('#txtRuc, input[name="txtRuc"]');
+        if (input) {
+            return 'login';
+        }
+
+        const texto = (document.body?.innerText || '').trim();
+        const html = document.documentElement?.innerHTML || '';
+        if (html.includes('oauth2/authen') && texto.length < 80) {
+            return 'puente';
+        }
+
+        return 'listo';
+    }).catch(() => 'navegando');
+
+    if (estado === 'login') {
+        return 'login';
+    }
+    if (estado === 'navegando' || enPasarela) {
+        return estado === 'listo' ? 'puente' : estado;
+    }
+
+    return estado;
+}
+
+/**
+ * Espera a que el servicio quede abierto o a que la Clave SOL esté visible
+ * para escribirla. El puente OAuth, sin formulario, no cuenta como destino.
+ *
+ * @returns {Promise<'login'|'puente'|'listo'|'navegando'>}
+ */
+async function esperarPortal(page, timeout = 20000) {
+    const limite = Date.now() + timeout;
+    let previa = '';
+    let estableDesde = 0;
+    let ultimo = 'navegando';
+
+    while (Date.now() < limite) {
+        ultimo = await estadoDelPortal(page);
+        const actual = page.url();
+        const asentado = ultimo === 'listo' || ultimo === 'login';
+        if (asentado && !intercambioOauthPendiente(actual) && actual === previa) {
+            if (!estableDesde) {
+                estableDesde = Date.now();
+            }
+            const espera = ultimo === 'login' ? 400 : 800;
+            if (Date.now() - estableDesde >= espera) {
+                return ultimo;
+            }
+        } else {
+            estableDesde = 0;
+            previa = actual;
+        }
+
+        await new Promise((r) => setTimeout(r, 150));
+    }
+
+    return ultimo;
+}
+
+/**
+ * Trámites, declaraciones y e-renta son clientes OAuth distintos. La Clave SOL
+ * se escribe en la pasarela del servicio elegido. Si esa pasarela vuelve a
+ * mostrarse, se completa ahí mismo: saltar desde Trámites deja el login abierto.
+ */
+async function completarIngresoSunat(page, { ruc, usuario, clave }) {
+    const credenciales = { ruc, usuario, clave };
+
+    await autenticarEnPasarelaSol(page, credenciales);
+    const estado = await esperarPortal(page);
+
+    if (estado === 'login' || estado === 'puente') {
+        console.log('🔁 El servicio abrió su propia Clave SOL. Ingresando...');
+        await autenticarEnPasarelaSol(page, credenciales);
+        await esperarPortal(page);
+    }
+}
+
+// ─── Orquestador Principal de Lanzamiento ────────────────────────────────────
 
 async function ejecutarLoginPortal({
     portal,          // 'sunat' | 'sunafil'
@@ -778,11 +878,11 @@ async function ejecutarLoginPortal({
             await cdpCookies.send('Network.clearBrowserCookies');
         } catch (_) {}
 
-        // En SUNAT, el handshake OAuth siempre se inicia desde MenuInternet.htm para instalar las cookies base de e-menu;
-        // una vez autenticada la sesión, si el destino es PDT 621 / F.710 / F.709 se salta directo al módulo elegido.
-        const urlHandshakeInicial = esSunafil ? urlEntrada : URL_SUNAT_MENU_BASE;
-        console.log(`📡 Conectando a ${urlHandshakeInicial}...`);
-        await page.goto(urlHandshakeInicial, { waitUntil: 'domcontentloaded', timeout: 25000 });
+        // Cada servicio de SUNAT tiene su propio cliente OAuth. El ingreso empieza
+        // en la URL elegida (Trámites, PDT 621 o e-renta) para que la Clave SOL
+        // quede en ese aplicativo y no en el menú de Trámites.
+        console.log(`📡 Conectando a ${urlEntrada}...`);
+        await page.goto(urlEntrada, { waitUntil: 'domcontentloaded', timeout: 25000 });
 
         // En SUNAFIL, si la variable `direc` ya estaba definida al cargar el DOM, ejecutar el reemplazo inmediato
         if (esSunafil) {
@@ -793,12 +893,10 @@ async function ejecutarLoginPortal({
             }).catch(() => {});
         }
 
-        await autenticarEnPasarelaSol(page, { ruc, usuario, clave });
-
-        // Si el usuario eligió un servicio específico de SUNAT (PDT 621, F.710, F.709) o si la URL sigue en api-seguridad
-        if (!esSunafil && (urlEntrada !== URL_SUNAT_MENU_BASE || page.url().includes('api-seguridad.sunat.gob.pe'))) {
-            console.log(`🔁 Abriendo módulo seleccionado: ${urlEntrada}...`);
-            await page.goto(urlEntrada, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+        if (esSunafil) {
+            await autenticarEnPasarelaSol(page, { ruc, usuario, clave });
+        } else {
+            await completarIngresoSunat(page, { ruc, usuario, clave });
         }
 
         console.log(`📍 Portal listo: ${page.url().slice(0, 140)}`);

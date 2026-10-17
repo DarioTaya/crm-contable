@@ -3,13 +3,13 @@
 namespace App\Support;
 
 /**
- * Destinos de SUNAT Operaciones en Línea, después del login con Clave SOL.
+ * Destinos de SUNAT Operaciones en Línea. Cada uno es un ingreso propio:
+ * Trámites, la plataforma de declaraciones y e-renta no comparten la sesión.
+ * El navegador tiene que autenticarse en la URL del servicio elegido. Entrar
+ * por Trámites y luego saltar a los demás deja otra vez la pantalla de Clave SOL.
  *
- * Trámites queda en el menú SOL. Declaraciones y las dos DJ anuales usan la
- * ruta final que deja la sesión ya iniciada: la plataforma de declaraciones
- * con el código de menú de PDT 621, y el aplicativo e-renta de personas y de
- * empresas. Esas tres rutas las confirmó el uso real del portal el 21/09/2026;
- * las anteriores respondían 404.
+ * Declaraciones usa el código de menú del PDT 621. Las DJ anuales entran por
+ * el loader de e-renta: la ruta interna, sin ese loader, responde 500.
  */
 class AccesosSunat
 {
